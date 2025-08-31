@@ -1,0 +1,10 @@
+[project]
+name = "glitchlings"
+version = "0.1.0"
+description = "Monsters for your language games."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "confusable-homoglyphs>=3.3.1",
+    "typo>=0.1.7",
+]
