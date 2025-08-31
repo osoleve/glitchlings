@@ -23,8 +23,14 @@ Doppeltexter replaces characters in your text with near-identical ones that are 
 That is, it introduces unicode confusables, variants on characters that would not usually trip up a human reader.
 
 Args:
-    max_replacement_rate (float): The maximum proportion of characters to replace (default: 0.02).
-    seed (int): The random seed for reproducibility (default: 151).
+    - max_replacement_rate (float): The maximum proportion of characters to replace (default: 0.02).
+    - seed (int): The random seed for reproducibility (default: 151).
+
+```python
+print(doppeltexter("Hello, world!", max_replacement_rate=0.5))
+
+> He‎𞣇‎lჿ, w‎ﮪ‎𝓇lꓒ!
+```
 
 ### Typogre
 
@@ -32,10 +38,16 @@ Typogre simulates a "fat finger" typing error by randomly duplicating, dropping,
 Characters added in are based on the layout of a QWERTY keyboard, more layouts can be added.
 
 Args:
-    max_change_rate (float): The maximum number of edits to make as a percentage of the length (default: 0.02, max: 1.0).
-    seed (int): The random seed for reproducibility (default: 151).
-    preserve_first (bool): Whether to preserve the first character (default: True).
-    preserve_last (bool): Whether to preserve the last character (default: True).
+    - max_change_rate (float): The maximum number of edits to make as a percentage of the length (default: 0.02, max: 1.0).
+    - preserve_first (bool): Whether to preserve the first character (default: True).
+    - preserve_last (bool): Whether to preserve the last character (default: True).
+    - seed (int): The random seed for reproducibility (default: 151).
+
+```python
+print(typogre("Hello, world!", max_change_rate=0.5))
+
+> Helo, wo r!
+```
 
 ### Species we've documented but not yet captured
 
