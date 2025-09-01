@@ -1,6 +1,6 @@
-from zoo import typogre, mim1c, jargoyle  # , reduple
+from zoo import typogre, mim1c, jargoyle, reduple
 
-__all__ = ["typogre", "mim1c", "jargoyle"]  # , "reduple"]
+__all__ = ["typogre", "mim1c", "jargoyle", "reduple"]
 
 
 if __name__ == "__main__":
@@ -8,4 +8,4 @@ if __name__ == "__main__":
     print(mim1c)
     print(typogre)
     print(jargoyle)
-    # print(reduple)
+    print(reduple)
