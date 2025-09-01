@@ -110,6 +110,27 @@ Args:
 - `max_replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
 - `seed (int)`: The random seed for reproducibility (default: 151).
 
+### Reduple
+
+Did I just... did I just hear an echo?
+Reduple, the echolalic glitchling, stutters through your text by randomly reduplicating words.
+Like a broken record or a nervous speaker, it creates natural repetitions that test whether your model can handle redundancy without losing the thread.
+
+```python
+from glitchlings import reduple
+
+print(reduple("Hello, world!", max_reduplication_rate=0.5))
+
+> Hello Hello, world!
+```
+
+Unlike simple duplication, Reduple maintains natural spacing and punctuation placement, creating the kinds of repetitions you might see in real transcripts, hasty edits, or stuttering speech.
+
+Args:
+
+- `max_reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
+- `seed (int)`: The random seed for reproducibility (default: 151).
+
 ## Field Report: Uncontained Specimens
 
 *Containment procedures pending*
