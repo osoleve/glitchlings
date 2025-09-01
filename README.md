@@ -1,92 +1,130 @@
-# Glitchlings
+#
 
-```tex
-    .─') _                                        .─') _                  
+```plaintext
+     .─') _                                       .─') _                  
     (  OO) )                                     ( OO ) )            
   ░██████  ░██ ░██   ░██               ░██        ░██ ░██                                 
  ░██   ░██ ░██       ░██               ░██        ░██                                     
 ░██        ░██ ░██░████████  ░███████  ░████████  ░██ ░██░████████   ░████████  ░███████  
 ░██  █████ ░██ ░██   ░██    ░██('─.░██ ░██    ░██ ░██ ░██░██    ░██ ░██.─')░██ ░██        
-░██     ██ ░██ ░██   ░██    ░██( OO ) ╱░██    ░██ ░██ ░██░██    ░██ ░██( OO)░██  ░███████  
- ░██  ░███ ░██ ░██   ░██    ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██  o░███        ░██ 
+░██     ██ ░██ ░██   ░██    ░██( OO ) ╱░██    ░██ ░██ ░██░██    ░██ ░██(OO)░██  ░███████  
+ ░██  ░███ ░██ ░██   ░██    ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██ o ░███        ░██ 
   ░█████░█ ░██ ░██    ░████  ░███████  ░██    ░██ ░██ ░██░██    ░██  ░█████░██  ░███████  
                                                                            ░██            
                                                                      ░███████             
-                                                                                          
+
+                        Every language game breeds monsters.
 ```
 
-*Language games were never meant to be easy.*
+`glitchlings` is a library of functions for corrupting the text inputs to your language models in deterministic, linguistically principled ways.  
+Each embodies a different way that documents can be compromised in the wild.
 
-Glitchlings is a library of functions for corrupting the text inputs to your language models.
-After all, what good is general intelligence if it can't handle a little real world chaos?
+Some glitchlings are petty nuisances.  
+Some glitchlings are eldritch horrors.  
+Each alone will put your LLM to the test.  
+Together, they create truly nightmarish scenarios.
+
+After all, what good is general intelligence if it can't handle a little chaos?
+
+~= *The Curator* =~
+
+## Purpose
+
+Glitchlings are intended to increase the difficulty of your benchmark, RL environment, or dataset in general.  
+They do this by breaking surface patterns in the input while keeping the target output intact.
+
+If your model performs well on a particular task, but not when a glitchling is present, it's a sign that it hasn't actually generalized to the problem.  
+Conversely, training a model to perform well in the presence of perturbations should help it generalize better.
 
 ## Use
 
-Import your selected Glitchling (or a few, if ya nasty) and call it on your text/map it over your text column, supplying a seed if desired.
-Some glitchlings may have additional keyword arguments but they will always be optional with what I decide are "reasonable defaults".
+Summon your chosen Glitchling (or a few, if ya nasty) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
+Some glitchlings may have additional keyword arguments but they will always be optional with what I decide are "reasonable defaults".  
 Seed defaults to 151, obviously.
 
-For maintainability reasons, all glitchlings have consented to be renamed once they're in your care.
-Calling one on arguments transparently calls `.corrupt(...)`, which ALWAYS returns a `str`.
-This means that as long as they got along logically, the glitchlings play nicely with one another. But mind their order!
+Calling a glitchling on a `str` transparently calls `.corrupt(str, ...) -> str`.  
+This means that as long as the glitchlings you summon got along logically, the glitchlings play nicely with one another. But mind their order!
 
-## Species (Starter 'lings)
+## Starter 'lings
 
-### Doppeltexter
+For maintainability reasons, all glitchlings have consented to be given nicknames once they're in your care.
 
-Doppeltexter replaces characters in your text with near-identical ones that are somehow... *wrong*.
+### Mim1c
+
+*Wait, was that...?*
+
+Mim1c is a *capgras glitchling*, replacing characters in your text with near-identical ones that are... *wrong*.  
 That is, it introduces unicode confusables, variants on characters that would not usually trip up a human reader.
 
-Args:
-
-- max_replacement_rate (float): The maximum proportion of characters to replace (default: 0.02).
-- seed (int): The random seed for reproducibility (default: 151).
-
 ```python
-print(doppeltexter("Hello, world!", max_replacement_rate=0.5))
+from glitchlings import mim1c
+
+print(mim1c("Hello, world!", max_replacement_rate=0.5))
 
 > He‎𞣇‎lჿ, w‎ﮪ‎𝓇lꓒ!
 ```
 
-### Typogre
-
-Typogre simulates a "fat finger" typing error by randomly duplicating, dropping, adding, or swapping characters.
-Characters added in are based on the layout of a QWERTY keyboard, more layouts can be added.
-
 Args:
 
-- max_change_rate (float): The maximum number of edits to make as a percentage of the length (default: 0.02, max: 1.0).
-- preserve_first (bool): Whether to preserve the first character (default: True).
-- preserve_last (bool): Whether to preserve the last character (default: True).
-- seed (int): The random seed for reproducibility (default: 151).
+- `max_replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+- `seed (int)`: The random seed for reproducibility (default: 151).
+
+### Typogre
+
+*What a nice word, it would be a shame if something happened to it...*
+
+Typogre, the dyskinetic glitchling, simulates a "fat finger" typing error by randomly duplicating, dropping, adding, or swapping characters.  
+Characters added in are based on the layout of a QWERTY keyboard, more layouts can be added.
 
 ```python
+from glitchlings import typogre
+
 print(typogre("Hello, world!", max_change_rate=0.5))
 
 > Helo, wo r!
 ```
 
-### Jargoyle
-
-Uh oh. The worst person you know just bought a thesaurus.
-
-Jargoyle replaces nouns with synonyms at random, without regard for connotational/denotational differences.
-
 Args:
 
-- max_replacement_rate (float): The maximum proportion of words to replace (default: 0.02).
-- seed (int): The random seed for reproducibility (default: 151).
+- `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
+- `preserve_first (bool)`: Whether to preserve the first character (default: True).
+- `preserve_last (bool)`: Whether to preserve the last character (default: True).
+- `seed (int)`: The random seed for reproducibility (default: 151).
+
+### Jargoyle
+
+*Uh oh. The worst person you know just bought a thesaurus.*
+
+Jargoyle, the insufferable-type glitchling, replaces nouns with synonyms at random, without regard for connotational/denotational differences.
 
 ```python
-print(jargoyle("Hello, world!"))
+from glitchlings import jargoyle
+
+print(jargoyle("Hello, world!", max_replacement_rate=1.0))
 
 > hullo, macrocosm!
 ```
 
-### Species we've documented but not yet captured
+Args:
 
-- Nilpotrix will accidentally entire words, or worse.
-- Reduplicataur repeats words or phrases.
-- Palimpsest rewrites, but leaves erroneous traces of the past.
+- `max_replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
+- `seed (int)`: The random seed for reproducibility (default: 151).
 
-### Contributing
+## Field Report: Uncontained Specimens
+
+*Containment procedures pending*.
+
+- Reduple repeats words or phrases.
+- Redactyl obscures or ███████ parts of the text.
+- Ekkokin substitutes words with homophones (phonetic equivalents).
+- Rushmore will accidentally entire words, or worse.
+- Nylingual backtranslates portions of text.
+- Glothopper introduces code-switching effects, blending languages or dialects.
+- Scannequin introduces OCR-like artifacts.
+- Palimpsest rewrites, but leaves accidental traces of the past.
+
+### Apocrypha
+
+Cave paintings and oral tradition contain many depictions of strange, otherworldly glitchlings.  
+These *Apocryphal Glitchlings* are said to possess unique abilities or behaviors.  
+If you encounter one of these elusive beings, please document your findings and share them with *The Curator*.

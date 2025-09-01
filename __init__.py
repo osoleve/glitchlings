@@ -1,8 +1,4 @@
-import random
-from confusable_homoglyphs import confusables
-import typo
-
-from zoo import typogre, mim1c, jargoyle, reduple
+from zoo import typogre, mim1c, jargoyle  # , reduple
 
 __all__ = ["typogre", "mim1c", "jargoyle"]  # , "reduple"]
 
