@@ -112,7 +112,7 @@ Args:
 
 ## Field Report: Uncontained Specimens
 
-*Containment procedures pending*.
+*Containment procedures pending*
 
 - Reduple repeats words or phrases.
 - Redactyl obscures or ███████ parts of the text.
@@ -123,8 +123,8 @@ Args:
 - Scannequin introduces OCR-like artifacts.
 - Palimpsest rewrites, but leaves accidental traces of the past.
 
-### Apocrypha
+## Apocrypha
 
 Cave paintings and oral tradition contain many depictions of strange, otherworldly glitchlings.  
 These *Apocryphal Glitchlings* are said to possess unique abilities or behaviors.  
-If you encounter one of these elusive beings, please document your findings and share them with *The Curator*.
+If you encounter one of these elusive beings, please document your findings and share them with ~*The Curator*~.
