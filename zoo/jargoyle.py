@@ -8,7 +8,7 @@ nltk.download("wordnet")
 
 
 def replace_noun_phrases(
-    text: str, max_replacement_rate: float = 0.02, seed: int = 151
+    text: str, max_replacement_rate: float = 0.1, seed: int = 151
 ) -> str:
     """Replace noun phrases in the text with a random synonym."""
     random.seed(seed)

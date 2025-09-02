@@ -5,28 +5,28 @@
     (  OO) )                                     ( OO ) )            
   ░██████  ░██ ░██   ░██               ░██        ░██ ░██                                 
  ░██   ░██ ░██       ░██               ░██        ░██                                     
-░██        ░██ ░██░████████  ░███████  ░████████  ░██ ░██░████████   ░████████  ░███████  
+░██        ░██ ░██░████████  ░███████ ░████████  ░██ ░██░████████   ░████████ ░███████  
 ░██  █████ ░██ ░██   ░██    ░██('─.░██ ░██    ░██ ░██ ░██░██    ░██ ░██.─')░██ ░██        
-░██     ██ ░██ ░██   ░██    ░██( OO ) ╱░██    ░██ ░██ ░██░██    ░██ ░██(OO)░██  ░███████  
- ░██  ░███ ░██ ░██   ░██    ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██ o ░███        ░██ 
-  ░█████░█ ░██ ░██    ░████  ░███████  ░██    ░██ ░██ ░██░██    ░██  ░█████░██  ░███████  
+░██     ██ ░██ ░██   ░██    ░██( OO ) ╱░██    ░██ ░██ ░██░██    ░██ ░██(OO)░██ ░███████  
+  ░██  ░███ ░██ ░██   ░██   ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██  o░███      ░██ 
+  ░█████░█ ░██ ░██   ░████   ░███████  ░██    ░██ ░██ ░██░██    ░██  ░█████░██ ░███████  
                                                                            ░██            
                                                                      ░███████             
 
                         Every language game breeds monsters.
 ```
 
-`glitchlings` is a library of functions for corrupting the text inputs to your language models in deterministic, linguistically principled ways.  
+`glitchlings` are **utilities for corrupting the text inputs to your language models in deterministic, _linguistically principled_** ways.  
 Each embodies a different way that documents can be compromised in the wild.
 
-Some glitchlings are petty nuisances.  
-Some glitchlings are eldritch horrors.  
-Each alone will put your LLM to the test.  
+If RL environments are games, then glitchlings are enemies to breathe new life into old challenges.
+
+Some glitchlings are petty nuisances. Some glitchlings are eldritch horrors.  
 Together, they create truly nightmarish scenarios.
 
 After all, what good is general intelligence if it can't handle a little chaos?
 
-~= *The Curator* =~
+-_The Curator_
 
 ## Purpose
 
@@ -38,12 +38,14 @@ Conversely, training a model to perform well in the presence of perturbations sh
 
 ## Use
 
-Summon your chosen Glitchling (or a few, if ya nasty) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
+Summon your chosen Glitchling (or a few, _if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
 Some glitchlings may have additional keyword arguments but they will always be optional with what I decide are "reasonable defaults".  
 Seed defaults to 151, obviously.
 
 Calling a glitchling on a `str` transparently calls `.corrupt(str, ...) -> str`.  
-This means that as long as the glitchlings you summon got along logically, the glitchlings play nicely with one another. But mind their order!
+This means that as long as your glitchlings get along logically, they play nicely with one another. But mind their order!
+
+Each glitchling maintains its own history of inputs and outputs, as well as the `difflib` edit history.
 
 ## Starter 'lings
 
@@ -51,17 +53,17 @@ For maintainability reasons, all glitchlings have consented to be given nickname
 
 ### Mim1c
 
-*Wait, was that...?*
+_Wait, was that...?_
 
-Mim1c is a *capgras glitchling*, replacing characters in your text with near-identical ones that are... *wrong*.  
+Mim1c is a _capgras glitchling_, replacing characters in your text with near-identical ones that are... _wrong_.  
 That is, it introduces unicode confusables, variants on characters that would not usually trip up a human reader.
 
 ```python
 from glitchlings import mim1c
 
-print(mim1c("Hello, world!", max_replacement_rate=0.5))
+print(mim1c(sample_text))
 
-> He‎𞣇‎lჿ, w‎ﮪ‎𝓇lꓒ!
+> On𝗲 moꭈning‎؍‎ when Gregor S𝛼m𝑠𝚊 woke from troub‎𞸀‎ed dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it   t and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 
 Args:
@@ -71,7 +73,7 @@ Args:
 
 ### Typogre
 
-*What a nice word, it would be a shame if something happened to it...*
+_What a nice word, it would be a shame if something happened to it..._
 
 Typogre, the dyskinetic glitchling, simulates a "fat finger" typing error by randomly duplicating, dropping, adding, or swapping characters.  
 Characters added in are based on the layout of a QWERTY keyboard, more layouts can be added.
@@ -79,9 +81,9 @@ Characters added in are based on the layout of a QWERTY keyboard, more layouts c
 ```python
 from glitchlings import typogre
 
-print(typogre("Hello, world!", max_change_rate=0.5))
+print(typogre(sample_text))
 
-> Helo, wo r!
+> One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on hisarmour-like back, and if he lifted his head a little he could see his brown belly, slightly romed and divided by arches int stiff sections. The bedding was hrly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplesly ass he looked.
 ```
 
 Args:
@@ -93,16 +95,16 @@ Args:
 
 ### Jargoyle
 
-*Uh oh. The worst person you know just bought a thesaurus.*
+_Uh oh. The worst person you know just bought a thesaurus._
 
 Jargoyle, the insufferable-type glitchling, replaces nouns with synonyms at random, without regard for connotational/denotational differences.
 
 ```python
 from glitchlings import jargoyle
 
-print(jargoyle("Hello, world!", max_replacement_rate=1.0))
+print(jargoyle(sample_text))
 
-> hullo, macrocosm!
+> One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible varmint. He lay on his armor-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arch into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 
 Args:
@@ -112,20 +114,20 @@ Args:
 
 ### Reduple
 
-*Did I just... did I just hear an echo?*
+_Did I just... did I just hear an echo?_
 
 Reduple, the echolalic glitchling, stutters through your text by randomly reduplicating words.
 Like a broken record or a nervous speaker, it creates natural repetitions that test whether your model can handle redundancy without losing the thread.
 
+Unlike simple duplication, Reduple maintains natural spacing and punctuation placement, creating the kinds of repetitions you might see in real transcripts, hasty edits, or stuttering speech.
+
 ```python
 from glitchlings import reduple
 
-print(reduple("Hello, world!", max_reduplication_rate=0.5))
+print(reduple(sample_text))
 
-> Hello Hello, world!
+> One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and and seemed ready to to slide off any moment. His many legs, pitifully thin compared with the size of the the rest of him, waved waved about helplessly as he looked looked.
 ```
-
-Unlike simple duplication, Reduple maintains natural spacing and punctuation placement, creating the kinds of repetitions you might see in real transcripts, hasty edits, or stuttering speech.
 
 Args:
 
@@ -134,9 +136,8 @@ Args:
 
 ## Field Report: Uncontained Specimens
 
-*Containment procedures pending*
+_Containment procedures pending_
 
-- Reduple repeats words or phrases.
 - Redactyl obscures or ███████ parts of the text.
 - Ekkokin substitutes words with homophones (phonetic equivalents).
 - Rushmore will accidentally entire words, or worse.
@@ -148,5 +149,5 @@ Args:
 ## Apocrypha
 
 Cave paintings and oral tradition contain many depictions of strange, otherworldly glitchlings.  
-These *Apocryphal Glitchlings* are said to possess unique abilities or behaviors.  
-If you encounter one of these elusive beings, please document your findings and share them with ~*The Curator*~.
+These _Apocryphal Glitchlings_ are said to possess unique abilities or behaviors.  
+If you encounter one of these elusive beings, please document your findings and share them with ~_The Curator_~.

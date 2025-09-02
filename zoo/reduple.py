@@ -4,7 +4,7 @@ from .core import Glitchling
 
 
 def reduplicate_words(
-    text: str, max_reduplication_rate: float = 0.02, seed: int = 151
+    text: str, max_reduplication_rate: float = 0.1, seed: int = 151
 ) -> str:
     random.seed(seed)
 

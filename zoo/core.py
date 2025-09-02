@@ -1,4 +1,4 @@
-# import difflib
+import difflib
 
 
 class Glitchling:
@@ -12,6 +12,9 @@ class Glitchling:
     def corrupt(self, text: str, *args, **kwargs) -> str:
         corrupted = self.corruption_function(text, *args, **kwargs)
         self.translations[(text, args, frozenset(kwargs.items()))] = corrupted
+        self.edits[(text, args, frozenset(kwargs.items()))] = list(
+            difflib.ndiff(text.splitlines(), corrupted.splitlines())
+        )
         return corrupted
 
     def __call__(self, text: str, *args, **kwds) -> str:
@@ -23,5 +26,16 @@ class Glitchling:
 {self.name} says {self.corrupt("Hello, world!", 1)}
 """
 
-    def get_history(self) -> dict:
+    def get_translations(self) -> dict:
         return self.translations
+
+    def get_edits(self) -> dict:
+        return self.edits
+
+    def review(self, text: str, *args, **kwargs) -> dict:
+        return {
+            "translations": self.get_translations()[
+                text, args, frozenset(kwargs.items())
+            ],
+            "edits": self.get_edits()[text, args, frozenset(kwargs.items())],
+        }
