@@ -112,7 +112,8 @@ Args:
 
 ### Reduple
 
-Did I just... did I just hear an echo?
+*Did I just... did I just hear an echo?*
+
 Reduple, the echolalic glitchling, stutters through your text by randomly reduplicating words.
 Like a broken record or a nervous speaker, it creates natural repetitions that test whether your model can handle redundancy without losing the thread.
 
