@@ -62,9 +62,9 @@ That is, it introduces unicode confusables, variants on characters that would no
 from glitchlings import mim1c
 
 print(mim1c(sample_text))
+```
 
 > On𝗲 moꭈning‎؍‎ when Gregor S𝛼m𝑠𝚊 woke from troub‎𞸀‎ed dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it   t and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
-```
 
 Args:
 
@@ -82,9 +82,9 @@ Characters added in are based on the layout of a QWERTY keyboard, more layouts c
 from glitchlings import typogre
 
 print(typogre(sample_text))
+```
 
 > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on hisarmour-like back, and if he lifted his head a little he could see his brown belly, slightly romed and divided by arches int stiff sections. The bedding was hrly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplesly ass he looked.
-```
 
 Args:
 
@@ -103,9 +103,9 @@ Jargoyle, the insufferable-type glitchling, replaces nouns with synonyms at rand
 from glitchlings import jargoyle
 
 print(jargoyle(sample_text))
+```
 
 > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible varmint. He lay on his armor-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arch into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
-```
 
 Args:
 
@@ -125,14 +125,35 @@ Unlike simple duplication, Reduple maintains natural spacing and punctuation pla
 from glitchlings import reduple
 
 print(reduple(sample_text))
+```
 
 > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and and seemed ready to to slide off any moment. His many legs, pitifully thin compared with the size of the the rest of him, waved waved about helplessly as he looked looked.
-```
 
 Args:
 
 - `max_reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
 - `seed (int)`: The random seed for reproducibility (default: 151).
+
+### Rushmore
+
+_Well, why'd you wait til the night before to start?_
+
+Rushmore, the frantic glitchling, is the evil (?) twin of Reduple. Where Reduple may double up on a word, Rushmore might forget one.
+
+Or, as we'd say back in the day, it "accidentally entire words."
+
+Args:
+
+- `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+- `seed (int)`: The random seed for reproducibility (default: 151).
+
+```python
+from glitchlings import rushmore
+
+print(rushmore(sample_text))
+```
+
+> One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 
 ## Field Report: Uncontained Specimens
 
@@ -140,7 +161,6 @@ _Containment procedures pending_
 
 - Redactyl obscures or ███████ parts of the text.
 - Ekkokin substitutes words with homophones (phonetic equivalents).
-- Rushmore will accidentally entire words, or worse.
 - Nylingual backtranslates portions of text.
 - Glothopper introduces code-switching effects, blending languages or dialects.
 - Scannequin introduces OCR-like artifacts.

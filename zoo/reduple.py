@@ -4,7 +4,7 @@ from .core import Glitchling
 
 
 def reduplicate_words(
-    text: str, max_reduplication_rate: float = 0.1, seed: int = 151
+    text: str, reduplication_rate: float = 0.05, seed: int = 151
 ) -> str:
     random.seed(seed)
 
@@ -20,7 +20,7 @@ def reduplicate_words(
             continue
 
         # Only consider actual words for reduplication
-        if random.random() < max_reduplication_rate:
+        if random.random() < reduplication_rate:
             # Check if word has trailing punctuation
             match = re.match(r"^(\W*)(.*?)(\W*)$", word)
             if match:
