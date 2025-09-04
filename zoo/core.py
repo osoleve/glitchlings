@@ -1,6 +1,6 @@
 from enum import IntEnum, auto
 from typing import Any, Callable
-from util import string_diffs
+from util import string_diffs, SAMPLE_TEXT
 
 import functools as ft
 
@@ -56,21 +56,19 @@ class Glitchling:
         return self.corrupt(text, *args, **kwds)
 
     def __repr__(self) -> str:
-        return f"""{self.name} says {self.corrupt("Hello, world!", 1.0)}"""
+        return f"""{self.name} says {self.corrupt(SAMPLE_TEXT, 1.0)}"""
 
     def get_translations(self) -> dict:
         return self.translations
 
 
-class Horde(Glitchling):
+class Gaggle(Glitchling):
     def __init__(self, glitchlings: list[Glitchling] = [], seed=151):
         self.glitchlings = {level: [] for level in TextLevel}
         for g in glitchlings:
             self.glitchlings[g.level].append(g)
-        print(self.glitchlings)
         self.sort_glitchlings()
-        print(self.glitchlings)
-        super().__init__("Horde", self.corrupt, TextLevel.DOCUMENT)
+        super().__init__("Gaggle", self.corrupt, TextLevel.DOCUMENT)
 
     def sort_glitchlings(self):
         self.apply_order = [

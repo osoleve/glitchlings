@@ -1,10 +1,10 @@
-from zoo import typogre, mim1c, jargoyle, reduple, rushmore, Glitchling, Horde
+from zoo import typogre, mim1c, jargoyle, reduple, rushmore, Glitchling, Gaggle
 from util import SAMPLE_TEXT
 
-__all__ = ["typogre", "mim1c", "jargoyle", "reduple", "rushmore"]
+__all__ = ["typogre", "mim1c", "jargoyle", "reduple", "rushmore", "summon", "Glitchling", "Gaggle", "SAMPLE_TEXT"]
 
 
-def summon(glitchlings: list[str]) -> Horde:
+def summon(glitchlings: list[str]) -> Gaggle:
     """Summon glitchlings by name."""
     available = {
         g.name.lower(): g for g in [typogre, mim1c, jargoyle, reduple, rushmore]
@@ -17,12 +17,12 @@ def summon(glitchlings: list[str]) -> Horde:
         else:
             raise ValueError(f"Glitchling '{name}' not found.")
 
-    return Horde(summoned)
+    return Gaggle(summoned)
 
 
 if __name__ == "__main__":
-    horde = summon(["reduple", "mim1c", "typogre", "rushmore"])
-    corrupted = horde(SAMPLE_TEXT)
+    gaggle = summon(["reduple", "mim1c", "typogre", "jargoyle", "rushmore"])
+    corrupted = gaggle(SAMPLE_TEXT)
     print(SAMPLE_TEXT, end="\n\n")
-    print(horde.pretty_diff(SAMPLE_TEXT), end="\n\n")
+    print(gaggle.pretty_diff(SAMPLE_TEXT), end="\n\n")
     print(corrupted)
