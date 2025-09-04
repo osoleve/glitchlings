@@ -1,4 +1,4 @@
-from .core import Glitchling
+from .core import Glitchling, TextLevel
 import random
 import typo
 
@@ -34,7 +34,9 @@ def fatfinger(
     return new_text.result
 
 
-typogre = Glitchling(name="Typogre", corruption_function=fatfinger)
+typogre = Glitchling(
+    name="Typogre", corruption_function=fatfinger, level=TextLevel.CHARACTER
+)
 
 typogre.img = r"""          ,      ,
          /|      |\

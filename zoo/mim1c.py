@@ -1,4 +1,4 @@
-from .core import Glitchling
+from .core import Glitchling, TextLevel
 import random
 from confusable_homoglyphs import confusables
 
@@ -24,7 +24,9 @@ def swap_homoglyphs(
     return text
 
 
-mim1c = Glitchling(name="Mim1c", corruption_function=swap_homoglyphs)
+mim1c = Glitchling(
+    name="Mim1c", corruption_function=swap_homoglyphs, level=TextLevel.CHARACTER
+)
 mim1c.img = r"""         ___________
         / /       \ \
        / /         \ \

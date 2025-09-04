@@ -1,6 +1,6 @@
 import re
 import random
-from .core import Glitchling
+from .core import Glitchling, TextLevel
 
 
 def reduplicate_words(
@@ -33,7 +33,9 @@ def reduplicate_words(
     return "".join(tokens)
 
 
-reduple = Glitchling(name="Reduple", corruption_function=reduplicate_words)
+reduple = Glitchling(
+    name="Reduple", corruption_function=reduplicate_words, level=TextLevel.WORD
+)
 reduple.img = r"""                                            ,;,.
                     ,;,.                   /`_`'\                   ,;,.
                    /`_`'\                 | o o |                 /`_`'\

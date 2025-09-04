@@ -21,31 +21,52 @@ Each embodies a different way that documents can be compromised in the wild.
 
 If RL environments are games, then glitchlings are enemies to breathe new life into old challenges.
 
+They do this by breaking surface patterns in the input while keeping the target output intact.
+
 Some glitchlings are petty nuisances. Some glitchlings are eldritch horrors.  
-Together, they create truly nightmarish scenarios.
+Together, they create truly nightmarish scenarios for your language models.
 
 After all, what good is general intelligence if it can't handle a little chaos?
 
 -_The Curator_
 
-## Purpose
+## Motivation
 
-Glitchlings are intended to increase the difficulty of your benchmark, RL environment, or dataset in general.  
-They do this by breaking surface patterns in the input while keeping the target output intact.
+If your model performs well on a particular task, but not when glitchlings are present, it's a sign that it hasn't actually generalized to the problem.
 
-If your model performs well on a particular task, but not when a glitchling is present, it's a sign that it hasn't actually generalized to the problem.  
-Conversely, training a model to perform well in the presence of perturbations should help it generalize better.
+Conversely, training a model to perform well in the presence of the types of perturbations introduced by glitchlings should help it generalize better.
 
-## Use
+## Quickstart
 
-Summon your chosen Glitchling (or a few, _if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
+```python
+from glitchlings import summon, SAMPLE_TEXT
+
+horde = summon(["reduple", "mim1c", "typogre", "rushmore"])
+horde(SAMPLE_TEXT)
+```
+
+> Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
+
+## Your First Battle
+
+Summon your chosen Glitchling (_or a few, if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
 Some glitchlings may have additional keyword arguments but they will always be optional with what I decide are "reasonable defaults".  
 Seed defaults to 151, obviously.
 
 Calling a glitchling on a `str` transparently calls `.corrupt(str, ...) -> str`.  
-This means that as long as your glitchlings get along logically, they play nicely with one another. But mind their order!
+This means that as long as your glitchlings get along logically, they play nicely with one another.
 
-Each glitchling maintains its own history of inputs and outputs, as well as the `difflib` edit history.
+Each glitchling maintains its own history of inputs and outputs, and a glitchling `Horde` can be used to manage multiple glitchlings at once while maintaining their individual histories.
+
+When summoned as a `Horde`, the glitchlings will automatically order themselves into attack waves, based on the scope of the change they make:
+
+1. Document
+2. Paragraph
+3. Sentence
+4. Word Level
+5. Character
+
+They're horrible little gremlins, but they're not _unreasonable_.
 
 ## Starter 'lings
 

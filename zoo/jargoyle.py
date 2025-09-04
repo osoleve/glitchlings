@@ -2,7 +2,7 @@ import random
 import nltk
 from nltk.tokenize import wordpunct_tokenize
 from nltk.corpus import wordnet as wn
-from .core import Glitchling
+from .core import Glitchling, TextLevel
 
 nltk.download("wordnet")
 
@@ -29,7 +29,9 @@ def replace_noun_phrases(
     return text
 
 
-jargoyle = Glitchling(name="Jargoyle", corruption_function=replace_noun_phrases)
+jargoyle = Glitchling(
+    name="Jargoyle", corruption_function=replace_noun_phrases, level=TextLevel.WORD
+)
 jargoyle.img = r"""         ,      ,
         /|      |\
        /  '.  .'  \
@@ -45,4 +47,5 @@ jargoyle.img = r"""         ,      ,
    / /             \ \
   / /               \ \
  ( (                 ) )
-  `-'               `-'"""
+  `-'               `-'
+  """

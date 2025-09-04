@@ -1,6 +1,6 @@
 import random
 import re
-from .core import Glitchling
+from .core import Glitchling, TextLevel
 
 
 def delete_random_words(
@@ -49,7 +49,7 @@ def delete_random_words(
     return text
 
 
-rushmore = Glitchling("rushmore", delete_random_words)
+rushmore = Glitchling("rushmore", delete_random_words, level=TextLevel.WORD)
 rushmore.img = r"""
                                             ,;,.
                     ,;,.                   /`_`'\                   ,;,.

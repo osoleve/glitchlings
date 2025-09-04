@@ -1,16 +1,28 @@
-from zoo import typogre, mim1c, jargoyle, reduple, rushmore
+from zoo import typogre, mim1c, jargoyle, reduple, rushmore, Glitchling, Horde
+from util import SAMPLE_TEXT
 
 __all__ = ["typogre", "mim1c", "jargoyle", "reduple", "rushmore"]
 
 
-if __name__ == "__main__":
-    text = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked."
-    # print(mim1c(text))
-    # print(typogre(text))
-    # print(jargoyle(text))
-    # print(reduple(text))
-    print(rushmore(text))
+def summon(glitchlings: list[str]) -> Horde:
+    """Summon glitchlings by name."""
+    available = {
+        g.name.lower(): g for g in [typogre, mim1c, jargoyle, reduple, rushmore]
+    }
+    summoned = []
+    for name in glitchlings:
+        g = available.get(name.lower())
+        if g:
+            summoned.append(g)
+        else:
+            raise ValueError(f"Glitchling '{name}' not found.")
 
-    # print(reduple.get_translations())
-    # print(reduple.get_edits())
-    # print(reduple.review(text))
+    return Horde(summoned)
+
+
+if __name__ == "__main__":
+    horde = summon(["reduple", "mim1c", "typogre", "rushmore"])
+    corrupted = horde(SAMPLE_TEXT)
+    print(SAMPLE_TEXT, end="\n\n")
+    print(horde.pretty_diff(SAMPLE_TEXT), end="\n\n")
+    print(corrupted)
