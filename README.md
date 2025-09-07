@@ -95,7 +95,7 @@ assert o1 == o2  # Deterministic!
 - Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
 - If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
 
-### At Wits' End?
+#### At Wits' End?
 
 If you're trying to add a new glitchling and can't seem to make it deterministic, here are some places to look for determinism-breaking code:
 
