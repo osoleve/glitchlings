@@ -68,6 +68,42 @@ When summoned as a `Gaggle`, the `Glitchling`s will automatically order themselv
 
 They're horrible little gremlins, but they're not _unreasonable_.
 
+### Reproducible Corruption
+
+Every `Glitchling` owns its own independent `random.Random` instance. That means:
+
+- No `random.seed(...)` calls touch Python's global RNG.
+- Supplying a `seed` when you construct a `Glitchling` (or when you `summon(...)`) makes its behavior reproducible.
+- Re-running a `Gaggle` with the same master seed and the same input text (_and same external data!_) yields identical corruption output.
+
+#### Quick Example
+
+```python
+from glitchlings import summon, SAMPLE_TEXT
+
+g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
+o1 = g1(SAMPLE_TEXT)
+
+g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
+o2 = g2(SAMPLE_TEXT)
+
+assert o1 == o2  # Deterministic!
+```
+
+#### Notes & Caveats
+
+- Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
+- If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
+
+### At Wits' End?
+
+If you're trying to add a new glitchling and can't seem to make it deterministic, here are some places to look for determinism-breaking code:
+
+1. Search for any direct calls to `random.choice`, `random.shuffle`, or `set(...)` ordering without going through the provided `rng`.
+2. Ensure you sort collections before shuffling or sampling.
+3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
+4. Make sure there are enough sort keys to maintain stability.
+
 ## Starter 'lings
 
 For maintainability reasons, all `Glitchling` have consented to be given nicknames once they're in your care. See the [Monster Manual](MONSTER_MANUAL.md) for a complete bestiary.
@@ -98,7 +134,7 @@ _Wait, was that...?_
 >
 > ### Args
 >
-> - `max_replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -114,7 +150,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ### Args
 >
-> - `max_replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
+> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -130,7 +166,7 @@ _Did you say that or did I?_
 >
 > ### Args
 >
-> - `max_reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
+> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -146,7 +182,7 @@ _I accidentally an entire word._
 >
 > ### Args
 >
-> - `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -154,11 +190,27 @@ _I accidentally an entire word._
 > >>> print(rushmore(sample_text))
 > ```
 
+#### Redactyl
+
+_Oops, that was my black highlighter._
+
+> _**FOIA Reply.**_ Redactyl obscures random words in your document like an NSA analyst with a bad sense of humor
+>
+> ### Args
+>
+> - `replacement_char (str)`: The character to use for redaction (default: █).
+> - `redaction_rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
+> - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
+>
+> ```python
+> >>> from glitchlings import redactyl
+> >>> print(redactyl(sample_text))
+> ```
+
 ## Field Report: Uncontained Specimens
 
 ### _Containment procedures pending_
 
-- `redactyl` obscures or ███████ parts of the text.
 - `ekkokin` substitutes words with homophones (phonetic equivalents).
 - `nylingual` backtranslates portions of text.
 - `glothopper` introduces code-switching effects, blending languages or dialects.
