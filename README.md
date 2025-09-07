@@ -78,7 +78,7 @@ _What a nice word, would be a shame if something happened to it._
 
 > _**Fatfinger.**_ Typogre introduces character-level errors (duplicating, dropping, adding, or swapping) based on the layout of a (currently QWERTY) keyboard.
 >
-> ### Typogre Args
+> ### Args
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
 > - `preserve_first (bool)`: Whether to preserve the first character of words when applicable (default: True).
@@ -96,7 +96,7 @@ _Wait, was that...?_
 
 > _**Confusion.**_ Mim1c replaces non-space characters with Unicode Confusables, characters that are distinct but would not usually confuse a human reader.
 >
-> ### Mim1c Args
+> ### Args
 >
 > - `max_replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
@@ -112,7 +112,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 
 > _**Sesquipedalianism.**_ Jargoyle, the insufferable `Glitchling`, replaces nouns with synonyms at random, without regard for connotational or denotational differences.
 >
-> ### Jargoyle Args
+> ### Args
 >
 > - `max_replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
@@ -128,7 +128,7 @@ _Did you say that or did I?_
 
 > _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
 >
-> ### Reduple Args
+> ### Args
 >
 > - `max_reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
@@ -144,7 +144,7 @@ _I accidentally an entire word._
 
 > _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
 >
-> ### Rushmore Args
+> ### Args
 >
 > - `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).

@@ -30,3 +30,44 @@ def string_diffs(a: str, b: str):
         ops.append(buffer)
 
     return ops
+
+
+_KEYNEIGHBORS = {
+    "CURATOR_QWERTY": {
+        "a": [*"qwsz"],
+        "b": [*"vghn  "],
+        "c": [*"xdfv  "],
+        "d": [*"serfcx"],
+        "e": [*"wsdrf34"],
+        "f": [*"drtgvc"],
+        "g": [*"ftyhbv"],
+        "h": [*"gyujnb"],
+        "i": [*"ujko89"],
+        "j": [*"huikmn"],
+        "k": [*"jilom,"],
+        "l": [*"kop;.,"],
+        "m": [*"njk,  "],
+        "n": [*"bhjm  "],
+        "o": [*"iklp90"],
+        "p": [*"o0-[;l"],
+        "q": [*"was 12"],
+        "r": [*"edft45"],
+        "s": [*"awedxz"],
+        "t": [*"r56ygf"],
+        "u": [*"y78ijh"],
+        "v": [*"cfgb  "],
+        "w": [*"q23esa"],
+        "x": [*"zsdc  "],
+        "y": [*"t67uhg"],
+        "z": [*"asx"],
+    }
+}
+
+
+class KeyNeighbors:
+    def __init__(self):
+        for layout_name, layout in _KEYNEIGHBORS.items():
+            setattr(self, layout_name, layout)
+
+
+KEYNEIGHBORS = KeyNeighbors()

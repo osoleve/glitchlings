@@ -1,31 +1,56 @@
-from .core import Glitchling, TextLevel
+from typing import Literal
+from .core import Glitchling, AttackWave, AttackOrder
+import re
 import random
 from confusable_homoglyphs import confusables
 
 
 def swap_homoglyphs(
-    text: str, max_replacement_rate: float = 0.02, seed: int = 151
+    text: str,
+    replacement_rate: float = 0.02,
+    classes: list[str] | Literal["all"] | None = None,
+    seed: int | None = None,
+    rng: random.Random | None = None,
 ) -> str:
-    """Corrupt the text by replacing characters with their homoglyphs."""
-    random.seed(seed)
-    nonspace_chars = [char for char in text if not char.isspace()]
+    """Corrupt the text by replacing characters with their homoglyphs.
+
+    seed retained for backward compatibility; rng overrides seed when provided.
+    """
+    if rng is None:
+        rng = random.Random(seed)
+
+    if classes is None:
+        classes = ["LATIN", "GREEK", "CYRILLIC"]
+
+    target_chars = [char for char in text if char.isalnum()]
     confusable_chars = [
-        char for char in nonspace_chars if char in confusables.confusables_data
+        char for char in target_chars if char in confusables.confusables_data
     ]
-    max_replacements = int(len(text) * max_replacement_rate)
-    choices = random.choices(
-        confusable_chars,
-        k=min(random.randint(1, max_replacements), len(confusable_chars)),
-    )
-    for char in choices:
-        text = text.replace(
-            char, random.choice(confusables.confusables_data[char])["c"], 1
-        )
+    num_replacements = int(len(confusable_chars) * replacement_rate)
+    done = 0
+    rng.shuffle(confusable_chars)
+    for char in confusable_chars:
+        if done >= num_replacements:
+            break
+        options = [
+            o["c"] for o in confusables.confusables_data[char] if len(o["c"]) == 1
+        ]
+        if classes != "all":
+            options = [opt for opt in options if confusables.alias(opt) in classes]
+        if not options:
+            continue
+        text = text.replace(char, rng.choice(options), 1)
+        done += 1
     return text
 
 
 mim1c = Glitchling(
-    name="Mim1c", corruption_function=swap_homoglyphs, level=TextLevel.CHARACTER
+    name="Mim1c",
+    corruption_function=swap_homoglyphs,
+    scope=AttackWave.CHARACTER,
+    order=AttackOrder.LATE,
+    replacement_rate=0.02,
+    classes=["LATIN", "GREEK", "CYRILLIC"],
 )
 mim1c.img = r"""         ___________
         / /       \ \

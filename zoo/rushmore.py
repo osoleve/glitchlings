@@ -1,10 +1,13 @@
 import random
 import re
-from .core import Glitchling, TextLevel
+from .core import Glitchling, AttackWave
 
 
 def delete_random_words(
-    text: str, max_deletion_rate: float = 0.01, seed: int = 151
+    text: str,
+    max_deletion_rate: float = 0.01,
+    seed: int | None = None,
+    rng: random.Random | None = None,
 ) -> str:
     """
     Delete random words from the input text.
@@ -17,7 +20,8 @@ def delete_random_words(
     Returns:
         str: The text with random words deleted.
     """
-    random.seed(seed)
+    if rng is None:
+        rng = random.Random(seed)
 
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
@@ -33,14 +37,14 @@ def delete_random_words(
             continue
 
         # Only consider actual words for deletion
-        if random.random() < max_deletion_rate:
-            # Check if word has trailing punctuation
-            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-            if match:
-                prefix, _, suffix = match.groups()
-                tokens[i] = f"{prefix.strip()}{suffix.strip()}"
-            else:
-                tokens[i] = ""
+    if rng.random() < max_deletion_rate:
+        # Check if word has trailing punctuation
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        if match:
+            prefix, _, suffix = match.groups()
+            tokens[i] = f"{prefix.strip()}{suffix.strip()}"
+        else:
+            tokens[i] = ""
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)
@@ -49,7 +53,7 @@ def delete_random_words(
     return text
 
 
-rushmore = Glitchling("rushmore", delete_random_words, level=TextLevel.WORD)
+rushmore = Glitchling("rushmore", delete_random_words, scope=AttackWave.WORD)
 rushmore.img = r"""
                                             ,;,.
                     ,;,.                   /`_`'\                   ,;,.
