@@ -81,38 +81,43 @@ def skipped_space(text: str, rng: random.Random) -> str:
     return text[:idx] + text[idx + 1 :]
 
 
+def fair_game(text, preserve_first_last=False) -> list[int]:
+    """Return the indices of characters that can be modified, respecting preserve_first_last.
+
+    If preserve_first_last is True, the first and last character of words are excluded unless there are 3 or fewer characters.
+    """
+    positions = []
+    words = re.finditer(r"\b\w+\b", text)
+    for word in words:
+        start, end = word.span()
+        if preserve_first_last and end - start > 2:
+            positions.extend(range(start + 1, end - 1))
+        else:
+            positions.extend(range(start, end))
+    return positions
+
+
 def fatfinger(
     text: str,
     max_change_rate: float = 0.02,
-    preserve_first: bool = True,
-    preserve_last: bool = True,
+    preserve_first_last: bool = False,
+    keyboard: str = "CURATOR_QWERTY",
     seed: int | None = None,
     rng: random.Random | None = None,
-) -> str:
-    """Introduce character-level 'fat finger' style edits deterministically with provided rng.
-
-    Actions implemented locally (no external typo lib):
-    - char_swap: swap two adjacent interior characters
-    - missing_char: delete a non-edge character
-    - extra_char: insert a keyboard-adjacent or duplicate character
-    - nearby_char: substitute a keyboard-adjacent char
-    - skipped_space: remove an existing space
-    - random_space: insert a random space
-    - unichar: collapse a doubled letter
-    - repeated_char: duplicate an existing character
-    """
+) -> str | list[dict]:
+    """Introduce character-level 'fat finger' style edits deterministically with provided rng."""
     if rng is None:
         rng = random.Random(seed)
     if not text:
-        return text
-    original = text
-    text_local = original
-    max_changes = max(1, int(len(original) * max_change_rate))
+        return ""
+
+    _text = text
+    max_changes = max(1, int(len(text) * max_change_rate))
 
     # Pre-draw all actions and base positions from the original text length to ensure reset reproducibility.
-    base_positions = [i for i, c in enumerate(original) if not c.isspace()]
+    base_positions = fair_game(text, preserve_first_last)
     if not base_positions:
-        return text_local
+        return _text
 
     actions_drawn = [
         rng.choice(
@@ -133,46 +138,40 @@ def fatfinger(
     for action, base_idx in zip(actions_drawn, pos_drawn):
         if action == "char_swap":
             idx = base_idx
-            if idx is not None and idx < len(text_local) - 1:
-                # swap current and next char (avoid spaces for both)
-                if not text_local[idx + 1].isspace():
-                    text_local = (
-                        text_local[:idx]
-                        + text_local[idx + 1]
-                        + text_local[idx]
-                        + text_local[idx + 2 :]
-                    )
+            if idx is not None and idx < len(_text) - 1:
+                if idx + 1 in base_positions:
+                    _text = _text[:idx] + _text[idx + 1] + _text[idx] + _text[idx + 2 :]
         elif action == "missing_char":
             idx = base_idx
             if idx is not None:
-                text_local = text_local[:idx] + text_local[idx + 1 :]
+                _text = _text[:idx] + _text[idx + 1 :]
         elif action == "extra_char":
             idx = base_idx
-            if idx is not None:
-                char = text_local[idx]
-                layout = getattr(KEYNEIGHBORS, "CURATOR_QWERTY")
+            if idx is not None and idx < len(_text):
+                char = _text[idx]
+                layout = getattr(KEYNEIGHBORS, keyboard)
                 neighbors = layout.get(char.lower(), []) or [char]
                 ins = rng.choice(neighbors) or char
-                text_local = text_local[:idx] + ins + text_local[idx:]
+                _text = _text[:idx] + ins + _text[idx:]
         elif action == "nearby_char":
             idx = base_idx
             if idx is not None:
-                char = text_local[idx]
-                layout = getattr(KEYNEIGHBORS, "CURATOR_QWERTY")
+                char = _text[idx]
+                layout = getattr(KEYNEIGHBORS, keyboard)
                 neighbors = layout.get(char.lower(), [])
                 if neighbors:
                     rep = rng.choice(neighbors)
-                    text_local = text_local[:idx] + rep + text_local[idx + 1 :]
+                    _text = _text[:idx] + rep + _text[idx + 1 :]
         elif action == "skipped_space":
-            text_local = skipped_space(text_local, rng)
+            _text = skipped_space(_text, rng)
         elif action == "random_space":
-            text_local = random_space(text_local, rng)
+            _text = random_space(_text, rng)
         elif action == "unichar":
-            text_local = unichar(text_local, rng)
+            _text = unichar(_text, rng)
         elif action == "repeated_char":
-            text_local = repeated_char(text_local, rng)
-        # Trim if we inserted too much? (Not necessary; length drift is acceptable.)
-    return text_local
+            _text = repeated_char(_text, rng)
+
+    return _text
 
 
 typogre = Glitchling(
@@ -181,24 +180,3 @@ typogre = Glitchling(
     scope=AttackWave.CHARACTER,
     order=AttackOrder.EARLY,
 )
-
-typogre.img = r"""          ,      ,
-         /|      |\
-        /  '.  .'  \
-       |    ò__ó    |
-       |     U     |
-       /   \_w_/   \
-      /_____________\
-     /               \
-    /     /     \     \   .--.
-   |     |       |     | (O%%O)
-   |     |       |     | 8%%%%%8
-   \     |       |     / (%%O%%)
-    \    |       |    /   |  |
-     '._.'`--.__.--'`._(  '--'
-      /`-.________.-`\
-     /   /        \   \
-    |   |          |   |
-    |   |          |   |
-    /  /            \  \
-   (__/              \__)"""

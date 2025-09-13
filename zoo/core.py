@@ -1,4 +1,5 @@
 from enum import IntEnum, auto
+from datasets import Dataset
 import random
 from typing import Any, Callable
 from util import string_diffs, SAMPLE_TEXT
@@ -64,8 +65,23 @@ class Glitchling:
         self.translations[text] = corrupted
         return corrupted
 
-    def corrupt(self, text: str) -> str:
-        return self.__corrupt(text, **self.kwargs)
+    def corrupt(self, text: str | list[dict]) -> str | list[dict]:
+        if isinstance(text, list):
+            text[-1]["content"] = self.__corrupt(text[-1]["content"], **self.kwargs)
+        else:
+            text = self.__corrupt(text, **self.kwargs)
+
+        return text
+
+    def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
+        def __corrupt_row(row):
+            for column in columns:
+                row[column] = self.corrupt(row[column])
+            return row
+
+        dataset = dataset.map(__corrupt_row)
+
+        return dataset
 
     def pretty_diff(self, text_in):
         text_out = self.translations[text_in]
@@ -122,10 +138,8 @@ class Gaggle(Glitchling):
     def corrupt(self, text: str) -> str:
         corrupted = text
         for glitchling in self.apply_order:
-            # Ensure deterministic behavior per call when seeds are defined
             glitchling.reset_rng()
             corrupted = glitchling(corrupted)
-            self.translations[text] = corrupted
         return corrupted
 
     def pretty_diff(self, text_in):

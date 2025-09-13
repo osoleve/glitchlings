@@ -117,8 +117,6 @@ _What a nice word, would be a shame if something happened to it._
 > ### Args
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
-> - `preserve_first (bool)`: Whether to preserve the first character of words when applicable (default: True).
-> - `preserve_last (bool)`: Whether to preserve the last character of words when applicable (default: True).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -201,6 +199,7 @@ _Oops, that was my black highlighter._
 > - `replacement_char (str)`: The character to use for redaction (default: █).
 > - `redaction_rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
 > - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
 > >>> from glitchlings import redactyl
