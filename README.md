@@ -56,53 +56,15 @@ Seed defaults to 151, obviously.
 Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.  
 This means that as long as your glitchlings get along logically, they play nicely with one another.
 
-Each `Glitchling` maintains its own history of inputs and outputs, and a `Gaggle` of `Glitchling`s can be used to manage multiple `Glitchling`s at once while maintaining their individual histories.
-
 When summoned as a `Gaggle`, the `Glitchling`s will automatically order themselves into attack waves, based on the scope of the change they make:
 
 1. Document
 2. Paragraph
 3. Sentence
-4. Word Level
+4. Word
 5. Character
 
 They're horrible little gremlins, but they're not _unreasonable_.
-
-### Reproducible Corruption
-
-Every `Glitchling` owns its own independent `random.Random` instance. That means:
-
-- No `random.seed(...)` calls touch Python's global RNG.
-- Supplying a `seed` when you construct a `Glitchling` (or when you `summon(...)`) makes its behavior reproducible.
-- Re-running a `Gaggle` with the same master seed and the same input text (_and same external data!_) yields identical corruption output.
-
-#### Quick Example
-
-```python
-from glitchlings import summon, SAMPLE_TEXT
-
-g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
-o1 = g1(SAMPLE_TEXT)
-
-g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
-o2 = g2(SAMPLE_TEXT)
-
-assert o1 == o2  # Deterministic!
-```
-
-#### Notes & Caveats
-
-- Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
-- If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
-
-#### At Wits' End?
-
-If you're trying to add a new glitchling and can't seem to make it deterministic, here are some places to look for determinism-breaking code:
-
-1. Search for any direct calls to `random.choice`, `random.shuffle`, or `set(...)` ordering without going through the provided `rng`.
-2. Ensure you sort collections before shuffling or sampling.
-3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
-4. Make sure there are enough sort keys to maintain stability.
 
 ## Starter 'lings
 
@@ -118,11 +80,6 @@ _What a nice word, would be a shame if something happened to it._
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import typogre
-> >>> typogre(sample_text)
-> ```
 
 ### Mim1c
 
@@ -134,11 +91,6 @@ _Wait, was that...?_
 >
 > - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import mim1c
-> >>> print(mim1c(sample_text))
-> ```
 
 ### Jargoyle
 
@@ -150,11 +102,6 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import jargoyle
-> >>> print(jargoyle(sample_text))
-> ```
 
 ### Reduple
 
@@ -166,11 +113,6 @@ _Did you say that or did I?_
 >
 > - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import reduple
-> >>> print(reduple(sample_text))
-> ```
 
 ### Rushmore
 
@@ -182,11 +124,6 @@ _I accidentally an entire word._
 >
 > - `deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import rushmore
-> >>> print(rushmore(sample_text))
-> ```
 
 #### Redactyl
 
@@ -200,11 +137,6 @@ _Oops, that was my black highlighter._
 > - `redaction_rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
 > - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import redactyl
-> >>> print(redactyl(sample_text))
-> ```
 
 ## Field Report: Uncontained Specimens
 
@@ -215,9 +147,44 @@ _Oops, that was my black highlighter._
 - `glothopper` introduces code-switching effects, blending languages or dialects.
 - `scannequin` introduces OCR-like artifacts.
 - `palimpsest` rewrites, but leaves accidental traces of the past.
+- `vesuvius` is an apocryphal `Glitchling` with ties to _[Nosy, aren't we? -The Curator]_
 
 ## Apocrypha
 
 Cave paintings and oral tradition contain many depictions of strange, otherworldly `Glitchling`s.  
 These _Apocryphal `Glitchling`_ are said to possess unique abilities or behaviors.  
 If you encounter one of these elusive beings, please document your findings and share them with _The Curator_.
+
+### Reproducible Corruption
+
+Every `Glitchling` owns its own independent `random.Random` instance. That means:
+
+- No `random.seed(...)` calls touch Python's global RNG.
+- Supplying a `seed` when you construct a `Glitchling` (or when you `summon(...)`) makes its behavior reproducible.
+- Re-running a `Gaggle` with the same master seed and the same input text (_and same external data!_) yields identical corruption output.
+
+#### Quick Example
+
+```python
+from glitchlings import summon, SAMPLE_TEXT
+
+g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
+
+g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
+
+assert g1(SAMPLE_TEXT) == g2(SAMPLE_TEXT)
+```
+
+#### Notes & Caveats
+
+- Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
+- If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
+
+#### At Wits' End?
+
+If you're trying to add a new glitchling and can't seem to make it deterministic, here are some places to look for determinism-breaking code:
+
+1. Search for any direct calls to `random.choice`, `random.shuffle`, or `set(...)` ordering without going through the provided `rng`.
+2. Ensure you sort collections before shuffling or sampling.
+3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
+4. Make sure there are enough sort keys to maintain stability.

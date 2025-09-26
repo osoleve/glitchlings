@@ -23,8 +23,8 @@ def tutorial_level(
 ) -> vf.Environment:
     """Create a low-corruption environment."""
 
-    mim1c.set_param("replacement_rate", 0.025 * CR.value)
-    typogre.set_param("max_change_rate", 0.05 * CR.value)
+    mim1c.set_param("replacement_rate", 0.01 * CR.value)
+    typogre.set_param("max_change_rate", 0.025 * CR.value)
 
     glitchlings: Gaggle = summon([mim1c, typogre], seed=seed)
 
@@ -43,14 +43,8 @@ def tutorial_level(
     return env
 
 
-class Mob(Enum):
-    """String-Name Mapping for pre-baked environment variants."""
-
-    CharAttack = tutorial_level
-
-
 def load_environment(
-    env: str | vf.Environment, seed=151, CR: CR = CR.One, loader=Mob.CharAttack
+    env: str | vf.Environment, seed=151, CR: CR = CR.One, loader=tutorial_level
 ) -> vf.Environment:
     """Load an environment by name."""
     return loader(env, seed=seed, CR=CR)
