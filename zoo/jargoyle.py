@@ -1,5 +1,5 @@
 import random
-from typing import Literal
+from typing import Literal, Any, cast
 import nltk
 import re
 from nltk.corpus import wordnet as wn
@@ -11,16 +11,22 @@ nltk.download("wordnet", quiet=True)
 def substitute_random_synonyms(
     text: str,
     replacement_rate: float = 0.1,
-    part_of_speech: Literal[wn.NOUN, wn.VERB, wn.ADJ, wn.ADV] = wn.NOUN,
+    part_of_speech: Literal["n", "v", "a", "r"] = wn.NOUN,
     rng: random.Random | None = None,
 ) -> str:
-    """Replace words having a WordNet synset with a random synonym deterministically for a given rng.
+    """Replace words with random WordNet synonyms.
 
-    Determinism considerations:
-    - Candidate words collected in original order of appearance (left to right), no set()-induced reordering.
-    - Replacement indices chosen by rng.sample over the index list.
-    - Synonym list sorted before rng selection to avoid underlying order variability.
-    - Only first synset used (WordNet order is stable across runs for fixed version).
+    Parameters
+    - text: Input text.
+    - replacement_rate: Max proportion of candidate words to replace (default 0.1).
+    - part_of_speech: WordNet POS to target. One of wn.NOUN (default), wn.VERB, wn.ADJ, wn.ADV.
+    - rng: Optional RNG instance used for deterministic sampling.
+
+    Determinism
+    - Candidates collected in left-to-right order; no set() reordering.
+    - Replacement positions chosen via rng.sample.
+    - Synonyms sorted before rng.choice to fix ordering.
+    - Only first synset is used for stability.
     """
     if rng is None:
         rng = random.Random()
@@ -52,12 +58,17 @@ def substitute_random_synonyms(
         synsets = wn.synsets(word, pos=part_of_speech)
         if not synsets:
             continue
-        lemmas = [lemma.name() for lemma in synsets[0].lemmas()]
-        if not lemmas:
+        synset0: Any = synsets[0]
+        lemmas_list = [lemma.name() for lemma in cast(Any, synset0).lemmas()]
+        if not lemmas_list:
             continue
         # Normalize & dedupe deterministically
         synonyms = sorted(
-            {l.replace("_", " ") for l in lemmas if l.lower() != word.lower()}
+            {
+                lemma_str.replace("_", " ")
+                for lemma_str in lemmas_list
+                if lemma_str.lower() != word.lower()
+            }
         )
         if not synonyms:
             continue
@@ -72,4 +83,3 @@ jargoyle = Glitchling(
     corruption_function=substitute_random_synonyms,
     scope=AttackWave.WORD,
 )
-jargoyle.img = r""""""

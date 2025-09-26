@@ -1,6 +1,5 @@
 from typing import Literal
 from .core import Glitchling, AttackWave, AttackOrder
-import re
 import random
 from confusable_homoglyphs import confusables
 
@@ -12,9 +11,18 @@ def swap_homoglyphs(
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
-    """Corrupt the text by replacing characters with their homoglyphs.
+    """Replace characters with visually confusable homoglyphs.
 
-    seed retained for backward compatibility; rng overrides seed when provided.
+    Parameters
+    - text: Input text.
+    - replacement_rate: Max proportion of eligible characters to replace (default 0.02).
+    - classes: Restrict replacements to these Unicode script classes (default ["LATIN","GREEK","CYRILLIC"]). Use "all" to allow any.
+    - seed: Optional seed if `rng` not provided.
+    - rng: Optional RNG; overrides seed.
+
+    Notes
+    - Only replaces characters present in confusables.confusables_data with single-codepoint alternatives.
+    - Maintains determinism by shuffling candidates and sampling via the provided RNG.
     """
     if rng is None:
         rng = random.Random(seed)
@@ -52,15 +60,3 @@ mim1c = Glitchling(
     replacement_rate=0.02,
     classes=["LATIN", "GREEK", "CYRILLIC"],
 )
-mim1c.img = r"""         ___________
-        / /       \ \
-       / /         \ \
-      | |___________| |
-      |  ___________  |
-      | |           | |
-      | |           | |
-      | |     O     | |
-      | |           | |
-      | |___________| |
-      \_______________/
-"""

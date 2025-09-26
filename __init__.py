@@ -48,18 +48,18 @@ if __name__ == "__main__":
     # dx = env.make_dataset(x).to_dict()
     # print(sum(dx["weighted_reward"]))
 
-    bare_env = vf.load_environment("reverse-text")
+    bare_env = vf.load_environment("alphabet-sort")
     x = bare_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
     dx = bare_env.make_dataset(x).to_dict()
     original = 100 * sum(dx["reward"]) / len(dx["reward"])
 
-    easy_env = gl.load_environment("reverse-text")
+    easy_env = gl.load_environment("alphabet-sort")
     y = easy_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
     dy = easy_env.make_dataset(y).to_dict()
     easy = 100 * sum(dy["reward"]) / len(dy["reward"])
     easy_drop = 100 * (original - easy) / original
 
-    crazy_env = gl.load_environment("reverse-text", CR=gl.CR.Four)
+    crazy_env = gl.load_environment("alphabet-sort", CR=gl.CR.Four)
     z = crazy_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
     dz = crazy_env.make_dataset(z).to_dict()
     crazy = 100 * sum(dz["reward"]) / len(dz["reward"])

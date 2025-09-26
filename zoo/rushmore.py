@@ -9,16 +9,13 @@ def delete_random_words(
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
-    """
-    Delete random words from the input text.
+    """Delete random words from the input text.
 
-    Args:
-        text (str): The input text.
-        max_deletion_rate (float): The maximum proportion of words to delete (default: 0.1, 10%).
-        seed (int): The random seed for reproducibility (default: 151).
-
-    Returns:
-        str: The text with random words deleted.
+    Parameters
+    - text: The input text.
+    - max_deletion_rate: The maximum proportion of words to delete (default 0.01).
+    - seed: Optional seed if `rng` not provided.
+    - rng: Optional RNG; overrides seed.
     """
     if rng is None:
         rng = random.Random(seed)
@@ -54,30 +51,3 @@ def delete_random_words(
 
 
 rushmore = Glitchling("rushmore", delete_random_words, scope=AttackWave.WORD)
-rushmore.img = r"""
-                                            ,;,.
-                    ,;,.                   /`_`'\                   ,;,.
-                   /`_`'\                 | - - |                 /`_`'\
-                  | - - |                 { \_/ }                 | - - |
-                  { \_/ }                   `~`                   { \_/ }
-                    `~`                                             `~`
-          ,         `\                                          /`         ,
-         / \          ~.                                      .~          / \
-        |o.o|           ~.                                  .~           |o.o|
-        <--->             \                               /             <--->
-         ` `               \                             /               ` `
-         /                  ~.                         .~                  \
-        /                     ~.                     .~                     \
-       `~.                      `--'             '--`                      .~`
-          `~.                /`--.__.           .__.--'`\                .~`
-             `~.            /  ########         ########  \            .~`
-                `~.        |  ##########       ##########  |        .~`
-                   `~.      \  ########         ########  /      .~`
-                      `~.    `--..__.'    /`_`'\   `..__..--'    .~`
-                         `~.  /        \   | - - |   /        \  .~`
-                            `|          |  { \_/ }  |          |`
-                             |          |    `~`    |          |
-                           ,--|        |--.  |   .--|        |--.
-                          /   |        |   \/ \ /   |        |   \
-                         '---'        '---' `~`'---'        '---'
-"""

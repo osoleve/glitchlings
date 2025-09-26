@@ -17,9 +17,9 @@ _What a nice word, would be a shame if something happened to it._
 >
 > ### Typogre Args
 >
-> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
-> - `preserve_first (bool)`: Whether to preserve the first character of words when applicable (default: True).
-> - `preserve_last (bool)`: Whether to preserve the last character of words when applicable (default: True).
+> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
+> - `preserve_first_last (bool)`: Avoid editing the first and last character of a word (default: False).
+> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -62,7 +62,8 @@ _Wait, was that...?_
 >
 > ### Mim1c Args
 >
-> - `max_replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -106,7 +107,8 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ### Jargoyle Args
 >
-> - `max_replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
+> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
+> - `part_of_speech`: The WordNet part of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, or `wn.ADV`.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -151,7 +153,7 @@ _Did you say that or did I?_
 >
 > ### Reduple Args
 >
-> - `max_reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
+> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python

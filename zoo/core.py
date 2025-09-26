@@ -91,9 +91,6 @@ class Glitchling:
     def __call__(self, text: str, *args, **kwds) -> str:
         return self.corrupt(text, *args, **kwds)
 
-    def __repr__(self) -> str:
-        return f"""{self.name} says {self.corrupt(SAMPLE_TEXT)}"""
-
     def get_translations(self) -> dict:
         return self.translations
 

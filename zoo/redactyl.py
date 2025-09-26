@@ -13,6 +13,16 @@ def redact_words(
     seed: int = 151,
     rng: random.Random | None = None,
 ) -> str:
+    """Redact random words by replacing their characters.
+
+    Parameters
+    - text: Input text.
+    - replacement_char: The character to use for redaction (default FULL_BLOCK).
+    - redaction_rate: Max proportion of words to redact (default 0.05).
+    - merge_adjacent: If True, merges adjacent redactions across intervening non-word chars.
+    - seed: Seed used if `rng` not provided (default 151).
+    - rng: Optional RNG; overrides seed.
+    """
     if rng is None:
         rng = random.Random(seed)
 
@@ -61,5 +71,3 @@ redactyl = Glitchling(
     scope=AttackWave.WORD,
     seed=151,
 )
-
-redactyl.img = r""""""

@@ -9,6 +9,18 @@ def reduplicate_words(
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
+    """Randomly reduplicate words in the text.
+
+    Parameters
+    - text: Input text.
+    - reduplication_rate: Max proportion of words to reduplicate (default 0.05).
+    - seed: Optional seed if `rng` not provided.
+    - rng: Optional RNG; overrides seed.
+
+    Notes
+    - Preserves spacing and punctuation by tokenizing with separators.
+    - Deterministic when run with a fixed seed or via Gaggle.
+    """
     if rng is None:
         rng = random.Random(seed)
 
@@ -40,29 +52,3 @@ def reduplicate_words(
 reduple = Glitchling(
     name="Reduple", corruption_function=reduplicate_words, scope=AttackWave.WORD
 )
-reduple.img = r"""                                            ,;,.
-                    ,;,.                   /`_`'\                   ,;,.
-                   /`_`'\                 | o o |                 /`_`'\
-                  | o o |                 { \_/ }                 | o o |
-                  { \_/ }                   `~`                   { \_/ }
-                    `~`                      |                      `~`
-          ,         `\                    /                      /`         ,
-         / \          ~.                 /                      .~          / \
-        |o.o|           ~.              /                      .~           |o.o|
-        <VVV>             \            /                      /             <VVV>
-         `v`               \          /                      /               `v`
-         /                  ~.       /                      .~                  \
-        /                     ~.    /                      .~                     \
-       `~.                      `--'----------------------'--`                      .~`
-          `~.                /`--.__.--'`\                .~`
-             `~.            /  SSSSSSSS  \            .~`
-                `~.        |  SSSSSSSSSS  |        .~`
-                   `~.      \  SSSSSSSS  /      .~`
-                      `~.    `--..__..--'    .~`
-                         `~.  /        \  .~`
-                            `|          |`
-                             |          |
-                           ,--|        |--.
-                          /   |        |   \
-                         '---'        '---'
-"""

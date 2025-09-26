@@ -76,9 +76,11 @@ _What a nice word, would be a shame if something happened to it._
 
 > _**Fatfinger.**_ Typogre introduces character-level errors (duplicating, dropping, adding, or swapping) based on the layout of a (currently QWERTY) keyboard.
 >
-> ### Args
+> Args
 >
-> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%)
+> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
+> - `preserve_first_last (bool)`: Avoid editing the first and last character of a word (default: False).
+> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Mim1c
@@ -87,9 +89,10 @@ _Wait, was that...?_
 
 > _**Confusion.**_ Mim1c replaces non-space characters with Unicode Confusables, characters that are distinct but would not usually confuse a human reader.
 >
-> ### Args
+> Args
 >
 > - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Jargoyle
@@ -98,9 +101,10 @@ _Uh oh. The worst person you know just bought a thesaurus._
 
 > _**Sesquipedalianism.**_ Jargoyle, the insufferable `Glitchling`, replaces nouns with synonyms at random, without regard for connotational or denotational differences.
 >
-> ### Args
+> Args
 >
-> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.02, 2%).
+> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
+> - `part_of_speech`: The WordNet part of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, or `wn.ADV`.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Reduple
@@ -109,9 +113,9 @@ _Did you say that or did I?_
 
 > _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
 >
-> ### Args
+> Args
 >
-> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.02, 2%).
+> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Rushmore
@@ -120,16 +124,16 @@ _I accidentally an entire word._
 
 > _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
 >
-> ### Args
+> Args
 >
-> - `deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
-#### Redactyl
+### Redactyl
 
 _Oops, that was my black highlighter._
 
-> _**FOIA Reply.**_ Redactyl obscures random words in your document like an NSA analyst with a bad sense of humor
+> _**FOIA Reply.**_ Redactyl obscures random words in your document like an NSA analyst with a bad sense of humor.
 >
 > ### Args
 >
