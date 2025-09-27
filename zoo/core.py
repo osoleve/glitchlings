@@ -2,7 +2,6 @@ from enum import IntEnum, auto
 from datasets import Dataset
 import random
 from typing import Any, Callable
-from ..util import string_diffs, SAMPLE_TEXT
 
 import functools as ft
 
@@ -44,8 +43,6 @@ class Glitchling:
         self.rng: random.Random = random.Random(seed)
         self.name: str = name
         self.corruption_function: Callable[..., str] = corruption_function
-        self.img: str = ""
-        self.translations: dict[str, str] = {}
         self.level: AttackWave = scope
         self.order: AttackOrder = order
         self.kwargs: dict[str, Any] = {}
@@ -62,7 +59,6 @@ class Glitchling:
             corrupted = self.corruption_function(text, *args, rng=self.rng, **kwargs)
         else:
             corrupted = self.corruption_function(text, *args, **kwargs)
-        self.translations[text] = corrupted
         return corrupted
 
     def corrupt(self, text: str | list[dict]) -> str | list[dict]:
@@ -85,9 +81,6 @@ class Glitchling:
 
     def __call__(self, text: str, *args, **kwds) -> str | list[dict]:
         return self.corrupt(text, *args, **kwds)
-
-    def get_translations(self) -> dict:
-        return self.translations
 
     def reset_rng(self, seed=None):
         """Reset this glitchling's RNG to its initial seed (if one was provided)."""

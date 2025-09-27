@@ -4,6 +4,7 @@ from .jargoyle import jargoyle
 from .reduple import reduple
 from .rushmore import rushmore
 from .redactyl import redactyl
+from .scannequin import scannequin
 from .core import Glitchling, Gaggle
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     "reduple",
     "rushmore",
     "redactyl",
+    "scannequin",
     "Glitchling",
     "Gaggle",
     "summon",
@@ -23,7 +25,15 @@ def summon(glitchlings: list[str | Glitchling], seed: int = 151) -> Gaggle:
     """Summon glitchlings by name (using defaults) or instance (to change parameters)."""
     available = {
         g.name.lower(): g
-        for g in [typogre, mim1c, jargoyle, reduple, rushmore, redactyl]
+        for g in [
+            typogre,
+            mim1c,
+            jargoyle,
+            reduple,
+            rushmore,
+            redactyl,
+            scannequin,
+        ]
     }
     summoned = []
     for entry in glitchlings:

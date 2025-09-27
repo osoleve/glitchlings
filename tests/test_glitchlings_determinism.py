@@ -1,11 +1,20 @@
-from glitchlings import typogre, mim1c, jargoyle, reduple, rushmore, redactyl
+from typing import cast
+from glitchlings import (
+    typogre,
+    mim1c,
+    jargoyle,
+    reduple,
+    rushmore,
+    redactyl,
+    scannequin,
+)
 
 
 def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
     fn.reset_rng(seed)
-    out1 = fn(text)
+    out1 = cast(str, fn(text))
     fn.reset_rng(seed)
-    out2 = fn(text)
+    out2 = cast(str, fn(text))
     return out1, out2
 
 
@@ -50,4 +59,11 @@ def test_redactyl_determinism(sample_text):
     redactyl.set_param("seed", 42)
     redactyl.set_param("redaction_rate", 0.05)
     a, b = _twice(redactyl, sample_text)
+    assert a == b
+
+
+def test_scannequin_determinism(sample_text):
+    scannequin.set_param("seed", 42)
+    scannequin.set_param("error_rate", 0.03)
+    a, b = _twice(scannequin, sample_text)
     assert a == b

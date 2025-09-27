@@ -4,6 +4,49 @@ This manual contains the detailed stat blocks and descriptions of the various Gl
 
 ---
 
+## Scannequin
+
+_How can a computer need reading glasses?_
+
+> Small Construct (squinting), Neutral
+>
+> ---
+>
+> _**OCR Artifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (e.g., rn↔m, cl↔d, O↔0, l/I/1).
+>
+> ### Scannequin Args
+>
+> - `error_rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import scannequin
+> >>> print(scannequin(sample_text))
+> ```
+>
+> > One moming, when Gregor Samsa woke from troub1ed dreams, he found himse1f transf0rmed in his bed into a horribIe vermin. He lay on his armour-1ike back, and if he lifted his head a 1ittle he couId see his brown bel1y, sIightIy domed and divided by arches into stiff sections.
+>
+> ---
+>
+> - **Armor Class** 12 (paper)
+> - **Hit Points** 9 (2d8)
+> - **Speed** 15 ft., 40 ppm
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |4 |10 |8 |11 |9 |6 |
+>
+> ---
+>
+> - **Skills** Investigation +2
+> - **Damage Vulnerabilities** coffee, humidity
+> - **Languages** Cornmon
+> - **Challenge** 0 (50 XP)
+>
+> ---
+
 ## Typogre
 
 _What a nice word, would be a shame if something happened to it._

@@ -95,6 +95,17 @@ _Wait, was that...?_
 > - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
+### Scannequin
+
+_How can a computer need reading glasses?_
+
+> _**OCR Artifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
+>
+> Args
+>
+> - `error_rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+
 ### Jargoyle
 
 _Uh oh. The worst person you know just bought a thesaurus._
@@ -149,7 +160,6 @@ _Oops, that was my black highlighter._
 - `ekkokin` substitutes words with homophones (phonetic equivalents).
 - `nylingual` backtranslates portions of text.
 - `glothopper` introduces code-switching effects, blending languages or dialects.
-- `scannequin` introduces OCR-like artifacts.
 - `palimpsest` rewrites, but leaves accidental traces of the past.
 - `vesuvius` is an apocryphal `Glitchling` with ties to _[Nosy, aren't we? -The Curator]_
 
@@ -166,22 +176,10 @@ Every `Glitchling` owns its own independent `random.Random` instance. That means
 - No `random.seed(...)` calls touch Python's global RNG.
 - Supplying a `seed` when you construct a `Glitchling` (or when you `summon(...)`) makes its behavior reproducible.
 - Re-running a `Gaggle` with the same master seed and the same input text (_and same external data!_) yields identical corruption output.
-
-#### Quick Example
-
-```python
-from glitchlings import summon, SAMPLE_TEXT
-
-g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
-
-g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=42)
-
-assert g1(SAMPLE_TEXT) == g2(SAMPLE_TEXT)
-```
-
-#### Notes & Caveats
-
 - Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
+
+#### Caveats
+
 - If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
 
 #### At Wits' End?

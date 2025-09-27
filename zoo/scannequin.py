@@ -1,0 +1,124 @@
+import re
+import random
+from .core import Glitchling, AttackWave, AttackOrder
+
+
+def ocr_artifacts(
+    text: str,
+    error_rate: float = 0.02,
+    seed: int | None = None,
+    rng: random.Random | None = None,
+) -> str:
+    """Introduce OCR-like artifacts into text.
+
+    Parameters
+    - text: Input text to corrupt.
+    - error_rate: Max proportion of eligible confusion matches to replace (default 0.02).
+    - seed: Optional seed if `rng` not provided.
+    - rng: Optional RNG; overrides seed.
+
+    Notes
+    - Uses a curated set of common OCR confusions (rn↔m, cl↔d, O↔0, l/I/1, etc.).
+    - Collects all non-overlapping candidate spans in reading order, then samples
+      a subset deterministically with the provided RNG.
+    - Replacements can change length (e.g., m→rn), so edits are applied from left
+      to right using precomputed spans to avoid index drift.
+    """
+    if not text:
+        return text
+
+    if rng is None:
+        rng = random.Random(seed)
+
+    # map: source -> list of possible replacements
+    # Keep patterns small and specific; longer patterns first avoid overmatching
+    confusion_table: list[tuple[str, list[str]]] = [
+        ("li", ["h"]),
+        ("h", ["li"]),
+        ("rn", ["m"]),
+        ("m", ["rn"]),
+        ("cl", ["d"]),
+        ("d", ["cl"]),
+        ("I", ["l"]),
+        ("l", ["I", "1"]),
+        ("1", ["l", "I"]),
+        ("0", ["O"]),
+        ("O", ["0"]),
+        ("B", ["8"]),
+        ("8", ["B"]),
+        ("S", ["5"]),
+        ("5", ["S"]),
+        ("Z", ["2"]),
+        ("2", ["Z"]),
+        ("G", ["6"]),
+        ("6", ["G"]),
+        ("“", ['"']),
+        ("”", ['"']),
+        ("‘", ["'"]),
+        ("’", ["'"]),
+        ("—", ["-"]),  # em dash -> hyphen
+        ("–", ["-"]),  # en dash -> hyphen
+    ]
+
+    # Build candidate matches as (start, end, choices)
+    candidates: list[tuple[int, int, list[str]]] = []
+
+    # To avoid double-counting overlapping patterns (like 'l' inside 'li'),
+    # we will scan longer patterns first by sorting by len(src) desc.
+    for src, choices in sorted(confusion_table, key=lambda p: -len(p[0])):
+        pattern = re.escape(src)
+        for m in re.finditer(pattern, text):
+            start, end = m.span()
+            candidates.append((start, end, choices))
+
+    if not candidates:
+        return text
+
+    # Decide how many to replace
+    k = int(len(candidates) * error_rate)
+    if k <= 0:
+        return text
+
+    # Shuffle deterministically and select non-overlapping k spans
+    rng.shuffle(candidates)
+    chosen: list[tuple[int, int, str]] = []
+    occupied: list[tuple[int, int]] = []
+
+    def overlaps(a: tuple[int, int], b: tuple[int, int]) -> bool:
+        return not (a[1] <= b[0] or b[1] <= a[0])
+
+    for start, end, choices in candidates:
+        if len(chosen) >= k:
+            break
+        span = (start, end)
+        if any(overlaps(span, occ) for occ in occupied):
+            continue
+        replacement = rng.choice(choices)
+        chosen.append((start, end, replacement))
+        occupied.append(span)
+
+    if not chosen:
+        return text
+
+    # Apply edits from left to right
+    chosen.sort(key=lambda t: t[0])
+    out_parts = []
+    cursor = 0
+    for start, end, rep in chosen:
+        if cursor < start:
+            out_parts.append(text[cursor:start])
+        out_parts.append(rep)
+        cursor = end
+    if cursor < len(text):
+        out_parts.append(text[cursor:])
+
+    return "".join(out_parts)
+
+
+scannequin = Glitchling(
+    name="Scannequin",
+    corruption_function=ocr_artifacts,
+    scope=AttackWave.CHARACTER,
+    order=AttackOrder.LATE,
+    error_rate=0.02,
+)

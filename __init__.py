@@ -5,6 +5,7 @@ from .zoo import (
     redactyl,
     reduple,
     rushmore,
+    scannequin,
     Glitchling,
     Gaggle,
     summon,
@@ -19,6 +20,7 @@ __all__ = [
     "reduple",
     "rushmore",
     "redactyl",
+    "scannequin",
     "summon",
     "Glitchling",
     "Gaggle",
@@ -31,6 +33,7 @@ if __name__ == "__main__":
     import verifiers as vf
     from openai import OpenAI
     from dlc import prime as gl
+    from typing import cast
 
     openai = OpenAI()
 
@@ -50,19 +53,19 @@ if __name__ == "__main__":
 
     bare_env = vf.load_environment("alphabet-sort")
     x = bare_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
-    dx = bare_env.make_dataset(x).to_dict()
-    original = 100 * sum(dx["reward"]) / len(dx["reward"])
+    dx = cast(dict[str, list[float]], bare_env.make_dataset(x).to_dict())  # type: ignore
+    original = 100 * sum(dx["reward"]) / max(1, len(dx["reward"]))
 
     easy_env = gl.load_environment("alphabet-sort")
     y = easy_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
-    dy = easy_env.make_dataset(y).to_dict()
-    easy = 100 * sum(dy["reward"]) / len(dy["reward"])
+    dy = cast(dict[str, list[float]], easy_env.make_dataset(y).to_dict())  # type: ignore
+    easy = 100 * sum(dy["reward"]) / max(1, len(dy["reward"]))
     easy_drop = 100 * (original - easy) / original
 
     crazy_env = gl.load_environment("alphabet-sort", CR=gl.CR.Four)
     z = crazy_env.evaluate(client=openai, model="gpt-4.1-nano", num_examples=10)
-    dz = crazy_env.make_dataset(z).to_dict()
-    crazy = 100 * sum(dz["reward"]) / len(dz["reward"])
+    dz = cast(dict[str, list[float]], crazy_env.make_dataset(z).to_dict())  # type: ignore
+    crazy = 100 * sum(dz["reward"]) / max(1, len(dz["reward"]))
     crazy_drop = 100 * (original - crazy) / original
 
     print(f"Base Environment:   {original:.1f}%")
