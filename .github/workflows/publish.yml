@@ -1,0 +1,42 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-publish:
+    name: Build and publish
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write  # for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install build
+
+      - name: Build sdist and wheel
+        run: |
+          python -m build
+        working-directory: glitchlings
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: glitchlings/dist
+          # Uses OIDC by default if PYPI_API_TOKEN is not provided and the PyPI project is configured for trusted publishing.
+          # To use a token secret instead, uncomment the next line and add PYPI_API_TOKEN to repo secrets.
+          # password: ${{ secrets.PYPI_API_TOKEN }}
