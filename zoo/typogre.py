@@ -1,5 +1,5 @@
 from .core import Glitchling, AttackWave, AttackOrder
-from util import KEYNEIGHBORS
+from ..util import KEYNEIGHBORS
 import random
 import re
 from typing import Literal, Optional

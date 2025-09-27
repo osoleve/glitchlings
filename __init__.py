@@ -1,4 +1,4 @@
-from zoo import (
+from .zoo import (
     typogre,
     mim1c,
     jargoyle,
@@ -9,7 +9,7 @@ from zoo import (
     Gaggle,
     summon,
 )
-from util import SAMPLE_TEXT
+from .util import SAMPLE_TEXT
 
 
 __all__ = [

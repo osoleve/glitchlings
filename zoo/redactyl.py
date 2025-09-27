@@ -28,7 +28,7 @@ def redact_words(
 
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
-    num_tokens = len(tokens) // 2
+    num_tokens = len(tokens)
     to_redact = rng.sample(
         range(num_tokens), k=max(1, int(num_tokens * redaction_rate))
     )

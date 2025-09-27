@@ -2,7 +2,7 @@ from enum import IntEnum, auto
 from datasets import Dataset
 import random
 from typing import Any, Callable
-from util import string_diffs, SAMPLE_TEXT
+from ..util import string_diffs, SAMPLE_TEXT
 
 import functools as ft
 
@@ -83,12 +83,7 @@ class Glitchling:
 
         return dataset
 
-    def pretty_diff(self, text_in):
-        text_out = self.translations[text_in]
-        diff = string_diffs(text_in, text_out)
-        return diff
-
-    def __call__(self, text: str, *args, **kwds) -> str:
+    def __call__(self, text: str, *args, **kwds) -> str | list[dict]:
         return self.corrupt(text, *args, **kwds)
 
     def get_translations(self) -> dict:
@@ -100,7 +95,6 @@ class Glitchling:
             self.seed = seed
         if self.seed is not None:
             self.rng = random.Random(self.seed)
-            # do not clear translations to allow diffing history
 
 
 class Gaggle(Glitchling):
@@ -109,12 +103,8 @@ class Gaggle(Glitchling):
         # Derive deterministic per-glitchling seeds from master seed if provided
         if seed is not None:
             for idx, g in enumerate(glitchlings):
-                # Only override if the glitchling did not already specify a seed explicitly
-                if getattr(g, "seed", None) is None:
-                    derived_seed = Gaggle.derive_seed(seed, g.name, idx)
-                    g.seed = derived_seed
-                    g.rng = random.Random(derived_seed)
-                g.reset_rng()
+                derived_seed = Gaggle.derive_seed(seed, g.name, idx)
+                g.reset_rng(derived_seed)
         self.glitchlings = {level: [] for level in AttackWave}
         for g in glitchlings:
             self.glitchlings[g.level].append(g)
@@ -135,7 +125,6 @@ class Gaggle(Glitchling):
     def corrupt(self, text: str) -> str:
         corrupted = text
         for glitchling in self.apply_order:
-            glitchling.reset_rng()
             corrupted = glitchling(corrupted)
         return corrupted
 

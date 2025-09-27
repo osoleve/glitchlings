@@ -12,6 +12,7 @@ def substitute_random_synonyms(
     text: str,
     replacement_rate: float = 0.1,
     part_of_speech: Literal["n", "v", "a", "r"] = wn.NOUN,
+    seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
     """Replace words with random WordNet synonyms.
@@ -21,6 +22,7 @@ def substitute_random_synonyms(
     - replacement_rate: Max proportion of candidate words to replace (default 0.1).
     - part_of_speech: WordNet POS to target. One of wn.NOUN (default), wn.VERB, wn.ADJ, wn.ADV.
     - rng: Optional RNG instance used for deterministic sampling.
+    - seed: Optional seed if `rng` not provided.
 
     Determinism
     - Candidates collected in left-to-right order; no set() reordering.
@@ -28,7 +30,9 @@ def substitute_random_synonyms(
     - Synonyms sorted before rng.choice to fix ordering.
     - Only first synset is used for stability.
     """
-    if rng is None:
+    if rng is None and seed is not None:
+        rng = random.Random(seed)
+    elif rng is None:
         rng = random.Random()
 
     # Split but keep whitespace separators so we can rebuild easily

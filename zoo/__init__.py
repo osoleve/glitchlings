@@ -28,15 +28,13 @@ def summon(glitchlings: list[str | Glitchling], seed: int = 151) -> Gaggle:
     summoned = []
     for entry in glitchlings:
         if isinstance(entry, Glitchling):
-            entry.reset_rng(seed)
             summoned.append(entry)
             continue
 
         g = available.get(entry.lower())
         if g:
-            g.set_param("seed", seed)
             summoned.append(g)
         else:
             raise ValueError(f"Glitchling '{entry}' not found.")
 
-    return Gaggle(summoned)
+    return Gaggle(summoned, seed=seed)
