@@ -89,18 +89,32 @@ class Glitchling:
         if self.seed is not None:
             self.rng = random.Random(self.seed)
 
+    def clone(self, seed=None) -> "Glitchling":
+        """Create a copy of this glitchling, optionally with a new seed."""
+        new_glitchling = Glitchling(
+            self.name,
+            self.corruption_function,
+            self.level,
+            self.order,
+            seed=seed if seed is not None else self.seed,
+            **self.kwargs,
+        )
+        return new_glitchling
+
 
 class Gaggle(Glitchling):
-    def __init__(self, glitchlings: list[Glitchling], seed: int | None = None):
+    def __init__(self, glitchlings: list[Glitchling], seed: int = 151):
         super().__init__("Gaggle", self.corrupt, AttackWave.DOCUMENT, seed=seed)
+        self.glitchlings: dict[AttackWave, list[Glitchling]] = {
+            level: [] for level in AttackWave
+        }
+        self.apply_order: list[Glitchling] = []
         # Derive deterministic per-glitchling seeds from master seed if provided
-        if seed is not None:
-            for idx, g in enumerate(glitchlings):
-                derived_seed = Gaggle.derive_seed(seed, g.name, idx)
-                g.reset_rng(derived_seed)
-        self.glitchlings = {level: [] for level in AttackWave}
-        for g in glitchlings:
-            self.glitchlings[g.level].append(g)
+        for idx, g in enumerate(glitchlings):
+            _g = g.clone()
+            derived_seed = Gaggle.derive_seed(seed, _g.name, idx)
+            _g.reset_rng(derived_seed)
+            self.glitchlings[g.level].append(_g)
         self.sort_glitchlings()
 
     @staticmethod
@@ -120,12 +134,3 @@ class Gaggle(Glitchling):
         for glitchling in self.apply_order:
             corrupted = glitchling(corrupted)
         return corrupted
-
-    def pretty_diff(self, text_in):
-        result = []
-        for glitchling in self.apply_order:
-            diff = glitchling.pretty_diff(text_in)
-            result.append(f"{glitchling.name}:\n{diff}\n")
-            text_in = glitchling.get_translations().get(text_in, text_in)
-
-        return "\n".join(result)

@@ -27,15 +27,15 @@ def redact_words(
         rng = random.Random(seed)
 
     # Preserve exact spacing and punctuation by using regex
-    tokens = re.split(r"(\s+)", text)  # Split but keep separators
-    num_tokens = len(tokens)
-    to_redact = rng.sample(
-        range(num_tokens), k=max(1, int(num_tokens * redaction_rate))
-    )
-    to_redact.sort()
-    to_redact = [i * 2 for i in to_redact]  # Adjust for separators
+    tokens = re.split(r"(\s+)", text)
+    word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
+    num_to_redact = max(1, int(len(word_indices) * redaction_rate))
 
-    for i in to_redact:
+    # Sample from the indices of actual words
+    indices_to_redact = rng.sample(word_indices, k=num_to_redact)
+    indices_to_redact.sort()
+
+    for i in indices_to_redact:
         if i >= len(tokens):
             break
 
