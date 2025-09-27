@@ -56,7 +56,7 @@ mim1c = Glitchling(
     name="Mim1c",
     corruption_function=swap_homoglyphs,
     scope=AttackWave.CHARACTER,
-    order=AttackOrder.LATE,
+    order=AttackOrder.LAST,
     replacement_rate=0.02,
     classes=["LATIN", "GREEK", "CYRILLIC"],
 )
