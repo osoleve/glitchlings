@@ -34,14 +34,14 @@ def delete_random_words(
             continue
 
         # Only consider actual words for deletion
-    if rng.random() < max_deletion_rate:
-        # Check if word has trailing punctuation
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, _, suffix = match.groups()
-            tokens[i] = f"{prefix.strip()}{suffix.strip()}"
-        else:
-            tokens[i] = ""
+        if rng.random() < max_deletion_rate:
+            # Check if word has trailing punctuation
+            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+            if match:
+                prefix, _, suffix = match.groups()
+                tokens[i] = f"{prefix.strip()}{suffix.strip()}"
+            else:
+                tokens[i] = ""
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)

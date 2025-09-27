@@ -36,15 +36,15 @@ def reduplicate_words(
             continue
 
         # Only consider actual words for reduplication
-    if rng.random() < reduplication_rate:
-        # Check if word has trailing punctuation
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, core, suffix = match.groups()
-            # Reduplicate with a space: "word" -> "word word"
-            tokens[i] = f"{prefix}{core} {core}{suffix}"
-        else:
-            tokens[i] = f"{word} {word}"
+        if rng.random() < reduplication_rate:
+            # Check if word has trailing punctuation
+            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+            if match:
+                prefix, core, suffix = match.groups()
+                # Reduplicate with a space: "word" -> "word word"
+                tokens[i] = f"{prefix}{core} {core}{suffix}"
+            else:
+                tokens[i] = f"{word} {word}"
 
     return "".join(tokens)
 
