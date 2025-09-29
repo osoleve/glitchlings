@@ -85,14 +85,12 @@ def _is_word_char(c: str) -> bool:
     return c.isalnum() or c == "_"
 
 
-def _eligible_idx(s: str, i: int, preserve_first_last: bool) -> bool:
+def _eligible_idx(s: str, i: int) -> bool:
     """O(1) check whether index i is eligible under preserve_first_last."""
     if i < 0 or i >= len(s):
         return False
     if not _is_word_char(s[i]):
         return False
-    if not preserve_first_last:
-        return True
     # interior-of-word only
     left_ok = i > 0 and _is_word_char(s[i - 1])
     right_ok = i + 1 < len(s) and _is_word_char(s[i + 1])
@@ -100,7 +98,7 @@ def _eligible_idx(s: str, i: int, preserve_first_last: bool) -> bool:
 
 
 def _draw_eligible_index(
-    rng: random.Random, s: str, preserve_first_last: bool, max_tries: int = 16
+    rng: random.Random, s: str, max_tries: int = 16
 ) -> Optional[int]:
     """Try a few uniform draws; if none hit, do a single wraparound scan."""
     n = len(s)
@@ -108,13 +106,13 @@ def _draw_eligible_index(
         return None
     for _ in range(max_tries):
         i = rng.randrange(n)
-        if _eligible_idx(s, i, preserve_first_last):
+        if _eligible_idx(s, i):
             return i
     # Fallback: linear scan starting from a random point (rare path)
     start = rng.randrange(n)
     i = start
     while True:
-        if _eligible_idx(s, i, preserve_first_last):
+        if _eligible_idx(s, i):
             return i
         i += 1
         if i == n:
@@ -126,7 +124,6 @@ def _draw_eligible_index(
 def fatfinger(
     text: str,
     max_change_rate: float = 0.02,
-    preserve_first_last: bool = False,
     keyboard: str = "CURATOR_QWERTY",
     seed: int | None = None,
     rng: random.Random | None = None,
@@ -136,7 +133,6 @@ def fatfinger(
     Parameters
     - text: Input string to corrupt.
     - max_change_rate: Max proportion of characters to edit (default 0.02).
-    - preserve_first_last: If True, avoid modifying first/last character of words (default False).
     - keyboard: Name of keyboard neighbor map from util.KEYNEIGHBORS to use (default "CURATOR_QWERTY").
     - seed: Optional seed used if `rng` is not provided; creates a dedicated Random.
     - rng: Optional random.Random to use; if provided, overrides `seed`.
@@ -167,27 +163,19 @@ def fatfinger(
 
     for action in actions_drawn:
         if action in positional_actions:
-            idx = _draw_eligible_index(rng, s, preserve_first_last)
+            idx = _draw_eligible_index(rng, s)
             if idx is None:
                 continue  # nothing eligible; skip
 
             if action == "char_swap":
-                # Try swapping to the right; if not possible, optionally try left
+                # Try swapping with neighbor while respecting word boundaries
+
                 j = idx + 1
-                if j < len(s) and (
-                    not preserve_first_last or _eligible_idx(s, j, True)
-                ):
-                    s = s[:idx] + s[j] + s[idx] + s[j + 1 :]
-                else:
-                    j = idx - 1
-                    if j >= 0 and (
-                        not preserve_first_last or _eligible_idx(s, j, True)
-                    ):
-                        s = s[:j] + s[idx] + s[j] + s[idx + 1 :]
-                    # else: give up this action
+                s = s[:idx] + s[j] + s[idx] + s[j + 1 :]
 
             elif action == "missing_char":
-                s = s[:idx] + s[idx + 1 :]
+                if _eligible_idx(s, idx):
+                    s = s[:idx] + s[idx + 1 :]
 
             elif action == "extra_char":
                 ch = s[idx]

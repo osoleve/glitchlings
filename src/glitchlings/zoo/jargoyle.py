@@ -5,13 +5,34 @@ import re
 from nltk.corpus import wordnet as wn
 from .core import Glitchling, AttackWave
 
-nltk.download("wordnet", quiet=True)
+_wordnet_ready = False
+
+
+def _ensure_wordnet() -> None:
+    """Ensure the WordNet corpus is available before use."""
+
+    global _wordnet_ready
+    if _wordnet_ready:
+        return
+
+    try:
+        wn.ensure_loaded()
+    except LookupError:
+        nltk.download("wordnet", quiet=True)
+        try:
+            wn.ensure_loaded()
+        except LookupError as exc:  # pragma: no cover - only triggered when download fails
+            raise RuntimeError(
+                "Unable to load NLTK WordNet corpus for the jargoyle glitchling."
+            ) from exc
+
+    _wordnet_ready = True
 
 
 def substitute_random_synonyms(
     text: str,
     replacement_rate: float = 0.1,
-    part_of_speech: Literal["n", "v", "a", "r"] = wn.NOUN,
+    part_of_speech: Literal["n", "v", "a", "r"] = "n",
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -20,7 +41,7 @@ def substitute_random_synonyms(
     Parameters
     - text: Input text.
     - replacement_rate: Max proportion of candidate words to replace (default 0.1).
-    - part_of_speech: WordNet POS to target. One of wn.NOUN (default), wn.VERB, wn.ADJ, wn.ADV.
+    - part_of_speech: WordNet POS tag to target. One of "n" (default noun), "v", "a", "r".
     - rng: Optional RNG instance used for deterministic sampling.
     - seed: Optional seed if `rng` not provided.
 
@@ -30,6 +51,8 @@ def substitute_random_synonyms(
     - Synonyms sorted before rng.choice to fix ordering.
     - Only first synset is used for stability.
     """
+    _ensure_wordnet()
+
     if rng is None and seed is not None:
         rng = random.Random(seed)
     elif rng is None:

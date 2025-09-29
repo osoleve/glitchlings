@@ -4,7 +4,7 @@ import functools as ft
 import verifiers as vf
 from datasets import Dataset
 
-from zoo import Glitchling, Gaggle, mim1c, typogre, summon
+from ..zoo import Glitchling, Gaggle, mim1c, typogre, summon
 
 
 class CR(Enum):

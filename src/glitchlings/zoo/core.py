@@ -91,13 +91,15 @@ class Glitchling:
 
     def clone(self, seed=None) -> "Glitchling":
         """Create a copy of this glitchling, optionally with a new seed."""
+        # Avoid passing duplicate 'seed' through kwargs if it was set via set_param
+        filtered_kwargs = {k: v for k, v in self.kwargs.items() if k != "seed"}
         new_glitchling = Glitchling(
             self.name,
             self.corruption_function,
             self.level,
             self.order,
             seed=seed if seed is not None else self.seed,
-            **self.kwargs,
+            **filtered_kwargs,
         )
         return new_glitchling
 
