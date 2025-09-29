@@ -61,7 +61,6 @@ _What a nice word, would be a shame if something happened to it._
 > ### Typogre Args
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
-> - `preserve_first_last (bool)`: Avoid editing the first and last character of a word (default: False).
 > - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
