@@ -66,9 +66,16 @@ exclude = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["."]
+packages = [
+    { include = "glitchlings", from = "src" },
+]
 exclude = [
     "tests/**",
     "tests",
     "**/__pycache__/**",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "src",
 ]

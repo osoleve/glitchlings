@@ -1,4 +1,8 @@
 from typing import cast
+
+import pytest
+from nltk.corpus import wordnet as wn
+
 from glitchlings import (
     typogre,
     mim1c,
@@ -35,6 +39,11 @@ def test_mim1c_determinism(sample_text):
 
 
 def test_jargoyle_determinism(sample_text):
+    try:
+        wn.ensure_loaded()
+    except LookupError:
+        pytest.skip("NLTK WordNet corpus unavailable; skipping jargoyle determinism test.")
+
     jargoyle.set_param("seed", 42)
     jargoyle.set_param("replacement_rate", 0.05)
     a, b = _twice(jargoyle, sample_text)
