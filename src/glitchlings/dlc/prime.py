@@ -4,7 +4,7 @@ import functools as ft
 import verifiers as vf
 from datasets import Dataset
 
-from ..zoo import Glitchling, Gaggle, mim1c, typogre, summon
+from ..zoo import Glitchling, Gaggle, Mim1c, Typogre, summon
 
 
 class CR(Enum):
@@ -23,10 +23,10 @@ def tutorial_level(
 ) -> vf.Environment:
     """Create a low-corruption environment."""
 
-    mim1c.set_param("replacement_rate", 0.01 * CR.value)
-    typogre.set_param("max_change_rate", 0.025 * CR.value)
+    tuned_mim1c = Mim1c(replacement_rate=0.01 * CR.value)
+    tuned_typogre = Typogre(max_change_rate=0.025 * CR.value)
 
-    glitchlings: Gaggle = summon([mim1c, typogre], seed=seed)
+    glitchlings: Gaggle = summon([tuned_mim1c, tuned_typogre], seed=seed)
 
     if isinstance(env, str):
         env = vf.load_environment(env)
