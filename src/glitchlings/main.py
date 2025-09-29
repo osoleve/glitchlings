@@ -1,3 +1,5 @@
+"""Command line interface for summoning and running glitchlings."""
+
 from __future__ import annotations
 
 import argparse
@@ -38,6 +40,12 @@ MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """Create and configure the CLI argument parser.
+
+    Returns:
+        argparse.ArgumentParser: The configured argument parser instance.
+    """
+
     parser = argparse.ArgumentParser(
         description=(
             "Summon glitchlings to corrupt text. Provide input text as an argument, "
@@ -89,6 +97,8 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def list_glitchlings() -> None:
+    """Print information about the available built-in glitchlings."""
+
     for key in DEFAULT_GLITCHLING_NAMES:
         glitchling = BUILTIN_GLITCHLINGS[key]
         display_name = glitchling.name
@@ -98,6 +108,19 @@ def list_glitchlings() -> None:
 
 
 def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
+    """Resolve the input text based on CLI arguments.
+
+    Args:
+        args: Parsed arguments from the CLI.
+        parser: The argument parser used for emitting user-facing errors.
+
+    Returns:
+        str: The text to corrupt.
+
+    Raises:
+        SystemExit: Raised indirectly via ``parser.error`` on failure.
+    """
+
     if args.file is not None:
         try:
             return args.file.read_text(encoding="utf-8")
@@ -122,6 +145,21 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
 def summon_glitchlings(
     names: list[str] | None, parser: argparse.ArgumentParser, seed: int
 ) -> Gaggle:
+    """Instantiate the requested glitchlings and bundle them in a ``Gaggle``.
+
+    Args:
+        names: Optional list of glitchling names provided by the user.
+        parser: The argument parser used for emitting user-facing errors.
+        seed: Master seed controlling deterministic corruption order.
+
+    Returns:
+        Gaggle: A ready-to-use collection of glitchlings.
+
+    Raises:
+        SystemExit: Raised indirectly via ``parser.error`` when a provided glitchling
+        name is invalid.
+    """
+
     if names:
         normalized = [name.lower() for name in names]
     else:
@@ -135,6 +173,8 @@ def summon_glitchlings(
 
 
 def show_diff(original: str, corrupted: str) -> None:
+    """Display a unified diff between the original and corrupted text."""
+
     diff_lines = list(
         difflib.unified_diff(
             original.splitlines(keepends=True),
@@ -152,6 +192,16 @@ def show_diff(original: str, corrupted: str) -> None:
 
 
 def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    """Execute the CLI workflow using the provided arguments.
+
+    Args:
+        args: Parsed CLI arguments.
+        parser: Argument parser used for error reporting.
+
+    Returns:
+        int: Exit code for the process (``0`` on success).
+    """
+
     if args.list:
         list_glitchlings()
         return 0
@@ -170,6 +220,15 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    """Entry point for the ``glitchlings`` command line interface.
+
+    Args:
+        argv: Optional list of command line arguments. Defaults to ``sys.argv``.
+
+    Returns:
+        int: Exit code suitable for use with ``sys.exit``.
+    """
+
     parser = build_parser()
     args = parser.parse_args(argv)
     return run_cli(args, parser)

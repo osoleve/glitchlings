@@ -204,9 +204,28 @@ def fatfinger(
     return s
 
 
-typogre = Glitchling(
-    name="Typogre",
-    corruption_function=fatfinger,
-    scope=AttackWave.CHARACTER,
-    order=AttackOrder.EARLY,
-)
+class Typogre(Glitchling):
+    """Glitchling that introduces deterministic keyboard-typing errors."""
+
+    def __init__(
+        self,
+        *,
+        max_change_rate: float = 0.02,
+        keyboard: str = "CURATOR_QWERTY",
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Typogre",
+            corruption_function=fatfinger,
+            scope=AttackWave.CHARACTER,
+            order=AttackOrder.EARLY,
+            seed=seed,
+            max_change_rate=max_change_rate,
+            keyboard=keyboard,
+        )
+
+
+typogre = Typogre()
+
+
+__all__ = ["Typogre", "typogre"]

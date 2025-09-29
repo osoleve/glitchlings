@@ -50,4 +50,25 @@ def delete_random_words(
     return text
 
 
-rushmore = Glitchling("rushmore", delete_random_words, scope=AttackWave.WORD)
+class Rushmore(Glitchling):
+    """Glitchling that deletes words to simulate missing information."""
+
+    def __init__(
+        self,
+        *,
+        max_deletion_rate: float = 0.01,
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Rushmore",
+            corruption_function=delete_random_words,
+            scope=AttackWave.WORD,
+            seed=seed,
+            max_deletion_rate=max_deletion_rate,
+        )
+
+
+rushmore = Rushmore()
+
+
+__all__ = ["Rushmore", "rushmore"]

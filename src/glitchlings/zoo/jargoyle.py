@@ -105,8 +105,27 @@ def substitute_random_synonyms(
     return "".join(tokens)
 
 
-jargoyle = Glitchling(
-    name="Jargoyle",
-    corruption_function=substitute_random_synonyms,
-    scope=AttackWave.WORD,
-)
+class Jargoyle(Glitchling):
+    """Glitchling that swaps words with random WordNet synonyms."""
+
+    def __init__(
+        self,
+        *,
+        replacement_rate: float = 0.1,
+        part_of_speech: Literal["n", "v", "a", "r"] = "n",
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Jargoyle",
+            corruption_function=substitute_random_synonyms,
+            scope=AttackWave.WORD,
+            seed=seed,
+            replacement_rate=replacement_rate,
+            part_of_speech=part_of_speech,
+        )
+
+
+jargoyle = Jargoyle()
+
+
+__all__ = ["Jargoyle", "jargoyle"]

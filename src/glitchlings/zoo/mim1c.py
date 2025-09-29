@@ -52,11 +52,28 @@ def swap_homoglyphs(
     return text
 
 
-mim1c = Glitchling(
-    name="Mim1c",
-    corruption_function=swap_homoglyphs,
-    scope=AttackWave.CHARACTER,
-    order=AttackOrder.LAST,
-    replacement_rate=0.02,
-    classes=["LATIN", "GREEK", "CYRILLIC"],
-)
+class Mim1c(Glitchling):
+    """Glitchling that swaps characters for visually similar homoglyphs."""
+
+    def __init__(
+        self,
+        *,
+        replacement_rate: float = 0.02,
+        classes: list[str] | Literal["all"] | None = None,
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Mim1c",
+            corruption_function=swap_homoglyphs,
+            scope=AttackWave.CHARACTER,
+            order=AttackOrder.LAST,
+            seed=seed,
+            replacement_rate=replacement_rate,
+            classes=classes,
+        )
+
+
+mim1c = Mim1c()
+
+
+__all__ = ["Mim1c", "mim1c"]
