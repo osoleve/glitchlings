@@ -49,6 +49,25 @@ def reduplicate_words(
     return "".join(tokens)
 
 
-reduple = Glitchling(
-    name="Reduple", corruption_function=reduplicate_words, scope=AttackWave.WORD
-)
+class Reduple(Glitchling):
+    """Glitchling that repeats words to simulate stuttering speech."""
+
+    def __init__(
+        self,
+        *,
+        reduplication_rate: float = 0.05,
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Reduple",
+            corruption_function=reduplicate_words,
+            scope=AttackWave.WORD,
+            seed=seed,
+            reduplication_rate=reduplication_rate,
+        )
+
+
+reduple = Reduple()
+
+
+__all__ = ["Reduple", "reduple"]

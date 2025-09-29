@@ -1,19 +1,26 @@
-from .typogre import typogre
-from .mim1c import mim1c
-from .jargoyle import jargoyle
-from .reduple import reduple
-from .rushmore import rushmore
-from .redactyl import redactyl
-from .scannequin import scannequin
+from .typogre import Typogre, typogre
+from .mim1c import Mim1c, mim1c
+from .jargoyle import Jargoyle, jargoyle
+from .reduple import Reduple, reduple
+from .rushmore import Rushmore, rushmore
+from .redactyl import Redactyl, redactyl
+from .scannequin import Scannequin, scannequin
 from .core import Glitchling, Gaggle
 
 __all__ = [
+    "Typogre",
     "typogre",
+    "Mim1c",
     "mim1c",
+    "Jargoyle",
     "jargoyle",
+    "Reduple",
     "reduple",
+    "Rushmore",
     "rushmore",
+    "Redactyl",
     "redactyl",
+    "Scannequin",
     "scannequin",
     "Glitchling",
     "Gaggle",

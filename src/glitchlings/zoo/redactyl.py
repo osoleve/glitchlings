@@ -63,11 +63,29 @@ def redact_words(
     return text
 
 
-redactyl = Glitchling(
-    name="Redactyl",
-    corruption_function=redact_words,
-    replacement_char=FULL_BLOCK,
-    redaction_rate=0.05,
-    scope=AttackWave.WORD,
-    seed=151,
-)
+class Redactyl(Glitchling):
+    """Glitchling that redacts words with block characters."""
+
+    def __init__(
+        self,
+        *,
+        replacement_char: str = FULL_BLOCK,
+        redaction_rate: float = 0.05,
+        merge_adjacent: bool = False,
+        seed: int = 151,
+    ) -> None:
+        super().__init__(
+            name="Redactyl",
+            corruption_function=redact_words,
+            scope=AttackWave.WORD,
+            seed=seed,
+            replacement_char=replacement_char,
+            redaction_rate=redaction_rate,
+            merge_adjacent=merge_adjacent,
+        )
+
+
+redactyl = Redactyl()
+
+
+__all__ = ["Redactyl", "redactyl"]

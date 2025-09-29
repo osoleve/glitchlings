@@ -115,10 +115,26 @@ def ocr_artifacts(
     return "".join(out_parts)
 
 
-scannequin = Glitchling(
-    name="Scannequin",
-    corruption_function=ocr_artifacts,
-    scope=AttackWave.CHARACTER,
-    order=AttackOrder.LATE,
-    error_rate=0.02,
-)
+class Scannequin(Glitchling):
+    """Glitchling that simulates OCR artifacts using common confusions."""
+
+    def __init__(
+        self,
+        *,
+        error_rate: float = 0.02,
+        seed: int | None = None,
+    ) -> None:
+        super().__init__(
+            name="Scannequin",
+            corruption_function=ocr_artifacts,
+            scope=AttackWave.CHARACTER,
+            order=AttackOrder.LATE,
+            seed=seed,
+            error_rate=error_rate,
+        )
+
+
+scannequin = Scannequin()
+
+
+__all__ = ["Scannequin", "scannequin"]
