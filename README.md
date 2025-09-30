@@ -115,7 +115,7 @@ _What a nice word, would be a shame if something happened to it._
 > Args
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
-> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "CURATOR_DVORAK" and "CURATOR_COLEMAK").
+> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "QWERTY", "DVORAK", "COLEMAK", and "AZERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Mim1c

@@ -96,22 +96,49 @@ _KEYNEIGHBORS: KeyboardLayouts = {
     }
 }
 
-_KEYNEIGHBORS["CURATOR_DVORAK"] = _build_neighbor_map(
+
+def _register_layout(name: str, rows: Iterable[str]) -> None:
+    _KEYNEIGHBORS[name] = _build_neighbor_map(rows)
+
+
+_register_layout(
+    "DVORAK",
     (
         "`1234567890[]\\",
         " ',.pyfgcrl/=\\",
         "  aoeuidhtns-",
         "   ;qjkxbmwvz",
-    )
+    ),
 )
 
-_KEYNEIGHBORS["CURATOR_COLEMAK"] = _build_neighbor_map(
+_register_layout(
+    "COLEMAK",
     (
         "`1234567890-=",
         " qwfpgjluy;[]\\",
         "  arstdhneio'",
         "   zxcvbkm,./",
-    )
+    ),
+)
+
+_register_layout(
+    "QWERTY",
+    (
+        "`1234567890-=",
+        " qwertyuiop[]\\",
+        "  asdfghjkl;'",
+        "   zxcvbnm,./",
+    ),
+)
+
+_register_layout(
+    "AZERTY",
+    (
+        "²&é\"'(-è_çà)=",
+        " azertyuiop^$",
+        "  qsdfghjklmù*",
+        "   <wxcvbn,;:!",
+    ),
 )
 
 
