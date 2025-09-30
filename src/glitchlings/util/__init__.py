@@ -1,9 +1,10 @@
 import difflib
+from collections.abc import Iterable
 
 SAMPLE_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked."
 
 
-def string_diffs(a: str, b: str):
+def string_diffs(a: str, b: str) -> list[list[tuple[str, str, str]]]:
     """
     Compare two strings using SequenceMatcher and return
     grouped adjacent opcodes (excluding 'equal' tags).
@@ -11,8 +12,8 @@ def string_diffs(a: str, b: str):
     Each element is a tuple: (tag, a_text, b_text).
     """
     sm = difflib.SequenceMatcher(None, a, b)
-    ops = []
-    buffer = []
+    ops: list[list[tuple[str, str, str]]] = []
+    buffer: list[tuple[str, str, str]] = []
 
     for tag, i1, i2, j1, j2 in sm.get_opcodes():
         if tag == "equal":
@@ -32,7 +33,39 @@ def string_diffs(a: str, b: str):
     return ops
 
 
-_KEYNEIGHBORS = {
+KeyNeighborMap = dict[str, list[str]]
+KeyboardLayouts = dict[str, KeyNeighborMap]
+
+
+def _build_neighbor_map(rows: Iterable[str]) -> KeyNeighborMap:
+    """Derive 8-neighbour adjacency lists from keyboard layout rows."""
+
+    grid: dict[tuple[int, int], str] = {}
+    for y, row in enumerate(rows):
+        for x, char in enumerate(row):
+            if char == " ":
+                continue
+            grid[(x, y)] = char.lower()
+
+    neighbors: KeyNeighborMap = {}
+    for (x, y), char in grid.items():
+        seen: list[str] = []
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                candidate = grid.get((x + dx, y + dy))
+                if candidate is None:
+                    continue
+                seen.append(candidate)
+        # Preserve encounter order but drop duplicates for determinism
+        deduped = list(dict.fromkeys(seen))
+        neighbors[char] = deduped
+
+    return neighbors
+
+
+_KEYNEIGHBORS: KeyboardLayouts = {
     "CURATOR_QWERTY": {
         "a": [*"qwsz"],
         "b": [*"vghn  "],
@@ -64,10 +97,55 @@ _KEYNEIGHBORS = {
 }
 
 
+def _register_layout(name: str, rows: Iterable[str]) -> None:
+    _KEYNEIGHBORS[name] = _build_neighbor_map(rows)
+
+
+_register_layout(
+    "DVORAK",
+    (
+        "`1234567890[]\\",
+        " ',.pyfgcrl/=\\",
+        "  aoeuidhtns-",
+        "   ;qjkxbmwvz",
+    ),
+)
+
+_register_layout(
+    "COLEMAK",
+    (
+        "`1234567890-=",
+        " qwfpgjluy;[]\\",
+        "  arstdhneio'",
+        "   zxcvbkm,./",
+    ),
+)
+
+_register_layout(
+    "QWERTY",
+    (
+        "`1234567890-=",
+        " qwertyuiop[]\\",
+        "  asdfghjkl;'",
+        "   zxcvbnm,./",
+    ),
+)
+
+_register_layout(
+    "AZERTY",
+    (
+        "²&é\"'(-è_çà)=",
+        " azertyuiop^$",
+        "  qsdfghjklmù*",
+        "   <wxcvbn,;:!",
+    ),
+)
+
+
 class KeyNeighbors:
-    def __init__(self):
+    def __init__(self) -> None:
         for layout_name, layout in _KEYNEIGHBORS.items():
             setattr(self, layout_name, layout)
 
 
-KEYNEIGHBORS = KeyNeighbors()
+KEYNEIGHBORS: KeyNeighbors = KeyNeighbors()
