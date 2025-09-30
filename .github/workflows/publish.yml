@@ -31,7 +31,6 @@ jobs:
       - name: Build sdist and wheel
         run: |
           python -m build
-        working-directory: glitchlings
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

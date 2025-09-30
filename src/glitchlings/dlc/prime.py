@@ -4,29 +4,28 @@ import functools as ft
 import verifiers as vf
 from datasets import Dataset
 
-from ..zoo import Glitchling, Gaggle, mim1c, typogre, summon
+from ..zoo import Glitchling, Gaggle, Mim1c, Typogre, summon
 
 
-class CR(Enum):
-    """Challenge Rating levels for tutorial environments."""
+class Difficulty(Enum):
+    """Difficulty levels for tutorial environments."""
 
-    Zero = 0.1
-    Half = 0.5
-    One = 1
-    Two = 1.5
-    Three = 4
-    Four = 9
+    Easy = 0.25
+    Normal = 1.0
+    Hard = 1.75
+    Extreme = 3
+    Impossible = 9
 
 
 def tutorial_level(
-    env: vf.Environment | str, seed=151, CR: CR = CR.One
+    env: vf.Environment | str, seed=151, difficulty: Difficulty = Difficulty.Normal
 ) -> vf.Environment:
     """Create a low-corruption environment."""
 
-    mim1c.set_param("replacement_rate", 0.01 * CR.value)
-    typogre.set_param("max_change_rate", 0.025 * CR.value)
+    tuned_mim1c = Mim1c(replacement_rate=0.01 * difficulty.value)
+    tuned_typogre = Typogre(max_change_rate=0.025 * difficulty.value)
 
-    glitchlings: Gaggle = summon([mim1c, typogre], seed=seed)
+    glitchlings: Gaggle = summon([tuned_mim1c, tuned_typogre], seed=seed)
 
     if isinstance(env, str):
         env = vf.load_environment(env)
@@ -44,7 +43,10 @@ def tutorial_level(
 
 
 def load_environment(
-    env: str | vf.Environment, seed=151, CR: CR = CR.One, loader=tutorial_level
+    env: str | vf.Environment,
+    seed=151,
+    difficulty: Difficulty = Difficulty.Normal,
+    loader=tutorial_level,
 ) -> vf.Environment:
     """Load an environment by name."""
-    return loader(env, seed=seed, CR=CR)
+    return loader(env, seed=seed, difficulty=difficulty)
