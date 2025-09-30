@@ -37,10 +37,16 @@ pip install -U glitchlings
 ```
 
 ```python
-from glitchlings import summon, SAMPLE_TEXT
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 
-gaggle = summon(["reduple", "mim1c", "typogre", "rushmore"])
-gaggle(SAMPLE_TEXT)
+gaggle = Gaggle([
+    Typogre(max_change_rate=0.03),
+    Mim1c(replacement_rate=0.02),
+    Reduple(seed=404),
+    Rushmore(max_deletion_rate=0.02),
+])
+
+print(gaggle(SAMPLE_TEXT))
 ```
 
 > Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
@@ -53,14 +59,23 @@ Conversely, training a model to perform well in the presence of the types of per
 
 ## Your First Battle
 
-Summon your chosen `Glitchling` (_or a few, if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.  
-Some `Glitchling`s may have additional keyword arguments but they will always be optional with what I decide are "reasonable defaults".  
-Seed defaults to 151, obviously.
+Summon your chosen `Glitchling` (_or a few, if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.
+Glitchlings are standard Python classes, so you can instantiate them with whatever parameters fit your scenario:
 
-Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.  
+```python
+from glitchlings import Gaggle, Typogre, Mim1c
+
+custom_typogre = Typogre(max_change_rate=0.1)
+selective_mimic = Mim1c(replacement_rate=0.05, classes=["LATIN", "GREEK"])
+
+gaggle = Gaggle([custom_typogre, selective_mimic], seed=99)
+print(gaggle("Summoned heroes do not fear the glitch."))
+```
+
+Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.
 This means that as long as your glitchlings get along logically, they play nicely with one another.
 
-When summoned as a `Gaggle`, the `Glitchling`s will automatically order themselves into attack waves, based on the scope of the change they make:
+When gathered into a `Gaggle`, the `Glitchling`s will automatically order themselves into attack waves, based on the scope of the change they make:
 
 1. Document
 2. Paragraph
@@ -69,6 +84,23 @@ When summoned as a `Gaggle`, the `Glitchling`s will automatically order themselv
 5. Character
 
 They're horrible little gremlins, but they're not _unreasonable_.
+
+## Command-Line Interface (CLI)
+
+Keyboard warriors can challenge them directly via the `glitchlings` command:
+
+```bash
+# Discover which glitchlings are currently on the loose.
+glitchlings --list
+
+# Run Typogre against the contents of a file and inspect the diff.
+glitchlings -g typogre --file documents/report.txt --diff
+
+# Pipe text straight into the CLI for an on-the-fly corruption.
+echo "Beware the Typogre" | glitchlings -g typogre
+```
+
+Use `--help` for a complete breakdown of available options.
 
 ## Starter 'lings
 
