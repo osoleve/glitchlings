@@ -1,4 +1,5 @@
 import random
+from collections.abc import Iterable
 from typing import Literal, Any, cast
 import nltk
 import re
@@ -29,10 +30,42 @@ def _ensure_wordnet() -> None:
     _wordnet_ready = True
 
 
+PartOfSpeech = Literal["n", "v", "a", "r"]
+PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
+
+_VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
+
+
+def _normalize_parts_of_speech(part_of_speech: PartOfSpeechInput) -> tuple[PartOfSpeech, ...]:
+    """Coerce user input into a tuple of valid WordNet POS tags."""
+
+    if isinstance(part_of_speech, str):
+        lowered = part_of_speech.lower()
+        if lowered == "any":
+            return _VALID_POS
+        if lowered not in _VALID_POS:
+            raise ValueError(
+                "part_of_speech must be one of 'n', 'v', 'a', 'r', or 'any'"
+            )
+        return (cast(PartOfSpeech, lowered),)
+
+    normalized: list[PartOfSpeech] = []
+    for pos in part_of_speech:
+        if pos not in _VALID_POS:
+            raise ValueError(
+                "part_of_speech entries must be one of 'n', 'v', 'a', or 'r'"
+            )
+        if pos not in normalized:
+            normalized.append(pos)
+    if not normalized:
+        raise ValueError("part_of_speech iterable may not be empty")
+    return tuple(normalized)
+
+
 def substitute_random_synonyms(
     text: str,
     replacement_rate: float = 0.1,
-    part_of_speech: Literal["n", "v", "a", "r"] = "n",
+    part_of_speech: PartOfSpeechInput = "n",
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -41,7 +74,8 @@ def substitute_random_synonyms(
     Parameters
     - text: Input text.
     - replacement_rate: Max proportion of candidate words to replace (default 0.1).
-    - part_of_speech: WordNet POS tag to target. One of "n" (default noun), "v", "a", "r".
+    - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
+      any iterable of those tags, or "any" to include all four.
     - rng: Optional RNG instance used for deterministic sampling.
     - seed: Optional seed if `rng` not provided.
 
@@ -58,15 +92,22 @@ def substitute_random_synonyms(
     elif rng is None:
         rng = random.Random()
 
+    target_pos = _normalize_parts_of_speech(part_of_speech)
+
     # Split but keep whitespace separators so we can rebuild easily
     tokens = re.split(r"(\s+)", text)
 
     # Collect indices of candidate tokens (even positions 0,2,.. are words given our split design)
     candidate_indices: list[int] = []
+    candidate_pos_map: dict[int, tuple[PartOfSpeech, ...]] = {}
     for idx, tok in enumerate(tokens):
         if idx % 2 == 0 and tok and not tok.isspace():
-            if wn.synsets(tok, pos=part_of_speech):
+            available_pos = tuple(
+                pos for pos in target_pos if wn.synsets(tok, pos=pos)
+            )
+            if available_pos:
                 candidate_indices.append(idx)
+                candidate_pos_map[idx] = available_pos
 
     if not candidate_indices:
         return text
@@ -82,24 +123,24 @@ def substitute_random_synonyms(
 
     for pos in replace_positions:
         word = tokens[pos]
-        synsets = wn.synsets(word, pos=part_of_speech)
-        if not synsets:
-            continue
-        synset0: Any = synsets[0]
-        lemmas_list = [lemma.name() for lemma in cast(Any, synset0).lemmas()]
-        if not lemmas_list:
-            continue
-        # Normalize & dedupe deterministically
-        synonyms = sorted(
-            {
-                lemma_str.replace("_", " ")
-                for lemma_str in lemmas_list
-                if lemma_str.lower() != word.lower()
-            }
-        )
+        synonyms: set[str] = set()
+        for pos_tag in candidate_pos_map.get(pos, target_pos):
+            synsets = wn.synsets(word, pos=pos_tag)
+            if not synsets:
+                continue
+            synset0: Any = synsets[0]
+            lemmas_list = [lemma.name() for lemma in cast(Any, synset0).lemmas()]
+            if not lemmas_list:
+                continue
+            for lemma_str in lemmas_list:
+                cleaned = lemma_str.replace("_", " ")
+                if cleaned.lower() != word.lower():
+                    synonyms.add(cleaned)
+
         if not synonyms:
             continue
-        replacement = rng.choice(synonyms)
+
+        replacement = rng.choice(sorted(synonyms))
         tokens[pos] = replacement
 
     return "".join(tokens)
@@ -112,7 +153,7 @@ class Jargoyle(Glitchling):
         self,
         *,
         replacement_rate: float = 0.1,
-        part_of_speech: Literal["n", "v", "a", "r"] = "n",
+        part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
     ) -> None:
         super().__init__(

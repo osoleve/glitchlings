@@ -56,12 +56,12 @@ _What a nice word, would be a shame if something happened to it._
 > ---
 >
 > _**Fatfinger.**_ Typogre introduces character-level errors (duplicating, dropping, adding, or swapping)
-> based on the layout of a (currently QWERTY) keyboard.
+> based on the layout of a keyboard (QWERTY by default, with Dvorak and Colemak variants built-in).
 >
 > ### Typogre Args
 >
 > - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
-> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY").
+> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "CURATOR_DVORAK" and "CURATOR_COLEMAK").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -145,12 +145,12 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ---
 >
-> _**Sesquipedalianism.**_ Jargoyle, the insufferable `Glitchling`, replaces nouns with synonyms at random, without regard for connotational or denotational differences.
+> _**Sesquipedalianism.**_ Jargoyle, the insufferable `Glitchling`, replaces words from selected parts of speech with synonyms at random, without regard for connotational or denotational differences.
 >
 > ### Jargoyle Args
 >
 > - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
-> - `part_of_speech`: The WordNet part of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, or `wn.ADV`.
+> - `part_of_speech`: The WordNet part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python

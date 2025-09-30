@@ -1,4 +1,5 @@
 import difflib
+from collections.abc import Iterable
 
 SAMPLE_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked."
 
@@ -32,6 +33,34 @@ def string_diffs(a: str, b: str):
     return ops
 
 
+def _build_neighbor_map(rows: Iterable[str]) -> dict[str, list[str]]:
+    """Derive 8-neighbour adjacency lists from keyboard layout rows."""
+
+    grid: dict[tuple[int, int], str] = {}
+    for y, row in enumerate(rows):
+        for x, char in enumerate(row):
+            if char == " ":
+                continue
+            grid[(x, y)] = char.lower()
+
+    neighbors: dict[str, list[str]] = {}
+    for (x, y), char in grid.items():
+        seen: list[str] = []
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                candidate = grid.get((x + dx, y + dy))
+                if candidate is None:
+                    continue
+                seen.append(candidate)
+        # Preserve encounter order but drop duplicates for determinism
+        deduped = list(dict.fromkeys(seen))
+        neighbors[char] = deduped
+
+    return neighbors
+
+
 _KEYNEIGHBORS = {
     "CURATOR_QWERTY": {
         "a": [*"qwsz"],
@@ -62,6 +91,24 @@ _KEYNEIGHBORS = {
         "z": [*"asx"],
     }
 }
+
+_KEYNEIGHBORS["CURATOR_DVORAK"] = _build_neighbor_map(
+    (
+        "`1234567890[]\\",
+        " ',.pyfgcrl/=\\",
+        "  aoeuidhtns-",
+        "   ;qjkxbmwvz",
+    )
+)
+
+_KEYNEIGHBORS["CURATOR_COLEMAK"] = _build_neighbor_map(
+    (
+        "`1234567890-=",
+        " qwfpgjluy;[]\\",
+        "  arstdhneio'",
+        "   zxcvbkm,./",
+    )
+)
 
 
 class KeyNeighbors:
