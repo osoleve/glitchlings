@@ -1,8 +1,10 @@
 import random
-from collections.abc import Iterable
-from typing import Literal, Any, cast
-import nltk
 import re
+from collections.abc import Iterable
+from dataclasses import dataclass
+from typing import Any, Literal, cast
+
+import nltk
 from nltk.corpus import wordnet as wn
 from .core import Glitchling, AttackWave
 
@@ -32,6 +34,7 @@ def _ensure_wordnet() -> None:
 
 PartOfSpeech = Literal["n", "v", "a", "r"]
 PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
+NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]
 
 _VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
 
@@ -46,7 +49,7 @@ def _split_token(token: str) -> tuple[str, str, str]:
     return prefix, core, suffix
 
 
-def _normalize_parts_of_speech(part_of_speech: PartOfSpeechInput) -> tuple[PartOfSpeech, ...]:
+def _normalize_parts_of_speech(part_of_speech: PartOfSpeechInput) -> NormalizedPartsOfSpeech:
     """Coerce user input into a tuple of valid WordNet POS tags."""
 
     if isinstance(part_of_speech, str):
@@ -70,6 +73,49 @@ def _normalize_parts_of_speech(part_of_speech: PartOfSpeechInput) -> tuple[PartO
     if not normalized:
         raise ValueError("part_of_speech iterable may not be empty")
     return tuple(normalized)
+
+
+@dataclass(frozen=True)
+class CandidateInfo:
+    """Metadata for a candidate token that may be replaced."""
+
+    prefix: str
+    core_word: str
+    suffix: str
+    parts_of_speech: NormalizedPartsOfSpeech
+
+
+def _collect_synonyms(
+    word: str, parts_of_speech: NormalizedPartsOfSpeech
+) -> list[str]:
+    """Gather deterministic synonym candidates for the supplied word."""
+
+    normalized_word = word.lower()
+    synonyms: set[str] = set()
+    for pos_tag in parts_of_speech:
+        synsets = wn.synsets(word, pos=pos_tag)
+        if not synsets:
+            continue
+
+        for synset in synsets:
+            lemmas_list = [lemma.name() for lemma in cast(Any, synset).lemmas()]
+            if not lemmas_list:
+                continue
+
+            filtered = []
+            for lemma_str in lemmas_list:
+                cleaned = lemma_str.replace("_", " ")
+                if cleaned.lower() != normalized_word:
+                    filtered.append(cleaned)
+
+            if filtered:
+                synonyms.update(filtered)
+                break
+
+        if synonyms:
+            break
+
+    return sorted(synonyms)
 
 
 def substitute_random_synonyms(
@@ -97,10 +143,11 @@ def substitute_random_synonyms(
     """
     _ensure_wordnet()
 
-    if rng is None and seed is not None:
-        rng = random.Random(seed)
-    elif rng is None:
-        rng = random.Random()
+    active_rng: random.Random
+    if rng is not None:
+        active_rng = rng
+    else:
+        active_rng = random.Random(seed)
 
     target_pos = _normalize_parts_of_speech(part_of_speech)
 
@@ -109,19 +156,24 @@ def substitute_random_synonyms(
 
     # Collect indices of candidate tokens (even positions 0,2,.. are words given our split design)
     candidate_indices: list[int] = []
-    candidate_metadata: dict[int, tuple[str, str, str, tuple[PartOfSpeech, ...]]] = {}
+    candidate_metadata: dict[int, CandidateInfo] = {}
     for idx, tok in enumerate(tokens):
         if idx % 2 == 0 and tok and not tok.isspace():
             prefix, core_word, suffix = _split_token(tok)
             if not core_word:
                 continue
 
-            available_pos = tuple(
+            available_pos: NormalizedPartsOfSpeech = tuple(
                 pos for pos in target_pos if wn.synsets(core_word, pos=pos)
             )
             if available_pos:
                 candidate_indices.append(idx)
-                candidate_metadata[idx] = (prefix, core_word, suffix, available_pos)
+                candidate_metadata[idx] = CandidateInfo(
+                    prefix=prefix,
+                    core_word=core_word,
+                    suffix=suffix,
+                    parts_of_speech=available_pos,
+                )
 
     if not candidate_indices:
         return text
@@ -131,42 +183,18 @@ def substitute_random_synonyms(
         return text
 
     # Choose which positions to replace deterministically via rng.sample
-    replace_positions = rng.sample(candidate_indices, k=max_replacements)
+    replace_positions = active_rng.sample(candidate_indices, k=max_replacements)
     # Process in ascending order to avoid affecting later indices
     replace_positions.sort()
 
     for pos in replace_positions:
-        prefix, core_word, suffix, available_pos = candidate_metadata[pos]
-        word = core_word
-        synonyms: set[str] = set()
-        for pos_tag in available_pos:
-            synsets = wn.synsets(word, pos=pos_tag)
-            if not synsets:
-                continue
-
-            for synset in synsets:
-                lemmas_list = [lemma.name() for lemma in cast(Any, synset).lemmas()]
-                if not lemmas_list:
-                    continue
-
-                filtered = []
-                for lemma_str in lemmas_list:
-                    cleaned = lemma_str.replace("_", " ")
-                    if cleaned.lower() != word.lower():
-                        filtered.append(cleaned)
-
-                if filtered:
-                    synonyms.update(filtered)
-                    break
-
-            if synonyms:
-                break
-
+        metadata = candidate_metadata[pos]
+        synonyms = _collect_synonyms(metadata.core_word, metadata.parts_of_speech)
         if not synonyms:
             continue
 
-        replacement = rng.choice(sorted(synonyms))
-        tokens[pos] = f"{prefix}{replacement}{suffix}"
+        replacement = active_rng.choice(synonyms)
+        tokens[pos] = f"{metadata.prefix}{replacement}{metadata.suffix}"
 
     return "".join(tokens)
 
