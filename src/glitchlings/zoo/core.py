@@ -99,16 +99,15 @@ class Glitchling:
         return text
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
-        """Apply corruption across multiple dataset columns."""
+        """Apply corruption lazily across dataset columns."""
 
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
+            row = dict(row)
             for column in columns:
                 row[column] = self.corrupt(row[column])
             return row
 
-        dataset = dataset.map(__corrupt_row)
-
-        return dataset
+        return dataset.with_transform(__corrupt_row)
 
     def __call__(self, text: str, *args: Any, **kwds: Any) -> str | list[dict[str, Any]]:
         """Allow a glitchling to be invoked directly like a callable."""
