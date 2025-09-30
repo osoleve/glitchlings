@@ -2,16 +2,28 @@ from __future__ import annotations
 
 import pytest
 
-from glitchlings.zoo.jargoyle import substitute_random_synonyms
+import nltk
 from nltk.corpus import wordnet as wn
 
+from glitchlings.zoo.jargoyle import substitute_random_synonyms
 
-try:  # pragma: no cover - this only guards against missing corpora
-    wn.ensure_loaded()
-except LookupError:  # pragma: no cover - skip marker handles the branch
-    WORDNET_AVAILABLE = False
-else:
-    WORDNET_AVAILABLE = True
+
+def _ensure_wordnet_loaded() -> bool:
+    """Attempt to load WordNet, downloading it on demand if necessary."""
+
+    try:  # pragma: no cover - exercised by missing corpus branches
+        wn.ensure_loaded()
+    except LookupError:
+        # Fetch the corpus quietly; pytest output already reports skips.
+        nltk.download("wordnet", quiet=True)
+        try:
+            wn.ensure_loaded()
+        except LookupError:
+            return False
+    return True
+
+
+WORDNET_AVAILABLE = _ensure_wordnet_loaded()
 
 
 pytestmark = pytest.mark.skipif(
