@@ -75,7 +75,7 @@ print(gaggle("Summoned heroes do not fear the glitch."))
 Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.
 This means that as long as your glitchlings get along logically, they play nicely with one another.
 
-When gathered into a `Gaggle`, the `Glitchling`s will automatically order themselves into attack waves, based on the scope of the change they make:
+When summoned as or gathered into a `Gaggle`, the `Glitchling`s will automatically order themselves into attack waves, based on the scope of the change they make:
 
 1. Document
 2. Paragraph
@@ -97,7 +97,7 @@ glitchlings --list
 glitchlings -g typogre --file documents/report.txt --diff
 
 # Pipe text straight into the CLI for an on-the-fly corruption.
-echo "Beware the Typogre" | glitchlings -g typogre
+echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
 
 Use `--help` for a complete breakdown of available options.
@@ -204,18 +204,14 @@ Cave paintings and oral tradition contain many depictions of strange, otherworld
 These _Apocryphal `Glitchling`_ are said to possess unique abilities or behaviors.  
 If you encounter one of these elusive beings, please document your findings and share them with _The Curator_.
 
-### Reproducible Corruption
+### Ensuring Reproducible Corruption
 
-Every `Glitchling` owns its own independent `random.Random` instance. That means:
+Every `Glitchling` should own its own independent `random.Random` instance. That means:
 
 - No `random.seed(...)` calls touch Python's global RNG.
 - Supplying a `seed` when you construct a `Glitchling` (or when you `summon(...)`) makes its behavior reproducible.
 - Re-running a `Gaggle` with the same master seed and the same input text (_and same external data!_) yields identical corruption output.
 - Corruption functions are written to accept an `rng` parameter internally so that all randomness is centralized and testable.
-
-#### Caveats
-
-- If you mutate a glitchling's parameters after you've used it (e.g. `typogre.set_param(...)`) the outputs may not be the same as before the change. So don't do that.
 
 #### At Wits' End?
 
