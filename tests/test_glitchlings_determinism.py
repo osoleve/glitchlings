@@ -1,3 +1,4 @@
+from functools import partial
 from typing import cast
 
 import pytest
@@ -12,6 +13,7 @@ from glitchlings import (
     redactyl,
     scannequin,
 )
+from glitchlings.zoo.core import AttackWave, Glitchling
 
 
 def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
@@ -77,3 +79,19 @@ def test_scannequin_determinism(sample_text):
     scannequin.set_param("error_rate", 0.03)
     a, b = _twice(scannequin, sample_text)
     assert a == b
+
+
+def _partial_helper(text: str, *, rng) -> str:
+    # The helper intentionally relies on the injected RNG to ensure it is provided.
+    rng.random()
+    return text
+
+
+def test_partial_corruption_receives_rng(sample_text):
+    """Ensure RNG injection works for callables lacking a ``__code__`` attribute."""
+
+    corruption = partial(_partial_helper)
+    glitchling = Glitchling("partial", corruption, AttackWave.WORD)
+
+    result = glitchling(sample_text)
+    assert result == sample_text
