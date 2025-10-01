@@ -1,0 +1,14 @@
+[package]
+name = "typogre_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "_typogre_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+
+[package.metadata.maturin]
+module-name = "glitchlings._typogre_rust"
