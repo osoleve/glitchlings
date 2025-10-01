@@ -33,6 +33,8 @@ def _python_redact_words(
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
+    if not word_indices:
+        raise ValueError("Cannot redact words because the input text contains no redactable words.")
     num_to_redact = max(1, int(len(word_indices) * redaction_rate))
 
     # Sample from the indices of actual words

@@ -99,5 +99,12 @@ def test_redactyl_merge_adjacent_blocks():
 
 
 def test_redactyl_empty_text_raises_value_error():
-    with pytest.raises(ValueError):
+    message = "contains no redactable words"
+    with pytest.raises(ValueError, match=message):
         redactyl_module.redact_words("", seed=1)
+
+
+def test_redactyl_whitespace_only_text_raises_value_error():
+    message = "contains no redactable words"
+    with pytest.raises(ValueError, match=message):
+        redactyl_module.redact_words("   \t\n  ", seed=2)
