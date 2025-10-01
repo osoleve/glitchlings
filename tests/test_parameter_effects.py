@@ -1,3 +1,4 @@
+import math
 from typing import cast
 from glitchlings import typogre, mim1c, reduple, rushmore, redactyl, scannequin
 
@@ -31,6 +32,21 @@ def test_rushmore_rate_decreases_tokens():
     rushmore.set_param("max_deletion_rate", 0.5)
     out = cast(str, rushmore(text))
     assert len(out.split()) <= len(text.split())
+
+
+def test_rushmore_max_deletion_cap():
+    text = "alpha beta gamma delta epsilon zeta eta theta"
+    words = text.split()
+    candidate_count = max(len(words) - 1, 0)
+
+    for rate, seed in [(0.1, 3), (0.5, 11), (1.0, 17)]:
+        rushmore.set_param("seed", seed)
+        rushmore.set_param("max_deletion_rate", rate)
+        out = cast(str, rushmore(text))
+
+        removed = len(words) - len(out.split())
+        allowed = min(candidate_count, math.floor(candidate_count * rate))
+        assert removed <= allowed
 
 
 def test_redactyl_replacement_char_and_merge():
