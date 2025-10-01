@@ -283,7 +283,7 @@ fn redact_words(
 
     if word_indices.is_empty() {
         return Err(pyo3::exceptions::PyValueError::new_err(
-            "Sample larger than population or is negative",
+            "No words found to redact",
         ));
     }
 
