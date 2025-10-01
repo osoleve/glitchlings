@@ -107,7 +107,8 @@ fn repeat_char(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
     }
     let idx_obj = python_choice(rng, &positions)?;
     let idx: usize = idx_obj.extract(rng.py())?;
-    if idx <= chars.len() {
+    if idx < chars.len() {
+
         let c = chars[idx];
         chars.insert(idx, c);
     }
@@ -161,7 +162,8 @@ fn positional_action(
             }
         }
         "extra_char" => {
-            if idx <= chars.len() {
+            if idx < chars.len() {
+
                 let ch = chars[idx];
                 let mut neighbors = neighbors_for_char(layout, ch);
                 if neighbors.is_empty() {
@@ -174,13 +176,13 @@ fn positional_action(
             }
         }
         "nearby_char" => {
-            let ch = chars[idx];
-            let neighbors = neighbors_for_char(layout, ch);
-            if !neighbors.is_empty() {
-                let choice = python_choice(rng, &neighbors)?;
-                let replacement: String = choice.extract(rng.py())?;
-                let rep_chars: Vec<char> = replacement.chars().collect();
-                if idx < chars.len() {
+            if idx < chars.len() {
+                let ch = chars[idx];
+                let neighbors = neighbors_for_char(layout, ch);
+                if !neighbors.is_empty() {
+                    let choice = python_choice(rng, &neighbors)?;
+                    let replacement: String = choice.extract(rng.py())?;
+                    let rep_chars: Vec<char> = replacement.chars().collect();
                     chars.splice(idx..idx + 1, rep_chars);
                 }
             }
