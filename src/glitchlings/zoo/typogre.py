@@ -151,7 +151,7 @@ def fatfinger(
     layout = getattr(KEYNEIGHBORS, keyboard)
 
     if _fatfinger_rust is not None:
-        return _fatfinger_rust(text, max_change_rate, layout, rng)
+        return _fatfinger_rust(text, max_change_rate=max_change_rate, layout=layout, rng=rng)
 
     return _fatfinger_python(text, max_change_rate=max_change_rate, layout=layout, rng=rng)
 

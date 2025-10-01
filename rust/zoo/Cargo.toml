@@ -1,0 +1,15 @@
+[package]
+name = "zoo_rust"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "_zoo_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+regex = "1"
+
+[package.metadata.maturin]
+module-name = "glitchlings._zoo_rust"

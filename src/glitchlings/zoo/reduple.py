@@ -1,13 +1,19 @@
 import re
 import random
+
 from .core import Glitchling, AttackWave
 
+try:
+    from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust
+except ImportError:  # pragma: no cover - compiled extension not present
+    _reduplicate_words_rust = None
 
-def reduplicate_words(
+
+def _python_reduplicate_words(
     text: str,
-    reduplication_rate: float = 0.05,
-    seed: int | None = None,
-    rng: random.Random | None = None,
+    *,
+    reduplication_rate: float,
+    rng: random.Random,
 ) -> str:
     """Randomly reduplicate words in the text.
 
@@ -21,9 +27,6 @@ def reduplicate_words(
     - Preserves spacing and punctuation by tokenizing with separators.
     - Deterministic when run with a fixed seed or via Gaggle.
     """
-    if rng is None:
-        rng = random.Random(seed)
-
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
 
@@ -45,8 +48,32 @@ def reduplicate_words(
                 tokens[i] = f"{prefix}{core} {core}{suffix}"
             else:
                 tokens[i] = f"{word} {word}"
-
     return "".join(tokens)
+
+
+def reduplicate_words(
+    text: str,
+    reduplication_rate: float = 0.05,
+    seed: int | None = None,
+    rng: random.Random | None = None,
+) -> str:
+    """Randomly reduplicate words in the text.
+
+    Falls back to the Python implementation when the optional Rust
+    extension is unavailable.
+    """
+
+    if rng is None:
+        rng = random.Random(seed)
+
+    if _reduplicate_words_rust is not None:
+        return _reduplicate_words_rust(text, reduplication_rate, rng)
+
+    return _python_reduplicate_words(
+        text,
+        reduplication_rate=reduplication_rate,
+        rng=rng,
+    )
 
 
 class Reduple(Glitchling):
