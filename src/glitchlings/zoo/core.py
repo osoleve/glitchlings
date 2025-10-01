@@ -1,6 +1,8 @@
 """Core data structures used to model glitchlings and their interactions."""
 
-import inspect
+from enum import IntEnum, auto
+from hashlib import blake2s
+from datasets import Dataset
 import random
 from enum import IntEnum, auto
 from typing import Any, Protocol
@@ -181,7 +183,29 @@ class Gaggle(Glitchling):
     @staticmethod
     def derive_seed(master_seed: int, glitchling_name: str, index: int) -> int:
         """Derive a deterministic seed for a glitchling based on the master seed."""
-        return hash((master_seed, glitchling_name, index)) & 0xFFFFFFFF
+        def _int_to_bytes(value: int) -> bytes:
+            if value == 0:
+                return b"\x00"
+
+            abs_value = abs(value)
+            length = max(1, (abs_value.bit_length() + 7) // 8)
+
+            if value < 0:
+                while True:
+                    try:
+                        return value.to_bytes(length, "big", signed=True)
+                    except OverflowError:
+                        length += 1
+
+            return abs_value.to_bytes(length, "big", signed=False)
+
+        hasher = blake2s(digest_size=8)
+        hasher.update(_int_to_bytes(master_seed))
+        hasher.update(b"\x00")
+        hasher.update(glitchling_name.encode("utf-8"))
+        hasher.update(b"\x00")
+        hasher.update(_int_to_bytes(index))
+        return int.from_bytes(hasher.digest(), "big")
 
     def sort_glitchlings(self) -> None:
         """Sort glitchlings by wave then order to produce application order."""

@@ -1,4 +1,5 @@
 from glitchlings import summon
+from glitchlings.zoo.core import Gaggle
 
 
 def test_gaggle_determinism(sample_text):
@@ -24,3 +25,8 @@ def test_gaggle_ordering_stable(sample_text):
         "r",
         "r",
     ]
+
+
+def test_gaggle_seed_derivation_regression():
+    assert Gaggle.derive_seed(151, "Typogre", 0) == 13006513535068165406
+    assert Gaggle.derive_seed(151, "Redactyl", 3) == 12503957440331561761
