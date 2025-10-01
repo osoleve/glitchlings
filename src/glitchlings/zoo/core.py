@@ -1,9 +1,11 @@
 """Core data structures used to model glitchlings and their interactions."""
 
-from enum import IntEnum, auto
-from datasets import Dataset
+import inspect
 import random
+from enum import IntEnum, auto
 from typing import Any, Protocol
+
+from datasets import Dataset
 
 
 class CorruptionCallable(Protocol):
@@ -82,7 +84,16 @@ class Glitchling:
         """Execute the corruption callable, injecting the RNG when required."""
 
         # Pass rng to underlying corruption function if it expects it.
-        if "rng" in self.corruption_function.__code__.co_varnames:
+        try:
+            signature = inspect.signature(self.corruption_function)
+        except (TypeError, ValueError):
+            signature = None
+
+        expects_rng = False
+        if signature is not None:
+            expects_rng = "rng" in signature.parameters
+
+        if expects_rng:
             corrupted = self.corruption_function(text, *args, rng=self.rng, **kwargs)
         else:
             corrupted = self.corruption_function(text, *args, **kwargs)
