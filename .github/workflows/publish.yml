@@ -35,7 +35,7 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: glitchlings/dist
+          packages-dir: dist
           # Uses OIDC by default if PYPI_API_TOKEN is not provided and the PyPI project is configured for trusted publishing.
           # To use a token secret instead, uncomment the next line and add PYPI_API_TOKEN to repo secrets.
           # password: ${{ secrets.PYPI_API_TOKEN }}
