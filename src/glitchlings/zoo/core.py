@@ -104,7 +104,11 @@ class Glitchling:
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
             row = dict(row)
             for column in columns:
-                row[column] = self.corrupt(row[column])
+                value = row[column]
+                if isinstance(value, list):
+                    row[column] = [self.corrupt(item) for item in value]
+                else:
+                    row[column] = self.corrupt(value)
             return row
 
         return dataset.with_transform(__corrupt_row)
