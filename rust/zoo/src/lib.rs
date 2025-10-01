@@ -293,7 +293,7 @@ fn redact_words(
     }
     if num_to_redact > word_indices.len() {
         return Err(pyo3::exceptions::PyValueError::new_err(
-            "Sample larger than population or is negative",
+            "Cannot redact more words than available in text",
         ));
     }
 
