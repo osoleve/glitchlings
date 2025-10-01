@@ -1,3 +1,4 @@
+import math
 import random
 import re
 
@@ -26,9 +27,8 @@ def _python_delete_random_words(
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
 
-    for i in range(
-        2, len(tokens), 2
-    ):  # Every other token is a word, but skip the first word
+    candidate_indices: list[int] = []
+    for i in range(2, len(tokens), 2):  # Every other token is a word, skip the first word
         if i >= len(tokens):
             break
 
@@ -36,15 +36,25 @@ def _python_delete_random_words(
         if not word or word.isspace():  # Skip empty or whitespace
             continue
 
-        # Only consider actual words for deletion
-        if rng.random() < max_deletion_rate:
-            # Check if word has trailing punctuation
-            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-            if match:
-                prefix, _, suffix = match.groups()
-                tokens[i] = f"{prefix.strip()}{suffix.strip()}"
-            else:
-                tokens[i] = ""
+        candidate_indices.append(i)
+
+    max_deletions = min(
+        len(candidate_indices),
+        math.floor(len(candidate_indices) * max_deletion_rate),
+    )
+    if max_deletions <= 0:
+        indices_to_delete: list[int] = []
+    else:
+        indices_to_delete = rng.sample(candidate_indices, max_deletions)
+
+    for i in indices_to_delete:
+        word = tokens[i]
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        if match:
+            prefix, _, suffix = match.groups()
+            tokens[i] = f"{prefix.strip()}{suffix.strip()}"
+        else:
+            tokens[i] = ""
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)
