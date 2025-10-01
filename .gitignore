@@ -11,4 +11,7 @@ wheels/
 .python-version
 uv.lock
 
+# Rust build artifacts
+/rust/typogre/target/
+
 RELEASE.md
