@@ -1,13 +1,19 @@
 import re
 import random
+
 from .core import Glitchling, AttackWave, AttackOrder
 
+try:
+    from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust
+except ImportError:  # pragma: no cover - compiled extension not present
+    _ocr_artifacts_rust = None
 
-def ocr_artifacts(
+
+def _python_ocr_artifacts(
     text: str,
-    error_rate: float = 0.02,
-    seed: int | None = None,
-    rng: random.Random | None = None,
+    *,
+    error_rate: float,
+    rng: random.Random,
 ) -> str:
     """Introduce OCR-like artifacts into text.
 
@@ -26,9 +32,6 @@ def ocr_artifacts(
     """
     if not text:
         return text
-
-    if rng is None:
-        rng = random.Random(seed)
 
     # map: source -> list of possible replacements
     # Keep patterns small and specific; longer patterns first avoid overmatching
@@ -113,6 +116,29 @@ def ocr_artifacts(
         out_parts.append(text[cursor:])
 
     return "".join(out_parts)
+
+
+def ocr_artifacts(
+    text: str,
+    error_rate: float = 0.02,
+    seed: int | None = None,
+    rng: random.Random | None = None,
+) -> str:
+    """Introduce OCR-like artifacts into text.
+
+    Prefers the Rust implementation when available.
+    """
+
+    if not text:
+        return text
+
+    if rng is None:
+        rng = random.Random(seed)
+
+    if _ocr_artifacts_rust is not None:
+        return _ocr_artifacts_rust(text, error_rate, rng)
+
+    return _python_ocr_artifacts(text, error_rate=error_rate, rng=rng)
 
 
 class Scannequin(Glitchling):

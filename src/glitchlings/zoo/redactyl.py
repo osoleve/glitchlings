@@ -1,17 +1,24 @@
 import re
 import random
+
 from .core import Glitchling, AttackWave
 
 FULL_BLOCK = "█"
 
 
-def redact_words(
+try:
+    from glitchlings._zoo_rust import redact_words as _redact_words_rust
+except ImportError:  # pragma: no cover - compiled extension not present
+    _redact_words_rust = None
+
+
+def _python_redact_words(
     text: str,
-    replacement_char: str = FULL_BLOCK,
-    redaction_rate: float = 0.05,
-    merge_adjacent: bool = False,
-    seed: int = 151,
-    rng: random.Random | None = None,
+    *,
+    replacement_char: str,
+    redaction_rate: float,
+    merge_adjacent: bool,
+    rng: random.Random,
 ) -> str:
     """Redact random words by replacing their characters.
 
@@ -23,9 +30,6 @@ def redact_words(
     - seed: Seed used if `rng` not provided (default 151).
     - rng: Optional RNG; overrides seed.
     """
-    if rng is None:
-        rng = random.Random(seed)
-
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
@@ -61,6 +65,37 @@ def redact_words(
         )
 
     return text
+
+
+def redact_words(
+    text: str,
+    replacement_char: str = FULL_BLOCK,
+    redaction_rate: float = 0.05,
+    merge_adjacent: bool = False,
+    seed: int = 151,
+    rng: random.Random | None = None,
+) -> str:
+    """Redact random words by replacing their characters."""
+
+    if rng is None:
+        rng = random.Random(seed)
+
+    if _redact_words_rust is not None:
+        return _redact_words_rust(
+            text,
+            replacement_char,
+            redaction_rate,
+            merge_adjacent,
+            rng,
+        )
+
+    return _python_redact_words(
+        text,
+        replacement_char=replacement_char,
+        redaction_rate=redaction_rate,
+        merge_adjacent=merge_adjacent,
+        rng=rng,
+    )
 
 
 class Redactyl(Glitchling):
