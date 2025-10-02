@@ -16,45 +16,31 @@ def _python_delete_random_words(
     max_deletion_rate: float,
     rng: random.Random,
 ) -> str:
-    """Delete random words from the input text.
+    """Delete random words from the input text while preserving whitespace."""
 
-    Parameters
-    - text: The input text.
-    - max_deletion_rate: The maximum proportion of words to delete (default 0.01).
-    - seed: Optional seed if `rng` not provided.
-    - rng: Optional RNG; overrides seed.
-    """
-    # Preserve exact spacing and punctuation by using regex
-    tokens = re.split(r"(\s+)", text)  # Split but keep separators
+    tokens = re.split(r"(\s+)", text)  # Split but keep separators for later rejoin
 
     candidate_indices: list[int] = []
     for i in range(2, len(tokens), 2):  # Every other token is a word, skip the first word
-        if i >= len(tokens):
-            break
-
         word = tokens[i]
-        if not word or word.isspace():  # Skip empty or whitespace
+        if not word or word.isspace():
             continue
 
         candidate_indices.append(i)
 
-    max_deletions = min(
-        len(candidate_indices),
-        math.floor(len(candidate_indices) * max_deletion_rate),
-    )
-    if max_deletions <= 0:
-        indices_to_delete: list[int] = []
-    else:
-        indices_to_delete = rng.sample(candidate_indices, max_deletions)
+    allowed_deletions = math.floor(len(candidate_indices) * max_deletion_rate)
+    if allowed_deletions <= 0:
+        return text
 
-    for i in indices_to_delete:
-        word = tokens[i]
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, _, suffix = match.groups()
-            tokens[i] = f"{prefix.strip()}{suffix.strip()}"
-        else:
-            tokens[i] = ""
+    for i in candidate_indices:
+        if rng.random() < max_deletion_rate:
+            word = tokens[i]
+            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+            if match:
+                prefix, _, suffix = match.groups()
+                tokens[i] = f"{prefix.strip()}{suffix.strip()}"
+            else:
+                tokens[i] = ""
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)
