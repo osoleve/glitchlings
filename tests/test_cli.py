@@ -130,3 +130,21 @@ def test_read_text_requires_input(monkeypatch, capsys):
         read_text(args, parser)
     captured = capsys.readouterr()
     assert "No input text provided" in captured.err
+
+
+def test_read_text_consumes_stdin(monkeypatch):
+    parser = build_parser()
+    args = parser.parse_args([])
+
+    sentinel = "stdin payload"
+
+    class DummyStdin:
+        def isatty(self):
+            return False
+
+        def read(self):
+            return sentinel
+
+    monkeypatch.setattr("sys.stdin", DummyStdin())
+
+    assert read_text(args, parser) == sentinel
