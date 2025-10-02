@@ -51,6 +51,30 @@ print(gaggle(SAMPLE_TEXT))
 
 > Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
 
+## Usage
+
+Glitchlings slot into evaluation pipelines just as easily as they corrupt stray strings.
+
+- **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to make every run deterministic.
+- **Dataset corruption** – Use a `Gaggle`'s `.corrupt_dataset` helper to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
+
+### Prime Intellect environments
+
+After `pip install -e .[prime]`, the `glitchlings.dlc.prime.load_environment` helper mirrors `verifiers.load_environment` for Prime Intellect scenarios while optionally applying glitchlings before returning the environment:
+
+```python
+from glitchlings import Mim1c, Typogre
+from glitchlings.dlc.prime import load_environment
+
+env = load_environment(
+    "osoleve/syllabify-en",
+    glitchlings=[Mim1c(replacement_rate=0.01), Typogre(max_change_rate=0.02)],
+    seed=404,
+)
+```
+
+Skip the `glitchlings` argument to receive an untouched verifier dataset.
+
 ## Motivation
 
 If your model performs well on a particular task, but not when `Glitchling`s are present, it's a sign that it hasn't actually generalized to the problem.
