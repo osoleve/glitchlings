@@ -1,10 +1,9 @@
 """Core data structures used to model glitchlings and their interactions."""
 
-from enum import IntEnum, auto
-from hashlib import blake2s
-from datasets import Dataset
+import inspect
 import random
 from enum import IntEnum, auto
+from hashlib import blake2s
 from typing import Any, Protocol
 
 from datasets import Dataset
@@ -81,6 +80,8 @@ class Glitchling:
 
         setattr(self, key, value)
         self.kwargs[key] = value
+        if key == "seed":
+            self.reset_rng(value)
 
     def __corrupt(self, text: str, *args: Any, **kwargs: Any) -> str:
         """Execute the corruption callable, injecting the RNG when required."""
