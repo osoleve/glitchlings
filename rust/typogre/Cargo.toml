@@ -8,7 +8,7 @@ name = "_typogre_rust"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.21", features = ["extension-module"] }
+pyo3 = { workspace = true }
 
 [package.metadata.maturin]
 module-name = "glitchlings._typogre_rust"
