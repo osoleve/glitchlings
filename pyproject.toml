@@ -52,32 +52,26 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling>=1.18"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=64", "wheel", "setuptools-rust>=1.8"]
+build-backend = "setuptools.build_meta"
 
-[tool.hatch.build]
-exclude = [
-    "**/__pycache__/**",
-    ".git/**",
-    ".venv/**",
-]
+[tool.setuptools]
+package-dir = {"" = "src"}
 
-[tool.hatch.build.targets.sdist]
-exclude = [
-    "**/__pycache__/**",
-    ".git/**",
-    ".venv/**",
-]
+[tool.setuptools.packages.find]
+where = ["src"]
 
-[tool.hatch.build.targets.wheel]
-packages = [
-    "src/glitchlings"
-]
-exclude = [
-    "tests/**",
-    "tests",
-    "**/__pycache__/**",
-]
+[[tool.setuptools-rust.ext-modules]]
+target = "glitchlings._zoo_rust"
+path = "rust/zoo/Cargo.toml"
+binding = "PyO3"
+debug = false
+
+[[tool.setuptools-rust.ext-modules]]
+target = "glitchlings._typogre_rust"
+path = "rust/typogre/Cargo.toml"
+binding = "PyO3"
+debug = false
 
 [tool.pytest.ini_options]
 pythonpath = [

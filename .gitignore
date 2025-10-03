@@ -12,6 +12,8 @@ wheels/
 uv.lock
 
 # Rust build artifacts
-/rust/typogre/target/
+/rust/target/
+/rust/*/target/
 
 RELEASE.md
+.hypothesis/

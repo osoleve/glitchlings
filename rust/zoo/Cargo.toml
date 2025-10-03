@@ -8,8 +8,8 @@ name = "_zoo_rust"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = { version = "0.21", features = ["extension-module"] }
-regex = "1"
+pyo3 = { workspace = true }
+regex = { workspace = true }
 
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"

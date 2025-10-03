@@ -1,0 +1,10 @@
+[workspace]
+members = [
+    "typogre",
+    "zoo",
+]
+resolver = "2"
+
+[workspace.dependencies]
+pyo3 = { version = "0.21", features = ["extension-module"] }
+regex = "1"
