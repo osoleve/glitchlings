@@ -115,11 +115,23 @@ class Glitchling:
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
 
+        def _is_transcript(value: Any) -> bool:
+            """Return ``True`` when the value resembles a chat transcript."""
+
+            if not isinstance(value, list) or not value:
+                return False
+
+            return all(
+                isinstance(turn, dict) and "content" in turn for turn in value
+            )
+
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
             row = dict(row)
             for column in columns:
                 value = row[column]
-                if isinstance(value, list):
+                if _is_transcript(value):
+                    row[column] = self.corrupt(value)
+                elif isinstance(value, list):
                     row[column] = [self.corrupt(item) for item in value]
                 else:
                     row[column] = self.corrupt(value)
