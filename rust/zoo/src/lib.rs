@@ -116,20 +116,35 @@ fn delete_random_words(
     }
 
     let mut tokens = split_with_separators(text);
+    let mut candidate_indices: Vec<usize> = Vec::new();
     let mut i = 2;
     while i < tokens.len() {
-        let word = tokens[i].clone();
-        if word.is_empty() || is_whitespace_only(&word) {
-            i += 2;
-            continue;
+        let word = &tokens[i];
+        if !word.is_empty() && !is_whitespace_only(word) {
+            candidate_indices.push(i);
         }
+        i += 2;
+    }
+
+    let allowed = ((candidate_indices.len() as f64) * max_deletion_rate).floor() as usize;
+    if allowed == 0 {
+        return Ok(text.to_string());
+    }
+
+    let mut deletions = 0;
+    for idx in candidate_indices {
+        if deletions >= allowed {
+            break;
+        }
+
+        let word = tokens[idx].clone();
         if random_unit(rng)? < max_deletion_rate {
             let (prefix, _, suffix) = split_affixes(&word);
             let trimmed_prefix = prefix.trim();
             let trimmed_suffix = suffix.trim();
-            tokens[i] = format!("{trimmed_prefix}{trimmed_suffix}");
+            tokens[idx] = format!("{trimmed_prefix}{trimmed_suffix}");
+            deletions += 1;
         }
-        i += 2;
     }
 
     let mut joined = tokens.concat();
@@ -283,7 +298,7 @@ fn redact_words(
 
     if word_indices.is_empty() {
         return Err(pyo3::exceptions::PyValueError::new_err(
-            "No words found to redact",
+            "Cannot redact words because the input text contains no redactable words.",
         ));
     }
 

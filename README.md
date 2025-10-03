@@ -56,7 +56,7 @@ print(gaggle(SAMPLE_TEXT))
 Glitchlings slot into evaluation pipelines just as easily as they corrupt stray strings.
 
 - **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to make every run deterministic.
-- **Dataset corruption** – Use a `Gaggle`'s `.corrupt_dataset` helper to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
+- **Dataset corruption** – After ``import glitchlings.dlc.huggingface``, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
 
 ### Prime Intellect environments
 

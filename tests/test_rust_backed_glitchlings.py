@@ -49,7 +49,7 @@ def test_rushmore_matches_python_fallback():
     result = rushmore_module.delete_random_words(
         text, max_deletion_rate=0.5, seed=123
     )
-    assert result == expected == "The over lazy."
+    assert result == expected == "The over the lazy dog."
 
 
 def test_scannequin_matches_python_fallback():
