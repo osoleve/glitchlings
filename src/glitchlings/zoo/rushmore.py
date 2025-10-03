@@ -28,10 +28,13 @@ def _python_delete_random_words(
 
         candidate_indices.append(i)
 
-    allowed_deletions = math.floor(len(candidate_indices) * max_deletion_rate)
+    allowed_deletions = min(
+        len(candidate_indices), math.floor(len(candidate_indices) * max_deletion_rate)
+    )
     if allowed_deletions <= 0:
         return text
 
+    deletions = 0
     for i in candidate_indices:
         if rng.random() < max_deletion_rate:
             word = tokens[i]
@@ -41,6 +44,10 @@ def _python_delete_random_words(
                 tokens[i] = f"{prefix.strip()}{suffix.strip()}"
             else:
                 tokens[i] = ""
+
+            deletions += 1
+            if deletions >= allowed_deletions:
+                break
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)

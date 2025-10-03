@@ -92,7 +92,7 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 - **Seed derivation** – pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
 - **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "max_change_rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
-- **Dataset utilities** – call `gaggle.corrupt_dataset(dataset, columns=[...])` to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
+- **Dataset utilities** – after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
 - **Summoning from shorthand** – `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(replacement_rate=0.01)], seed=404)`).
 
 ## Glitchling reference

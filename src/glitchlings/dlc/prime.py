@@ -8,9 +8,12 @@ from enum import Enum
 import verifiers as vf
 
 try:
-    from datasets import Dataset
+    from .huggingface import Dataset
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     Dataset = object  # type: ignore[assignment]
+else:
+    if Dataset is None:  # pragma: no cover - optional dependency
+        Dataset = object  # type: ignore[assignment]
 
 from ..zoo import Gaggle, Glitchling, Mim1c, Typogre, summon
 
