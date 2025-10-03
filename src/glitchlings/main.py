@@ -124,8 +124,10 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
     if args.file is not None:
         try:
             return args.file.read_text(encoding="utf-8")
-        except OSError as exc:  # pragma: no cover - exercised via CLI
-            parser.error(str(exc))
+        except OSError as exc:
+            filename = getattr(exc, "filename", None) or args.file
+            reason = exc.strerror or str(exc)
+            parser.error(f"Failed to read file {filename}: {reason}")
 
     if args.text:
         return args.text
