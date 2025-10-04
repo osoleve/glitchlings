@@ -1,10 +1,11 @@
 """Core data structures used to model glitchlings and their interactions."""
 
 import inspect
+import os
 import random
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Callable, Protocol
 
 _datasets_error: ModuleNotFoundError | None = None
 try:  # pragma: no cover - optional dependency
@@ -14,6 +15,25 @@ except ModuleNotFoundError as error:  # pragma: no cover - optional dependency
     _datasets_error = error
 else:
     _datasets_error = None
+
+try:  # pragma: no cover - optional dependency
+    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
+except ImportError:  # pragma: no cover - compiled extension not present
+    _compose_glitchlings_rust = None
+
+
+_PIPELINE_FEATURE_FLAG_ENV = "GLITCHLINGS_RUST_PIPELINE"
+
+
+def _pipeline_feature_flag_enabled() -> bool:
+    """Return ``True`` when the environment explicitly opts into the Rust pipeline."""
+
+    value = os.environ.get(_PIPELINE_FEATURE_FLAG_ENV)
+    if value is None:
+        return False
+
+    normalized = value.strip().lower()
+    return normalized in {"1", "true", "yes", "on"}
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from datasets import Dataset  # type: ignore
@@ -213,6 +233,49 @@ class Glitchling:
         return cls(**filtered_kwargs)
 
 
+def _pipeline_operation_reduplicate(glitchling: "Glitchling") -> dict[str, Any] | None:
+    rate = glitchling.kwargs.get("reduplication_rate")
+    if rate is None:
+        return None
+    return {"type": "reduplicate", "reduplication_rate": float(rate)}
+
+
+def _pipeline_operation_delete(glitchling: "Glitchling") -> dict[str, Any] | None:
+    rate = glitchling.kwargs.get("max_deletion_rate")
+    if rate is None:
+        return None
+    return {"type": "delete", "max_deletion_rate": float(rate)}
+
+
+def _pipeline_operation_redact(glitchling: "Glitchling") -> dict[str, Any] | None:
+    replacement_char = glitchling.kwargs.get("replacement_char")
+    redaction_rate = glitchling.kwargs.get("redaction_rate")
+    merge_adjacent = glitchling.kwargs.get("merge_adjacent")
+    if replacement_char is None or redaction_rate is None or merge_adjacent is None:
+        return None
+    return {
+        "type": "redact",
+        "replacement_char": str(replacement_char),
+        "redaction_rate": float(redaction_rate),
+        "merge_adjacent": bool(merge_adjacent),
+    }
+
+
+def _pipeline_operation_ocr(glitchling: "Glitchling") -> dict[str, Any] | None:
+    error_rate = glitchling.kwargs.get("error_rate")
+    if error_rate is None:
+        return None
+    return {"type": "ocr", "error_rate": float(error_rate)}
+
+
+_PIPELINE_OPERATION_BUILDERS: dict[str, Callable[["Glitchling"], dict[str, Any] | None]] = {
+    "Reduple": _pipeline_operation_reduplicate,
+    "Rushmore": _pipeline_operation_delete,
+    "Redactyl": _pipeline_operation_redact,
+    "Scannequin": _pipeline_operation_ocr,
+}
+
+
 class Gaggle(Glitchling):
     """A collection of glitchlings executed in a deterministic order."""
 
@@ -273,8 +336,44 @@ class Gaggle(Glitchling):
             for g in sorted(glitchlings, key=lambda x: (x.order, x.name))
         ]
 
+    @staticmethod
+    def rust_pipeline_supported() -> bool:
+        """Return ``True`` when the compiled Rust pipeline is importable."""
+
+        return _compose_glitchlings_rust is not None
+
+    @staticmethod
+    def rust_pipeline_enabled() -> bool:
+        """Return ``True`` when the Rust pipeline is available and opted in."""
+
+        return Gaggle.rust_pipeline_supported() and _pipeline_feature_flag_enabled()
+
+    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
+        if not self.rust_pipeline_enabled():
+            return None
+
+        descriptors: list[dict[str, Any]] = []
+        for glitchling in self.apply_order:
+            builder = _PIPELINE_OPERATION_BUILDERS.get(glitchling.name)
+            if builder is None:
+                return None
+            operation = builder(glitchling)
+            if operation is None:
+                return None
+            descriptors.append({"name": glitchling.name, "operation": operation})
+
+        return descriptors
+
     def corrupt(self, text: str) -> str:
         """Apply each glitchling to the provided text sequentially."""
+
+        master_seed = self.seed
+        descriptors = self._pipeline_descriptors()
+        if master_seed is not None and descriptors is not None:
+            try:
+                return _compose_glitchlings_rust(text, descriptors, master_seed)
+            except Exception:  # pragma: no cover - fall back to Python execution
+                pass
 
         corrupted = text
         for glitchling in self.apply_order:
