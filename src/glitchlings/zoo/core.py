@@ -27,6 +27,21 @@ else:
         def with_transform(self, function: Any) -> "Dataset": ...
 
 
+def _is_transcript(value: Any) -> bool:
+    """Return True when the value resembles a chat transcript."""
+
+    if not isinstance(value, list):
+        return False
+
+    if not value:
+        return True
+
+    if not all(isinstance(turn, dict) for turn in value):
+        return False
+
+    return "content" in value[-1]
+
+
 class CorruptionCallable(Protocol):
     """Protocol describing a callable capable of corrupting text."""
 
@@ -123,12 +138,15 @@ class Glitchling:
     def corrupt(self, text: str | list[dict[str, Any]]) -> str | list[dict[str, Any]]:
         """Apply the corruption function to text or conversational transcripts."""
 
-        if isinstance(text, list):
-            text[-1]["content"] = self.__corrupt(text[-1]["content"], **self.kwargs)
-        else:
-            text = self.__corrupt(text, **self.kwargs)
+        if _is_transcript(text):
+            transcript = [dict(turn) for turn in text]
+            if transcript:
+                transcript[-1]["content"] = self.__corrupt(
+                    transcript[-1]["content"], **self.kwargs
+                )
+            return transcript
 
-        return text
+        return self.__corrupt(text, **self.kwargs)
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
