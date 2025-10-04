@@ -63,6 +63,7 @@ impl<'py> GlitchRng for PythonRngAdapter<'py> {
 #[derive(Debug)]
 struct PyGlitchDescriptor {
     name: String,
+    seed: u64,
     operation: PyGlitchOperation,
 }
 
@@ -73,11 +74,15 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
             .get_item("name")?
             .ok_or_else(|| PyValueError::new_err("descriptor missing 'name' field"))?
             .extract()?;
+        let seed = dict
+            .get_item("seed")?
+            .ok_or_else(|| PyValueError::new_err("descriptor missing 'seed' field"))?
+            .extract()?;
         let operation = dict
             .get_item("operation")?
             .ok_or_else(|| PyValueError::new_err("descriptor missing 'operation' field"))?
             .extract()?;
-        Ok(Self { name, operation })
+        Ok(Self { name, seed, operation })
     }
 }
 
@@ -257,6 +262,7 @@ fn compose_glitchlings(
             };
             Ok(GlitchDescriptor {
                 name: descriptor.name,
+                seed: descriptor.seed,
                 operation,
             })
         })
