@@ -45,7 +45,6 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
                 .iter()
                 .copied()
                 .enumerate()
-                .map(|(index, pair)| (index, pair))
                 .collect();
         entries.sort_by(|a, b| {
             let a_len = a.1 .0.len();
