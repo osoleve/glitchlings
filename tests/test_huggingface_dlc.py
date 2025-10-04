@@ -2,7 +2,9 @@ from collections.abc import Iterable
 from random import Random
 
 import pytest
-from datasets import Dataset
+
+datasets = pytest.importorskip("datasets")
+Dataset = datasets.Dataset
 
 from glitchlings.dlc import huggingface as hf_dlc
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
