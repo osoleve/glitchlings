@@ -4,9 +4,27 @@ import inspect
 import random
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 
-from datasets import Dataset
+_datasets_error: ModuleNotFoundError | None = None
+try:  # pragma: no cover - optional dependency
+    from datasets import Dataset as _DatasetsDataset
+except ModuleNotFoundError as error:  # pragma: no cover - optional dependency
+    _DatasetsDataset = None  # type: ignore[assignment]
+    _datasets_error = error
+else:
+    _datasets_error = None
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    from datasets import Dataset  # type: ignore
+elif _DatasetsDataset is not None:
+    Dataset = _DatasetsDataset
+else:
+
+    class Dataset(Protocol):  # type: ignore[no-redef]
+        """Typed stub mirroring the Hugging Face dataset interface used here."""
+
+        def with_transform(self, function: Any) -> "Dataset": ...
 
 
 def _is_transcript(value: Any) -> bool:
@@ -132,6 +150,20 @@ class Glitchling:
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
+
+        if _DatasetsDataset is None:
+            message = "datasets is not installed"
+            raise ModuleNotFoundError(message) from _datasets_error
+
+        def _is_transcript(value: Any) -> bool:
+            """Return ``True`` when the value resembles a chat transcript."""
+
+            if not isinstance(value, list) or not value:
+                return False
+
+            return all(
+                isinstance(turn, dict) and "content" in turn for turn in value
+            )
 
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
             row = dict(row)

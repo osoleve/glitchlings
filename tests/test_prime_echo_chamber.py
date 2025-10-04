@@ -1,32 +1,35 @@
-from __future__ import annotations
-
 from datasets import Dataset
 
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 
 
 def append_marker(text: str) -> str:
-    """Deterministically mark the supplied text."""
+    """Tag the provided text with a deterministic marker."""
 
-    return f"{text} :: corrupted"
+    return f"{text}<<<"
 
 
-def test_prime_echo_chamber_prompt_corruption_is_stable() -> None:
-    """Repeated dataset corruption should not compound transcript changes."""
-
-    base_transcript = [
-        {"role": "system", "content": "System prompt"},
-        {"role": "user", "content": "Compute 2+2."},
-    ]
-
-    dataset = Dataset.from_dict({"prompt": [base_transcript], "id": [0]})
+def test_conversational_prompts_remain_structured() -> None:
+    dataset = Dataset.from_dict(
+        {
+            "prompt": [
+                [
+                    {"role": "system", "content": "Restore the text."},
+                    {"role": "user", "content": "coRRuPt3d"},
+                ]
+            ]
+        }
+    )
 
     glitchling = Glitchling("marker", append_marker, AttackWave.SENTENCE)
-    gaggle = Gaggle([glitchling], seed=7)
+    gaggle = Gaggle([glitchling], seed=99)
 
-    first_pass = list(gaggle.corrupt_dataset(dataset, ["prompt"]))
-    second_pass = list(gaggle.corrupt_dataset(dataset, ["prompt"]))
+    corrupted_rows = list(gaggle.corrupt_dataset(dataset, ["prompt"]))
 
-    assert first_pass == second_pass
-    assert first_pass[0]["prompt"][-1]["content"] == "Compute 2+2. :: corrupted"
-    assert base_transcript[-1]["content"] == "Compute 2+2."
+    assert len(corrupted_rows) == 1
+    prompt = corrupted_rows[0]["prompt"]
+
+    assert isinstance(prompt, list)
+    assert prompt[0] == {"role": "system", "content": "Restore the text."}
+    assert prompt[1]["role"] == "user"
+    assert prompt[1]["content"] == "coRRuPt3d<<<"

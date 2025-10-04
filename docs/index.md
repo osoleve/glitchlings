@@ -199,7 +199,12 @@ Installing the `prime` extra exposes `glitchlings.dlc.prime.load_environment`, a
 
 ```python
 from glitchlings import Mim1c, Typogre
-from glitchlings.dlc.prime import load_environment, tutorial_level, Difficulty
+from glitchlings.dlc.prime import (
+    Difficulty,
+    echo_chamber,
+    load_environment,
+    tutorial_level,
+)
 
 # Load an existing environment and apply custom corruption
 custom_env = load_environment(
@@ -214,6 +219,14 @@ practice_env = tutorial_level(
     "osoleve/syllabify-en",
     difficulty=Difficulty.Hard,
 )
+
+# Or convert a Hugging Face dataset column into an Echo Chamber
+restoration_env = echo_chamber(
+    "osoleve/clean-room",
+    column="text",
+    glitchlings=["Typogre", "Mim1c"],
+    reward_function=lambda prompt, completion, answer: float(completion == answer),
+)
 ```
 
 Capabilities at a glance:
@@ -223,6 +236,7 @@ Capabilities at a glance:
 - **Deterministic summoning** – non-`Gaggle` inputs are normalised via `summon(...)` with the provided `seed`, so repeated calls produce matching corruption ensembles.
 - **Tutorial difficulty scaling** – `tutorial_level` wires in tuned Mim1c/Typogre parameters multiplied by the selected `Difficulty` enum. Use `Difficulty.Easy` for gentle practice or `Difficulty.Extreme` to hammer robustness.
 - **Dataset mutation** – environments are returned with their dataset replaced by the corrupted clone. Skip the `glitchlings` argument to leave the dataset untouched.
+- **Echo Chambers** – bootstrap text-cleaning challenges straight from Hugging Face datasets; the environment instructs models to restore glitch-corrupted text, scores responses with a symmetric Damerau–Levenshtein rubric by default, and lets you swap in bespoke reward functions when needed.
 
 ## Ensuring determinism
 
