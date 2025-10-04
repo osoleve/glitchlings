@@ -1,13 +1,17 @@
-from typing import Literal
-from .core import Glitchling, AttackWave, AttackOrder
+from collections.abc import Collection
 import random
+from typing import Literal
+
 from confusable_homoglyphs import confusables
+
+from .core import AttackOrder, AttackWave, Glitchling
 
 
 def swap_homoglyphs(
     text: str,
     replacement_rate: float = 0.02,
     classes: list[str] | Literal["all"] | None = None,
+    banned_characters: Collection[str] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -17,6 +21,7 @@ def swap_homoglyphs(
     - text: Input text.
     - replacement_rate: Max proportion of eligible characters to replace (default 0.02).
     - classes: Restrict replacements to these Unicode script classes (default ["LATIN","GREEK","CYRILLIC"]). Use "all" to allow any.
+    - banned_characters: Characters that must never appear as replacements.
     - seed: Optional seed if `rng` not provided.
     - rng: Optional RNG; overrides seed.
 
@@ -37,6 +42,7 @@ def swap_homoglyphs(
     num_replacements = int(len(confusable_chars) * replacement_rate)
     done = 0
     rng.shuffle(confusable_chars)
+    banned_set = set(banned_characters or ())
     for char in confusable_chars:
         if done >= num_replacements:
             break
@@ -45,6 +51,8 @@ def swap_homoglyphs(
         ]
         if classes != "all":
             options = [opt for opt in options if confusables.alias(opt) in classes]
+        if banned_set:
+            options = [opt for opt in options if opt not in banned_set]
         if not options:
             continue
         text = text.replace(char, rng.choice(options), 1)
@@ -60,6 +68,7 @@ class Mim1c(Glitchling):
         *,
         replacement_rate: float = 0.02,
         classes: list[str] | Literal["all"] | None = None,
+        banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
         super().__init__(
@@ -70,6 +79,7 @@ class Mim1c(Glitchling):
             seed=seed,
             replacement_rate=replacement_rate,
             classes=classes,
+            banned_characters=banned_characters,
         )
 
 

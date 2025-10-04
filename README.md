@@ -163,6 +163,7 @@ _Wait, was that...?_
 >
 > - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
+> - `banned_characters (Collection[str])`: Characters that must never appear as replacements (default: none).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Scannequin

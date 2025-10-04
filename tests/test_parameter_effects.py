@@ -18,6 +18,16 @@ def test_mim1c_replacement_rate_bounds(sample_text):
     assert changed <= int(len(alnum) * 0.02) + 2  # slack for discrete rounding
 
 
+def test_mim1c_respects_banned_characters():
+    m = mim1c.clone()
+    m.set_param("seed", 2)
+    m.set_param("replacement_rate", 1.0)
+    m.set_param("banned_characters", ["ａ"])
+
+    out = cast(str, m("a"))
+    assert out != "ａ"
+
+
 def test_reduple_rate_increases_tokens():
     text = "a b c d e f g h"
     reduple.set_param("seed", 5)
