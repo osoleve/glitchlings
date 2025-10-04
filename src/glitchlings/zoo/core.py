@@ -297,6 +297,7 @@ class Gaggle(Glitchling):
             _g = g.clone()
             derived_seed = Gaggle.derive_seed(seed, _g.name, idx)
             _g.reset_rng(derived_seed)
+            setattr(_g, "_gaggle_index", idx)
             self.glitchlings[g.level].append(_g)
         self.sort_glitchlings()
 
@@ -360,7 +361,22 @@ class Gaggle(Glitchling):
             operation = builder(glitchling)
             if operation is None:
                 return None
-            descriptors.append({"name": glitchling.name, "operation": operation})
+
+            seed = glitchling.seed
+            if seed is None:
+                index = getattr(glitchling, "_gaggle_index", None)
+                master_seed = self.seed
+                if index is None or master_seed is None:
+                    return None
+                seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
+
+            descriptors.append(
+                {
+                    "name": glitchling.name,
+                    "operation": operation,
+                    "seed": int(seed),
+                }
+            )
 
         return descriptors
 

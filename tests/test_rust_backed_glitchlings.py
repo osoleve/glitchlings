@@ -10,6 +10,23 @@ redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
+def _with_descriptor_seeds(
+    descriptors: list[dict[str, object]], master_seed: int
+) -> list[dict[str, object]]:
+    seeded: list[dict[str, object]] = []
+    for index, descriptor in enumerate(descriptors):
+        seeded.append(
+            {
+                "name": descriptor["name"],
+                "operation": dict(descriptor["operation"]),
+                "seed": core_module.Gaggle.derive_seed(
+                    master_seed, descriptor["name"], index
+                ),
+            }
+        )
+    return seeded
+
+
 def test_reduple_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = reduple_module._python_reduplicate_words(
@@ -114,7 +131,11 @@ def test_redactyl_whitespace_only_text_raises_value_error():
 def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master_seed: int) -> str:
     current = text
     for index, descriptor in enumerate(descriptors):
-        rng_seed = core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)
+        rng_seed = descriptor.get("seed")
+        if rng_seed is None:
+            rng_seed = core_module.Gaggle.derive_seed(
+                master_seed, descriptor["name"], index
+            )
         rng = random.Random(rng_seed)
         operation = descriptor["operation"]
         op_type = operation["type"]
@@ -151,7 +172,7 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
 
 def test_compose_glitchlings_matches_python_pipeline():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
-    descriptors = [
+    raw_descriptors = [
         {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
         {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5}},
         {
@@ -167,6 +188,7 @@ def test_compose_glitchlings_matches_python_pipeline():
     ]
     text = "Guard the vault at midnight"
     master_seed = 404
+    descriptors = _with_descriptor_seeds(raw_descriptors, master_seed)
     expected = _run_python_sequence(text, descriptors, master_seed)
     result = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
     assert result == expected
@@ -174,7 +196,7 @@ def test_compose_glitchlings_matches_python_pipeline():
 
 def test_compose_glitchlings_is_deterministic():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
-    descriptors = [
+    raw_descriptors = [
         {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
         {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
         {
@@ -187,6 +209,7 @@ def test_compose_glitchlings_is_deterministic():
             },
         },
     ]
+    descriptors = _with_descriptor_seeds(raw_descriptors, 777)
     text = "Guard the vault at midnight"
     first = zoo_rust.compose_glitchlings(text, descriptors, 777)
     second = zoo_rust.compose_glitchlings(text, descriptors, 777)
@@ -195,19 +218,23 @@ def test_compose_glitchlings_is_deterministic():
 
 def test_compose_glitchlings_propagates_glitch_errors():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
-    descriptors = [
-        {
-            "name": "Redactyl",
-            "operation": {
-                "type": "redact",
-                "replacement_char": redactyl_module.FULL_BLOCK,
-                "redaction_rate": 1.0,
-                "merge_adjacent": False,
-            },
-        }
-    ]
+    master_seed = 404
+    descriptors = _with_descriptor_seeds(
+        [
+            {
+                "name": "Redactyl",
+                "operation": {
+                    "type": "redact",
+                    "replacement_char": redactyl_module.FULL_BLOCK,
+                    "redaction_rate": 1.0,
+                    "merge_adjacent": False,
+                },
+            }
+        ],
+        master_seed,
+    )
     with pytest.raises(ValueError, match="contains no redactable words"):
-        zoo_rust.compose_glitchlings("   \t", descriptors, 404)
+        zoo_rust.compose_glitchlings("   \t", descriptors, master_seed)
 
 
 def test_gaggle_prefers_rust_pipeline(monkeypatch):
@@ -231,20 +258,29 @@ def test_gaggle_prefers_rust_pipeline(monkeypatch):
     monkeypatch.setattr(redactyl_module, "redact_words", _fail)
     monkeypatch.setattr(scannequin_module, "ocr_artifacts", _fail)
 
-    gaggle = core_module.Gaggle(
-        [
-            reduple_module.Reduple(reduplication_rate=0.4),
-            rushmore_module.Rushmore(max_deletion_rate=0.3),
-            redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=True),
-            scannequin_module.Scannequin(error_rate=0.2),
-        ],
-        seed=777,
-    )
+    gaggle_glitchlings = [
+        scannequin_module.Scannequin(error_rate=0.2),
+        reduple_module.Reduple(reduplication_rate=0.4),
+        rushmore_module.Rushmore(max_deletion_rate=0.3),
+        redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=True),
+    ]
+    gaggle = core_module.Gaggle(gaggle_glitchlings, seed=777)
 
     text = "Safeguard the archive tonight"
     result = gaggle(text)
     assert calls, "Expected the Rust pipeline to be invoked"
     descriptors = calls[0][1]
+    apply_names = [glitch.name for glitch in gaggle.apply_order]
+    original_names = [glitch.name for glitch in gaggle_glitchlings]
+    assert apply_names != original_names, "Expected Gaggle to reorder glitchlings"
+    expected_seeds = {
+        glitch.name: core_module.Gaggle.derive_seed(777, glitch.name, index)
+        for index, glitch in enumerate(gaggle_glitchlings)
+    }
+    assert [descriptor["seed"] for descriptor in descriptors] == [
+        expected_seeds[descriptor["name"]]
+        for descriptor in descriptors
+    ]
     expected = _run_python_sequence(text, descriptors, 777)
     assert result == expected
 
@@ -268,10 +304,11 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
 
     text = "Hold the door"
     result = gaggle(text)
-    descriptors = [
+    raw_descriptors = [
         {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
         {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
     ]
+    descriptors = _with_descriptor_seeds(raw_descriptors, 2024)
     expected = _run_python_sequence(text, descriptors, 2024)
     assert result == expected
 
