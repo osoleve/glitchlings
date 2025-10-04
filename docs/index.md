@@ -248,17 +248,10 @@ Capabilities at a glance:
 
 ## Testing checklist
 
-Before publishing changes or documenting new glitchlings, run the Pytest suite from the repository root:
-
-```bash
-pytest
-```
-
-Some tests require the NLTK WordNet corpus. If you see skips mentioning WordNet, install it with:
-
-```bash
-python -c "import nltk; nltk.download('wordnet')"
-```
+Before publishing changes or documenting new glitchlings, follow the
+[development setup guide](development_setup.md) to create a virtual environment,
+compile the Rust extension, and run the full suite with skip reporting enabled.
+The guide also covers installing the optional WordNet corpus for Jargoyle.
 
 ## Additional resources
 

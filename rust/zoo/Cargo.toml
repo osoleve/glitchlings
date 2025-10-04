@@ -2,6 +2,7 @@
 name = "zoo_rust"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [lib]
 name = "_zoo_rust"
@@ -10,6 +11,11 @@ crate-type = ["cdylib"]
 [dependencies]
 pyo3 = { workspace = true }
 regex = { workspace = true }
+once_cell = { workspace = true }
+blake2 = { workspace = true }
 
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"
+
+[build-dependencies]
+pyo3-build-config = { workspace = true }
