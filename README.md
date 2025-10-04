@@ -149,6 +149,10 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 Use `--help` for a complete breakdown of available options.
 
+## Development
+
+Follow the [development setup guide](docs/development.md) for editable installs, automated tests, and tips on enabling the Rust pipeline while you hack on new glitchlings.
+
 ## Starter 'lings
 
 For maintainability reasons, all `Glitchling` have consented to be given nicknames once they're in your care. See the [Monster Manual](MONSTER_MANUAL.md) for a complete bestiary.
