@@ -299,7 +299,11 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        let order = rng.sample_indices(candidates.len(), candidates.len())?;
+        let mut order: Vec<usize> = (0..candidates.len()).collect();
+        for idx in (1..order.len()).rev() {
+            let swap_with = rng.rand_index(idx + 1)?;
+            order.swap(idx, swap_with);
+        }
         let mut chosen: Vec<(usize, usize, &'static str)> = Vec::new();
         let mut occupied: Vec<(usize, usize)> = Vec::new();
 
