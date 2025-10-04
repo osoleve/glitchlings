@@ -7,6 +7,7 @@ reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
+core_module = importlib.import_module("glitchlings.zoo.core")
 
 
 def test_reduple_matches_python_fallback():
@@ -108,3 +109,187 @@ def test_redactyl_whitespace_only_text_raises_value_error():
     message = "contains no redactable words"
     with pytest.raises(ValueError, match=message):
         redactyl_module.redact_words("   \t\n  ", seed=2)
+
+
+def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master_seed: int) -> str:
+    current = text
+    for index, descriptor in enumerate(descriptors):
+        rng_seed = core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)
+        rng = random.Random(rng_seed)
+        operation = descriptor["operation"]
+        op_type = operation["type"]
+        if op_type == "reduplicate":
+            current = reduple_module._python_reduplicate_words(
+                current,
+                reduplication_rate=operation["reduplication_rate"],
+                rng=rng,
+            )
+        elif op_type == "delete":
+            current = rushmore_module._python_delete_random_words(
+                current,
+                max_deletion_rate=operation["max_deletion_rate"],
+                rng=rng,
+            )
+        elif op_type == "redact":
+            current = redactyl_module._python_redact_words(
+                current,
+                replacement_char=operation["replacement_char"],
+                redaction_rate=operation["redaction_rate"],
+                merge_adjacent=operation["merge_adjacent"],
+                rng=rng,
+            )
+        elif op_type == "ocr":
+            current = scannequin_module._python_ocr_artifacts(
+                current,
+                error_rate=operation["error_rate"],
+                rng=rng,
+            )
+        else:  # pragma: no cover - defensive guard
+            raise AssertionError(f"Unsupported operation type: {op_type!r}")
+    return current
+
+
+def test_compose_glitchlings_matches_python_pipeline():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    descriptors = [
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5}},
+        {
+            "name": "Redactyl",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_module.FULL_BLOCK,
+                "redaction_rate": 0.6,
+                "merge_adjacent": True,
+            },
+        },
+        {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.25}},
+    ]
+    text = "Guard the vault at midnight"
+    master_seed = 404
+    expected = _run_python_sequence(text, descriptors, master_seed)
+    result = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
+    assert result == expected
+
+
+def test_compose_glitchlings_is_deterministic():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    descriptors = [
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
+        {
+            "name": "Redactyl",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_module.FULL_BLOCK,
+                "redaction_rate": 0.6,
+                "merge_adjacent": True,
+            },
+        },
+    ]
+    text = "Guard the vault at midnight"
+    first = zoo_rust.compose_glitchlings(text, descriptors, 777)
+    second = zoo_rust.compose_glitchlings(text, descriptors, 777)
+    assert first == second == _run_python_sequence(text, descriptors, 777)
+
+
+def test_compose_glitchlings_propagates_glitch_errors():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    descriptors = [
+        {
+            "name": "Redactyl",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_module.FULL_BLOCK,
+                "redaction_rate": 1.0,
+                "merge_adjacent": False,
+            },
+        }
+    ]
+    with pytest.raises(ValueError, match="contains no redactable words"):
+        zoo_rust.compose_glitchlings("   \t", descriptors, 404)
+
+
+def test_gaggle_prefers_rust_pipeline(monkeypatch):
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    original_compose = zoo_rust.compose_glitchlings
+    calls: list[tuple[str, list[dict[str, object]], int]] = []
+
+    def spy(text: str, descriptors: list[dict[str, object]], master_seed: int) -> str:
+        calls.append((text, descriptors, master_seed))
+        return original_compose(text, descriptors, master_seed)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    monkeypatch.setattr(zoo_rust, "compose_glitchlings", spy)
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", spy, raising=False)
+
+    def _fail(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("Python fallback invoked")
+
+    monkeypatch.setattr(reduple_module, "reduplicate_words", _fail)
+    monkeypatch.setattr(rushmore_module, "delete_random_words", _fail)
+    monkeypatch.setattr(redactyl_module, "redact_words", _fail)
+    monkeypatch.setattr(scannequin_module, "ocr_artifacts", _fail)
+
+    gaggle = core_module.Gaggle(
+        [
+            reduple_module.Reduple(reduplication_rate=0.4),
+            rushmore_module.Rushmore(max_deletion_rate=0.3),
+            redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=True),
+            scannequin_module.Scannequin(error_rate=0.2),
+        ],
+        seed=777,
+    )
+
+    text = "Safeguard the archive tonight"
+    result = gaggle(text)
+    assert calls, "Expected the Rust pipeline to be invoked"
+    descriptors = calls[0][1]
+    expected = _run_python_sequence(text, descriptors, 777)
+    assert result == expected
+
+
+def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    def _fail(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("Rust pipeline should not run when feature flag is disabled")
+
+    monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
+
+    gaggle = core_module.Gaggle(
+        [
+            reduple_module.Reduple(reduplication_rate=0.4),
+            rushmore_module.Rushmore(max_deletion_rate=0.3),
+        ],
+        seed=2024,
+    )
+
+    text = "Hold the door"
+    result = gaggle(text)
+    descriptors = [
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
+    ]
+    expected = _run_python_sequence(text, descriptors, 2024)
+    assert result == expected
+
+
+def test_rust_pipeline_feature_flag_introspection(monkeypatch):
+    monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
+    assert not core_module._pipeline_feature_flag_enabled()
+    assert core_module.Gaggle.rust_pipeline_supported() is (
+        core_module._compose_glitchlings_rust is not None
+    )
+    assert not core_module.Gaggle.rust_pipeline_enabled()
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    if core_module.Gaggle.rust_pipeline_supported():
+        assert core_module.Gaggle.rust_pipeline_enabled()
+    else:
+        assert not core_module.Gaggle.rust_pipeline_enabled()
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "false")
+    assert not core_module._pipeline_feature_flag_enabled()
+    assert not core_module.Gaggle.rust_pipeline_enabled()

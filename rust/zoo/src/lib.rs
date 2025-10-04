@@ -1,80 +1,185 @@
+mod glitch_ops;
+mod pipeline;
+mod resources;
+mod rng;
+mod text_buffer;
+
+use glitch_ops::{GlitchOp, GlitchRng};
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyModule};
+use pyo3::types::{PyAny, PyDict, PyList, PyModule};
 use pyo3::Bound;
-use regex::{Captures, Regex};
+use pyo3::{exceptions::PyValueError, FromPyObject};
 
-#[inline]
-fn is_word_char(c: char) -> bool {
-    c.is_alphanumeric() || c == '_'
+pub use glitch_ops::{
+    DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
+    ReduplicateWordsOp,
+};
+pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
+pub use rng::{PyRng, PyRngError};
+pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
+
+struct PythonRngAdapter<'py> {
+    rng: Bound<'py, PyAny>,
 }
 
-fn is_whitespace_only(s: &str) -> bool {
-    s.chars().all(char::is_whitespace)
+impl<'py> PythonRngAdapter<'py> {
+    fn new(rng: Bound<'py, PyAny>) -> Self {
+        Self { rng }
+    }
 }
 
-fn split_with_separators(text: &str) -> Vec<String> {
-    let mut tokens: Vec<String> = Vec::new();
-    let mut last = 0;
-    let mut iter = text.char_indices().peekable();
+impl<'py> GlitchRng for PythonRngAdapter<'py> {
+    fn random(&mut self) -> Result<f64, glitch_ops::GlitchOpError> {
+        self.rng
+            .call_method0("random")
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
+            .extract()
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)
+    }
 
-    while let Some((idx, ch)) = iter.next() {
-        if ch.is_whitespace() {
-            let start = idx;
-            let mut end = idx + ch.len_utf8();
-            while let Some(&(next_idx, next_ch)) = iter.peek() {
-                if next_ch.is_whitespace() {
-                    iter.next();
-                    end = next_idx + next_ch.len_utf8();
-                } else {
-                    break;
-                }
+    fn rand_index(&mut self, upper: usize) -> Result<usize, glitch_ops::GlitchOpError> {
+        self.rng
+            .call_method1("randrange", (upper,))
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
+            .extract()
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)
+    }
+
+    fn sample_indices(
+        &mut self,
+        population: usize,
+        k: usize,
+    ) -> Result<Vec<usize>, glitch_ops::GlitchOpError> {
+        let py = self.rng.py();
+        let population_list = PyList::new_bound(py, 0..population).unbind();
+        self.rng
+            .call_method1("sample", (population_list, k))
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
+            .extract()
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)
+    }
+}
+
+#[derive(Debug)]
+struct PyGlitchDescriptor {
+    name: String,
+    operation: PyGlitchOperation,
+}
+
+impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
+    fn extract(obj: &'py PyAny) -> PyResult<Self> {
+        let dict: &PyDict = obj.downcast()?;
+        let name = dict
+            .get_item("name")?
+            .ok_or_else(|| PyValueError::new_err("descriptor missing 'name' field"))?
+            .extract()?;
+        let operation = dict
+            .get_item("operation")?
+            .ok_or_else(|| PyValueError::new_err("descriptor missing 'operation' field"))?
+            .extract()?;
+        Ok(Self { name, operation })
+    }
+}
+
+#[derive(Debug)]
+enum PyGlitchOperation {
+    Reduplicate {
+        reduplication_rate: f64,
+    },
+    Delete {
+        max_deletion_rate: f64,
+    },
+    Redact {
+        replacement_char: String,
+        redaction_rate: f64,
+        merge_adjacent: bool,
+    },
+    Ocr {
+        error_rate: f64,
+    },
+}
+
+impl<'py> FromPyObject<'py> for PyGlitchOperation {
+    fn extract(obj: &'py PyAny) -> PyResult<Self> {
+        let dict: &PyDict = obj.downcast()?;
+        let op_type: String = dict
+            .get_item("type")?
+            .ok_or_else(|| PyValueError::new_err("operation missing 'type' field"))?
+            .extract()?;
+        match op_type.as_str() {
+            "reduplicate" => {
+                let rate = dict
+                    .get_item("reduplication_rate")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("reduplicate operation missing 'reduplication_rate'")
+                    })?
+                    .extract()?;
+                Ok(PyGlitchOperation::Reduplicate {
+                    reduplication_rate: rate,
+                })
             }
-            tokens.push(text[last..start].to_string());
-            tokens.push(text[start..end].to_string());
-            last = end;
+            "delete" => {
+                let rate = dict
+                    .get_item("max_deletion_rate")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("delete operation missing 'max_deletion_rate'")
+                    })?
+                    .extract()?;
+                Ok(PyGlitchOperation::Delete {
+                    max_deletion_rate: rate,
+                })
+            }
+            "redact" => {
+                let replacement_char = dict
+                    .get_item("replacement_char")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("redact operation missing 'replacement_char'")
+                    })?
+                    .extract()?;
+                let redaction_rate = dict
+                    .get_item("redaction_rate")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("redact operation missing 'redaction_rate'")
+                    })?
+                    .extract()?;
+                let merge_adjacent = dict
+                    .get_item("merge_adjacent")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("redact operation missing 'merge_adjacent'")
+                    })?
+                    .extract()?;
+                Ok(PyGlitchOperation::Redact {
+                    replacement_char,
+                    redaction_rate,
+                    merge_adjacent,
+                })
+            }
+            "ocr" => {
+                let error_rate = dict
+                    .get_item("error_rate")?
+                    .ok_or_else(|| PyValueError::new_err("ocr operation missing 'error_rate'"))?
+                    .extract()?;
+                Ok(PyGlitchOperation::Ocr { error_rate })
+            }
+            other => Err(PyValueError::new_err(format!(
+                "unsupported operation type: {other}"
+            ))),
         }
     }
-
-    if last <= text.len() {
-        tokens.push(text[last..].to_string());
-    }
-
-    if tokens.is_empty() {
-        tokens.push(text.to_string());
-    }
-
-    tokens
 }
 
-fn split_affixes(word: &str) -> (String, String, String) {
-    let mut start_index: Option<usize> = None;
-    let mut end_index = 0;
-
-    for (idx, ch) in word.char_indices() {
-        if is_word_char(ch) {
-            if start_index.is_none() {
-                start_index = Some(idx);
-            }
-            end_index = idx + ch.len_utf8();
-        }
-    }
-
-    match start_index {
-        Some(start) => (
-            word[..start].to_string(),
-            word[start..end_index].to_string(),
-            word[end_index..].to_string(),
-        ),
-        None => (word.to_string(), String::new(), String::new()),
-    }
-}
-
-fn random_unit(rng: &Bound<'_, PyAny>) -> PyResult<f64> {
-    rng.call_method0("random")?.extract()
-}
-
-fn rand_index(rng: &Bound<'_, PyAny>, upper: usize) -> PyResult<usize> {
-    rng.call_method1("randrange", (upper,))?.extract()
+fn apply_operation<'py, O>(
+    text: &str,
+    op: O,
+    rng: &Bound<'py, PyAny>,
+) -> Result<String, glitch_ops::GlitchOpError>
+where
+    O: GlitchOp,
+{
+    let mut buffer = TextBuffer::from_str(text);
+    let mut adapter = PythonRngAdapter::new(rng.clone());
+    op.apply(&mut buffer, &mut adapter)?;
+    Ok(buffer.to_string())
 }
 
 #[pyfunction]
@@ -83,26 +188,8 @@ fn reduplicate_words(
     reduplication_rate: f64,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    if text.is_empty() {
-        return Ok(String::new());
-    }
-
-    let mut tokens = split_with_separators(text);
-    let mut i = 0;
-    while i < tokens.len() {
-        let word = tokens[i].clone();
-        if word.is_empty() || is_whitespace_only(&word) {
-            i += 2;
-            continue;
-        }
-        if random_unit(rng)? < reduplication_rate {
-            let (prefix, core, suffix) = split_affixes(&word);
-            tokens[i] = format!("{prefix}{core} {core}{suffix}");
-        }
-        i += 2;
-    }
-
-    Ok(tokens.concat())
+    let op = ReduplicateWordsOp { reduplication_rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[pyfunction]
@@ -111,168 +198,14 @@ fn delete_random_words(
     max_deletion_rate: f64,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    if text.is_empty() {
-        return Ok(String::new());
-    }
-
-    let mut tokens = split_with_separators(text);
-    let mut candidate_indices: Vec<usize> = Vec::new();
-    let mut i = 2;
-    while i < tokens.len() {
-        let word = &tokens[i];
-        if !word.is_empty() && !is_whitespace_only(word) {
-            candidate_indices.push(i);
-        }
-        i += 2;
-    }
-
-    let allowed = ((candidate_indices.len() as f64) * max_deletion_rate).floor() as usize;
-    if allowed == 0 {
-        return Ok(text.to_string());
-    }
-
-    let mut deletions = 0;
-    for idx in candidate_indices {
-        if deletions >= allowed {
-            break;
-        }
-
-        let word = tokens[idx].clone();
-        if random_unit(rng)? < max_deletion_rate {
-            let (prefix, _, suffix) = split_affixes(&word);
-            let trimmed_prefix = prefix.trim();
-            let trimmed_suffix = suffix.trim();
-            tokens[idx] = format!("{trimmed_prefix}{trimmed_suffix}");
-            deletions += 1;
-        }
-    }
-
-    let mut joined = tokens.concat();
-    if joined.is_empty() {
-        return Ok(joined);
-    }
-
-    let re_space_punct = Regex::new(r"\s+([.,;:])").unwrap();
-    joined = re_space_punct.replace_all(&joined, "$1").into_owned();
-
-    let re_multi_space = Regex::new(r"\s{2,}").unwrap();
-    joined = re_multi_space.replace_all(&joined, " ").into_owned();
-
-    Ok(joined.trim().to_string())
+    let op = DeleteRandomWordsOp { max_deletion_rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
-
-struct Candidate {
-    start: usize,
-    end: usize,
-    choices: &'static [&'static str],
-}
-
-const CONFUSION_TABLE: &[(&str, &[&str])] = &[
-    ("li", &["h"]),
-    ("h", &["li"]),
-    ("rn", &["m"]),
-    ("m", &["rn"]),
-    ("cl", &["d"]),
-    ("d", &["cl"]),
-    ("I", &["l"]),
-    ("l", &["I", "1"]),
-    ("1", &["l", "I"]),
-    ("0", &["O"]),
-    ("O", &["0"]),
-    ("B", &["8"]),
-    ("8", &["B"]),
-    ("S", &["5"]),
-    ("5", &["S"]),
-    ("Z", &["2"]),
-    ("2", &["Z"]),
-    ("G", &["6"]),
-    ("6", &["G"]),
-    ("“", &["\""]),
-    ("”", &["\""]),
-    ("‘", &["'"]),
-    ("’", &["'"]),
-    ("—", &["-"]),
-    ("–", &["-"]),
-];
 
 #[pyfunction]
 fn ocr_artifacts(text: &str, error_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
-    if text.is_empty() {
-        return Ok(String::new());
-    }
-
-    let mut table: Vec<(&str, &[&str])> = CONFUSION_TABLE.iter().copied().collect();
-    table.sort_by(|a, b| b.0.len().cmp(&a.0.len()));
-
-    let mut candidates: Vec<Candidate> = Vec::new();
-    for (src, choices) in table {
-        for (start, _) in text.match_indices(src) {
-            let end = start + src.len();
-            candidates.push(Candidate {
-                start,
-                end,
-                choices,
-            });
-        }
-    }
-
-    if candidates.is_empty() {
-        return Ok(text.to_string());
-    }
-
-    let mut to_select = (candidates.len() as f64 * error_rate).floor() as usize;
-    if to_select == 0 {
-        return Ok(text.to_string());
-    }
-
-    let mut i = candidates.len();
-    while i > 1 {
-        i -= 1;
-        let j = rand_index(rng, i + 1)?;
-        candidates.swap(i, j);
-    }
-
-    let mut chosen: Vec<(usize, usize, &'static str)> = Vec::with_capacity(to_select);
-    let mut occupied: Vec<(usize, usize)> = Vec::new();
-
-    for candidate in candidates {
-        if chosen.len() >= to_select {
-            break;
-        }
-        if occupied
-            .iter()
-            .any(|&(s, e)| !(candidate.end <= s || e <= candidate.start))
-        {
-            continue;
-        }
-        if candidate.choices.is_empty() {
-            continue;
-        }
-        let idx = rand_index(rng, candidate.choices.len())?;
-        let replacement = candidate.choices[idx];
-        chosen.push((candidate.start, candidate.end, replacement));
-        occupied.push((candidate.start, candidate.end));
-    }
-
-    if chosen.is_empty() {
-        return Ok(text.to_string());
-    }
-
-    chosen.sort_by_key(|&(start, _, _)| start);
-    let mut output = String::with_capacity(text.len());
-    let mut cursor = 0;
-    for (start, end, replacement) in chosen {
-        if cursor < start {
-            output.push_str(&text[cursor..start]);
-        }
-        output.push_str(replacement);
-        cursor = end;
-    }
-    if cursor < text.len() {
-        output.push_str(&text[cursor..]);
-    }
-
-    Ok(output)
+    let op = OcrArtifactsOp { error_rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[pyfunction]
@@ -283,93 +216,54 @@ fn redact_words(
     merge_adjacent: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    let mut tokens = split_with_separators(text);
-    let word_indices: Vec<usize> = tokens
-        .iter()
-        .enumerate()
-        .filter_map(|(i, token)| {
-            if i % 2 == 0 && !token.trim().is_empty() {
-                Some(i)
-            } else {
-                None
-            }
-        })
-        .collect();
+    let op = RedactWordsOp {
+        replacement_char: replacement_char.to_string(),
+        redaction_rate,
+        merge_adjacent,
+    };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+}
 
-    if word_indices.is_empty() {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "Cannot redact words because the input text contains no redactable words.",
-        ));
-    }
-
-    let mut num_to_redact = (word_indices.len() as f64 * redaction_rate).floor() as usize;
-    if num_to_redact < 1 {
-        num_to_redact = 1;
-    }
-    if num_to_redact > word_indices.len() {
-        return Err(pyo3::exceptions::PyValueError::new_err(
-            "Cannot redact more words than available in text",
-        ));
-    }
-
-    let mut pool = word_indices.clone();
-    let mut selected: Vec<usize> = Vec::with_capacity(num_to_redact);
-    let mut remaining = pool.len();
-    for _ in 0..num_to_redact {
-        let idx = rand_index(rng, remaining)?;
-        selected.push(pool[idx]);
-        pool.swap(idx, remaining - 1);
-        remaining -= 1;
-    }
-    selected.sort_unstable();
-
-    for index in selected {
-        if index >= tokens.len() {
-            continue;
-        }
-        let original = tokens[index].clone();
-        if original.is_empty() || is_whitespace_only(&original) {
-            continue;
-        }
-        let (prefix, core, suffix) = split_affixes(&original);
-        let core_len = core.chars().count();
-        if core_len == 0 {
-            tokens[index] = original;
-            continue;
-        }
-        let mut replacement =
-            String::with_capacity(prefix.len() + suffix.len() + replacement_char.len() * core_len);
-        replacement.push_str(&prefix);
-        for _ in 0..core_len {
-            replacement.push_str(replacement_char);
-        }
-        replacement.push_str(&suffix);
-        tokens[index] = replacement;
-    }
-
-    let mut result = tokens.concat();
-
-    if merge_adjacent {
-        let pattern = format!(
-            "{}\\W+{}",
-            regex::escape(replacement_char),
-            regex::escape(replacement_char)
-        );
-        let regex = Regex::new(&pattern).unwrap();
-        result = regex
-            .replace_all(&result, |caps: &Captures| {
-                let matched = caps.get(0).unwrap().as_str();
-                let repeat = matched.chars().count().saturating_sub(1);
-                let mut builder = String::new();
-                for _ in 0..repeat {
-                    builder.push_str(replacement_char);
+#[pyfunction]
+fn compose_glitchlings(
+    text: &str,
+    descriptors: Vec<PyGlitchDescriptor>,
+    master_seed: i128,
+) -> PyResult<String> {
+    let operations = descriptors
+        .into_iter()
+        .map(|descriptor| {
+            let operation = match descriptor.operation {
+                PyGlitchOperation::Reduplicate { reduplication_rate } => {
+                    GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
+                        reduplication_rate,
+                    })
                 }
-                builder
+                PyGlitchOperation::Delete { max_deletion_rate } => {
+                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { max_deletion_rate })
+                }
+                PyGlitchOperation::Redact {
+                    replacement_char,
+                    redaction_rate,
+                    merge_adjacent,
+                } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
+                    replacement_char,
+                    redaction_rate,
+                    merge_adjacent,
+                }),
+                PyGlitchOperation::Ocr { error_rate } => {
+                    GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
+                }
+            };
+            Ok(GlitchDescriptor {
+                name: descriptor.name,
+                operation,
             })
-            .into_owned();
-    }
+        })
+        .collect::<Result<Vec<_>, PyErr>>()?;
 
-    Ok(result)
+    let pipeline = Pipeline::new(master_seed, operations);
+    pipeline.run(text).map_err(|error| error.into_pyerr())
 }
 
 #[pymodule]
@@ -378,5 +272,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
+    m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     Ok(())
 }
