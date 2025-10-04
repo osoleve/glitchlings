@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+import math
 import string
+
+import pytest
+
+pytest.importorskip("hypothesis")
 
 from hypothesis import assume, given, strategies as st
 
 from glitchlings.zoo.core import AttackOrder, AttackWave, Gaggle, Glitchling
+import glitchlings.zoo.rushmore as rushmore_module
+import glitchlings.zoo.typogre as typogre_module
 
 
 def _build_corruption(name: str, amplitude: int):
@@ -91,3 +98,42 @@ def test_derived_seeds_change_with_inputs(left, right):
 
     assume(left != right)
     assert Gaggle.derive_seed(*left) != Gaggle.derive_seed(*right)
+
+
+@given(
+    text=st.text(min_size=0, max_size=40),
+    rate=st.floats(min_value=0.0, max_value=0.3),
+    seed=st.integers(min_value=0, max_value=2**32 - 1),
+)
+def test_typogre_length_change_stays_within_bound(text: str, rate: float, seed: int) -> None:
+    result = typogre_module.fatfinger(text, max_change_rate=rate, seed=seed)
+
+    if not text:
+        assert result == ""
+        return
+
+    max_changes = max(1, int(len(text) * rate))
+    min_len = max(len(text) - max_changes, 0)
+    max_len = len(text) + max_changes
+    assert min_len <= len(result) <= max_len
+
+
+@given(
+    text=st.text(alphabet=string.ascii_letters + " ", min_size=2, max_size=40),
+    rate=st.floats(min_value=0.0, max_value=1.0),
+    seed=st.integers(min_value=0, max_value=2**32 - 1),
+)
+def test_rushmore_preserves_first_token_and_respects_cap(text: str, rate: float, seed: int) -> None:
+    words = text.split()
+    assume(len(words) > 1)
+
+    result = rushmore_module.delete_random_words(text, max_deletion_rate=rate, seed=seed)
+    result_words = result.split()
+    assert result_words
+    assert result_words[0] == words[0]
+
+    candidate_count = max(len(words) - 1, 0)
+    allowed = min(candidate_count, math.floor(candidate_count * rate))
+    removed = len(words) - len(result_words)
+    assert removed <= allowed
+
