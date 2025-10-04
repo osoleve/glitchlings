@@ -2,34 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-import nltk
-from nltk.corpus import wordnet as wn
-
-from glitchlings.zoo.jargoyle import substitute_random_synonyms
+from glitchlings.zoo.jargoyle import ensure_wordnet, substitute_random_synonyms
 
 
-def _ensure_wordnet_loaded() -> bool:
-    """Attempt to load WordNet, downloading it on demand if necessary."""
-
-    try:  # pragma: no cover - exercised by missing corpus branches
-        wn.ensure_loaded()
-    except LookupError:
-        # Fetch the corpus quietly; pytest output already reports skips.
-        nltk.download("wordnet", quiet=True)
-        try:
-            wn.ensure_loaded()
-        except LookupError:
-            return False
-    return True
-
-
-WORDNET_AVAILABLE = _ensure_wordnet_loaded()
-
-
-pytestmark = pytest.mark.skipif(
-    not WORDNET_AVAILABLE,
-    reason="NLTK WordNet corpus unavailable; skipping jargoyle POS tests.",
-)
+@pytest.fixture(scope="module", autouse=True)
+def _wordnet_ready() -> None:
+    try:  # pragma: no cover - only exercised when downloads fail
+        ensure_wordnet()
+    except RuntimeError as exc:  # pragma: no cover - failure propagates clearly
+        pytest.fail(f"WordNet unavailable for jargoyle tests: {exc}")
 
 
 def _clean_tokens(text: str) -> list[str]:

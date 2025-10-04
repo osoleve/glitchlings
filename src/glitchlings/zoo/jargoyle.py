@@ -5,31 +5,79 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 import nltk
-from nltk.corpus import wordnet as wn
-from .core import Glitchling, AttackWave
+from nltk.corpus.reader import WordNetCorpusReader
+from nltk.data import find
+
+from .core import AttackWave, Glitchling
+
+try:  # pragma: no cover - exercised when the namespace package is present
+    from nltk.corpus import wordnet as _WORDNET_MODULE
+except ModuleNotFoundError:  # pragma: no cover - triggered on modern NLTK installs
+    _WORDNET_MODULE = None
+
+_WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
 
 _wordnet_ready = False
 
 
-def _ensure_wordnet() -> None:
+def _load_wordnet_reader() -> WordNetCorpusReader:
+    """Return a WordNet corpus reader from the downloaded corpus files."""
+
+    try:
+        root = find("corpora/wordnet")
+    except LookupError:
+        try:
+            zip_root = find("corpora/wordnet.zip")
+        except LookupError as exc:
+            raise RuntimeError(
+                "The NLTK WordNet corpus is not installed; run `nltk.download('wordnet')`."
+            ) from exc
+        root = zip_root.join("wordnet/")
+
+    return WordNetCorpusReader(root, None)
+
+
+def _wordnet(force_refresh: bool = False) -> WordNetCorpusReader | Any:
+    """Retrieve the active WordNet handle, rebuilding it on demand."""
+
+    global _WORDNET_HANDLE
+
+    if force_refresh:
+        _WORDNET_HANDLE = _WORDNET_MODULE
+
+    if _WORDNET_HANDLE is not None:
+        return _WORDNET_HANDLE
+
+    _WORDNET_HANDLE = _load_wordnet_reader()
+    return _WORDNET_HANDLE
+
+
+def ensure_wordnet() -> None:
     """Ensure the WordNet corpus is available before use."""
 
     global _wordnet_ready
     if _wordnet_ready:
         return
 
+    resource = _wordnet()
+
     try:
-        wn.ensure_loaded()
+        resource.ensure_loaded()
     except LookupError:
         nltk.download("wordnet", quiet=True)
         try:
-            wn.ensure_loaded()
+            resource = _wordnet(force_refresh=True)
+            resource.ensure_loaded()
         except LookupError as exc:  # pragma: no cover - only triggered when download fails
             raise RuntimeError(
                 "Unable to load NLTK WordNet corpus for the jargoyle glitchling."
             ) from exc
 
     _wordnet_ready = True
+
+
+# Backwards compatibility for callers relying on the previous private helper name.
+_ensure_wordnet = ensure_wordnet
 
 
 PartOfSpeech = Literal["n", "v", "a", "r"]
@@ -91,9 +139,10 @@ def _collect_synonyms(
     """Gather deterministic synonym candidates for the supplied word."""
 
     normalized_word = word.lower()
+    wordnet = _wordnet()
     synonyms: set[str] = set()
     for pos_tag in parts_of_speech:
-        synsets = wn.synsets(word, pos=pos_tag)
+        synsets = wordnet.synsets(word, pos=pos_tag)
         if not synsets:
             continue
 
@@ -141,7 +190,8 @@ def substitute_random_synonyms(
     - Synonyms sorted before rng.choice to fix ordering.
     - For each POS, the first synset containing alternate lemmas is used for stability.
     """
-    _ensure_wordnet()
+    ensure_wordnet()
+    wordnet = _wordnet()
 
     active_rng: random.Random
     if rng is not None:
@@ -164,7 +214,7 @@ def substitute_random_synonyms(
                 continue
 
             available_pos: NormalizedPartsOfSpeech = tuple(
-                pos for pos in target_pos if wn.synsets(core_word, pos=pos)
+                pos for pos in target_pos if wordnet.synsets(core_word, pos=pos)
             )
             if available_pos:
                 candidate_indices.append(idx)
@@ -222,4 +272,4 @@ class Jargoyle(Glitchling):
 jargoyle = Jargoyle()
 
 
-__all__ = ["Jargoyle", "jargoyle"]
+__all__ = ["Jargoyle", "ensure_wordnet", "jargoyle"]

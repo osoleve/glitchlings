@@ -1,11 +1,14 @@
-name: Build & Publish (PyPI)
+name: Build & Publish (TestPyPI)
+
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches:
+      - dev
+
 permissions:
   contents: read
   id-token: write
+
 jobs:
   build-wheels:
     runs-on: ${{ matrix.os }}
@@ -24,8 +27,9 @@ jobs:
           CIBW_BUILD: "cp312-*"
           CIBW_SKIP: "pp* *-win32"
           CIBW_TEST_COMMAND: "pytest -q"
-          CIBW_TEST_EXTRAS: "dev"
+          CIBW_TEST_EXTRAS: "dev,hf,wordnet"
           CIBW_TEST_REQUIRES: "pytest"
+          CIBW_BEFORE_TEST: "python -m nltk.downloader wordnet"
           CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
       - run: python -m build --sdist
@@ -36,6 +40,8 @@ jobs:
   publish:
     needs: [build-wheels]
     runs-on: ubuntu-latest
+    environment:
+      name: testpypi
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -44,4 +50,7 @@ jobs:
           merge-multiple: true
       - uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
+          user: __token__
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}

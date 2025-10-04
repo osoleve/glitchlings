@@ -1,6 +1,7 @@
 """Core data structures used to model glitchlings and their interactions."""
 
 import inspect
+import logging
 import os
 import random
 from enum import IntEnum, auto
@@ -20,6 +21,9 @@ try:  # pragma: no cover - optional dependency
     from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
 except ImportError:  # pragma: no cover - compiled extension not present
     _compose_glitchlings_rust = None
+
+
+log = logging.getLogger(__name__)
 
 
 _PIPELINE_FEATURE_FLAG_ENV = "GLITCHLINGS_RUST_PIPELINE"
@@ -389,7 +393,7 @@ class Gaggle(Glitchling):
             try:
                 return _compose_glitchlings_rust(text, descriptors, master_seed)
             except Exception:  # pragma: no cover - fall back to Python execution
-                pass
+                log.debug("Rust pipeline failed; falling back", exc_info=True)
 
         corrupted = text
         for glitchling in self.apply_order:

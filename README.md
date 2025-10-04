@@ -63,7 +63,7 @@ Glitchlings slot into evaluation pipelines just as easily as they corrupt stray 
 The refactored Rust pipeline can execute multiple glitchlings without
 bouncing back through Python, but it is gated behind a feature flag so
 teams can roll it out gradually. After compiling the Rust extension
-(`maturin develop -m rust/zoo/Cargo.toml`) set
+(`python -m cibuildwheel --output-dir dist`) set
 `GLITCHLINGS_RUST_PIPELINE=1` (or `true`, `yes`, `on`) before importing
 `glitchlings`. When the flag is set and the extension is available,
 `Gaggle` automatically batches compatible glitchlings into the Rust

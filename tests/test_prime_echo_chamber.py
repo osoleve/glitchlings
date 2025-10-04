@@ -1,4 +1,7 @@
-from datasets import Dataset
+import pytest
+
+datasets = pytest.importorskip("datasets")
+Dataset = datasets.Dataset
 
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 
