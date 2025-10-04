@@ -40,10 +40,20 @@ static BASE_CONFUSION_TABLE: &[(&str, &[&str])] = &[
 /// Sorted confusion pairs reused by glitchling implementations.
 pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])>> =
     Lazy::new(|| {
-        let mut entries: Vec<(&'static str, &'static [&'static str])> =
-            BASE_CONFUSION_TABLE.iter().copied().collect();
-        entries.sort_by(|a, b| b.0.len().cmp(&a.0.len()).then_with(|| a.0.cmp(b.0)));
-        entries
+        let mut entries: Vec<(usize, (&'static str, &'static [&'static str]))> =
+            BASE_CONFUSION_TABLE
+                .iter()
+                .copied()
+                .enumerate()
+                .collect();
+        entries.sort_by(|a, b| {
+            let a_len = a.1 .0.len();
+            let b_len = b.1 .0.len();
+            b_len
+                .cmp(&a_len)
+                .then_with(|| a.0.cmp(&b.0))
+        });
+        entries.into_iter().map(|(_, pair)| pair).collect()
     });
 
 /// Returns the pre-sorted OCR confusion table.

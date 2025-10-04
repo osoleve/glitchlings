@@ -64,6 +64,18 @@ def test_scannequin_matches_python_fallback():
     assert result == expected == "Tlie rn m"
 
 
+@pytest.mark.parametrize("seed", [0, 1, 2, 5, 13])
+def test_scannequin_overlap_candidates_matches_python(seed: int):
+    text = "cl rn li"
+    expected = scannequin_module._python_ocr_artifacts(
+        text,
+        error_rate=1.0,
+        rng=random.Random(seed),
+    )
+    result = scannequin_module.ocr_artifacts(text, error_rate=1.0, seed=seed)
+    assert result == expected
+
+
 def test_redactyl_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = redactyl_module._python_redact_words(

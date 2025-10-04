@@ -299,7 +299,14 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        let order = rng.sample_indices(candidates.len(), candidates.len())?;
+        let mut order: Vec<usize> = (0..candidates.len()).collect();
+        // We hand-roll Fisher–Yates instead of using helper utilities so the
+        // shuffle mirrors Python's `random.shuffle` exactly. The regression
+        // tests rely on this parity to keep the Rust and Python paths in lockstep.
+        for idx in (1..order.len()).rev() {
+            let swap_with = rng.rand_index(idx + 1)?;
+            order.swap(idx, swap_with);
+        }
         let mut chosen: Vec<(usize, usize, &'static str)> = Vec::new();
         let mut occupied: Vec<(usize, usize)> = Vec::new();
 
