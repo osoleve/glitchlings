@@ -6,8 +6,9 @@ Welcome to the Glitchlings field manual! This GitHub Pages-ready guide explains 
 
 1. [Installation](#installation)
 2. [Quickstart](#quickstart)
-3. [The Gaggle orchestrator](#the-gaggle-orchestrator)
-4. [Glitchling reference](#glitchling-reference)
+3. [Rust pipeline acceleration (opt-in)](#rust-pipeline-acceleration-opt-in)
+4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
+5. [Glitchling reference](#glitchling-reference)
    - [Typogre](#typogre)
    - [Mim1c](#mim1c)
    - [Reduple](#reduple)
@@ -15,11 +16,11 @@ Welcome to the Glitchlings field manual! This GitHub Pages-ready guide explains 
    - [Redactyl](#redactyl)
    - [Jargoyle](#jargoyle)
    - [Scannequin](#scannequin)
-5. [Dataset workflows](#dataset-workflows)
-6. [Prime Intellect integration](#prime-intellect-integration)
-7. [Ensuring determinism](#ensuring-determinism)
-8. [Testing checklist](#testing-checklist)
-9. [Additional resources](#additional-resources)
+6. [Dataset workflows](#dataset-workflows)
+7. [Prime Intellect integration](#prime-intellect-integration)
+8. [Ensuring determinism](#ensuring-determinism)
+9. [Testing checklist](#testing-checklist)
+10. [Additional resources](#additional-resources)
 
 ## Installation
 
@@ -48,6 +49,8 @@ pip install -e .
 ```
 
 If you plan to experiment with the PyO3 acceleration crates, install `maturin` and run `maturin develop` from each crate directory inside the `rust/` folder to compile the optional Rust fast paths.
+
+Looking for a complete development workflow (virtual environments, test suite, and Rust tips)? Consult the [development setup guide](development.md).
 
 ## Quickstart
 
@@ -84,6 +87,28 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
 
 Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly.
+
+## Rust pipeline acceleration (opt-in)
+
+The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. Enable it behind the feature flag when the compiled extension is available:
+
+1. Compile the Rust crate once per environment:
+
+   ```bash
+   maturin develop -m rust/zoo/Cargo.toml
+   ```
+
+   Re-run the command after switching Python versions or pulling changes that touch the Rust sources.
+
+2. Export the feature flag before importing `glitchlings`:
+
+   ```bash
+   export GLITCHLINGS_RUST_PIPELINE=1
+   ```
+
+   Any truthy value (`1`, `true`, `yes`, `on`) enables the fast path. When the flag is unset or the extension is missing, `Gaggle` transparently falls back to the pure-Python pipeline.
+
+The orchestrator automatically groups Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin into the accelerated wave order while leaving incompatible glitchlings (or custom implementations) on the legacy path.
 
 ## The Gaggle orchestrator
 
@@ -264,5 +289,6 @@ python -c "import nltk; nltk.download('wordnet')"
 
 - [Monster Manual](../MONSTER_MANUAL.md) – complete bestiary with flavour text.
 - [Repository README](../README.md) – project overview and ASCII ambience.
+- [Development setup](development.md) – local environment, testing, and Rust acceleration guide.
 
 Once the `/docs` folder is published through GitHub Pages, this guide becomes the landing site for your glitchling adventures.
