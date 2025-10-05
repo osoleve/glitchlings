@@ -64,7 +64,7 @@ jobs:
             GLITCHLINGS_RUST_PIPELINE=1
             PYO3_PYTHON=$(python -c "import sys; print(sys.executable)")
           CIBW_BUILD: "cp312-*"
-          CIBW_SKIP: "pp* *-win32"
+          CIBW_SKIP: "*-win32"
           CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q {project}/tests"
           CIBW_TEST_EXTRAS: "dev"
           CIBW_TEST_REQUIRES: "pytest nltk"
