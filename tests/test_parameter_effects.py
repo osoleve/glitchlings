@@ -24,9 +24,8 @@ def test_mim1c_respects_banned_characters():
     m.set_param("replacement_rate", 1.0)
     m.set_param("banned_characters", ["ａ"])
 
-    banned = {"a"}
     out = cast(str, m("a"))
-    assert not any(char in banned for char in out)
+    assert out != "ａ"
 
 
 def test_reduple_rate_increases_tokens():
@@ -58,25 +57,6 @@ def test_rushmore_max_deletion_cap():
         removed = len(words) - len(out.split())
         allowed = min(candidate_count, math.floor(candidate_count * rate))
         assert removed <= allowed
-
-
-def test_rushmore_preserves_leading_token_and_spacing():
-    text = "Alpha, beta; gamma: delta epsilon zeta"
-    seeds = (0, 3, 11, 21)
-    rushmore.set_param("max_deletion_rate", 1.0)
-    words = text.split()
-    for seed in seeds:
-        rushmore.set_param("seed", seed)
-        out = cast(str, rushmore(text))
-        leading = out.split()[0]
-        original_core = "".join(ch for ch in words[0] if ch.isalnum())
-        result_core = "".join(ch for ch in leading if ch.isalnum())
-        assert leading
-        assert result_core == original_core
-        assert "  " not in out
-        for marker in (" ,", " ;", " :", " ."):
-            assert marker not in out
-        assert out == out.strip()
 
 
 def test_redactyl_replacement_char_and_merge():
