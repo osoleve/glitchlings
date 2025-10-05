@@ -46,7 +46,7 @@ jobs:
           CIBW_SKIP: "pp* *-win32"
           CIBW_TEST_COMMAND: "pytest -q"
           CIBW_TEST_EXTRAS: "dev,hf,wordnet"
-          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_REQUIRES: "pytest nltk"
           CIBW_BEFORE_TEST: "python -m nltk.downloader wordnet"
           CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
