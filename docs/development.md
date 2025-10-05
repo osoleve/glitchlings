@@ -67,3 +67,4 @@ Unset the environment variable (or set it to `0`/`false`) to fall back to the pu
 
 - Use `python -m glitchlings --help` to smoke-test CLI changes quickly.
 - Check `docs/index.md` for end-user guidance—keep it in sync with behaviour changes when you ship new glitchlings or orchestration features.
+- When a TestPyPI publish fails, sync `dev` with `trunk` and recreate the release tag to trigger the workflow again. A helper script lives at `scripts/retry_testpypi_release.sh`—pass it the tag name (`./scripts/retry_testpypi_release.sh v1.2.3`) to fast-forward `dev`, delete and recreate the tag, and push both updates.
