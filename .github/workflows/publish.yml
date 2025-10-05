@@ -39,6 +39,8 @@ jobs:
           CIBW_TEST_REQUIRES: "pytest nltk"
           CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
+          CIBW_BEFORE_ALL_LINUX: "su cibuildwheel -c \"curl https://sh.rustup.rs -sSf | sh -s -- -y\""
+          CIBW_ENVIRONMENT_LINUX: "PATH=$HOME/.cargo/bin:$PATH CARGO_HOME=$HOME/.cargo"
       - run: python -m build --sdist
       - uses: actions/upload-artifact@v4
         with:
