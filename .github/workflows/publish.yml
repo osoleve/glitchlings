@@ -15,17 +15,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
+      - name: Add Cargo bin to PATH (Unix)
+        if: matrix.os != 'windows-latest'
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      - name: Add Cargo bin to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+          $cargoBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --upgrade pip build cibuildwheel
+      - run: |
+          python -m pip install --upgrade pip
+          pip install build cibuildwheel setuptools-rust
       - run: python -m cibuildwheel --output-dir dist
         env:
           CIBW_BUILD: "cp312-*"
           CIBW_SKIP: "pp* *-win32"
-          CIBW_TEST_COMMAND: "pytest -q"
+          CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q {project}/tests"
           CIBW_TEST_EXTRAS: "dev"
-          CIBW_TEST_REQUIRES: "pytest"
+          CIBW_TEST_REQUIRES: "pytest nltk"
           CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
       - run: python -m build --sdist

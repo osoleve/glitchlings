@@ -5,15 +5,18 @@ from __future__ import annotations
 import math
 import string
 
+import importlib
+
 import pytest
 
 pytest.importorskip("hypothesis")
 
-from hypothesis import assume, given, strategies as st
+from hypothesis import HealthCheck, assume, given, settings, strategies as st
 
 from glitchlings.zoo.core import AttackOrder, AttackWave, Gaggle, Glitchling
-import glitchlings.zoo.rushmore as rushmore_module
-import glitchlings.zoo.typogre as typogre_module
+
+rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
+typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 
 
 def _build_corruption(name: str, amplitude: int):
@@ -44,6 +47,13 @@ def glitchling_specs(draw):
     order = draw(st.sampled_from(list(AttackOrder)))
     amplitude = draw(st.integers(min_value=0, max_value=4))
     return {"name": name, "wave": wave, "order": order, "amplitude": amplitude}
+
+
+word_sequences = st.lists(
+    st.text(alphabet=string.ascii_letters, min_size=1, max_size=12),
+    min_size=2,
+    max_size=12,
+).map(lambda parts: " ".join(parts))
 
 
 @given(
@@ -118,21 +128,21 @@ def test_typogre_length_change_stays_within_bound(text: str, rate: float, seed: 
     assert min_len <= len(result) <= max_len
 
 
+@settings(suppress_health_check=[HealthCheck.filter_too_much, HealthCheck.too_slow])
 @given(
-    text=st.text(alphabet=string.ascii_letters + " ", min_size=2, max_size=40),
+    text=word_sequences,
     rate=st.floats(min_value=0.0, max_value=1.0),
     seed=st.integers(min_value=0, max_value=2**32 - 1),
 )
 def test_rushmore_preserves_first_token_and_respects_cap(text: str, rate: float, seed: int) -> None:
     words = text.split()
-    assume(len(words) > 1)
 
     result = rushmore_module.delete_random_words(text, max_deletion_rate=rate, seed=seed)
     result_words = result.split()
     assert result_words
     assert result_words[0] == words[0]
 
-    candidate_count = max(len(words) - 1, 0)
+    candidate_count = len(words) - 1
     allowed = min(candidate_count, math.floor(candidate_count * rate))
     removed = len(words) - len(result_words)
     assert removed <= allowed

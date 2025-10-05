@@ -35,6 +35,17 @@ jobs:
           rustc --version
           which rustc
 
+      - name: Add Cargo bin to PATH (Unix)
+        if: matrix.os != 'windows-latest'
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Add Cargo bin to PATH (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $cargoBin = Join-Path $env:USERPROFILE '.cargo\bin'
+          $cargoBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -49,10 +60,10 @@ jobs:
         run: python -m cibuildwheel --output-dir dist
         env:
           # Ensure Rust is visible inside cibuildwheel
-          CIBW_ENVIRONMENT: "PATH=$HOME/.cargo/bin:$PATH GLITCHLINGS_RUST_PIPELINE=1"
+          CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_BUILD: "cp312-*"
           CIBW_SKIP: "pp* *-win32"
-          CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q"
+          CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q {project}/tests"
           CIBW_TEST_EXTRAS: "dev"
           CIBW_TEST_REQUIRES: "pytest nltk"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
