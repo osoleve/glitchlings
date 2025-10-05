@@ -3,6 +3,11 @@ import pytest
 datasets = pytest.importorskip("datasets")
 Dataset = datasets.Dataset
 
+# The Prime DLC depends on the optional ``verifiers`` package. Skip these
+# tests entirely when it isn't installed (e.g. in wheel builds that don't
+# request the ``prime`` extra).
+pytest.importorskip("verifiers")
+
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 from glitchlings.dlc import prime
 
