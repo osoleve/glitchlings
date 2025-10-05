@@ -37,7 +37,9 @@ jobs:
           CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q {project}/tests"
           CIBW_TEST_EXTRAS: "dev"
           CIBW_TEST_REQUIRES: "pytest nltk"
-          CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
+          CIBW_ENVIRONMENT: >
+            GLITCHLINGS_RUST_PIPELINE=1
+            PYO3_PYTHON=$(python -c "import sys; print(sys.executable)")
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
           CIBW_BEFORE_ALL_LINUX: "curl https://sh.rustup.rs -sSf | sh -s -- -y --profile minimal --default-toolchain stable"
           CIBW_ENVIRONMENT_LINUX: "PATH=/root/.cargo/bin:$PATH CARGO_HOME=/root/.cargo"

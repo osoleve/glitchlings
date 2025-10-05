@@ -60,7 +60,9 @@ jobs:
         run: python -m cibuildwheel --output-dir dist
         env:
           # Ensure Rust is visible inside cibuildwheel
-          CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
+          CIBW_ENVIRONMENT: >
+            GLITCHLINGS_RUST_PIPELINE=1
+            PYO3_PYTHON=$(python -c "import sys; print(sys.executable)")
           CIBW_BUILD: "cp312-*"
           CIBW_SKIP: "pp* *-win32"
           CIBW_TEST_COMMAND: "python -m nltk.downloader wordnet && pytest -q {project}/tests"
