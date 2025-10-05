@@ -2,7 +2,8 @@ name: Build & Publish (TestPyPI)
 
 on:
   push:
-    branches: [dev]
+    branches:
+      - dev
   workflow_dispatch:
 
 permissions:
@@ -19,15 +20,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Ensure Rust toolchain is available on every platform
-      - name: Install Rust
+      # Ensure Rust is installed on all OS runners
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
 
-      - name: Add macOS target (only on macOS)
+      - name: Add macOS target (macOS only)
         if: matrix.os == 'macos-latest'
         run: rustup target add x86_64-apple-darwin
+
+      - name: Verify Rust toolchain
+        run: |
+          rustc --version
+          which rustc
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -42,13 +48,14 @@ jobs:
       - name: Build wheels
         run: python -m cibuildwheel --output-dir dist
         env:
+          # Ensure Rust is visible inside cibuildwheel (fixes macOS arch isolation)
+          CIBW_ENVIRONMENT: "PATH=$HOME/.cargo/bin:$PATH GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_BUILD: "cp312-*"
           CIBW_SKIP: "pp* *-win32"
           CIBW_TEST_COMMAND: "pytest -q"
-          CIBW_TEST_EXTRAS: "dev,hf,wordnet"
+          CIBW_TEST_EXTRAS: "dev"
           CIBW_TEST_REQUIRES: "pytest nltk"
           CIBW_BEFORE_TEST: "python -m nltk.downloader wordnet"
-          CIBW_ENVIRONMENT: "GLITCHLINGS_RUST_PIPELINE=1"
           CIBW_ARCHS_MACOS: "x86_64 arm64 universal2"
 
       - name: Build source distribution
@@ -71,7 +78,8 @@ jobs:
           pattern: dist-*
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
