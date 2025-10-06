@@ -9,13 +9,13 @@ Welcome to the Glitchlings field manual! This GitHub Pages-ready guide explains 
 3. [Rust pipeline acceleration (opt-in)](#rust-pipeline-acceleration-opt-in)
 4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
 5. [Glitchling reference](#glitchling-reference)
-   - [Typogre](#typogre)
-   - [Mim1c](#mim1c)
-   - [Reduple](#reduple)
-   - [Rushmore](#rushmore)
-   - [Redactyl](#redactyl)
-   - [Jargoyle](#jargoyle)
-   - [Scannequin](#scannequin)
+   - [Typogre](glitchlings/typogre.md)
+   - [Mim1c](glitchlings/mim1c.md)
+   - [Reduple](glitchlings/reduple.md)
+   - [Rushmore](glitchlings/rushmore.md)
+   - [Redactyl](glitchlings/redactyl.md)
+   - [Jargoyle](glitchlings/jargoyle.md)
+   - [Scannequin](glitchlings/scannequin.md)
 6. [Dataset workflows](#dataset-workflows)
 7. [Prime Intellect integration](#prime-intellect-integration)
 8. [Ensuring determinism](#ensuring-determinism)
@@ -122,78 +122,15 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 
 ## Glitchling reference
 
-Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. This section summarises every built-in creature, its defaults, and practical usage notes.
+Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. Dive into the dedicated pages below for signatures, behaviours, and usage tips:
 
-### Typogre
-
-- **Scope**: character level (early in the pipeline).
-- **Signature**: `Typogre(max_change_rate=0.02, keyboard="CURATOR_QWERTY", seed=None)`.
-- **Behaviour**: simulates fat-finger typing by swapping neighbouring keys, dropping spaces, inserting doubles, or choosing layout-adjacent characters. Keyboard layouts map through `glitchlings.util.KEYNEIGHBORS` and include curated QWERTY, DVORAK, and custom research boards.
-- **Usage tips**:
-  - Lower `max_change_rate` (0.005–0.01) for gentle noise; raise it for more chaotic misspellings.
-  - Swap to `keyboard="DVORAK"` or supply a custom adjacency dict to model alternative hardware.
-  - Combine with Rushmore deletions to simulate hurried note-taking.
-
-### Mim1c
-
-- **Scope**: character level (late attack order so it acts after insertions/deletions).
-- **Signature**: `Mim1c(replacement_rate=0.02, classes=None, banned_characters=None, seed=None)`.
-- **Behaviour**: replaces alphanumeric characters with visually confusable Unicode homoglyphs via `confusable_homoglyphs` (e.g., `A → Α`, `e → е`). When `classes` is omitted it targets Latin, Greek, and Cyrillic scripts; pass `classes="all"` to consider every alias.
-- **Usage tips**:
-  - Restrict `classes` (e.g., `classes=["LATIN"]`) when evaluation pipelines reject non-Latin scripts.
-  - Use `banned_characters` to exclude confusables that would break downstream filters (e.g., ban full-width ASCII when testing strict lexers).
-  - Keep `replacement_rate` below 0.03 for legible perturbations; higher values can break tokenisers that expect ASCII.
-  - Pairs well with Typogre for keyboard + homoglyph chaos.
-
-### Reduple
-
-- **Scope**: word level.
-- **Signature**: `Reduple(reduplication_rate=0.05, seed=None)`.
-- **Behaviour**: randomly repeats words (“reduplication”) to mimic stuttering transcripts or speech disfluencies while preserving whitespace and punctuation.
-- **Usage tips**:
-  - Use `reduplication_rate=0.01` to emulate occasional hesitations; bump to ≥0.08 for heavy repetition stress tests.
-  - Because edits preserve separators, downstream whitespace-sensitive parsers remain stable.
-  - Combine with Jargoyle to mix synonym swaps and repeated words for lexical drift.
-
-### Rushmore
-
-- **Scope**: word level.
-- **Signature**: `Rushmore(max_deletion_rate=0.01, seed=None)`.
-- **Behaviour**: deletes randomly selected words (skipping the first to preserve context) and tidies double spaces/punctuation afterwards.
-- **Usage tips**:
-  - Keep `max_deletion_rate` conservative (<0.03) to avoid stripping sentences bare.
-  - Because the first word is preserved, prepend short context sentences when you need deletions deeper in the passage.
-  - Sandwich between Reduple and Redactyl to test summarisation robustness under missing context.
-
-### Redactyl
-
-- **Scope**: word level.
-- **Signature**: `Redactyl(replacement_char="█", redaction_rate=0.05, merge_adjacent=False, seed=151)`.
-- **Behaviour**: replaces the core characters of selected words with a replacement glyph (default FULL BLOCK) to simulate document redaction. Optionally merges adjacent redaction blocks across punctuation.
-- **Usage tips**:
-  - Switch `replacement_char` to `_` or `*` when terminals struggle with block glyphs.
-  - Enable `merge_adjacent=True` to form continuous bars when redacting phrases.
-  - When no redactable words exist, the underlying implementation raises a `ValueError`—wrap calls with try/except in automated pipelines.
-
-### Jargoyle
-
-- **Scope**: word level.
-- **Signature**: `Jargoyle(replacement_rate=0.1, part_of_speech="n", seed=None)`.
-- **Behaviour**: swaps nouns/verbs/adjectives/adverbs with WordNet synonyms. Downloads the WordNet corpus on demand when missing and maintains deterministic sampling by sorting candidate lemmas.
-- **Usage tips**:
-  - Target specific POS tags (e.g., `part_of_speech=("n", "v")`) to limit changes to content words.
-  - Lower `replacement_rate` (0.02–0.05) for subtle lexical variety; higher rates explore paraphrasing extremes.
-  - Ensure your environment has the WordNet data pre-cached to avoid first-run download delays.
-
-### Scannequin
-
-- **Scope**: character level (late order).
-- **Signature**: `Scannequin(error_rate=0.02, seed=None)`.
-- **Behaviour**: introduces OCR-style confusion pairs (rn↔m, cl↔d, O↔0, curly quotes to ASCII, etc.) using deterministic span selection. Supports a Rust acceleration path when compiled.
-- **Usage tips**:
-  - Bump `error_rate` for scanned-document stress tests or reduce it for light OCR noise.
-  - Because replacements can change token length, run Scannequin after word-level glitchlings to avoid offset drift.
-  - Combine with Redactyl to mimic heavily redacted, poorly scanned archives.
+- [Typogre](glitchlings/typogre.md) – keyboard-adjacent typos and doubled characters for fat-finger chaos.
+- [Mim1c](glitchlings/mim1c.md) – homoglyph swaps that sneak confusable Unicode into your text.
+- [Reduple](glitchlings/reduple.md) – word-level reduplication for hesitant transcripts.
+- [Rushmore](glitchlings/rushmore.md) – targeted deletions that erode context without shredding structure.
+- [Redactyl](glitchlings/redactyl.md) – block out sensitive words with configurable redaction glyphs.
+- [Jargoyle](glitchlings/jargoyle.md) – WordNet-driven synonym substitutions tuned by part of speech.
+- [Scannequin](glitchlings/scannequin.md) – OCR-style misreads and confusable spans with deterministic sampling.
 
 ## Dataset workflows
 
