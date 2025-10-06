@@ -1,6 +1,11 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
+const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../src/glitchlings/zoo/ocr_confusions.tsv"
+));
+
 /// Precompiled regex removing spaces before punctuation characters.
 pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s+([.,;:])").expect("valid punctuation regex"));
@@ -9,43 +14,30 @@ pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
 pub static MULTIPLE_WHITESPACE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s{2,}").expect("valid multi-whitespace regex"));
 
-static BASE_CONFUSION_TABLE: &[(&str, &[&str])] = &[
-    ("li", &["h"]),
-    ("h", &["li"]),
-    ("rn", &["m"]),
-    ("m", &["rn"]),
-    ("cl", &["d"]),
-    ("d", &["cl"]),
-    ("I", &["l"]),
-    ("l", &["I", "1"]),
-    ("1", &["l", "I"]),
-    ("0", &["O"]),
-    ("O", &["0"]),
-    ("B", &["8"]),
-    ("8", &["B"]),
-    ("S", &["5"]),
-    ("5", &["S"]),
-    ("Z", &["2"]),
-    ("2", &["Z"]),
-    ("G", &["6"]),
-    ("6", &["G"]),
-    ("“", &["\""]),
-    ("”", &["\""]),
-    ("‘", &["'"]),
-    ("’", &["'"]),
-    ("—", &["-"]),
-    ("–", &["-"]),
-];
-
 /// Sorted confusion pairs reused by glitchling implementations.
 pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])>> =
     Lazy::new(|| {
-        let mut entries: Vec<(usize, (&'static str, &'static [&'static str]))> =
-            BASE_CONFUSION_TABLE
-                .iter()
-                .copied()
-                .enumerate()
-                .collect();
+        let mut entries: Vec<(usize, (&'static str, &'static [&'static str]))> = Vec::new();
+
+        for (line_number, line) in RAW_OCR_CONFUSIONS.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+
+            let mut parts = trimmed.split_whitespace();
+            let Some(source) = parts.next() else {
+                continue;
+            };
+            let replacements: Vec<&'static str> = parts.collect();
+            if replacements.is_empty() {
+                continue;
+            }
+
+            let leaked: &'static [&'static str] = Box::leak(replacements.into_boxed_slice());
+            entries.push((line_number, (source, leaked)));
+        }
+
         entries.sort_by(|a, b| {
             let a_len = a.1 .0.len();
             let b_len = b.1 .0.len();
@@ -53,6 +45,7 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
                 .cmp(&a_len)
                 .then_with(|| a.0.cmp(&b.0))
         });
+
         entries.into_iter().map(|(_, pair)| pair).collect()
     });
 

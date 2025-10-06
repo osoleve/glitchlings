@@ -1,15 +1,39 @@
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::process::Command;
 
 fn main() {
     pyo3_build_config::add_extension_module_link_args();
 
-    if let Some(python) = std::env::var_os("PYO3_PYTHON")
-        .or_else(|| std::env::var_os("PYTHON"))
-        .filter(|path| !path.is_empty())
-    {
+    if let Some(python) = configured_python() {
+        link_python(&python);
+    } else if let Some(python) = detect_python() {
         link_python(&python);
     }
+}
+
+fn configured_python() -> Option<OsString> {
+    std::env::var_os("PYO3_PYTHON")
+        .or_else(|| std::env::var_os("PYTHON"))
+        .filter(|path| !path.is_empty())
+}
+
+fn detect_python() -> Option<OsString> {
+    const CANDIDATES: &[&str] = &["python3.12", "python3", "python"];
+
+    for candidate in CANDIDATES {
+        let status = Command::new(candidate)
+            .arg("-c")
+            .arg("import sys")
+            .output();
+
+        if let Ok(output) = status {
+            if output.status.success() {
+                return Some(OsString::from(candidate));
+            }
+        }
+    }
+
+    None
 }
 
 fn link_python(python: &OsStr) {

@@ -119,7 +119,7 @@ def test_scannequin_matches_python_fallback():
         rng=random.Random(1),
     )
     result = scannequin_module.ocr_artifacts(text, error_rate=1.0, seed=1)
-    assert result == expected == "Tlie rn m"
+    assert result == expected == "Tlie rn rri"
 
 
 @pytest.mark.parametrize("seed", [0, 1, 2, 5, 13])
