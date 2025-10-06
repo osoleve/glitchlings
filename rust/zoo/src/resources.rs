@@ -1,10 +1,7 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
 
-const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../src/glitchlings/zoo/ocr_confusions.tsv"
-));
+const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(env!("OUT_DIR"), "/ocr_confusions.tsv"));
 
 /// Precompiled regex removing spaces before punctuation characters.
 pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
