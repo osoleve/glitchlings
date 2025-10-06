@@ -83,11 +83,14 @@ glitchlings --list
 # Glitch an entire file with Typogre and inspect the unified diff.
 glitchlings -g typogre --file documents/report.txt --diff
 
+# Configure glitchlings inline with keyword arguments.
+glitchlings -g "Typogre(max_change_rate=0.05)" "Ghouls just wanna have fun"
+
 # Pipe text through Mim1c for on-the-fly homoglyph swaps.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
 
-Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly.
+Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly. Pass glitchling parameters with `-g "Name(arg=value, ...)"` to mirror the Python API without writing code.
 
 ## Rust pipeline acceleration (opt-in)
 
