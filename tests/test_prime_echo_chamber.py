@@ -35,11 +35,6 @@ jargoyle._ensure_wordnet = _no_op_ensure_wordnet
 jargoyle._wordnet_ready = True
 
 
-@pytest.fixture(scope="session", autouse=True)
-def _wordnet_ready():
-    """Override the default WordNet preparation for this module."""
-
-    return None
 
 
 class FakeDataset:
