@@ -1,6 +1,7 @@
 import re
 import random
 
+from ._ocr_confusions import load_confusion_table
 from .core import Glitchling, AttackWave, AttackOrder
 
 try:
@@ -33,35 +34,9 @@ def _python_ocr_artifacts(
     if not text:
         return text
 
-    # map: source -> list of possible replacements
-    # Keep patterns small and specific; longer patterns first avoid overmatching
-    confusion_table: list[tuple[str, list[str]]] = [
-        ("li", ["h"]),
-        ("h", ["li"]),
-        ("rn", ["m"]),
-        ("m", ["rn"]),
-        ("cl", ["d"]),
-        ("d", ["cl"]),
-        ("I", ["l"]),
-        ("l", ["I", "1"]),
-        ("1", ["l", "I"]),
-        ("0", ["O"]),
-        ("O", ["0"]),
-        ("B", ["8"]),
-        ("8", ["B"]),
-        ("S", ["5"]),
-        ("5", ["S"]),
-        ("Z", ["2"]),
-        ("2", ["Z"]),
-        ("G", ["6"]),
-        ("6", ["G"]),
-        ("“", ['"']),
-        ("”", ['"']),
-        ("‘", ["'"]),
-        ("’", ["'"]),
-        ("—", ["-"]),  # em dash -> hyphen
-        ("–", ["-"]),  # en dash -> hyphen
-    ]
+    # Keep the confusion definitions in a shared data file so both the Python
+    # and Rust implementations stay in sync.
+    confusion_table = load_confusion_table()
 
     # Build candidate matches as (start, end, choices)
     candidates: list[tuple[int, int, list[str]]] = []

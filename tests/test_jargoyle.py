@@ -1,16 +1,6 @@
 from __future__ import annotations
 
-import pytest
-
-from glitchlings.zoo.jargoyle import ensure_wordnet, substitute_random_synonyms
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _wordnet_ready() -> None:
-    try:  # pragma: no cover - only exercised when downloads fail
-        ensure_wordnet()
-    except RuntimeError as exc:  # pragma: no cover - failure propagates clearly
-        pytest.fail(f"WordNet unavailable for jargoyle tests: {exc}")
+from glitchlings.zoo.jargoyle import substitute_random_synonyms
 
 
 def _clean_tokens(text: str) -> list[str]:

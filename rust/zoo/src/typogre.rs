@@ -1,5 +1,5 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyList, PyModule};
+use pyo3::types::{PyAny, PyDict, PyList};
 use pyo3::Bound;
 use std::collections::HashMap;
 
@@ -205,7 +205,7 @@ fn global_action(rng: &Bound<'_, PyAny>, action: &str, chars: &mut Vec<char>) ->
 }
 
 #[pyfunction]
-fn fatfinger(
+pub(crate) fn fatfinger(
     text: &str,
     max_change_rate: f64,
     layout: &Bound<'_, PyDict>,
@@ -224,7 +224,7 @@ fn fatfinger(
     }
 
     let length = chars.len();
-    let mut max_changes = (length as f64 * max_change_rate).floor() as usize;
+    let mut max_changes = (length as f64 * max_change_rate).ceil() as usize;
     if max_changes < 1 {
         max_changes = 1;
     }
@@ -251,10 +251,4 @@ fn fatfinger(
     }
 
     Ok(chars.into_iter().collect())
-}
-
-#[pymodule]
-fn _typogre_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(fatfinger, m)?)?;
-    Ok(())
 }

@@ -59,10 +59,10 @@ Unset the environment variable (or set it to `0`/`false`) to fall back to the pu
 
 ## Additional tips
 
-- Regenerate the optional typogre-specific extension when editing files under `rust/typogre/`:
+- Rebuild the Rust extension after editing files under `rust/zoo/`:
 
   ```bash
-  maturin develop -m rust/typogre/Cargo.toml
+  maturin develop -m rust/zoo/Cargo.toml
   ```
 
 - Use `python -m glitchlings --help` to smoke-test CLI changes quickly.

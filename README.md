@@ -53,22 +53,10 @@ print(gaggle(SAMPLE_TEXT))
 
 ## Usage
 
-Glitchlings slot into evaluation pipelines just as easily as they corrupt stray strings.
-
-- **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to make every run deterministic.
-- **Dataset corruption** – After ``import glitchlings.dlc.huggingface``, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
-
-### Rust pipeline acceleration (opt-in)
-
-The refactored Rust pipeline can execute multiple glitchlings without
-bouncing back through Python, but it is gated behind a feature flag so
-teams can roll it out gradually. After compiling the Rust extension
-(`python -m cibuildwheel --output-dir dist`) set
-`GLITCHLINGS_RUST_PIPELINE=1` (or `true`, `yes`, `on`) before importing
-`glitchlings`. When the flag is set and the extension is available,
-`Gaggle` automatically batches compatible glitchlings into the Rust
-pipeline; otherwise it transparently falls back to the legacy Python
-loop.
+Need detailed usage patterns, dataset workflows, or tips for enabling the
+Rust accelerator? Consult the [Glitchlings Usage Guide](docs/index.md)
+for end-to-end instructions spanning the Python API, CLI, Hugging Face
+integrations, and the feature-flagged Rust pipeline.
 
 ### Prime Intellect environments
 
@@ -143,11 +131,14 @@ glitchlings --list
 # Run Typogre against the contents of a file and inspect the diff.
 glitchlings -g typogre --file documents/report.txt --diff
 
+# Configure glitchlings inline by passing keyword arguments.
+glitchlings -g "Typogre(max_change_rate=0.05)" "Ghouls just wanna have fun"
+
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
 
-Use `--help` for a complete breakdown of available options.
+Use `--help` for a complete breakdown of available options, including support for parameterised glitchlings via `-g "Name(arg=value, ...)"` to mirror the Python API.
 
 ## Development
 

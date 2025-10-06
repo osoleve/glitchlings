@@ -1,15 +1,87 @@
+from __future__ import annotations
+
+import sys
+import types
+
 import pytest
 
-datasets = pytest.importorskip("datasets")
-Dataset = datasets.Dataset
 
-# The Prime DLC depends on the optional ``verifiers`` package. Skip these
-# tests entirely when it isn't installed (e.g. in wheel builds that don't
-# request the ``prime`` extra).
-pytest.importorskip("verifiers")
+class _VerifierEnvironment:
+    def __init__(self, dataset=None):
+        self.dataset = dataset
 
+
+def _load_environment(_: str) -> _VerifierEnvironment:
+    return _VerifierEnvironment()
+
+
+verifiers_stub = types.ModuleType("verifiers")
+verifiers_stub.Environment = _VerifierEnvironment
+verifiers_stub.load_environment = _load_environment
+sys.modules["verifiers"] = verifiers_stub
+
+import glitchlings.zoo.core as zoo_core
+import glitchlings.zoo.jargoyle as jargoyle
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 from glitchlings.dlc import prime
+
+
+def _no_op_ensure_wordnet() -> None:
+    jargoyle._wordnet_ready = True
+
+
+jargoyle.ensure_wordnet = _no_op_ensure_wordnet
+jargoyle._ensure_wordnet = _no_op_ensure_wordnet
+jargoyle._wordnet_ready = True
+
+
+
+
+class FakeDataset:
+    def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None):
+        self._rows = [dict(row) for row in rows]
+        if column_names is None:
+            if rows:
+                column_names = list(rows[0].keys())
+            else:
+                column_names = []
+        self.column_names = list(column_names)
+
+    @classmethod
+    def from_dict(cls, columns: dict[str, list[object]]) -> "FakeDataset":
+        keys = list(columns.keys())
+        lengths = [len(col) for col in columns.values()]
+        if lengths and any(l != lengths[0] for l in lengths):
+            raise ValueError(f"All columns must have the same length, but got lengths: {dict(zip(keys, lengths))}")
+        length = lengths[0] if lengths else 0
+        rows = [
+            {key: columns[key][index] for key in keys}
+            for index in range(length)
+        ]
+        return cls(rows, keys)
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> dict[str, object]:
+        return dict(self._rows[index])
+
+    def __iter__(self):
+        for row in self._rows:
+            yield dict(row)
+
+    def with_transform(self, function):
+        transformed = [function(dict(row)) for row in self._rows]
+        return FakeDataset(transformed, self.column_names)
+
+
+Dataset = FakeDataset
+
+
+@pytest.fixture(autouse=True)
+def _install_fake_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=True)
+    monkeypatch.setattr(zoo_core, "_datasets_error", None, raising=True)
 
 
 def append_marker(text: str) -> str:
@@ -94,6 +166,40 @@ def test_tutorial_level_applies_tuned_glitchlings(monkeypatch):
     mutated_again = list(env_again.dataset)[0]["prompt"]
     assert mutated_again != baseline
     assert mutated_prompt == mutated_again
+
+
+def test_extract_completion_text_handles_strings_and_structures() -> None:
+    assert prime._extract_completion_text("plain text") == "plain text"
+
+    message = [{"role": "assistant", "content": "structured"}]
+    assert prime._extract_completion_text(message) == "structured"
+
+    assert prime._extract_completion_text({"foo": 1}) == "{'foo': 1}"
+
+
+def test_similarity_scores_expected_fraction_for_single_edit() -> None:
+    completion = "hello"
+    answer = "hella"
+    expected_distance = 1
+    expected_score = 1 - (expected_distance / max(len(completion), len(answer), 1))
+
+    score = prime.symmetric_damerau_levenshtein_similarity(None, completion, answer)
+
+    assert score == pytest.approx(expected_score)
+
+
+def test_similarity_handles_identical_and_extreme_inputs() -> None:
+    assert prime.symmetric_damerau_levenshtein_similarity(None, "same", "same") == 1.0
+
+    shorter = prime.symmetric_damerau_levenshtein_similarity(None, "a", "a" * 10)
+    longer = prime.symmetric_damerau_levenshtein_similarity(None, "a" * 10, "a")
+    assert 0.0 <= shorter <= 1.0
+    assert 0.0 <= longer <= 1.0
+
+    empty_answer = prime.symmetric_damerau_levenshtein_similarity(None, "abc", "")
+    both_empty = prime.symmetric_damerau_levenshtein_similarity(None, "", "")
+    assert empty_answer == 0.0
+    assert both_empty == 1.0
 
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import random
 from typing import Optional
 
@@ -7,7 +8,7 @@ from .core import Glitchling, AttackWave, AttackOrder
 from ..util import KEYNEIGHBORS
 
 try:
-    from glitchlings._typogre_rust import fatfinger as _fatfinger_rust
+    from glitchlings._zoo_rust import fatfinger as _fatfinger_rust
 except ImportError:  # pragma: no cover - compiled extension not present
     _fatfinger_rust = None
 
@@ -91,8 +92,11 @@ def _fatfinger_python(
     layout: dict[str, list[str]],
     rng: random.Random,
 ) -> str:
+    rate = max(0.0, max_change_rate)
     s = text
-    max_changes = max(1, int(len(s) * max_change_rate))
+    max_changes = math.ceil(len(s) * rate)
+    if max_changes == 0:
+        return s
 
     positional_actions = ("char_swap", "missing_char", "extra_char", "nearby_char")
     global_actions = ("skipped_space", "random_space", "unichar", "repeated_char")
@@ -148,12 +152,16 @@ def fatfinger(
     if not text:
         return ""
 
+    rate = max(0.0, max_change_rate)
+    if rate == 0.0:
+        return text
+
     layout = getattr(KEYNEIGHBORS, keyboard)
 
     if _fatfinger_rust is not None:
-        return _fatfinger_rust(text, max_change_rate=max_change_rate, layout=layout, rng=rng)
+        return _fatfinger_rust(text, max_change_rate=rate, layout=layout, rng=rng)
 
-    return _fatfinger_python(text, max_change_rate=max_change_rate, layout=layout, rng=rng)
+    return _fatfinger_python(text, max_change_rate=rate, layout=layout, rng=rng)
 
 
 class Typogre(Glitchling):

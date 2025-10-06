@@ -3,6 +3,7 @@ mod pipeline;
 mod resources;
 mod rng;
 mod text_buffer;
+mod typogre;
 
 use glitch_ops::{GlitchOp, GlitchRng};
 use pyo3::prelude::*;
@@ -17,7 +18,6 @@ pub use glitch_ops::{
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
-
 struct PythonRngAdapter<'py> {
     rng: Bound<'py, PyAny>,
 }
@@ -279,5 +279,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
+    m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     Ok(())
 }
