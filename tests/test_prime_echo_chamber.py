@@ -33,10 +33,14 @@ def _no_op_ensure_wordnet() -> None:
 
 jargoyle.ensure_wordnet = _no_op_ensure_wordnet
 jargoyle._ensure_wordnet = _no_op_ensure_wordnet
-conftest = importlib.import_module("conftest")
-conftest.ensure_wordnet = _no_op_ensure_wordnet
+# conftest = importlib.import_module("conftest")
+# conftest.ensure_wordnet = _no_op_ensure_wordnet
 
 
+@pytest.fixture(autouse=True)
+def patch_ensure_wordnet(monkeypatch):
+    import conftest
+    monkeypatch.setattr(conftest, "ensure_wordnet", _no_op_ensure_wordnet)
 class FakeDataset:
     def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None):
         self._rows = [dict(row) for row in rows]
