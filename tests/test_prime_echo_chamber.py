@@ -18,7 +18,7 @@ def _load_environment(_: str) -> _VerifierEnvironment:
 verifiers_stub = types.ModuleType("verifiers")
 verifiers_stub.Environment = _VerifierEnvironment
 verifiers_stub.load_environment = _load_environment
-sys.modules.setdefault("verifiers", verifiers_stub)
+sys.modules["verifiers"] = verifiers_stub
 
 import glitchlings.zoo.core as zoo_core
 import glitchlings.zoo.jargoyle as jargoyle
