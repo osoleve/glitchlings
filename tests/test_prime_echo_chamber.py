@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import sys
 import types
 
@@ -33,14 +32,16 @@ def _no_op_ensure_wordnet() -> None:
 
 jargoyle.ensure_wordnet = _no_op_ensure_wordnet
 jargoyle._ensure_wordnet = _no_op_ensure_wordnet
-# conftest = importlib.import_module("conftest")
-# conftest.ensure_wordnet = _no_op_ensure_wordnet
+jargoyle._wordnet_ready = True
 
 
-@pytest.fixture(autouse=True)
-def patch_ensure_wordnet(monkeypatch):
-    import conftest
-    monkeypatch.setattr(conftest, "ensure_wordnet", _no_op_ensure_wordnet)
+@pytest.fixture(scope="session", autouse=True)
+def _wordnet_ready():
+    """Override the default WordNet preparation for this module."""
+
+    return None
+
+
 class FakeDataset:
     def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None):
         self._rows = [dict(row) for row in rows]
@@ -81,8 +82,8 @@ Dataset = FakeDataset
 
 @pytest.fixture(autouse=True)
 def _install_fake_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=False)
-    monkeypatch.setattr(zoo_core, "_datasets_error", None, raising=False)
+    monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=True)
+    monkeypatch.setattr(zoo_core, "_datasets_error", None, raising=True)
 
 
 def append_marker(text: str) -> str:
