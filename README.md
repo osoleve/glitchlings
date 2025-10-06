@@ -143,11 +143,14 @@ glitchlings --list
 # Run Typogre against the contents of a file and inspect the diff.
 glitchlings -g typogre --file documents/report.txt --diff
 
+# Configure glitchlings inline by passing keyword arguments.
+glitchlings -g "Typogre(max_change_rate=0.05)" "Ghouls just wanna have fun"
+
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
 
-Use `--help` for a complete breakdown of available options.
+Use `--help` for a complete breakdown of available options, including support for parameterised glitchlings via `-g "Name(arg=value, ...)"` to mirror the Python API.
 
 ## Development
 

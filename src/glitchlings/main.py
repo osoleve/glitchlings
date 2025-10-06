@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import difflib
 from pathlib import Path
 import sys
@@ -11,14 +12,21 @@ from . import SAMPLE_TEXT
 from .zoo import (
     Glitchling,
     Gaggle,
+    Jargoyle,
+    Mim1c,
+    Redactyl,
+    Reduple,
+    Rushmore,
+    Scannequin,
+    Typogre,
     jargoyle,
     mim1c,
-    typogre,
+    redactyl,
     reduple,
     rushmore,
-    redactyl,
     scannequin,
     summon,
+    typogre,
 )
 from .zoo.jargoyle import dependencies_available as _jargoyle_available
 
@@ -32,9 +40,86 @@ BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     g.name.lower(): g for g in _BUILTIN_GLITCHLINGS
 }
 
+_BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
+    typogre.name.lower(): Typogre,
+    mim1c.name.lower(): Mim1c,
+    reduple.name.lower(): Reduple,
+    rushmore.name.lower(): Rushmore,
+    redactyl.name.lower(): Redactyl,
+    scannequin.name.lower(): Scannequin,
+}
+
+if _jargoyle_available():
+    _BUILTIN_GLITCHLING_TYPES[jargoyle.name.lower()] = Jargoyle
+
 DEFAULT_GLITCHLING_NAMES: list[str] = list(BUILTIN_GLITCHLINGS.keys())
 MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.values())
 
+
+def _parse_glitchling_spec(
+    specification: str, parser: argparse.ArgumentParser
+) -> str | Glitchling:
+    """Return either a glitchling name or a configured instance for ``specification``.
+
+    Args:
+        specification: User-supplied ``-g`` argument.
+        parser: Argument parser used for emitting user-facing errors.
+
+    Returns:
+        Either the normalized glitchling name (when no parameters are provided) or
+        a freshly-instantiated glitchling configured with keyword arguments.
+    """
+
+    text = specification.strip()
+    if not text:
+        parser.error("Glitchling specification cannot be empty.")
+
+    if "(" not in text:
+        return text.lower()
+
+    if not text.endswith(")"):
+        parser.error(f"Invalid parameter syntax for glitchling '{text}'.")
+
+    name_part, arg_source = text[:-1].split("(", 1)
+    name = name_part.strip()
+    if not name:
+        parser.error(f"Invalid glitchling specification '{text}'.")
+
+    lower_name = name.lower()
+    glitchling_type = _BUILTIN_GLITCHLING_TYPES.get(lower_name)
+    if glitchling_type is None:
+        parser.error(f"Glitchling '{name}' not found.")
+
+    try:
+        call_expr = ast.parse(f"_({arg_source})", mode="eval").body
+    except SyntaxError as exc:  # pragma: no cover - syntax error detail depends on Python
+        parser.error(
+            f"Invalid parameter syntax for glitchling '{name}': {exc.msg}"
+        )
+
+    if not isinstance(call_expr, ast.Call) or call_expr.args:
+        parser.error(
+            f"Glitchling '{name}' parameters must be provided as keyword arguments."
+        )
+
+    kwargs: dict[str, object] = {}
+    for keyword in call_expr.keywords:
+        if keyword.arg is None:
+            parser.error(
+                f"Glitchling '{name}' does not support unpacking arbitrary keyword arguments."
+            )
+        try:
+            kwargs[keyword.arg] = ast.literal_eval(keyword.value)
+        except (ValueError, SyntaxError) as exc:
+            parser.error(
+                f"Failed to parse value for parameter '{keyword.arg}' on glitchling '{name}': {exc}"
+            )
+
+    try:
+        return glitchling_type(**kwargs)
+    except TypeError as exc:
+        parser.error(f"Failed to instantiate glitchling '{name}': {exc}")
+        raise AssertionError("parser.error should exit")
 
 def build_parser() -> argparse.ArgumentParser:
     """Create and configure the CLI argument parser.
@@ -59,8 +144,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--glitchling",
         dest="glitchlings",
         action="append",
-        metavar="NAME",
-        help="Glitchling to apply (repeat for multiples). Defaults to all built-ins.",
+        metavar="SPEC",
+        help=(
+            "Glitchling to apply, optionally with parameters like "
+            "Typogre(max_change_rate=0.05). Repeat for multiples; defaults to all built-ins."
+        ),
     )
     parser.add_argument(
         "-s",
@@ -160,7 +248,9 @@ def summon_glitchlings(
     """
 
     if names:
-        normalized = [name.lower() for name in names]
+        normalized: list[str | Glitchling] = [
+            _parse_glitchling_spec(name, parser) for name in names
+        ]
     else:
         normalized = DEFAULT_GLITCHLING_NAMES
 

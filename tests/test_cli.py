@@ -2,7 +2,7 @@ import difflib
 
 import pytest
 
-from glitchlings import SAMPLE_TEXT, summon
+from glitchlings import SAMPLE_TEXT, Typogre, summon
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
@@ -148,3 +148,31 @@ def test_read_text_consumes_stdin(monkeypatch):
     monkeypatch.setattr("sys.stdin", DummyStdin())
 
     assert read_text(args, parser) == sentinel
+
+
+def test_run_cli_configured_glitchling_matches_library(capsys):
+    parser = build_parser()
+    args = parser.parse_args(
+        ["-g", "Typogre(max_change_rate=0.2)", "Hello there"]
+    )
+
+    exit_code = run_cli(args, parser)
+    captured = capsys.readouterr()
+
+    configured = Typogre(max_change_rate=0.2)
+    expected = summon([configured], seed=args.seed)("Hello there")
+
+    assert exit_code == 0
+    assert captured.out == expected + "\n"
+    assert captured.err == ""
+
+
+def test_run_cli_rejects_positional_glitchling_arguments(capsys):
+    parser = build_parser()
+    args = parser.parse_args(["-g", "Typogre(0.2)", "payload"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "keyword arguments" in captured.err
