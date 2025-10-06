@@ -72,6 +72,11 @@ print(gaggle(SAMPLE_TEXT))
 
 All glitchlings are deterministic: pass a `seed` during construction (or on the enclosing `Gaggle`) to make the chaos reproducible.
 
+Glitchlings slot neatly into existing pipelines:
+
+- **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to reproduce every run.
+- **Dataset corruption** – After ``import glitchlings.dlc.huggingface`` registers the extension, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
+
 ### Command line interface
 
 Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality:
