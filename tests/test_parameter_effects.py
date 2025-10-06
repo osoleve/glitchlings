@@ -14,7 +14,12 @@ def test_mim1c_replacement_rate_bounds(sample_text):
     out = cast(str, m(sample_text))
     # Should change no more than ~2% of alnum characters
     alnum = [c for c in sample_text if c.isalnum()]
-    changed = sum(1 for a, b in zip(sample_text, out) if a != b and a.isalnum())
+    paired_changes = sum(1 for a, b in zip(sample_text, out) if a != b and a.isalnum())
+    if len(out) > len(sample_text):
+        tail_alnum = sum(1 for c in out[len(sample_text):] if c.isalnum())
+    else:
+        tail_alnum = sum(1 for c in sample_text[len(out):] if c.isalnum())
+    changed = paired_changes + tail_alnum
     assert changed <= int(len(alnum) * 0.02) + 2  # slack for discrete rounding
 
 

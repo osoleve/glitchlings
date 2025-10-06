@@ -122,7 +122,7 @@ def test_typogre_length_change_stays_within_bound(text: str, rate: float, seed: 
         assert result == ""
         return
 
-    max_changes = max(1, int(len(text) * rate))
+    max_changes = math.ceil(len(text) * rate)
     min_len = max(len(text) - max_changes, 0)
     max_len = len(text) + max_changes
     assert min_len <= len(result) <= max_len

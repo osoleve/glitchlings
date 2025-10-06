@@ -20,11 +20,9 @@ def test_gaggle_seed_changes_output(sample_text):
 
 def test_gaggle_ordering_stable(sample_text):
     # When summoned by name, built-ins choose a stable order by scope, then order, then name
-    g = summon(["typogre", "mim1c", "reduple", "rushmore"], seed=42)
-    assert [g.name[0].lower() for g in g.apply_order][:2] == [
-        "r",
-        "r",
-    ]
+    gaggle = summon(["typogre", "mim1c", "reduple", "rushmore"], seed=42)
+    expected = ["Reduple", "Rushmore", "Typogre", "Mim1c"]
+    assert [member.name for member in gaggle.apply_order] == expected
 
 
 def test_gaggle_seed_derivation_regression():
