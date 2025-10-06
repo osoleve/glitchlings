@@ -141,6 +141,36 @@ _register_layout(
     ),
 )
 
+_register_layout(
+    "QWERTZ",
+    (
+        "^1234567890ß´",
+        " qwertzuiopü+",
+        "  asdfghjklöä#",
+        "   yxcvbnm,.-",
+    ),
+)
+
+_register_layout(
+    "SPANISH_QWERTY",
+    (
+        "º1234567890'¡",
+        " qwertyuiop´+",
+        "  asdfghjklñ´",
+        "   <zxcvbnm,.-",
+    ),
+)
+
+_register_layout(
+    "SWEDISH_QWERTY",
+    (
+        "§1234567890+´",
+        " qwertyuiopå¨",
+        "  asdfghjklöä'",
+        "   <zxcvbnm,.-",
+    ),
+)
+
 
 class KeyNeighbors:
     def __init__(self) -> None:

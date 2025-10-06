@@ -82,7 +82,9 @@ def redact_words(
     if rng is None:
         rng = random.Random(seed)
 
-    if _redact_words_rust is not None:
+    use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
+
+    if use_rust:
         return _redact_words_rust(
             text,
             replacement_char,

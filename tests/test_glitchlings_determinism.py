@@ -1,8 +1,6 @@
 from functools import partial
 from typing import cast
 
-import pytest
-
 from glitchlings import (
     typogre,
     mim1c,
@@ -13,15 +11,6 @@ from glitchlings import (
     scannequin,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling
-from glitchlings.zoo.jargoyle import ensure_wordnet
-
-
-@pytest.fixture(scope="module", autouse=True)
-def _wordnet_ready() -> None:
-    try:  # pragma: no cover - failures propagate loudly during testing
-        ensure_wordnet()
-    except RuntimeError as exc:  # pragma: no cover - only hit if download fails
-        pytest.fail(f"WordNet unavailable for determinism tests: {exc}")
 
 
 def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:

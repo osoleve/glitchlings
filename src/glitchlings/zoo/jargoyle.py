@@ -2,26 +2,66 @@ import random
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
-import nltk
-from nltk.corpus.reader import WordNetCorpusReader
-from nltk.data import find
+try:  # pragma: no cover - exercised in environments with NLTK installed
+    import nltk  # type: ignore[import]
+except ModuleNotFoundError as exc:  # pragma: no cover - triggered when NLTK missing
+    nltk = None  # type: ignore[assignment]
+    find = None  # type: ignore[assignment]
+    _NLTK_IMPORT_ERROR = exc
+else:  # pragma: no cover - executed when NLTK is available
+    from nltk.corpus.reader import WordNetCorpusReader as _WordNetCorpusReader  # type: ignore[import]
+    from nltk.data import find as _nltk_find  # type: ignore[import]
+
+    find = _nltk_find
+    _NLTK_IMPORT_ERROR = None
+
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from nltk.corpus.reader import WordNetCorpusReader  # type: ignore[import]
+else:  # Use ``Any`` at runtime to avoid hard dependency when NLTK missing
+    WordNetCorpusReader = Any
+
+if nltk is not None:  # pragma: no cover - guarded by import success
+    try:
+        from nltk.corpus import wordnet as _WORDNET_MODULE  # type: ignore[import]
+    except ModuleNotFoundError:  # pragma: no cover - only hit on namespace packages
+        _WORDNET_MODULE = None
+    else:
+        WordNetCorpusReader = _WordNetCorpusReader  # type: ignore[assignment]
+else:
+    _WORDNET_MODULE = None
 
 from .core import AttackWave, Glitchling
-
-try:  # pragma: no cover - exercised when the namespace package is present
-    from nltk.corpus import wordnet as _WORDNET_MODULE
-except ModuleNotFoundError:  # pragma: no cover - triggered on modern NLTK installs
-    _WORDNET_MODULE = None
 
 _WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
 
 _wordnet_ready = False
 
 
+def _require_nltk() -> None:
+    """Ensure the NLTK dependency is present before continuing."""
+
+    if nltk is None or find is None:
+        message = (
+            "The NLTK package is required for the jargoyle glitchling; install "
+            "the 'wordnet' extra via `pip install glitchlings[wordnet]`."
+        )
+        if '_NLTK_IMPORT_ERROR' in globals() and _NLTK_IMPORT_ERROR is not None:
+            raise RuntimeError(message) from _NLTK_IMPORT_ERROR
+        raise RuntimeError(message)
+
+
+def dependencies_available() -> bool:
+    """Return ``True`` when the runtime NLTK dependency is present."""
+
+    return nltk is not None and find is not None
+
+
 def _load_wordnet_reader() -> WordNetCorpusReader:
     """Return a WordNet corpus reader from the downloaded corpus files."""
+
+    _require_nltk()
 
     try:
         root = find("corpora/wordnet")
@@ -58,6 +98,8 @@ def ensure_wordnet() -> None:
     global _wordnet_ready
     if _wordnet_ready:
         return
+
+    _require_nltk()
 
     resource = _wordnet()
 
@@ -272,4 +314,4 @@ class Jargoyle(Glitchling):
 jargoyle = Jargoyle()
 
 
-__all__ = ["Jargoyle", "ensure_wordnet", "jargoyle"]
+__all__ = ["Jargoyle", "dependencies_available", "ensure_wordnet", "jargoyle"]

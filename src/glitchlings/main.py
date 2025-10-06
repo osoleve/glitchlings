@@ -20,19 +20,16 @@ from .zoo import (
     scannequin,
     summon,
 )
+from .zoo.jargoyle import dependencies_available as _jargoyle_available
 
+
+_BUILTIN_GLITCHLINGS: list[Glitchling] = [typogre, mim1c]
+if _jargoyle_available():
+    _BUILTIN_GLITCHLINGS.append(jargoyle)
+_BUILTIN_GLITCHLINGS.extend([reduple, rushmore, redactyl, scannequin])
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
-    g.name.lower(): g
-    for g in [
-        typogre,
-        mim1c,
-        jargoyle,
-        reduple,
-        rushmore,
-        redactyl,
-        scannequin,
-    ]
+    g.name.lower(): g for g in _BUILTIN_GLITCHLINGS
 }
 
 DEFAULT_GLITCHLING_NAMES: list[str] = list(BUILTIN_GLITCHLINGS.keys())
