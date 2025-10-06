@@ -55,7 +55,10 @@ class FakeDataset:
     @classmethod
     def from_dict(cls, columns: dict[str, list[object]]) -> "FakeDataset":
         keys = list(columns.keys())
-        length = len(next(iter(columns.values()), []))
+        lengths = [len(col) for col in columns.values()]
+        if lengths and any(l != lengths[0] for l in lengths):
+            raise ValueError(f"All columns must have the same length, but got lengths: {dict(zip(keys, lengths))}")
+        length = lengths[0] if lengths else 0
         rows = [
             {key: columns[key][index] for key in keys}
             for index in range(length)
