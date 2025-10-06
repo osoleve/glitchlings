@@ -1,4 +1,3 @@
 recursive-include rust *.rs *.toml *.lock
 prune rust/target
-prune rust/typogre/target
 prune rust/zoo/target

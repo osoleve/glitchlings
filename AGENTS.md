@@ -15,9 +15,8 @@ Treat this handbook as the default guidance for any work in the repo.
 - **`src/glitchlings/util/__init__.py`** – Shared helpers including `SAMPLE_TEXT`, keyboard-neighbour layouts, and diff utilities.
 - **`src/glitchlings/dlc/prime.py`** – Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).
 - **`rust/`** – PyO3 crates backing the optional Rust extensions.
-  - `rust/zoo/` builds `glitchlings._zoo_rust` (used by Reduple, Rushmore, Redactyl, and Scannequin).
-  - `rust/typogre/` builds `glitchlings._typogre_rust` (Typogre's fast path).
-  - Use `maturin develop` (or `maturin build`) from each crate directory to compile the wheels when you need the acceleration paths.
+  - `rust/zoo/` builds `glitchlings._zoo_rust` (fast paths for Reduple, Rushmore, Redactyl, Scannequin, and Typogre).
+  - Use `maturin develop -m rust/zoo/Cargo.toml` (or `maturin build`) when you need the acceleration paths.
 - **`tests/`** – Pytest suite covering determinism, keyboard layouts, CLI behaviour, and parity between Python and Rust implementations.
   - `test_glitchlings_determinism.py`, `test_parameter_effects.py`, and `test_gaggle.py` validate orchestration and RNG guarantees.
   - `test_rust_backed_glitchlings.py` ensures Rust fast paths match the Python fallbacks.

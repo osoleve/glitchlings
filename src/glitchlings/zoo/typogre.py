@@ -8,7 +8,7 @@ from .core import Glitchling, AttackWave, AttackOrder
 from ..util import KEYNEIGHBORS
 
 try:
-    from glitchlings._typogre_rust import fatfinger as _fatfinger_rust
+    from glitchlings._zoo_rust import fatfinger as _fatfinger_rust
 except ImportError:  # pragma: no cover - compiled extension not present
     _fatfinger_rust = None
 

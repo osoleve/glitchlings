@@ -69,11 +69,6 @@ path = "rust/zoo/Cargo.toml"
 binding = "PyO3"
 debug = false
 
-[[tool.setuptools-rust.ext-modules]]
-target = "glitchlings._typogre_rust"
-path = "rust/typogre/Cargo.toml"
-binding = "PyO3"
-debug = false
 
 [tool.pytest.ini_options]
 pythonpath = [
