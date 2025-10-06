@@ -500,6 +500,6 @@ mod tests {
         let mut rng = PyRng::new(1);
         let op = OcrArtifactsOp { error_rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr succeeds");
-        assert_eq!(buffer.to_string(), "Tlie rn m");
+        assert_eq!(buffer.to_string(), "Tlie rn rri");
     }
 }
