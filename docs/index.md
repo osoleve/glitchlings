@@ -1,6 +1,6 @@
-# Glitchlings Usage Guide
+# Glitchlings Field Guide
 
-Welcome to the Glitchlings field manual! This GitHub Pages-ready guide explains how to install the toolkit, orchestrate chaos with the `Gaggle`, and wield every individual glitchling (Typogre, Mim1c, Reduple, Rushmore, Redactyl, Jargoyle, and Scannequin). It closes with deep coverage of the optional Prime Intellect integration so you can perturb verifier datasets with confidence.
+Welcome to the Glitchlings field manual! This guide explains how to install the toolkit, orchestrate chaos with the `Gaggle`, and wrangle the individual glitchlings.
 
 ## Table of contents
 
@@ -31,7 +31,7 @@ Install the latest release directly from PyPI:
 pip install -U glitchlings
 ```
 
-Need the optional Prime Intellect loader or the NLTK-powered Jargoyle ready to go? Pull in the documented extras:
+Need the optional Prime Intellect loader or the NLTK-powered Jargoyle?
 
 ```bash
 # Prime Intellect DLC + verifiers dependency
@@ -49,8 +49,6 @@ When working from a local clone, install in editable mode so your changes take e
 pip install -e .
 ```
 
-If you plan to experiment with the PyO3 acceleration crates, install `maturin` and run `maturin develop` from each crate directory inside the `rust/` folder to compile the optional Rust fast paths.
-
 Looking for a complete development workflow (virtual environments, test suite, and Rust tips)? Consult the [development setup guide](development.md).
 
 ## Quickstart
@@ -61,14 +59,16 @@ Glitchlings are callable objects that accept strings (and string-like iterables)
 from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 
 gaggle = Gaggle([
-    Typogre(max_change_rate=0.03),
-    Mim1c(replacement_rate=0.02),
-    Reduple(seed=404),
-    Rushmore(max_deletion_rate=0.02),
+    Typogre(max_change_rate=0.02),
+    Mim1c(replacement_rate=0.01),
+    Reduple(reduplication_rate=0.005),
+    Rushmore(max_deletion_rate=0.005),
 ], seed=1234)
 
 print(gaggle(SAMPLE_TEXT))
 ```
+
+> Onee morninᶃ, when Gregor Samsa woke from troubleⅾ dreams, he found himself transformed in his bed into a horible ｖermin. He lay onhis armour-like back, and if he lifted his head a little he could see his brown bely, slightlydomed and divided by arches intostiff sections. The bexddihng was hardly able to to cover it and seemed ready to slide off any moment. His many legs, pitifuly thin compared with the size of the rest of him, waved about helplessly as he looked.
 
 All glitchlings are deterministic: pass a `seed` during construction (or on the enclosing `Gaggle`) to make the chaos reproducible.
 
