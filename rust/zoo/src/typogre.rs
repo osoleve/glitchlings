@@ -224,7 +224,7 @@ pub(crate) fn fatfinger(
     }
 
     let length = chars.len();
-    let mut max_changes = (length as f64 * max_change_rate).floor() as usize;
+    let mut max_changes = (length as f64 * max_change_rate).ceil() as usize;
     if max_changes < 1 {
         max_changes = 1;
     }
