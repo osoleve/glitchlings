@@ -7,6 +7,7 @@ reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
+typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
@@ -109,6 +110,24 @@ def test_redactyl_matches_python_fallback():
         == "███ quick brown ███ █████ over the lazy ███."
     )
 
+
+
+def test_typogre_matches_python_fallback():
+    text = "Adjust the valves before launch"
+    layout = getattr(typogre_module.KEYNEIGHBORS, "CURATOR_QWERTY")
+    expected = typogre_module._fatfinger_python(
+        text,
+        max_change_rate=0.3,
+        layout=layout,
+        rng=random.Random(314),
+    )
+    result = typogre_module.fatfinger(
+        text,
+        max_change_rate=0.3,
+        keyboard="CURATOR_QWERTY",
+        seed=314,
+    )
+    assert result == expected
 
 def test_redactyl_merge_adjacent_blocks():
     text = "redact these words"
@@ -325,6 +344,55 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     assert result == expected
 
 
+def test_pipeline_falls_back_for_unsupported_glitchling(monkeypatch):
+    master_seed = 1122
+    text = "Synchronize thrusters before ascent"
+
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        typo = typogre_module.Typogre(max_change_rate=0.02, seed=5)
+        redup = reduple_module.Reduple(reduplication_rate=0.2, seed=7)
+        return [typo, redup]
+
+    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    expected = python_gaggle(text)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+
+    def _fail(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("Rust pipeline should not run on unsupported glitchlings")
+
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
+    pipeline_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+
+    assert pipeline_gaggle._pipeline_descriptors() is None
+    assert pipeline_gaggle(text) == expected
+
+
+def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
+    master_seed = 909
+    text = "Route traffic through the backup relay"
+
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        red = redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=False, seed=11)
+        red.set_param("merge_adjacent", None)
+        rush = rushmore_module.Rushmore(max_deletion_rate=0.25, seed=13)
+        return [red, rush]
+
+    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    expected = python_gaggle(text)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+
+    def _fail(*_args: object, **_kwargs: object) -> str:
+        raise AssertionError("Rust pipeline should not run with incomplete operations")
+
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
+    pipeline_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+
+    assert pipeline_gaggle._pipeline_descriptors() is None
+    assert pipeline_gaggle(text) == expected
+
+
 def test_rust_pipeline_feature_flag_introspection(monkeypatch):
     monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
     assert not core_module._pipeline_feature_flag_enabled()
@@ -342,3 +410,6 @@ def test_rust_pipeline_feature_flag_introspection(monkeypatch):
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "false")
     assert not core_module._pipeline_feature_flag_enabled()
     assert not core_module.Gaggle.rust_pipeline_enabled()
+
+
+
