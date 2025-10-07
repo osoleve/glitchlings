@@ -51,40 +51,9 @@ print(gaggle(SAMPLE_TEXT))
 
 > Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
 
-## Usage
-
-Need detailed usage patterns, dataset workflows, or tips for enabling the
-Rust accelerator? Consult the [Glitchlings Usage Guide](docs/index.md)
-for end-to-end instructions spanning the Python API, CLI, Hugging Face
+Consult the [Glitchlings Usage Guide](docs/index.md)
+for end-to-end instructions spanning the Python API, CLI, HuggingFace and Prime Intellect
 integrations, and the feature-flagged Rust pipeline.
-
-### Prime Intellect environments
-
-After `pip install -e .[prime]`, the `glitchlings.dlc.prime.load_environment` helper mirrors `verifiers.load_environment` for Prime Intellect scenarios while optionally applying glitchlings before returning the environment:
-
-```python
-from glitchlings import Mim1c, Typogre
-from glitchlings.dlc.prime import echo_chamber, load_environment
-
-env = load_environment(
-    "osoleve/syllabify-en",
-    glitchlings=[Mim1c(replacement_rate=0.01), Typogre(max_change_rate=0.02)],
-    seed=404,
-)
-
-# Spin up an echo chamber that corrupts a dataset column and
-# rewards models for perfectly restoring it
-practice_env = echo_chamber(
-    "osoleve/clean-room",
-    column="text",
-    glitchlings=["Typogre", "Mim1c"],
-    reward_function=lambda prompt, completion, answer: float(completion == answer),
-)
-```
-
-Skip the `glitchlings` argument to receive an untouched verifier dataset, and
-override `reward_function` when you want to evaluate completions with a custom
-scoring routine.
 
 ## Motivation
 
