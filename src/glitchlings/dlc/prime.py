@@ -220,32 +220,54 @@ def echo_chamber(
             "Specify which split to use when the dataset loads as a DatasetDict."
         )
 
-    prompts: list[list[dict[str, str]]] = []
-    answers: list[str] = []
+    filtered_dataset = hf_dataset.filter(
+        lambda row: row.get(column) is not None,
+        load_from_cache_file=False,
+    )
 
-    for row in hf_dataset:
-        value = row.get(column)
-        if value is None:
-            continue
+    source_column_names = list(filtered_dataset.column_names)
 
-        text = str(value)
-        prompts.append(
-            [
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": f"Corrupted text:\n{text}"},
-            ]
-        )
-        answers.append(text)
+    def _build_prompt(row: dict[str, Any]) -> dict[str, Any]:
+        text = str(row[column])
+        prompt = [
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": f"Corrupted text:\n{text}"},
+        ]
+        return {"prompt": prompt, "answer": text}
 
-    if not prompts:
-        raise ValueError(
-            f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
-        )
+    base_dataset = filtered_dataset.map(
+        _build_prompt,
+        remove_columns=source_column_names,
+        load_from_cache_file=False,
+    )
 
-    dataset = HFDataset.from_dict({"prompt": prompts, "answer": answers})
+    try:
+        dataset_length = len(base_dataset)  # type: ignore[arg-type]
+    except TypeError:
+        preview_rows: list[dict[str, Any]]
+        take_fn = getattr(base_dataset, "take", None)
+        if callable(take_fn):
+            preview_rows = list(take_fn(1))
+        else:
+            iterator = iter(base_dataset)
+            try:
+                first_row = next(iterator)
+            except StopIteration:
+                preview_rows = []
+            else:
+                preview_rows = [first_row]
+        if not preview_rows:
+            raise ValueError(
+                f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
+            )
+    else:
+        if dataset_length == 0:
+            raise ValueError(
+                f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
+            )
 
     gaggle = _as_gaggle(glitchlings, seed=seed)
-    glitched_dataset = gaggle.corrupt_dataset(dataset, ["prompt"])
+    glitched_dataset = gaggle.corrupt_dataset(base_dataset, ["prompt"])
 
     rubric_func = reward_function or symmetric_damerau_levenshtein_similarity
     rubric = vf.Rubric(funcs=[rubric_func], weights=[1.0])
