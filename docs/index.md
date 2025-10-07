@@ -21,6 +21,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 8. [Ensuring determinism](#ensuring-determinism)
 9. [Testing checklist](#testing-checklist)
 10. [Additional resources](#additional-resources)
+    - [Glitchling gallery](glitchling-gallery.md)
     - [Keyboard layout reference](keyboard-layouts.md)
 
 ## Installation
@@ -230,6 +231,7 @@ python -c "import nltk; nltk.download('wordnet')"
 - [Monster Manual](../MONSTER_MANUAL.md) – complete bestiary with flavour text.
 - [Repository README](../README.md) – project overview and ASCII ambience.
 - [Development setup](development.md) – local environment, testing, and Rust acceleration guide.
+- [Glitchling gallery](glitchling-gallery.md) – side-by-side outputs for each glitchling at multiple rates.
 - [Keyboard layout reference](keyboard-layouts.md) – available adjacency maps for Typogre and related features.
 
 Once the `/docs` folder is published through GitHub Pages, this guide becomes the landing site for your glitchling adventures.
