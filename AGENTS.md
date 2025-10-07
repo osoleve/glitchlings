@@ -23,7 +23,7 @@ Treat this handbook as the default guidance for any work in the repo.
 - **Top-level docs** – `README.md` introduces the project and CLI, `MONSTER_MANUAL.md` serves as the glitchling bestiary.
 
 ## Coding Conventions
-- Target **Python 3.12+** (see `pyproject.toml`).
+- Target **Python 3.10+** (see `pyproject.toml`).
 - Follow the import order used in the package: standard library, third-party, then local modules.
 - Every new glitchling must:
   - Subclass `Glitchling`, setting `scope` and `order` via `AttackWave` / `AttackOrder` from `core.py`.

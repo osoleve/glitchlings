@@ -4,7 +4,7 @@ This guide walks through preparing a local development environment, running the 
 
 ## Prerequisites
 
-- Python 3.12+
+- Python 3.10+
 - `pip` and a virtual environment tool of your choice (the examples below use `python -m venv`)
 - [Optional] A Rust toolchain (`rustup` or system packages) and [`maturin`](https://www.maturin.rs/) for compiling the PyO3 extensions
 
