@@ -36,6 +36,8 @@ After all, what good is general intelligence if it can't handle a little chaos?
 pip install -U glitchlings
 ```
 
+> Glitchlings requires Python 3.10 or newer.
+
 ```python
 from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 
