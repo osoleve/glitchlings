@@ -225,11 +225,6 @@ def echo_chamber(
         load_from_cache_file=False,
     )
 
-    if len(filtered_dataset) == 0:
-        raise ValueError(
-            f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
-        )
-
     source_column_names = list(filtered_dataset.column_names)
 
     def _build_prompt(row: dict[str, Any]) -> dict[str, Any]:
@@ -245,6 +240,31 @@ def echo_chamber(
         remove_columns=source_column_names,
         load_from_cache_file=False,
     )
+
+    try:
+        dataset_length = len(base_dataset)  # type: ignore[arg-type]
+    except TypeError:
+        preview_rows: list[dict[str, Any]]
+        take_fn = getattr(base_dataset, "take", None)
+        if callable(take_fn):
+            preview_rows = list(take_fn(1))
+        else:
+            iterator = iter(base_dataset)
+            try:
+                first_row = next(iterator)
+            except StopIteration:
+                preview_rows = []
+            else:
+                preview_rows = [first_row]
+        if not preview_rows:
+            raise ValueError(
+                f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
+            )
+    else:
+        if dataset_length == 0:
+            raise ValueError(
+                f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
+            )
 
     gaggle = _as_gaggle(glitchlings, seed=seed)
     glitched_dataset = gaggle.corrupt_dataset(base_dataset, ["prompt"])

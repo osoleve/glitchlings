@@ -51,7 +51,7 @@ jargoyle._wordnet_ready = True
 
 
 class FakeDataset:
-    def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None):
+    def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None, *, streaming: bool = False):
         self._rows = [dict(row) for row in rows]
         if column_names is None:
             if rows:
@@ -59,9 +59,10 @@ class FakeDataset:
             else:
                 column_names = []
         self.column_names = list(column_names)
+        self._streaming = streaming
 
     @classmethod
-    def from_dict(cls, columns: dict[str, list[object]]) -> "FakeDataset":
+    def from_dict(cls, columns: dict[str, list[object]], *, streaming: bool = False) -> "FakeDataset":
         keys = list(columns.keys())
         lengths = [len(col) for col in columns.values()]
         if lengths and any(l != lengths[0] for l in lengths):
@@ -71,9 +72,11 @@ class FakeDataset:
             {key: columns[key][index] for key in keys}
             for index in range(length)
         ]
-        return cls(rows, keys)
+        return cls(rows, keys, streaming=streaming)
 
     def __len__(self) -> int:
+        if self._streaming:
+            raise TypeError("Streaming dataset does not define __len__.")
         return len(self._rows)
 
     def __getitem__(self, index: int) -> dict[str, object]:
@@ -85,7 +88,7 @@ class FakeDataset:
 
     def filter(self, function, load_from_cache_file: bool = True):
         filtered = [row for row in self._rows if function(dict(row))]
-        return FakeDataset(filtered, self.column_names)
+        return FakeDataset(filtered, self.column_names, streaming=self._streaming)
 
     def map(
         self,
@@ -104,10 +107,14 @@ class FakeDataset:
             column_names = list(mapped_rows[0].keys())
         else:
             column_names = []
-        return FakeDataset(mapped_rows, column_names)
+        return FakeDataset(mapped_rows, column_names, streaming=self._streaming)
+
+    def take(self, n: int):
+        return FakeDataset(self._rows[:n], self.column_names, streaming=self._streaming)
+
     def with_transform(self, function):
         transformed = [function(dict(row)) for row in self._rows]
-        return FakeDataset(transformed, self.column_names)
+        return FakeDataset(transformed, self.column_names, streaming=self._streaming)
 
 
 Dataset = FakeDataset
@@ -239,7 +246,7 @@ def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     base_dataset = Dataset.from_dict({
         "text": ["alpha", None, "beta"],
         "other": [1, 2, 3],
-    })
+    }, streaming=True)
 
     def _fake_load_dataset(*args, **kwargs):
         return base_dataset
@@ -268,7 +275,7 @@ def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
         instructions="Restore the text.",
     )
 
-    assert len(base_dataset) == 3
+    assert sum(1 for _ in base_dataset) == 3
     assert recorder.records
     dataset, columns = recorder.records[0]
     assert dataset is not base_dataset
