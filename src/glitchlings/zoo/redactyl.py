@@ -1,5 +1,6 @@
 import re
 import random
+from typing import Any
 
 from .core import Glitchling, AttackWave
 from ._rate import resolve_rate
@@ -142,6 +143,20 @@ class Redactyl(Glitchling):
             rate=effective_rate,
             merge_adjacent=merge_adjacent,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        replacement_char = self.kwargs.get("replacement_char")
+        rate = self.kwargs.get("rate")
+        merge_adjacent = self.kwargs.get("merge_adjacent")
+        if replacement_char is None or rate is None or merge_adjacent is None:
+            return None
+        return {
+            "type": "redact",
+            "replacement_char": str(replacement_char),
+            "redaction_rate": float(rate),
+            "merge_adjacent": bool(merge_adjacent),
+        }
+
 
 
 redactyl = Redactyl()
