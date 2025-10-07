@@ -1,5 +1,6 @@
 import re
 import random
+from typing import Any
 
 from .core import Glitchling, AttackWave
 from ._rate import resolve_rate
@@ -112,6 +113,13 @@ class Reduple(Glitchling):
             seed=seed,
             rate=effective_rate,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            return None
+        return {"type": "reduplicate", "reduplication_rate": float(rate)}
+
 
 
 reduple = Reduple()

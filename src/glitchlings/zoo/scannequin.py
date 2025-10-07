@@ -1,5 +1,6 @@
 import re
 import random
+from typing import Any
 
 from ._ocr_confusions import load_confusion_table
 from .core import Glitchling, AttackWave, AttackOrder
@@ -153,6 +154,15 @@ class Scannequin(Glitchling):
             seed=seed,
             rate=effective_rate,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            rate = self.kwargs.get("error_rate")
+        if rate is None:
+            return None
+        return {"type": "ocr", "error_rate": float(rate)}
+
 
 
 scannequin = Scannequin()
