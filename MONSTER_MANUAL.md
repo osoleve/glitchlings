@@ -16,7 +16,7 @@ _How can a computer need reading glasses?_
 >
 > ### Scannequin Args
 >
-> - `error_rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
+> - `rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -60,7 +60,7 @@ _What a nice word, would be a shame if something happened to it._
 >
 > ### Typogre Args
 >
-> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
+> - `rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
 > - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "QWERTY", "DVORAK", "COLEMAK", and "AZERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
@@ -104,7 +104,7 @@ _Wait, was that...?_
 >
 > ### Mim1c Args
 >
-> - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
 > - `banned_characters (Collection[str])`: Characters that must never appear as replacements (default: none).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
@@ -150,7 +150,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ### Jargoyle Args
 >
-> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
+> - `rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
 > - `part_of_speech`: The WordNet part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
@@ -196,7 +196,7 @@ _Did you say that or did I?_
 >
 > ### Reduple Args
 >
-> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
+> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -239,7 +239,7 @@ _I accidentally an entire word._
 >
 > ### Rushmore Args
 >
-> - `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python

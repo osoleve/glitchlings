@@ -3,6 +3,7 @@ import random
 
 from ._ocr_confusions import load_confusion_table
 from .core import Glitchling, AttackWave, AttackOrder
+from ._rate import resolve_rate
 
 try:
     from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust
@@ -13,14 +14,14 @@ except ImportError:  # pragma: no cover - compiled extension not present
 def _python_ocr_artifacts(
     text: str,
     *,
-    error_rate: float,
+    rate: float,
     rng: random.Random,
 ) -> str:
     """Introduce OCR-like artifacts into text.
 
     Parameters
     - text: Input text to corrupt.
-    - error_rate: Max proportion of eligible confusion matches to replace (default 0.02).
+    - rate: Max proportion of eligible confusion matches to replace (default 0.02).
     - seed: Optional seed if `rng` not provided.
     - rng: Optional RNG; overrides seed.
 
@@ -53,7 +54,7 @@ def _python_ocr_artifacts(
         return text
 
     # Decide how many to replace
-    k = int(len(candidates) * error_rate)
+    k = int(len(candidates) * rate)
     if k <= 0:
         return text
 
@@ -95,9 +96,11 @@ def _python_ocr_artifacts(
 
 def ocr_artifacts(
     text: str,
-    error_rate: float = 0.02,
+    rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    error_rate: float | None = None,
 ) -> str:
     """Introduce OCR-like artifacts into text.
 
@@ -107,13 +110,22 @@ def ocr_artifacts(
     if not text:
         return text
 
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=error_rate,
+        default=0.02,
+        legacy_name="error_rate",
+    )
+
     if rng is None:
         rng = random.Random(seed)
 
-    if _ocr_artifacts_rust is not None:
-        return _ocr_artifacts_rust(text, error_rate, rng)
+    clamped_rate = max(0.0, effective_rate)
 
-    return _python_ocr_artifacts(text, error_rate=error_rate, rng=rng)
+    if _ocr_artifacts_rust is not None:
+        return _ocr_artifacts_rust(text, clamped_rate, rng)
+
+    return _python_ocr_artifacts(text, rate=clamped_rate, rng=rng)
 
 
 class Scannequin(Glitchling):
@@ -122,16 +134,24 @@ class Scannequin(Glitchling):
     def __init__(
         self,
         *,
-        error_rate: float = 0.02,
+        rate: float | None = None,
+        error_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"error_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=error_rate,
+            default=0.02,
+            legacy_name="error_rate",
+        )
         super().__init__(
             name="Scannequin",
             corruption_function=ocr_artifacts,
             scope=AttackWave.CHARACTER,
             order=AttackOrder.LATE,
             seed=seed,
-            error_rate=error_rate,
+            rate=effective_rate,
         )
 
 

@@ -135,10 +135,24 @@ class Glitchling:
     def set_param(self, key: str, value: Any) -> None:
         """Persist a parameter for use by the corruption callable."""
 
-        setattr(self, key, value)
-        self.kwargs[key] = value
-        if key == "seed":
+        aliases = getattr(self, "_param_aliases", {})
+        canonical = aliases.get(key, key)
+
+        # Drop stale alias keys so we only forward canonical kwargs.
+        self.kwargs.pop(key, None)
+        for alias, target in aliases.items():
+            if target == canonical:
+                self.kwargs.pop(alias, None)
+
+        self.kwargs[canonical] = value
+        setattr(self, canonical, value)
+
+        if canonical == "seed":
             self.reset_rng(value)
+
+        for alias, target in aliases.items():
+            if target == canonical:
+                setattr(self, alias, value)
 
     def __corrupt(self, text: str, *args: Any, **kwargs: Any) -> str:
         """Execute the corruption callable, injecting the RNG when required."""
@@ -238,14 +252,18 @@ class Glitchling:
 
 
 def _pipeline_operation_reduplicate(glitchling: "Glitchling") -> dict[str, Any] | None:
-    rate = glitchling.kwargs.get("reduplication_rate")
+    rate = glitchling.kwargs.get("rate")
+    if rate is None:
+        rate = glitchling.kwargs.get("reduplication_rate")
     if rate is None:
         return None
     return {"type": "reduplicate", "reduplication_rate": float(rate)}
 
 
 def _pipeline_operation_delete(glitchling: "Glitchling") -> dict[str, Any] | None:
-    rate = glitchling.kwargs.get("max_deletion_rate")
+    rate = glitchling.kwargs.get("rate")
+    if rate is None:
+        rate = glitchling.kwargs.get("max_deletion_rate")
     if rate is None:
         return None
     return {"type": "delete", "max_deletion_rate": float(rate)}
@@ -253,23 +271,27 @@ def _pipeline_operation_delete(glitchling: "Glitchling") -> dict[str, Any] | Non
 
 def _pipeline_operation_redact(glitchling: "Glitchling") -> dict[str, Any] | None:
     replacement_char = glitchling.kwargs.get("replacement_char")
-    redaction_rate = glitchling.kwargs.get("redaction_rate")
+    rate = glitchling.kwargs.get("rate")
+    if rate is None:
+        rate = glitchling.kwargs.get("redaction_rate")
     merge_adjacent = glitchling.kwargs.get("merge_adjacent")
-    if replacement_char is None or redaction_rate is None or merge_adjacent is None:
+    if replacement_char is None or rate is None or merge_adjacent is None:
         return None
     return {
         "type": "redact",
         "replacement_char": str(replacement_char),
-        "redaction_rate": float(redaction_rate),
+        "redaction_rate": float(rate),
         "merge_adjacent": bool(merge_adjacent),
     }
 
 
 def _pipeline_operation_ocr(glitchling: "Glitchling") -> dict[str, Any] | None:
-    error_rate = glitchling.kwargs.get("error_rate")
-    if error_rate is None:
+    rate = glitchling.kwargs.get("rate")
+    if rate is None:
+        rate = glitchling.kwargs.get("error_rate")
+    if rate is None:
         return None
-    return {"type": "ocr", "error_rate": float(error_rate)}
+    return {"type": "ocr", "error_rate": float(rate)}
 
 
 _PIPELINE_OPERATION_BUILDERS: dict[str, Callable[["Glitchling"], dict[str, Any] | None]] = {

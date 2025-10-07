@@ -5,6 +5,7 @@ import random
 from typing import Optional
 
 from .core import Glitchling, AttackWave, AttackOrder
+from ._rate import resolve_rate
 from ..util import KEYNEIGHBORS
 
 try:
@@ -88,11 +89,13 @@ def _python_draw_eligible_index(
 def _fatfinger_python(
     text: str,
     *,
-    max_change_rate: float,
+    rate: float,
     layout: dict[str, list[str]],
     rng: random.Random,
 ) -> str:
-    rate = max(0.0, max_change_rate)
+    if rate <= 0.0:
+        return text
+
     s = text
     max_changes = math.ceil(len(s) * rate)
     if max_changes == 0:
@@ -140,28 +143,37 @@ def _fatfinger_python(
 
 def fatfinger(
     text: str,
-    max_change_rate: float = 0.02,
+    rate: float | None = None,
     keyboard: str = "CURATOR_QWERTY",
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    max_change_rate: float | None = None,
 ) -> str:
     """Introduce character-level "fat finger" edits with a Rust fast path."""
+
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=max_change_rate,
+        default=0.02,
+        legacy_name="max_change_rate",
+    )
 
     if rng is None:
         rng = random.Random(seed)
     if not text:
         return ""
 
-    rate = max(0.0, max_change_rate)
-    if rate == 0.0:
+    clamped_rate = max(0.0, effective_rate)
+    if clamped_rate == 0.0:
         return text
 
     layout = getattr(KEYNEIGHBORS, keyboard)
 
     if _fatfinger_rust is not None:
-        return _fatfinger_rust(text, max_change_rate=rate, layout=layout, rng=rng)
+        return _fatfinger_rust(text, max_change_rate=clamped_rate, layout=layout, rng=rng)
 
-    return _fatfinger_python(text, max_change_rate=rate, layout=layout, rng=rng)
+    return _fatfinger_python(text, rate=clamped_rate, layout=layout, rng=rng)
 
 
 class Typogre(Glitchling):
@@ -170,17 +182,25 @@ class Typogre(Glitchling):
     def __init__(
         self,
         *,
-        max_change_rate: float = 0.02,
+        rate: float | None = None,
+        max_change_rate: float | None = None,
         keyboard: str = "CURATOR_QWERTY",
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"max_change_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=max_change_rate,
+            default=0.02,
+            legacy_name="max_change_rate",
+        )
         super().__init__(
             name="Typogre",
             corruption_function=fatfinger,
             scope=AttackWave.CHARACTER,
             order=AttackOrder.EARLY,
             seed=seed,
-            max_change_rate=max_change_rate,
+            rate=effective_rate,
             keyboard=keyboard,
         )
 
