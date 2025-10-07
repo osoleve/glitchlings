@@ -72,10 +72,10 @@ def test_reduple_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = reduple_module._python_reduplicate_words(
         text,
-        reduplication_rate=0.5,
+        rate=0.5,
         rng=random.Random(123),
     )
-    result = reduple_module.reduplicate_words(text, reduplication_rate=0.5, seed=123)
+    result = reduple_module.reduplicate_words(text, rate=0.5, seed=123)
     assert (
         result
         == expected
@@ -87,12 +87,12 @@ def test_reduple_respects_explicit_rng():
     text = "Repeat me"
     expected = reduple_module._python_reduplicate_words(
         text,
-        reduplication_rate=1.0,
+        rate=1.0,
         rng=random.Random(99),
     )
     result = reduple_module.reduplicate_words(
         text,
-        reduplication_rate=1.0,
+        rate=1.0,
         rng=random.Random(99),
     )
     assert result == expected == "Repeat Repeat me me"
@@ -102,11 +102,11 @@ def test_rushmore_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = rushmore_module._python_delete_random_words(
         text,
-        max_deletion_rate=0.5,
+        rate=0.5,
         rng=random.Random(123),
     )
     result = rushmore_module.delete_random_words(
-        text, max_deletion_rate=0.5, seed=123
+        text, rate=0.5, seed=123
     )
     assert result == expected == "The over the lazy dog."
 
@@ -115,10 +115,10 @@ def test_scannequin_matches_python_fallback():
     text = "The m rn"
     expected = scannequin_module._python_ocr_artifacts(
         text,
-        error_rate=1.0,
+        rate=1.0,
         rng=random.Random(1),
     )
-    result = scannequin_module.ocr_artifacts(text, error_rate=1.0, seed=1)
+    result = scannequin_module.ocr_artifacts(text, rate=1.0, seed=1)
     assert result == expected == "Tlie rn rri"
 
 
@@ -127,10 +127,10 @@ def test_scannequin_overlap_candidates_matches_python(seed: int):
     text = "cl rn li"
     expected = scannequin_module._python_ocr_artifacts(
         text,
-        error_rate=1.0,
+        rate=1.0,
         rng=random.Random(seed),
     )
-    result = scannequin_module.ocr_artifacts(text, error_rate=1.0, seed=seed)
+    result = scannequin_module.ocr_artifacts(text, rate=1.0, seed=seed)
     assert result == expected
 
 
@@ -139,11 +139,11 @@ def test_redactyl_matches_python_fallback():
     expected = redactyl_module._python_redact_words(
         text,
         replacement_char=redactyl_module.FULL_BLOCK,
-        redaction_rate=0.5,
+        rate=0.5,
         merge_adjacent=False,
         rng=random.Random(123),
     )
-    result = redactyl_module.redact_words(text, redaction_rate=0.5, seed=123)
+    result = redactyl_module.redact_words(text, rate=0.5, seed=123)
     assert (
         result
         == expected
@@ -157,13 +157,13 @@ def test_typogre_matches_python_fallback():
     layout = getattr(typogre_module.KEYNEIGHBORS, "CURATOR_QWERTY")
     expected = typogre_module._fatfinger_python(
         text,
-        max_change_rate=0.3,
+        rate=0.3,
         layout=layout,
         rng=random.Random(314),
     )
     result = typogre_module.fatfinger(
         text,
-        max_change_rate=0.3,
+        rate=0.3,
         keyboard="CURATOR_QWERTY",
         seed=314,
     )
@@ -174,13 +174,13 @@ def test_redactyl_merge_adjacent_blocks():
     expected = redactyl_module._python_redact_words(
         text,
         replacement_char=redactyl_module.FULL_BLOCK,
-        redaction_rate=1.0,
+        rate=1.0,
         merge_adjacent=True,
         rng=random.Random(7),
     )
     result = redactyl_module.redact_words(
         text,
-        redaction_rate=1.0,
+        rate=1.0,
         merge_adjacent=True,
         seed=7,
     )
@@ -213,27 +213,27 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
         if op_type == "reduplicate":
             current = reduple_module._python_reduplicate_words(
                 current,
-                reduplication_rate=operation["reduplication_rate"],
+                rate=operation["reduplication_rate"],
                 rng=rng,
             )
         elif op_type == "delete":
             current = rushmore_module._python_delete_random_words(
                 current,
-                max_deletion_rate=operation["max_deletion_rate"],
+                rate=operation["max_deletion_rate"],
                 rng=rng,
             )
         elif op_type == "redact":
             current = redactyl_module._python_redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
-                redaction_rate=operation["redaction_rate"],
+                rate=operation["redaction_rate"],
                 merge_adjacent=operation["merge_adjacent"],
                 rng=rng,
             )
         elif op_type == "ocr":
             current = scannequin_module._python_ocr_artifacts(
                 current,
-                error_rate=operation["error_rate"],
+                rate=operation["error_rate"],
                 rng=rng,
             )
         else:  # pragma: no cover - defensive guard
@@ -330,10 +330,10 @@ def test_gaggle_prefers_rust_pipeline(monkeypatch):
     monkeypatch.setattr(scannequin_module, "ocr_artifacts", _fail)
 
     gaggle_glitchlings = [
-        scannequin_module.Scannequin(error_rate=0.2),
-        reduple_module.Reduple(reduplication_rate=0.4),
-        rushmore_module.Rushmore(max_deletion_rate=0.3),
-        redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=True),
+        scannequin_module.Scannequin(rate=0.2),
+        reduple_module.Reduple(rate=0.4),
+        rushmore_module.Rushmore(rate=0.3),
+        redactyl_module.Redactyl(rate=0.5, merge_adjacent=True),
     ]
     gaggle = core_module.Gaggle(gaggle_glitchlings, seed=777)
 
@@ -367,8 +367,8 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
 
     gaggle = core_module.Gaggle(
         [
-            reduple_module.Reduple(reduplication_rate=0.4),
-            rushmore_module.Rushmore(max_deletion_rate=0.3),
+            reduple_module.Reduple(rate=0.4),
+            rushmore_module.Rushmore(rate=0.3),
         ],
         seed=2024,
     )
@@ -389,8 +389,8 @@ def test_pipeline_falls_back_for_unsupported_glitchling(monkeypatch):
     text = "Synchronize thrusters before ascent"
 
     def _make_glitchlings() -> list[core_module.Glitchling]:
-        typo = typogre_module.Typogre(max_change_rate=0.02, seed=5)
-        redup = reduple_module.Reduple(reduplication_rate=0.2, seed=7)
+        typo = typogre_module.Typogre(rate=0.02, seed=5)
+        redup = reduple_module.Reduple(rate=0.2, seed=7)
         return [typo, redup]
 
     python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
@@ -413,9 +413,9 @@ def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
     text = "Route traffic through the backup relay"
 
     def _make_glitchlings() -> list[core_module.Glitchling]:
-        red = redactyl_module.Redactyl(redaction_rate=0.5, merge_adjacent=False, seed=11)
+        red = redactyl_module.Redactyl(rate=0.5, merge_adjacent=False, seed=11)
         red.set_param("merge_adjacent", None)
-        rush = rushmore_module.Rushmore(max_deletion_rate=0.25, seed=13)
+        rush = rushmore_module.Rushmore(rate=0.25, seed=13)
         return [red, rush]
 
     python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)

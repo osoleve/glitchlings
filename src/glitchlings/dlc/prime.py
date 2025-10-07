@@ -79,8 +79,8 @@ def tutorial_level(
 ) -> vf.Environment:
     """Create a low-corruption environment using tuned defaults."""
 
-    tuned_mim1c = Mim1c(replacement_rate=0.01 * difficulty.value)
-    tuned_typogre = Typogre(max_change_rate=0.025 * difficulty.value)
+    tuned_mim1c = Mim1c(rate=0.01 * difficulty.value)
+    tuned_typogre = Typogre(rate=0.025 * difficulty.value)
 
     return load_environment(
         env,

@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SPEC",
         help=(
             "Glitchling to apply, optionally with parameters like "
-            "Typogre(max_change_rate=0.05). Repeat for multiples; defaults to all built-ins."
+            "Typogre(rate=0.05). Repeat for multiples; defaults to all built-ins."
         ),
     )
     parser.add_argument(

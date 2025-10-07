@@ -33,6 +33,7 @@ else:
     _WORDNET_MODULE = None
 
 from .core import AttackWave, Glitchling
+from ._rate import resolve_rate
 
 _WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
 
@@ -211,16 +212,18 @@ def _collect_synonyms(
 
 def substitute_random_synonyms(
     text: str,
-    replacement_rate: float = 0.1,
+    rate: float | None = None,
     part_of_speech: PartOfSpeechInput = "n",
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    replacement_rate: float | None = None,
 ) -> str:
     """Replace words with random WordNet synonyms.
 
     Parameters
     - text: Input text.
-    - replacement_rate: Max proportion of candidate words to replace (default 0.1).
+    - rate: Max proportion of candidate words to replace (default 0.1).
     - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
       any iterable of those tags, or "any" to include all four.
     - rng: Optional RNG instance used for deterministic sampling.
@@ -232,6 +235,13 @@ def substitute_random_synonyms(
     - Synonyms sorted before rng.choice to fix ordering.
     - For each POS, the first synset containing alternate lemmas is used for stability.
     """
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=replacement_rate,
+        default=0.1,
+        legacy_name="replacement_rate",
+    )
+
     ensure_wordnet()
     wordnet = _wordnet()
 
@@ -270,7 +280,8 @@ def substitute_random_synonyms(
     if not candidate_indices:
         return text
 
-    max_replacements = int(len(candidate_indices) * replacement_rate)
+    clamped_rate = max(0.0, effective_rate)
+    max_replacements = int(len(candidate_indices) * clamped_rate)
     if max_replacements <= 0:
         return text
 
@@ -297,16 +308,24 @@ class Jargoyle(Glitchling):
     def __init__(
         self,
         *,
-        replacement_rate: float = 0.1,
+        rate: float | None = None,
+        replacement_rate: float | None = None,
         part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"replacement_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=replacement_rate,
+            default=0.1,
+            legacy_name="replacement_rate",
+        )
         super().__init__(
             name="Jargoyle",
             corruption_function=substitute_random_synonyms,
             scope=AttackWave.WORD,
             seed=seed,
-            replacement_rate=replacement_rate,
+            rate=effective_rate,
             part_of_speech=part_of_speech,
         )
 
