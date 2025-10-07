@@ -100,7 +100,10 @@ class FakeDataset:
                 for column in remove_columns:
                     result.pop(column, None)
             mapped_rows.append(result)
-        column_names = list(mapped_rows[0].keys()) if mapped_rows else []
+        if mapped_rows:
+            column_names = list(mapped_rows[0].keys())
+        else:
+            column_names = []
         return FakeDataset(mapped_rows, column_names)
     def with_transform(self, function):
         transformed = [function(dict(row)) for row in self._rows]
