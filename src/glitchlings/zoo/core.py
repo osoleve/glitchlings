@@ -107,6 +107,7 @@ class Glitchling:
         scope: AttackWave,
         order: AttackOrder = AttackOrder.NORMAL,
         seed: int | None = None,
+        pipeline_operation: Callable[["Glitchling"], dict[str, Any] | None] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -128,30 +129,75 @@ class Glitchling:
         self.corruption_function: CorruptionCallable = corruption_function
         self.level: AttackWave = scope
         self.order: AttackOrder = order
+        self._pipeline_descriptor_factory = pipeline_operation
         self.kwargs: dict[str, Any] = {}
+        self._cached_rng_callable: CorruptionCallable | None = None
+        self._cached_rng_expectation: bool | None = None
         for kw, val in kwargs.items():
             self.set_param(kw, val)
 
     def set_param(self, key: str, value: Any) -> None:
         """Persist a parameter for use by the corruption callable."""
 
-        setattr(self, key, value)
-        self.kwargs[key] = value
-        if key == "seed":
+        aliases = getattr(self, "_param_aliases", {})
+        canonical = aliases.get(key, key)
+
+        # Drop stale alias keys so we only forward canonical kwargs.
+        self.kwargs.pop(key, None)
+        for alias, target in aliases.items():
+            if target == canonical:
+                self.kwargs.pop(alias, None)
+
+        self.kwargs[canonical] = value
+        setattr(self, canonical, value)
+
+        if canonical == "seed":
             self.reset_rng(value)
+
+        for alias, target in aliases.items():
+            if target == canonical:
+                setattr(self, alias, value)
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        """Return the Rust pipeline operation descriptor for this glitchling."""
+
+        factory = self._pipeline_descriptor_factory
+        if factory is None:
+            return None
+
+        return factory(self)
+
+    def _corruption_expects_rng(self) -> bool:
+        """Return `True` when the corruption function accepts an rng keyword."""
+
+        cached_callable = self._cached_rng_callable
+        cached_expectation = self._cached_rng_expectation
+        corruption_function = self.corruption_function
+
+        if (
+            cached_callable is corruption_function
+            and cached_expectation is not None
+        ):
+            return cached_expectation
+
+        expects_rng = False
+        try:
+            signature = inspect.signature(corruption_function)
+        except (TypeError, ValueError):
+            signature = None
+
+        if signature is not None:
+            expects_rng = "rng" in signature.parameters
+
+        self._cached_rng_callable = corruption_function
+        self._cached_rng_expectation = expects_rng
+        return expects_rng
 
     def __corrupt(self, text: str, *args: Any, **kwargs: Any) -> str:
         """Execute the corruption callable, injecting the RNG when required."""
 
         # Pass rng to underlying corruption function if it expects it.
-        try:
-            signature = inspect.signature(self.corruption_function)
-        except (TypeError, ValueError):
-            signature = None
-
-        expects_rng = False
-        if signature is not None:
-            expects_rng = "rng" in signature.parameters
+        expects_rng = self._corruption_expects_rng()
 
         if expects_rng:
             corrupted = self.corruption_function(text, *args, rng=self.rng, **kwargs)
@@ -231,53 +277,14 @@ class Glitchling:
                 self.corruption_function,
                 self.level,
                 self.order,
+                pipeline_operation=self._pipeline_descriptor_factory,
                 **filtered_kwargs,
             )
 
         return cls(**filtered_kwargs)
 
 
-def _pipeline_operation_reduplicate(glitchling: "Glitchling") -> dict[str, Any] | None:
-    rate = glitchling.kwargs.get("reduplication_rate")
-    if rate is None:
-        return None
-    return {"type": "reduplicate", "reduplication_rate": float(rate)}
 
-
-def _pipeline_operation_delete(glitchling: "Glitchling") -> dict[str, Any] | None:
-    rate = glitchling.kwargs.get("max_deletion_rate")
-    if rate is None:
-        return None
-    return {"type": "delete", "max_deletion_rate": float(rate)}
-
-
-def _pipeline_operation_redact(glitchling: "Glitchling") -> dict[str, Any] | None:
-    replacement_char = glitchling.kwargs.get("replacement_char")
-    redaction_rate = glitchling.kwargs.get("redaction_rate")
-    merge_adjacent = glitchling.kwargs.get("merge_adjacent")
-    if replacement_char is None or redaction_rate is None or merge_adjacent is None:
-        return None
-    return {
-        "type": "redact",
-        "replacement_char": str(replacement_char),
-        "redaction_rate": float(redaction_rate),
-        "merge_adjacent": bool(merge_adjacent),
-    }
-
-
-def _pipeline_operation_ocr(glitchling: "Glitchling") -> dict[str, Any] | None:
-    error_rate = glitchling.kwargs.get("error_rate")
-    if error_rate is None:
-        return None
-    return {"type": "ocr", "error_rate": float(error_rate)}
-
-
-_PIPELINE_OPERATION_BUILDERS: dict[str, Callable[["Glitchling"], dict[str, Any] | None]] = {
-    "Reduple": _pipeline_operation_reduplicate,
-    "Rushmore": _pipeline_operation_delete,
-    "Redactyl": _pipeline_operation_redact,
-    "Scannequin": _pipeline_operation_ocr,
-}
 
 
 class Gaggle(Glitchling):
@@ -359,10 +366,7 @@ class Gaggle(Glitchling):
 
         descriptors: list[dict[str, Any]] = []
         for glitchling in self.apply_order:
-            builder = _PIPELINE_OPERATION_BUILDERS.get(glitchling.name)
-            if builder is None:
-                return None
-            operation = builder(glitchling)
+            operation = glitchling.pipeline_operation()
             if operation is None:
                 return None
 

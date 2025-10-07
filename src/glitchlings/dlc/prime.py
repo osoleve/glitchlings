@@ -79,8 +79,8 @@ def tutorial_level(
 ) -> vf.Environment:
     """Create a low-corruption environment using tuned defaults."""
 
-    tuned_mim1c = Mim1c(replacement_rate=0.01 * difficulty.value)
-    tuned_typogre = Typogre(max_change_rate=0.025 * difficulty.value)
+    tuned_mim1c = Mim1c(rate=0.01 * difficulty.value)
+    tuned_typogre = Typogre(rate=0.025 * difficulty.value)
 
     return load_environment(
         env,
@@ -220,32 +220,34 @@ def echo_chamber(
             "Specify which split to use when the dataset loads as a DatasetDict."
         )
 
-    prompts: list[list[dict[str, str]]] = []
-    answers: list[str] = []
+    filtered_dataset = hf_dataset.filter(
+        lambda row: row.get(column) is not None,
+        load_from_cache_file=False,
+    )
 
-    for row in hf_dataset:
-        value = row.get(column)
-        if value is None:
-            continue
-
-        text = str(value)
-        prompts.append(
-            [
-                {"role": "system", "content": instructions},
-                {"role": "user", "content": f"Corrupted text:\n{text}"},
-            ]
-        )
-        answers.append(text)
-
-    if not prompts:
+    if len(filtered_dataset) == 0:
         raise ValueError(
             f"Column '{column}' did not yield any textual entries in dataset '{dataset_id}'."
         )
 
-    dataset = HFDataset.from_dict({"prompt": prompts, "answer": answers})
+    source_column_names = list(filtered_dataset.column_names)
+
+    def _build_prompt(row: dict[str, Any]) -> dict[str, Any]:
+        text = str(row[column])
+        prompt = [
+            {"role": "system", "content": instructions},
+            {"role": "user", "content": f"Corrupted text:\n{text}"},
+        ]
+        return {"prompt": prompt, "answer": text}
+
+    base_dataset = filtered_dataset.map(
+        _build_prompt,
+        remove_columns=source_column_names,
+        load_from_cache_file=False,
+    )
 
     gaggle = _as_gaggle(glitchlings, seed=seed)
-    glitched_dataset = gaggle.corrupt_dataset(dataset, ["prompt"])
+    glitched_dataset = gaggle.corrupt_dataset(base_dataset, ["prompt"])
 
     rubric_func = reward_function or symmetric_damerau_levenshtein_similarity
     rubric = vf.Rubric(funcs=[rubric_func], weights=[1.0])

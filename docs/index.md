@@ -1,6 +1,6 @@
-# Glitchlings Usage Guide
+# Glitchlings Field Guide
 
-Welcome to the Glitchlings field manual! This GitHub Pages-ready guide explains how to install the toolkit, orchestrate chaos with the `Gaggle`, and wield every individual glitchling (Typogre, Mim1c, Reduple, Rushmore, Redactyl, Jargoyle, and Scannequin). It closes with deep coverage of the optional Prime Intellect integration so you can perturb verifier datasets with confidence.
+Welcome to the Glitchlings field manual! This guide explains how to install the toolkit, orchestrate chaos with the `Gaggle`, and wrangle the individual glitchlings.
 
 ## Table of contents
 
@@ -31,7 +31,7 @@ Install the latest release directly from PyPI:
 pip install -U glitchlings
 ```
 
-Need the optional Prime Intellect loader or the NLTK-powered Jargoyle ready to go? Pull in the documented extras:
+Need the optional Prime Intellect loader or the NLTK-powered Jargoyle?
 
 ```bash
 # Prime Intellect DLC + verifiers dependency
@@ -49,8 +49,6 @@ When working from a local clone, install in editable mode so your changes take e
 pip install -e .
 ```
 
-If you plan to experiment with the PyO3 acceleration crates, install `maturin` and run `maturin develop` from each crate directory inside the `rust/` folder to compile the optional Rust fast paths.
-
 Looking for a complete development workflow (virtual environments, test suite, and Rust tips)? Consult the [development setup guide](development.md).
 
 ## Quickstart
@@ -61,14 +59,16 @@ Glitchlings are callable objects that accept strings (and string-like iterables)
 from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 
 gaggle = Gaggle([
-    Typogre(max_change_rate=0.03),
-    Mim1c(replacement_rate=0.02),
-    Reduple(seed=404),
-    Rushmore(max_deletion_rate=0.02),
+    Typogre(rate=0.02),
+    Mim1c(rate=0.01),
+    Reduple(reduplication_rate=0.005),
+    Rushmore(rate=0.005),
 ], seed=1234)
 
 print(gaggle(SAMPLE_TEXT))
 ```
+
+> Onee morninᶃ, when Gregor Samsa woke from troubleⅾ dreams, he found himself transformed in his bed into a horible ｖermin. He lay onhis armour-like back, and if he lifted his head a little he could see his brown bely, slightlydomed and divided by arches intostiff sections. The bexddihng was hardly able to to cover it and seemed ready to slide off any moment. His many legs, pitifuly thin compared with the size of the rest of him, waved about helplessly as he looked.
 
 All glitchlings are deterministic: pass a `seed` during construction (or on the enclosing `Gaggle`) to make the chaos reproducible.
 
@@ -89,7 +89,7 @@ glitchlings --list
 glitchlings -g typogre --file documents/report.txt --diff
 
 # Configure glitchlings inline with keyword arguments.
-glitchlings -g "Typogre(max_change_rate=0.05)" "Ghouls just wanna have fun"
+glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text through Mim1c for on-the-fly homoglyph swaps.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
@@ -125,9 +125,9 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 
 - **Seed derivation** – pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
 - **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
-- **Dynamic configuration** – use `gaggle.set_param("Typogre", "max_change_rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
+- **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
 - **Dataset utilities** – after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
-- **Summoning from shorthand** – `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(replacement_rate=0.01)], seed=404)`).
+- **Summoning from shorthand** – `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
 
 ## Glitchling reference
 
@@ -150,7 +150,7 @@ from datasets import load_dataset
 from glitchlings import Gaggle, Typogre, Mim1c
 
 dataset = load_dataset("ag_news")
-gaggle = Gaggle([Typogre(max_change_rate=0.02), Mim1c(replacement_rate=0.01)], seed=404)
+gaggle = Gaggle([Typogre(rate=0.02), Mim1c(rate=0.01)], seed=404)
 
 corrupted = gaggle.corrupt_dataset(
     dataset,
@@ -181,15 +181,9 @@ from glitchlings.dlc.prime import (
 # Load an existing environment and apply custom corruption
 custom_env = load_environment(
     "osoleve/syllabify-en",
-    glitchlings=[Mim1c(replacement_rate=0.01), Typogre(max_change_rate=0.02)],
+    glitchlings=[Mim1c(rate=0.01), Typogre(rate=0.02)],
     seed=404,
     columns=["prompt"],  # optional; inferred when omitted
-)
-
-# Or bootstrap a difficulty-scaled tutorial environment
-practice_env = tutorial_level(
-    "osoleve/syllabify-en",
-    difficulty=Difficulty.Hard,
 )
 
 # Or convert a Hugging Face dataset column into an Echo Chamber

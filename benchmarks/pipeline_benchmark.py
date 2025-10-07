@@ -73,27 +73,27 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
         if op_type == "reduplicate":
             current = reduple_module._python_reduplicate_words(
                 current,
-                reduplication_rate=operation["reduplication_rate"],
+                rate=operation["reduplication_rate"],
                 rng=rng,
             )
         elif op_type == "delete":
             current = rushmore_module._python_delete_random_words(
                 current,
-                max_deletion_rate=operation["max_deletion_rate"],
+                rate=operation["max_deletion_rate"],
                 rng=rng,
             )
         elif op_type == "redact":
             current = redactyl_module._python_redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
-                redaction_rate=operation["redaction_rate"],
+                rate=operation["redaction_rate"],
                 merge_adjacent=operation["merge_adjacent"],
                 rng=rng,
             )
         elif op_type == "ocr":
             current = scannequin_module._python_ocr_artifacts(
                 current,
-                error_rate=operation["error_rate"],
+                rate=operation["error_rate"],
                 rng=rng,
             )
         else:  # pragma: no cover - defensive guard

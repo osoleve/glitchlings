@@ -1,8 +1,10 @@
 import math
 import random
 import re
+from typing import Any
 
 from .core import Glitchling, AttackWave
+from ._rate import resolve_rate
 
 try:
     from glitchlings._zoo_rust import delete_random_words as _delete_random_words_rust
@@ -13,10 +15,13 @@ except ImportError:  # pragma: no cover - compiled extension not present
 def _python_delete_random_words(
     text: str,
     *,
-    max_deletion_rate: float,
+    rate: float,
     rng: random.Random,
 ) -> str:
     """Delete random words from the input text while preserving whitespace."""
+
+    if rate <= 0.0:
+        return text
 
     tokens = re.split(r"(\s+)", text)  # Split but keep separators for later rejoin
 
@@ -29,14 +34,14 @@ def _python_delete_random_words(
         candidate_indices.append(i)
 
     allowed_deletions = min(
-        len(candidate_indices), math.floor(len(candidate_indices) * max_deletion_rate)
+        len(candidate_indices), math.floor(len(candidate_indices) * rate)
     )
     if allowed_deletions <= 0:
         return text
 
     deletions = 0
     for i in candidate_indices:
-        if rng.random() < max_deletion_rate:
+        if rng.random() < rate:
             word = tokens[i]
             match = re.match(r"^(\W*)(.*?)(\W*)$", word)
             if match:
@@ -58,24 +63,35 @@ def _python_delete_random_words(
 
 def delete_random_words(
     text: str,
-    max_deletion_rate: float = 0.01,
+    rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    max_deletion_rate: float | None = None,
 ) -> str:
     """Delete random words from the input text.
 
     Uses the optional Rust implementation when available.
     """
 
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=max_deletion_rate,
+        default=0.01,
+        legacy_name="max_deletion_rate",
+    )
+
     if rng is None:
         rng = random.Random(seed)
 
+    clamped_rate = max(0.0, effective_rate)
+
     if _delete_random_words_rust is not None:
-        return _delete_random_words_rust(text, max_deletion_rate, rng)
+        return _delete_random_words_rust(text, clamped_rate, rng)
 
     return _python_delete_random_words(
         text,
-        max_deletion_rate=max_deletion_rate,
+        rate=clamped_rate,
         rng=rng,
     )
 
@@ -86,16 +102,32 @@ class Rushmore(Glitchling):
     def __init__(
         self,
         *,
-        max_deletion_rate: float = 0.01,
+        rate: float | None = None,
+        max_deletion_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"max_deletion_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=max_deletion_rate,
+            default=0.01,
+            legacy_name="max_deletion_rate",
+        )
         super().__init__(
             name="Rushmore",
             corruption_function=delete_random_words,
             scope=AttackWave.WORD,
             seed=seed,
-            max_deletion_rate=max_deletion_rate,
+            rate=effective_rate,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            rate = self.kwargs.get("max_deletion_rate")
+        if rate is None:
+            return None
+        return {"type": "delete", "max_deletion_rate": float(rate)}
 
 
 rushmore = Rushmore()

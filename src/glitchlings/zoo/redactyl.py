@@ -1,7 +1,9 @@
 import re
 import random
+from typing import Any
 
 from .core import Glitchling, AttackWave
+from ._rate import resolve_rate
 
 FULL_BLOCK = "█"
 
@@ -16,7 +18,7 @@ def _python_redact_words(
     text: str,
     *,
     replacement_char: str,
-    redaction_rate: float,
+    rate: float,
     merge_adjacent: bool,
     rng: random.Random,
 ) -> str:
@@ -25,7 +27,7 @@ def _python_redact_words(
     Parameters
     - text: Input text.
     - replacement_char: The character to use for redaction (default FULL_BLOCK).
-    - redaction_rate: Max proportion of words to redact (default 0.05).
+    - rate: Max proportion of words to redact (default 0.05).
     - merge_adjacent: If True, merges adjacent redactions across intervening non-word chars.
     - seed: Seed used if `rng` not provided (default 151).
     - rng: Optional RNG; overrides seed.
@@ -35,7 +37,7 @@ def _python_redact_words(
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
     if not word_indices:
         raise ValueError("Cannot redact words because the input text contains no redactable words.")
-    num_to_redact = max(1, int(len(word_indices) * redaction_rate))
+    num_to_redact = max(1, int(len(word_indices) * rate))
 
     # Sample from the indices of actual words
     indices_to_redact = rng.sample(word_indices, k=num_to_redact)
@@ -72,15 +74,26 @@ def _python_redact_words(
 def redact_words(
     text: str,
     replacement_char: str = FULL_BLOCK,
-    redaction_rate: float = 0.05,
+    rate: float | None = None,
     merge_adjacent: bool = False,
     seed: int = 151,
     rng: random.Random | None = None,
+    *,
+    redaction_rate: float | None = None,
 ) -> str:
     """Redact random words by replacing their characters."""
 
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=redaction_rate,
+        default=0.05,
+        legacy_name="redaction_rate",
+    )
+
     if rng is None:
         rng = random.Random(seed)
+
+    clamped_rate = max(0.0, effective_rate)
 
     use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
 
@@ -88,7 +101,7 @@ def redact_words(
         return _redact_words_rust(
             text,
             replacement_char,
-            redaction_rate,
+            clamped_rate,
             merge_adjacent,
             rng,
         )
@@ -96,7 +109,7 @@ def redact_words(
     return _python_redact_words(
         text,
         replacement_char=replacement_char,
-        redaction_rate=redaction_rate,
+        rate=clamped_rate,
         merge_adjacent=merge_adjacent,
         rng=rng,
     )
@@ -109,19 +122,41 @@ class Redactyl(Glitchling):
         self,
         *,
         replacement_char: str = FULL_BLOCK,
-        redaction_rate: float = 0.05,
+        rate: float | None = None,
+        redaction_rate: float | None = None,
         merge_adjacent: bool = False,
         seed: int = 151,
     ) -> None:
+        self._param_aliases = {"redaction_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=redaction_rate,
+            default=0.05,
+            legacy_name="redaction_rate",
+        )
         super().__init__(
             name="Redactyl",
             corruption_function=redact_words,
             scope=AttackWave.WORD,
             seed=seed,
             replacement_char=replacement_char,
-            redaction_rate=redaction_rate,
+            rate=effective_rate,
             merge_adjacent=merge_adjacent,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        replacement_char = self.kwargs.get("replacement_char")
+        rate = self.kwargs.get("rate")
+        merge_adjacent = self.kwargs.get("merge_adjacent")
+        if replacement_char is None or rate is None or merge_adjacent is None:
+            return None
+        return {
+            "type": "redact",
+            "replacement_char": str(replacement_char),
+            "redaction_rate": float(rate),
+            "merge_adjacent": bool(merge_adjacent),
+        }
+
 
 
 redactyl = Redactyl()

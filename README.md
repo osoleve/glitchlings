@@ -42,10 +42,10 @@ pip install -U glitchlings
 from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 
 gaggle = Gaggle([
-    Typogre(max_change_rate=0.03),
-    Mim1c(replacement_rate=0.02),
+    Typogre(rate=0.03),
+    Mim1c(rate=0.02),
     Reduple(seed=404),
-    Rushmore(max_deletion_rate=0.02),
+    Rushmore(rate=0.02),
 ])
 
 print(gaggle(SAMPLE_TEXT))
@@ -53,40 +53,9 @@ print(gaggle(SAMPLE_TEXT))
 
 > Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
 
-## Usage
-
-Need detailed usage patterns, dataset workflows, or tips for enabling the
-Rust accelerator? Consult the [Glitchlings Usage Guide](docs/index.md)
-for end-to-end instructions spanning the Python API, CLI, Hugging Face
+Consult the [Glitchlings Usage Guide](docs/index.md)
+for end-to-end instructions spanning the Python API, CLI, HuggingFace and Prime Intellect
 integrations, and the feature-flagged Rust pipeline.
-
-### Prime Intellect environments
-
-After `pip install -e .[prime]`, the `glitchlings.dlc.prime.load_environment` helper mirrors `verifiers.load_environment` for Prime Intellect scenarios while optionally applying glitchlings before returning the environment:
-
-```python
-from glitchlings import Mim1c, Typogre
-from glitchlings.dlc.prime import echo_chamber, load_environment
-
-env = load_environment(
-    "osoleve/syllabify-en",
-    glitchlings=[Mim1c(replacement_rate=0.01), Typogre(max_change_rate=0.02)],
-    seed=404,
-)
-
-# Spin up an echo chamber that corrupts a dataset column and
-# rewards models for perfectly restoring it
-practice_env = echo_chamber(
-    "osoleve/clean-room",
-    column="text",
-    glitchlings=["Typogre", "Mim1c"],
-    reward_function=lambda prompt, completion, answer: float(completion == answer),
-)
-```
-
-Skip the `glitchlings` argument to receive an untouched verifier dataset, and
-override `reward_function` when you want to evaluate completions with a custom
-scoring routine.
 
 ## Motivation
 
@@ -102,8 +71,8 @@ Glitchlings are standard Python classes, so you can instantiate them with whatev
 ```python
 from glitchlings import Gaggle, Typogre, Mim1c
 
-custom_typogre = Typogre(max_change_rate=0.1)
-selective_mimic = Mim1c(replacement_rate=0.05, classes=["LATIN", "GREEK"])
+custom_typogre = Typogre(rate=0.1)
+selective_mimic = Mim1c(rate=0.05, classes=["LATIN", "GREEK"])
 
 gaggle = Gaggle([custom_typogre, selective_mimic], seed=99)
 print(gaggle("Summoned heroes do not fear the glitch."))
@@ -134,7 +103,7 @@ glitchlings --list
 glitchlings -g typogre --file documents/report.txt --diff
 
 # Configure glitchlings inline by passing keyword arguments.
-glitchlings -g "Typogre(max_change_rate=0.05)" "Ghouls just wanna have fun"
+glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
@@ -158,7 +127,7 @@ _What a nice word, would be a shame if something happened to it._
 >
 > Args
 >
-> - `max_change_rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
+> - `rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
 > - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "QWERTY", "DVORAK", "COLEMAK", and "AZERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
@@ -170,7 +139,7 @@ _Wait, was that...?_
 >
 > Args
 >
-> - `replacement_rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
+> - `rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
 > - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
 > - `banned_characters (Collection[str])`: Characters that must never appear as replacements (default: none).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
@@ -183,7 +152,7 @@ _How can a computer need reading glasses?_
 >
 > Args
 >
-> - `error_rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
+> - `rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Jargoyle
@@ -194,7 +163,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > Args
 >
-> - `replacement_rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
+> - `rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
 > - `part_of_speech`: The WordNet part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
@@ -206,7 +175,7 @@ _Did you say that or did I?_
 >
 > Args
 >
-> - `reduplication_rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
+> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Rushmore
@@ -217,7 +186,7 @@ _I accidentally an entire word._
 >
 > Args
 >
-> - `max_deletion_rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Redactyl
@@ -229,7 +198,7 @@ _Oops, that was my black highlighter._
 > ### Args
 >
 > - `replacement_char (str)`: The character to use for redaction (default: █).
-> - `redaction_rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
+> - `rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
 > - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 

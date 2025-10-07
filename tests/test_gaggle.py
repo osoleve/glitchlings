@@ -1,4 +1,6 @@
-from glitchlings import summon
+import pytest
+
+from glitchlings import Typogre, summon
 from glitchlings.zoo.core import Gaggle
 
 
@@ -28,3 +30,17 @@ def test_gaggle_ordering_stable(sample_text):
 def test_gaggle_seed_derivation_regression():
     assert Gaggle.derive_seed(151, "Typogre", 0) == 13006513535068165406
     assert Gaggle.derive_seed(151, "Redactyl", 3) == 12503957440331561761
+
+
+def test_summon_accepts_parameterized_specification():
+    gaggle = summon(["Typogre(rate=0.05)"], seed=151)
+    assert len(gaggle.apply_order) == 1
+    member = gaggle.apply_order[0]
+    assert isinstance(member, Typogre)
+    assert member.rate == 0.05
+    assert member.max_change_rate == 0.05
+
+
+def test_summon_rejects_positional_parameter_specifications():
+    with pytest.raises(ValueError, match="keyword arguments"):
+        summon(["Typogre(0.2)"])

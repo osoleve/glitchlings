@@ -11,7 +11,7 @@ def test_jargoyle_multiple_pos_targets_change_words():
     text = "They sing happy songs."
     result = substitute_random_synonyms(
         text,
-        replacement_rate=1.0,
+        rate=1.0,
         part_of_speech=("v", "a"),
         seed=123,
     )
@@ -30,7 +30,7 @@ def test_jargoyle_any_includes_all_supported_pos():
     text = "They sing happy songs quickly."
     result = substitute_random_synonyms(
         text,
-        replacement_rate=1.0,
+        rate=1.0,
         part_of_speech="any",
         seed=99,
     )

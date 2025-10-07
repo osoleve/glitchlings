@@ -116,7 +116,7 @@ def test_derived_seeds_change_with_inputs(left, right):
     seed=st.integers(min_value=0, max_value=2**32 - 1),
 )
 def test_typogre_length_change_stays_within_bound(text: str, rate: float, seed: int) -> None:
-    result = typogre_module.fatfinger(text, max_change_rate=rate, seed=seed)
+    result = typogre_module.fatfinger(text, rate=rate, seed=seed)
 
     if not text:
         assert result == ""
@@ -137,7 +137,7 @@ def test_typogre_length_change_stays_within_bound(text: str, rate: float, seed: 
 def test_rushmore_preserves_first_token_and_respects_cap(text: str, rate: float, seed: int) -> None:
     words = text.split()
 
-    result = rushmore_module.delete_random_words(text, max_deletion_rate=rate, seed=seed)
+    result = rushmore_module.delete_random_words(text, rate=rate, seed=seed)
     result_words = result.split()
     assert result_words
     assert result_words[0] == words[0]

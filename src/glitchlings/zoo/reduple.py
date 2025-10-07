@@ -1,7 +1,9 @@
 import re
 import random
+from typing import Any
 
 from .core import Glitchling, AttackWave
+from ._rate import resolve_rate
 
 try:
     from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust
@@ -12,14 +14,14 @@ except ImportError:  # pragma: no cover - compiled extension not present
 def _python_reduplicate_words(
     text: str,
     *,
-    reduplication_rate: float,
+    rate: float,
     rng: random.Random,
 ) -> str:
     """Randomly reduplicate words in the text.
 
     Parameters
     - text: Input text.
-    - reduplication_rate: Max proportion of words to reduplicate (default 0.05).
+    - rate: Max proportion of words to reduplicate (default 0.05).
     - seed: Optional seed if `rng` not provided.
     - rng: Optional RNG; overrides seed.
 
@@ -39,7 +41,7 @@ def _python_reduplicate_words(
             continue
 
         # Only consider actual words for reduplication
-        if rng.random() < reduplication_rate:
+        if rng.random() < rate:
             # Check if word has trailing punctuation
             match = re.match(r"^(\W*)(.*?)(\W*)$", word)
             if match:
@@ -53,9 +55,11 @@ def _python_reduplicate_words(
 
 def reduplicate_words(
     text: str,
-    reduplication_rate: float = 0.05,
+    rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    reduplication_rate: float | None = None,
 ) -> str:
     """Randomly reduplicate words in the text.
 
@@ -63,15 +67,24 @@ def reduplicate_words(
     extension is unavailable.
     """
 
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=reduplication_rate,
+        default=0.05,
+        legacy_name="reduplication_rate",
+    )
+
     if rng is None:
         rng = random.Random(seed)
 
+    clamped_rate = max(0.0, effective_rate)
+
     if _reduplicate_words_rust is not None:
-        return _reduplicate_words_rust(text, reduplication_rate, rng)
+        return _reduplicate_words_rust(text, clamped_rate, rng)
 
     return _python_reduplicate_words(
         text,
-        reduplication_rate=reduplication_rate,
+        rate=clamped_rate,
         rng=rng,
     )
 
@@ -82,16 +95,31 @@ class Reduple(Glitchling):
     def __init__(
         self,
         *,
-        reduplication_rate: float = 0.05,
+        rate: float | None = None,
+        reduplication_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"reduplication_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=reduplication_rate,
+            default=0.05,
+            legacy_name="reduplication_rate",
+        )
         super().__init__(
             name="Reduple",
             corruption_function=reduplicate_words,
             scope=AttackWave.WORD,
             seed=seed,
-            reduplication_rate=reduplication_rate,
+            rate=effective_rate,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            return None
+        return {"type": "reduplicate", "reduplication_rate": float(rate)}
+
 
 
 reduple = Reduple()

@@ -5,21 +5,24 @@ from typing import Literal
 from confusable_homoglyphs import confusables
 
 from .core import AttackOrder, AttackWave, Glitchling
+from ._rate import resolve_rate
 
 
 def swap_homoglyphs(
     text: str,
-    replacement_rate: float = 0.02,
+    rate: float | None = None,
     classes: list[str] | Literal["all"] | None = None,
     banned_characters: Collection[str] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
+    *,
+    replacement_rate: float | None = None,
 ) -> str:
     """Replace characters with visually confusable homoglyphs.
 
     Parameters
     - text: Input text.
-    - replacement_rate: Max proportion of eligible characters to replace (default 0.02).
+    - rate: Max proportion of eligible characters to replace (default 0.02).
     - classes: Restrict replacements to these Unicode script classes (default ["LATIN","GREEK","CYRILLIC"]). Use "all" to allow any.
     - banned_characters: Characters that must never appear as replacements.
     - seed: Optional seed if `rng` not provided.
@@ -29,6 +32,13 @@ def swap_homoglyphs(
     - Only replaces characters present in confusables.confusables_data with single-codepoint alternatives.
     - Maintains determinism by shuffling candidates and sampling via the provided RNG.
     """
+    effective_rate = resolve_rate(
+        rate=rate,
+        legacy_value=replacement_rate,
+        default=0.02,
+        legacy_name="replacement_rate",
+    )
+
     if rng is None:
         rng = random.Random(seed)
 
@@ -39,7 +49,8 @@ def swap_homoglyphs(
     confusable_chars = [
         char for char in target_chars if char in confusables.confusables_data
     ]
-    num_replacements = int(len(confusable_chars) * replacement_rate)
+    clamped_rate = max(0.0, effective_rate)
+    num_replacements = int(len(confusable_chars) * clamped_rate)
     done = 0
     rng.shuffle(confusable_chars)
     banned_set = set(banned_characters or ())
@@ -66,18 +77,26 @@ class Mim1c(Glitchling):
     def __init__(
         self,
         *,
-        replacement_rate: float = 0.02,
+        rate: float | None = None,
+        replacement_rate: float | None = None,
         classes: list[str] | Literal["all"] | None = None,
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
+        self._param_aliases = {"replacement_rate": "rate"}
+        effective_rate = resolve_rate(
+            rate=rate,
+            legacy_value=replacement_rate,
+            default=0.02,
+            legacy_name="replacement_rate",
+        )
         super().__init__(
             name="Mim1c",
             corruption_function=swap_homoglyphs,
             scope=AttackWave.CHARACTER,
             order=AttackOrder.LAST,
             seed=seed,
-            replacement_rate=replacement_rate,
+            rate=effective_rate,
             classes=classes,
             banned_characters=banned_characters,
         )
