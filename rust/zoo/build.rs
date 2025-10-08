@@ -9,10 +9,24 @@ fn main() {
     prepare_confusion_table().expect("failed to stage OCR confusion table for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
-    if let Some(python) = configured_python() {
-        link_python(&python);
-    } else if let Some(python) = detect_python() {
-        link_python(&python);
+    if needs_manual_linking() {
+        if let Some(python) = configured_python() {
+            link_python(&python);
+        } else if let Some(python) = detect_python() {
+            link_python(&python);
+        }
+    }
+}
+
+fn needs_manual_linking() -> bool {
+    // PyO3 already injects the correct linker arguments for Unix targets. Forcing an
+    // explicit `libpython` dependency causes Linux wheels to fail `auditwheel` checks
+    // because the shared library is not bundled, so we only keep the manual probing on
+    // platforms that still require it.
+    match env::var("CARGO_CFG_TARGET_OS").as_deref() {
+        Ok("windows") => true,
+        Ok("macos") => true,
+        _ => false,
     }
 }
 
