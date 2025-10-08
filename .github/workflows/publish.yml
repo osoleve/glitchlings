@@ -70,19 +70,11 @@ jobs:
           CIBW_SKIP: "*-musllinux_*"
           CIBW_ARCHS_LINUX: x86_64
 
-      - name: Build source distribution
-        run: |
-          python -m pip install --upgrade pip
-          pip install build
-          python -m build --sdist
-
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
           name: dist-linux
-          path: |
-            wheelhouse/
-            dist/
+          path: wheelhouse/
 
   publish:
     runs-on: ubuntu-latest
