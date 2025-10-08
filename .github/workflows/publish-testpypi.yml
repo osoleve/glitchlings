@@ -62,12 +62,22 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Publish to TestPyPI
+      - name: Publish to TestPyPI with API token
+        if: ${{ secrets.TEST_PYPI_API_TOKEN != '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist
           user: __token__
-          # password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          skip-existing: true
+
+      - name: Publish to TestPyPI via Trusted Publishing
+        if: ${{ secrets.TEST_PYPI_API_TOKEN == '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          user: __token__
           skip-existing: true
 
