@@ -92,12 +92,15 @@ The workflows build wheels for Python 3.10, 3.11, and 3.12 using [cibuildwheel](
 - **Platform wheels**: Binary wheels optimized for each platform (e.g., `glitchlings-0.2.3-cp312-cp312-win_amd64.whl`, `glitchlings-0.2.3-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl`)
 - **Source distribution**: Built on Linux only (e.g., `glitchlings-0.2.3.tar.gz`)
 
-The Linux builds use manylinux containers to ensure compatibility with a wide range of Linux distributions. The Rust extensions are compiled during the wheel build process using `setuptools-rust`.
+**Compatibility and Compilation:**
+- Linux builds use manylinux containers to ensure compatibility with a wide range of Linux distributions.
+- Rust extensions are compiled during the wheel build process using `setuptools-rust`.
 
 ### Artifact Collection
 
-The workflows use a matrix strategy to build on multiple platforms in parallel. Each platform uploads its artifacts separately, and the publish job collects all artifacts before uploading to PyPI:
+The workflows use a matrix strategy to build on multiple platforms in parallel. Each platform uploads its artifacts separately, and the publish job collects all artifacts before uploading to PyPI.
 
+**Workflow steps:**
 1. **Build job**: Runs in parallel for Windows and Linux, produces wheels
 2. **Publish job**: Downloads all artifacts, merges them into a single `dist/` directory, and publishes to PyPI/TestPyPI
 
@@ -125,7 +128,10 @@ Before publishing to PyPI:
    pytest tests/test_workflows.py
    ```
 
-2. Test the build locally (note: this builds for your current platform only):
+2. Test the build locally:
+   
+   > **Note:** Local builds only produce wheels for your current platform. Multi-platform builds require the full GitHub Actions workflow.
+   
    ```bash
    # Install build tools
    pip install cibuildwheel
