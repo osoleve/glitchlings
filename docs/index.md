@@ -233,5 +233,3 @@ python -c "import nltk; nltk.download('wordnet')"
 - [Development setup](development.md) – local environment, testing, and Rust acceleration guide.
 - [Glitchling gallery](glitchling-gallery.md) – side-by-side outputs for each glitchling at multiple rates.
 - [Keyboard layout reference](keyboard-layouts.md) – available adjacency maps for Typogre and related features.
-
-Once the `/docs` folder is published through GitHub Pages, this guide becomes the landing site for your glitchling adventures.
