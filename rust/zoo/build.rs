@@ -9,10 +9,14 @@ fn main() {
     prepare_confusion_table().expect("failed to stage OCR confusion table for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
-    if let Some(python) = configured_python() {
-        link_python(&python);
-    } else if let Some(python) = detect_python() {
-        link_python(&python);
+    // Only perform custom Python linking on non-Linux platforms or when explicitly requested
+    // On Linux, PyO3's extension module handling already does the right thing for manylinux
+    if cfg!(not(target_os = "linux")) {
+        if let Some(python) = configured_python() {
+            link_python(&python);
+        } else if let Some(python) = detect_python() {
+            link_python(&python);
+        }
     }
 }
 

@@ -85,6 +85,19 @@ If the TestPyPI or PyPI workflow fails:
    - Rust compilation errors: Ensure Rust toolchain is properly configured
    - Test failures: Run tests locally first with `pytest`
    - Version conflicts: TestPyPI allows skipping existing versions with `skip-existing: true`
+   - Linux manylinux build issues: The workflow uses manylinux_2_28 containers with Rust installed at build time
+
+### Platform Support
+
+The build workflow now creates wheels for multiple platforms:
+
+- **Windows**: Built on Windows Server with Python 3.12
+- **Linux (manylinux)**: Built in manylinux_2_28 containers for Python 3.10, 3.11, and 3.12
+  - Uses official PyPA manylinux images
+  - Rust toolchain installed during build
+  - Wheels repaired with `auditwheel` for maximum compatibility
+
+All wheels are combined and uploaded to PyPI/TestPyPI in a single publish step.
 
 ### Testing Before Release
 
