@@ -191,6 +191,7 @@ pub trait GlitchOp {
 #[derive(Debug, Clone, Copy)]
 pub struct ReduplicateWordsOp {
     pub reduplication_rate: f64,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for ReduplicateWordsOp {
@@ -211,7 +212,11 @@ impl GlitchOp for ReduplicateWordsOp {
                     continue;
                 }
                 let (prefix, core, suffix) = split_affixes(&original);
-                let weight = inverse_length_weight(&core, &original);
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    inverse_length_weight(&core, &original)
+                };
                 candidates.push(ReduplicateCandidate {
                     index: idx,
                     prefix,
@@ -267,6 +272,7 @@ impl GlitchOp for ReduplicateWordsOp {
 #[derive(Debug, Clone, Copy)]
 pub struct DeleteRandomWordsOp {
     pub max_deletion_rate: f64,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for DeleteRandomWordsOp {
@@ -285,7 +291,11 @@ impl GlitchOp for DeleteRandomWordsOp {
                 }
                 let original = text.to_string();
                 let (prefix, core, suffix) = split_affixes(&original);
-                let weight = inverse_length_weight(&core, &original);
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    inverse_length_weight(&core, &original)
+                };
                 candidates.push(DeleteCandidate {
                     index: idx,
                     prefix,
@@ -355,6 +365,7 @@ pub struct RedactWordsOp {
     pub replacement_char: String,
     pub redaction_rate: f64,
     pub merge_adjacent: bool,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for RedactWordsOp {
@@ -380,7 +391,11 @@ impl GlitchOp for RedactWordsOp {
                 if repeat == 0 {
                     continue;
                 }
-                let weight = direct_length_weight(&core, &original);
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    direct_length_weight(&core, &original)
+                };
                 candidates.push(RedactCandidate {
                     index: idx,
                     prefix,
@@ -570,6 +585,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = ReduplicateWordsOp {
             reduplication_rate: 1.0,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
             .expect("reduplication works");
@@ -582,6 +598,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = DeleteRandomWordsOp {
             max_deletion_rate: 0.75,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion works");
         assert_eq!(buffer.to_string(), "One three four");
@@ -595,6 +612,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.8,
             merge_adjacent: true,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction works");
         let result = buffer.to_string();
@@ -609,6 +627,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.5,
             merge_adjacent: false,
+            unweighted: false,
         };
         let error = op.apply(&mut buffer, &mut rng).unwrap_err();
         match error {
@@ -634,6 +653,7 @@ mod tests {
         let mut rng = PyRng::new(123);
         let op = ReduplicateWordsOp {
             reduplication_rate: 0.5,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
             .expect("reduplication succeeds");
@@ -646,6 +666,7 @@ mod tests {
         let mut rng = PyRng::new(123);
         let op = DeleteRandomWordsOp {
             max_deletion_rate: 0.5,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion succeeds");
         assert_eq!(buffer.to_string(), "The over the lazy dog.");
@@ -659,6 +680,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.5,
             merge_adjacent: false,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction succeeds");
         assert_eq!(buffer.to_string(), "████ these █████ please");
@@ -672,6 +694,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 1.0,
             merge_adjacent: true,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction succeeds");
         assert_eq!(buffer.to_string(), "█████████████████");
@@ -686,3 +709,5 @@ mod tests {
         assert_eq!(buffer.to_string(), "Tlie rn rri");
     }
 }
+
+

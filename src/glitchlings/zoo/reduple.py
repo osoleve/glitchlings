@@ -16,14 +16,15 @@ def _python_reduplicate_words(
     *,
     rate: float,
     rng: random.Random,
+    unweighted: bool = False,
 ) -> str:
     """Randomly reduplicate words in the text.
 
     Parameters
     - text: Input text.
     - rate: Max proportion of words to reduplicate (default 0.05).
-    - seed: Optional seed if `rng` not provided.
-    - rng: Optional RNG; overrides seed.
+    - rng: RNG used for sampling decisions.
+    - unweighted: When True, sample words uniformly instead of length-weighted.
 
     Notes
     - Preserves spacing and punctuation by tokenizing with separators.
@@ -32,7 +33,7 @@ def _python_reduplicate_words(
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
 
-    candidate_weights = []
+    candidate_weights: list[tuple[int, float]] = []
     for i in range(0, len(tokens), 2):  # Every other token is a word
         if i >= len(tokens):
             break
@@ -48,7 +49,7 @@ def _python_reduplicate_words(
             core_length = len(word.strip()) or len(word)
         if core_length <= 0:
             core_length = 1
-        weight = 1.0 / core_length
+        weight = 1.0 if unweighted else 1.0 / core_length
         candidate_weights.append((i, weight))
 
     if not candidate_weights:
@@ -64,7 +65,10 @@ def _python_reduplicate_words(
         if effective_rate >= 1.0:
             probability = 1.0
         else:
-            probability = min(1.0, effective_rate * (weight / mean_weight))
+            if mean_weight <= 0.0:
+                probability = effective_rate
+            else:
+                probability = min(1.0, effective_rate * (weight / mean_weight))
         if rng.random() >= probability:
             continue
 
@@ -86,6 +90,7 @@ def reduplicate_words(
     rng: random.Random | None = None,
     *,
     reduplication_rate: float | None = None,
+    unweighted: bool = False,
 ) -> str:
     """Randomly reduplicate words in the text.
 
@@ -104,14 +109,16 @@ def reduplicate_words(
         rng = random.Random(seed)
 
     clamped_rate = max(0.0, effective_rate)
+    unweighted_flag = bool(unweighted)
 
     if _reduplicate_words_rust is not None:
-        return _reduplicate_words_rust(text, clamped_rate, rng)
+        return _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng)
 
     return _python_reduplicate_words(
         text,
         rate=clamped_rate,
         rng=rng,
+        unweighted=unweighted_flag,
     )
 
 
@@ -124,6 +131,7 @@ class Reduple(Glitchling):
         rate: float | None = None,
         reduplication_rate: float | None = None,
         seed: int | None = None,
+        unweighted: bool = False,
     ) -> None:
         self._param_aliases = {"reduplication_rate": "rate"}
         effective_rate = resolve_rate(
@@ -138,14 +146,19 @@ class Reduple(Glitchling):
             scope=AttackWave.WORD,
             seed=seed,
             rate=effective_rate,
+            unweighted=unweighted,
         )
 
     def pipeline_operation(self) -> dict[str, Any] | None:
         rate = self.kwargs.get("rate")
         if rate is None:
             return None
-        return {"type": "reduplicate", "reduplication_rate": float(rate)}
-
+        unweighted = bool(self.kwargs.get("unweighted", False))
+        return {
+            "type": "reduplicate",
+            "reduplication_rate": float(rate),
+            "unweighted": unweighted,
+        }
 
 
 reduple = Reduple()

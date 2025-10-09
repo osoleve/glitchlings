@@ -98,6 +98,25 @@ def test_reduple_respects_explicit_rng():
     assert result == expected == "Repeat Repeat me me"
 
 
+def test_reduple_unweighted_matches_python_fallback():
+    text = "alpha beta gamma delta epsilon zeta"
+    seed = 1
+    expected = reduple_module._python_reduplicate_words(
+        text,
+        rate=0.5,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    result = reduple_module.reduplicate_words(
+        text,
+        rate=0.5,
+        seed=seed,
+        unweighted=True,
+    )
+    assert result == expected
+
+
+
 def test_rushmore_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = rushmore_module._python_delete_random_words(
@@ -109,6 +128,25 @@ def test_rushmore_matches_python_fallback():
         text, rate=0.5, seed=123
     )
     assert result == expected == "The over the lazy dog."
+
+
+def test_rushmore_unweighted_matches_python_fallback():
+    text = "alpha beta gamma delta epsilon"
+    seed = 11
+    expected = rushmore_module._python_delete_random_words(
+        text,
+        rate=0.5,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    result = rushmore_module.delete_random_words(
+        text,
+        rate=0.5,
+        seed=seed,
+        unweighted=True,
+    )
+    assert result == expected
+
 
 
 def test_scannequin_matches_python_fallback():
@@ -149,6 +187,29 @@ def test_redactyl_matches_python_fallback():
         == expected
         == "███ █████ █████ fox █████ over the lazy dog."
     )
+
+
+
+def test_redactyl_unweighted_matches_python_fallback():
+    text = "alpha beta gamma delta epsilon"
+    seed = 5
+    expected = redactyl_module._python_redact_words(
+        text,
+        replacement_char="#",
+        rate=0.5,
+        merge_adjacent=False,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    result = redactyl_module.redact_words(
+        text,
+        replacement_char="#",
+        rate=0.5,
+        merge_adjacent=False,
+        seed=seed,
+        unweighted=True,
+    )
+    assert result == expected
 
 
 
@@ -244,8 +305,8 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
 def test_compose_glitchlings_matches_python_pipeline():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5}},
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5, "unweighted": False}},
         {
             "name": "Redactyl",
             "operation": {
@@ -253,6 +314,7 @@ def test_compose_glitchlings_matches_python_pipeline():
                 "replacement_char": redactyl_module.FULL_BLOCK,
                 "redaction_rate": 0.6,
                 "merge_adjacent": True,
+                "unweighted": False,
             },
         },
         {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.25}},
@@ -268,8 +330,8 @@ def test_compose_glitchlings_matches_python_pipeline():
 def test_compose_glitchlings_is_deterministic():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
         {
             "name": "Redactyl",
             "operation": {
@@ -277,6 +339,7 @@ def test_compose_glitchlings_is_deterministic():
                 "replacement_char": redactyl_module.FULL_BLOCK,
                 "redaction_rate": 0.6,
                 "merge_adjacent": True,
+                "unweighted": False,
             },
         },
     ]
@@ -299,6 +362,7 @@ def test_compose_glitchlings_propagates_glitch_errors():
                     "replacement_char": redactyl_module.FULL_BLOCK,
                     "redaction_rate": 1.0,
                     "merge_adjacent": False,
+                    "unweighted": False,
                 },
             }
         ],
@@ -376,8 +440,8 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     text = "Hold the door"
     result = gaggle(text)
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
+        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
+        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
     ]
     descriptors = _with_descriptor_seeds(raw_descriptors, 2024)
     expected = _run_python_sequence(text, descriptors, 2024)
@@ -450,6 +514,9 @@ def test_rust_pipeline_feature_flag_introspection(monkeypatch):
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "false")
     assert not core_module._pipeline_feature_flag_enabled()
     assert not core_module.Gaggle.rust_pipeline_enabled()
+
+
+
 
 
 
