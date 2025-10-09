@@ -4,6 +4,7 @@ mod resources;
 mod rng;
 mod text_buffer;
 mod typogre;
+mod zeedub;
 
 use glitch_ops::{GlitchOp, GlitchRng};
 use pyo3::prelude::*;
@@ -195,7 +196,6 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 "unsupported operation type: {other}"
             ))),
         }
-
     }
 }
 
@@ -275,18 +275,20 @@ fn compose_glitchlings(
         .into_iter()
         .map(|descriptor| {
             let operation = match descriptor.operation {
-                PyGlitchOperation::Reduplicate { reduplication_rate, unweighted } => {
-                    GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
-                        reduplication_rate,
-                        unweighted,
-                    })
-                }
-                PyGlitchOperation::Delete { max_deletion_rate, unweighted } => {
-                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp {
-                        max_deletion_rate,
-                        unweighted,
-                    })
-                }
+                PyGlitchOperation::Reduplicate {
+                    reduplication_rate,
+                    unweighted,
+                } => GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
+                    reduplication_rate,
+                    unweighted,
+                }),
+                PyGlitchOperation::Delete {
+                    max_deletion_rate,
+                    unweighted,
+                } => GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp {
+                    max_deletion_rate,
+                    unweighted,
+                }),
                 PyGlitchOperation::Redact {
                     replacement_char,
                     redaction_rate,
@@ -322,9 +324,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
+    m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     Ok(())
 }
-
-
-
-

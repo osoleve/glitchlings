@@ -129,6 +129,7 @@ mod tests {
                 seed: derive_seed(master_seed, "Reduple", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                     reduplication_rate: 1.0,
+                    unweighted: false,
                 }),
             },
             GlitchDescriptor {
@@ -138,12 +139,13 @@ mod tests {
                     replacement_char: "█".to_string(),
                     redaction_rate: 0.5,
                     merge_adjacent: false,
+                    unweighted: false,
                 }),
             },
         ];
         let pipeline = Pipeline::new(master_seed, descriptors);
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
-        assert!(output.contains("Guard Guard"));
+        assert_eq!(output, "Guard █████ the ███ vault █████");
     }
 
     #[test]
@@ -154,6 +156,7 @@ mod tests {
             seed: derive_seed(master_seed, "Reduple", 0),
             operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                 reduplication_rate: 0.5,
+                unweighted: false,
             }),
         }];
         let pipeline = Pipeline::new(master_seed, descriptors);
@@ -171,6 +174,7 @@ mod tests {
                 seed: derive_seed(master_seed, "Reduple", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                     reduplication_rate: 0.4,
+                    unweighted: false,
                 }),
             },
             GlitchDescriptor {
@@ -178,6 +182,7 @@ mod tests {
                 seed: derive_seed(master_seed, "Rushmore", 1),
                 operation: GlitchOperation::Delete(DeleteRandomWordsOp {
                     max_deletion_rate: 0.3,
+                    unweighted: false,
                 }),
             },
             GlitchDescriptor {
@@ -187,6 +192,7 @@ mod tests {
                     replacement_char: "█".to_string(),
                     redaction_rate: 0.6,
                     merge_adjacent: true,
+                    unweighted: false,
                 }),
             },
             GlitchDescriptor {
@@ -199,6 +205,6 @@ mod tests {
         let output = pipeline
             .run("Guard the vault at midnight")
             .expect("pipeline run succeeds");
-        assert_eq!(output, "████ the vault ███████");
+        assert_eq!(output, "Guard the ██ at ██████████");
     }
 }

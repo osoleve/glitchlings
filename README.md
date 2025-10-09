@@ -155,6 +155,18 @@ _How can a computer need reading glasses?_
 > - `rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
+### Zeedub
+
+_A whispering glyph parasite that lives in the interstices of codepoints, marking territory with invisible traces._
+
+> _**Invisible Ink.**_ Zeedub slips zero-width codepoints between non-space character pairs, forcing models to reason about text whose visible form masks hidden glyphs.
+>
+> Args
+>
+> - `rate (float)`: Expected number of zero-width insertions as a proportion of eligible bigrams (default: 0.02, 2%).
+> - `characters (Sequence[str])`: Optional override for the pool of zero-width strings to inject (default: curated invisibles such as U+200B, U+200C, U+200D, U+FEFF, U+2060).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+
 ### Jargoyle
 
 _Uh oh. The worst person you know just bought a thesaurus._

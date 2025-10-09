@@ -9,6 +9,7 @@ from glitchlings import (
     rushmore,
     redactyl,
     scannequin,
+    zeedub,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling
 
@@ -68,6 +69,13 @@ def test_scannequin_determinism(sample_text):
     scannequin.set_param("seed", 42)
     scannequin.set_param("rate", 0.03)
     a, b = _twice(scannequin, sample_text)
+    assert a == b
+
+
+def test_zeedub_determinism(sample_text):
+    zeedub.set_param("seed", 42)
+    zeedub.set_param("rate", 0.03)
+    a, b = _twice(zeedub, sample_text)
     assert a == b
 
 

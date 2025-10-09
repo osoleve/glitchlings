@@ -48,6 +48,7 @@ rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 typogre_module = importlib.import_module("glitchlings.zoo.typogre")
+zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
@@ -520,3 +521,36 @@ def test_rust_pipeline_feature_flag_introspection(monkeypatch):
 
 
 
+
+def test_zeedub_matches_python_fallback():
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    text = "Invisible glyphs whisper between words"
+    rate = 0.3
+    seed = 404
+
+    expected = zeedub_module._python_insert_zero_widths(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+        characters=zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS,
+    )
+
+    result = zeedub_module.insert_zero_widths(text, rate=rate, seed=seed)
+    assert result == expected
+
+
+def test_zeedub_respects_explicit_rng():
+    text = "Devices hide things in the margin"
+    rate = 0.45
+    rng_expected = random.Random(99)
+    expected = zeedub_module._python_insert_zero_widths(
+        text,
+        rate=rate,
+        rng=rng_expected,
+        characters=zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS,
+    )
+
+    rng_actual = random.Random(99)
+    result = zeedub_module.insert_zero_widths(text, rate=rate, rng=rng_actual)
+    assert result == expected

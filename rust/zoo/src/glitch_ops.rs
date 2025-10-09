@@ -709,5 +709,3 @@ mod tests {
         assert_eq!(buffer.to_string(), "Tlie rn rri");
     }
 }
-
-
