@@ -59,7 +59,9 @@ def _python_reduplicate_words(
     if effective_rate <= 0.0:
         return "".join(tokens)
 
-    mean_weight = sum(weight for _, weight in candidate_weights) / len(candidate_weights)
+    mean_weight = sum(weight for _, weight in candidate_weights) / len(
+        candidate_weights
+    )
 
     for index, weight in candidate_weights:
         if effective_rate >= 1.0:
@@ -101,7 +103,7 @@ def reduplicate_words(
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=reduplication_rate,
-        default=0.05,
+        default=0.01,
         legacy_name="reduplication_rate",
     )
 
@@ -137,7 +139,7 @@ class Reduple(Glitchling):
         effective_rate = resolve_rate(
             rate=rate,
             legacy_value=reduplication_rate,
-            default=0.05,
+            default=0.01,
             legacy_name="reduplication_rate",
         )
         super().__init__(
