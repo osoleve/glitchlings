@@ -20,39 +20,59 @@ def _python_delete_random_words(
 ) -> str:
     """Delete random words from the input text while preserving whitespace."""
 
-    if rate <= 0.0:
+    effective_rate = max(rate, 0.0)
+    if effective_rate <= 0.0:
         return text
 
     tokens = re.split(r"(\s+)", text)  # Split but keep separators for later rejoin
 
-    candidate_indices: list[int] = []
+    candidate_data = []
     for i in range(2, len(tokens), 2):  # Every other token is a word, skip the first word
         word = tokens[i]
         if not word or word.isspace():
             continue
 
-        candidate_indices.append(i)
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        core = match.group(2) if match else word
+        core_length = len(core) if core else len(word)
+        if core_length <= 0:
+            core_length = len(word.strip()) or len(word)
+        if core_length <= 0:
+            core_length = 1
+        weight = 1.0 / core_length
+        candidate_data.append((i, weight))
+
+    if not candidate_data:
+        return text
 
     allowed_deletions = min(
-        len(candidate_indices), math.floor(len(candidate_indices) * rate)
+        len(candidate_data), math.floor(len(candidate_data) * effective_rate)
     )
     if allowed_deletions <= 0:
         return text
 
-    deletions = 0
-    for i in candidate_indices:
-        if rng.random() < rate:
-            word = tokens[i]
-            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-            if match:
-                prefix, _, suffix = match.groups()
-                tokens[i] = f"{prefix.strip()}{suffix.strip()}"
-            else:
-                tokens[i] = ""
+    mean_weight = sum(weight for _, weight in candidate_data) / len(candidate_data)
 
-            deletions += 1
-            if deletions >= allowed_deletions:
-                break
+    deletions = 0
+    for index, weight in candidate_data:
+        if effective_rate >= 1.0:
+            probability = 1.0
+        else:
+            probability = min(1.0, effective_rate * (weight / mean_weight))
+        if rng.random() >= probability:
+            continue
+
+        word = tokens[index]
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        if match:
+            prefix, _, suffix = match.groups()
+            tokens[index] = f"{prefix.strip()}{suffix.strip()}"
+        else:
+            tokens[index] = ""
+
+        deletions += 1
+        if deletions >= allowed_deletions:
+            break
 
     text = "".join(tokens)
     text = re.sub(r"\s+([.,;:])", r"\1", text)

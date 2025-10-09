@@ -79,7 +79,7 @@ def test_reduple_matches_python_fallback():
     assert (
         result
         == expected
-        == "The The quick quick brown brown fox fox jumps over over the lazy lazy dog."
+        == "The The quick quick brown fox fox jumps over over the the lazy lazy dog."
     )
 
 
@@ -147,7 +147,7 @@ def test_redactyl_matches_python_fallback():
     assert (
         result
         == expected
-        == "███ quick brown ███ █████ over the lazy ███."
+        == "███ █████ █████ fox █████ over the lazy dog."
     )
 
 

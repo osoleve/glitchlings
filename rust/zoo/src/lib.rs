@@ -82,7 +82,11 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
             .get_item("operation")?
             .ok_or_else(|| PyValueError::new_err("descriptor missing 'operation' field"))?
             .extract()?;
-        Ok(Self { name, seed, operation })
+        Ok(Self {
+            name,
+            seed,
+            operation,
+        })
     }
 }
 

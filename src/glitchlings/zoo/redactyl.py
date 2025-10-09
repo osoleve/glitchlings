@@ -14,6 +14,40 @@ except ImportError:  # pragma: no cover - compiled extension not present
     _redact_words_rust = None
 
 
+def _weighted_sample_without_replacement(
+    population: list[int],
+    weights: list[float],
+    *,
+    k: int,
+    rng: random.Random,
+) -> list[int]:
+    """Select `k` unique indices according to the given weights."""
+
+    selections: list[int] = []
+    items = list(zip(population, weights))
+    if k <= 0 or not items:
+        return selections
+    if k > len(items):
+        raise ValueError("Sample larger than population or is negative")
+
+    for _ in range(k):
+        total_weight = sum(weight for _, weight in items)
+        if total_weight <= 0:
+            chosen_index = rng.randrange(len(items))
+        else:
+            threshold = rng.random() * total_weight
+            cumulative = 0.0
+            chosen_index = len(items) - 1
+            for idx, (_, weight) in enumerate(items):
+                cumulative += weight
+                if cumulative >= threshold:
+                    chosen_index = idx
+                    break
+        value, _ = items.pop(chosen_index)
+        selections.append(value)
+
+    return selections
+
 def _python_redact_words(
     text: str,
     *,
@@ -37,10 +71,26 @@ def _python_redact_words(
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
     if not word_indices:
         raise ValueError("Cannot redact words because the input text contains no redactable words.")
+    weights = []
+    for index in word_indices:
+        word = tokens[index]
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        core = match.group(2) if match else word
+        core_length = len(core) if core else len(word)
+        if core_length <= 0:
+            core_length = len(word.strip()) or len(word)
+        if core_length <= 0:
+            core_length = 1
+        weights.append(float(core_length))
     num_to_redact = max(1, int(len(word_indices) * rate))
-
-    # Sample from the indices of actual words
-    indices_to_redact = rng.sample(word_indices, k=num_to_redact)
+    if num_to_redact > len(word_indices):
+        raise ValueError("Sample larger than population or is negative")
+    indices_to_redact = _weighted_sample_without_replacement(
+        word_indices,
+        weights,
+        k=num_to_redact,
+        rng=rng,
+    )
     indices_to_redact.sort()
 
     for i in indices_to_redact:

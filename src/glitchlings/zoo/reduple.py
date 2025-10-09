@@ -32,6 +32,7 @@ def _python_reduplicate_words(
     # Preserve exact spacing and punctuation by using regex
     tokens = re.split(r"(\s+)", text)  # Split but keep separators
 
+    candidate_weights = []
     for i in range(0, len(tokens), 2):  # Every other token is a word
         if i >= len(tokens):
             break
@@ -40,16 +41,41 @@ def _python_reduplicate_words(
         if not word or word.isspace():  # Skip empty or whitespace
             continue
 
-        # Only consider actual words for reduplication
-        if rng.random() < rate:
-            # Check if word has trailing punctuation
-            match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-            if match:
-                prefix, core, suffix = match.groups()
-                # Reduplicate with a space: "word" -> "word word"
-                tokens[i] = f"{prefix}{core} {core}{suffix}"
-            else:
-                tokens[i] = f"{word} {word}"
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        core = match.group(2) if match else word
+        core_length = len(core) if core else len(word)
+        if core_length <= 0:
+            core_length = len(word.strip()) or len(word)
+        if core_length <= 0:
+            core_length = 1
+        weight = 1.0 / core_length
+        candidate_weights.append((i, weight))
+
+    if not candidate_weights:
+        return "".join(tokens)
+
+    effective_rate = max(rate, 0.0)
+    if effective_rate <= 0.0:
+        return "".join(tokens)
+
+    mean_weight = sum(weight for _, weight in candidate_weights) / len(candidate_weights)
+
+    for index, weight in candidate_weights:
+        if effective_rate >= 1.0:
+            probability = 1.0
+        else:
+            probability = min(1.0, effective_rate * (weight / mean_weight))
+        if rng.random() >= probability:
+            continue
+
+        word = tokens[index]
+        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
+        if match:
+            prefix, core, suffix = match.groups()
+            # Reduplicate with a space: "word" -> "word word"
+            tokens[index] = f"{prefix}{core} {core}{suffix}"
+        else:
+            tokens[index] = f"{word} {word}"
     return "".join(tokens)
 
 
