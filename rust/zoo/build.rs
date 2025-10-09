@@ -82,6 +82,7 @@ fn link_python(python: &OsStr) {
             let stem = stripped
                 .strip_suffix(".so")
                 .or_else(|| stripped.strip_suffix(".a"))
+                .or_else(|| stripped.strip_suffix(".dylib"))
                 .unwrap_or(stripped);
             if !stem.is_empty() {
                 println!("cargo:rustc-link-lib={stem}");

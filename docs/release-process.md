@@ -96,6 +96,9 @@ The build workflow now creates wheels for multiple platforms:
   - Uses official PyPA manylinux images
   - Rust toolchain installed during build
   - Wheels repaired with `auditwheel` for maximum compatibility
+- **macOS**: Built on macOS with Python 3.10, 3.11, and 3.12
+  - Uses native macOS GitHub Actions runners
+  - Rust toolchain installed during build
 
 All wheels are combined and uploaded to PyPI/TestPyPI in a single publish step.
 
