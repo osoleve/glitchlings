@@ -10,6 +10,7 @@ from .reduple import Reduple, reduple
 from .rushmore import Rushmore, rushmore
 from .redactyl import Redactyl, redactyl
 from .scannequin import Scannequin, scannequin
+from .zeedub import Zeedub, zeedub
 from .core import Glitchling, Gaggle
 
 __all__ = [
@@ -27,6 +28,8 @@ __all__ = [
     "redactyl",
     "Scannequin",
     "scannequin",
+    "Zeedub",
+    "zeedub",
     "Glitchling",
     "Gaggle",
     "summon",
@@ -40,7 +43,7 @@ _HAS_JARGOYLE = _jargoyle_available()
 _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, mim1c]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
-_BUILTIN_GLITCHLING_LIST.extend([reduple, rushmore, redactyl, scannequin])
+_BUILTIN_GLITCHLING_LIST.extend([reduple, rushmore, redactyl, scannequin, zeedub])
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     glitchling.name.lower(): glitchling for glitchling in _BUILTIN_GLITCHLING_LIST
@@ -53,6 +56,7 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     rushmore.name.lower(): Rushmore,
     redactyl.name.lower(): Redactyl,
     scannequin.name.lower(): Scannequin,
+    zeedub.name.lower(): Zeedub,
 }
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_TYPES[jargoyle.name.lower()] = Jargoyle

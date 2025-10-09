@@ -138,6 +138,55 @@ _Wait, was that...?_
 >
 > ---
 
+## Zeedub
+
+_A whispering glyph parasite that lives in the interstices of codepoints, marking territory with invisible traces._
+
+> Diminutive Aberration (glyphic), Neutral
+>
+> ---
+>
+> _**Invisible Ink.**_ Zeedub threads zero-width codepoints between letters, leaving invisible tripwires that only the most paranoid normalisers will notice.
+>
+> ### Zeedub Args
+>
+> - `rate (float)`: Expected proportion of eligible bigrams to receive an insertion (default: 0.02, 2%).
+> - `characters (Sequence[str])`: Optional override for the zero-width pool (default: curated set of U+200B, U+200C, U+200D, U+FEFF, U+2060).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import zeedub
+> >>> print(zeedub(sample_text))
+> ```
+>
+> > One morning, when Gregor Samsa woke from troubled drea<ZWSP>ms, he found himself transform<WJ>ed in his bed into a horrible vermin. He lay on his armour-like back, and i<ZWJ>f he lifted his head a little he could see his brown belly, slight<WJ>ly domed and divided by arches into stiff sections. Th<ZWNJ>e bedding was h<ZWJ>ardly able to cover it and seemed ready to slide off any moment. His many leg<BOM>s, pitifully thin co<ZWSP>mpared with the size of the rest of him, waved about helplessly as he l<BOM>ooked.
+>
+> > _(Markers such as `<ZWSP>` highlight otherwise invisible insertions.)_
+>
+> ---
+>
+> - **Armor Class** 13 (data veil)
+> - **Hit Points** 11 (4d4 + 4)
+> - **Speed** 0 ft., 40 wpm (ethereal drift)
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |1 |18 |8 |12 |14 |6 |
+>
+> ---
+>
+> - **Skills** Stealth +8, Perception +4
+> - **Damage Resistances** radiant, force
+> - **Condition Immunities** blinded, grappled
+> - **Senses** blindsight 30 ft. (for glyphs only)
+> - **Languages** understands Common, speaks only in silence
+> - **Challenge** 1/4 (50 XP)
+>
+> ---
+
+
 ## Jargoyle
 
 _Uh oh. The worst person you know just bought a thesaurus._

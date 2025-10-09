@@ -2,11 +2,12 @@ import importlib
 import math
 import random
 from typing import cast
-from glitchlings import typogre, mim1c, reduple, rushmore, redactyl, scannequin
+from glitchlings import typogre, mim1c, reduple, rushmore, redactyl, scannequin, zeedub
 
 reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
+from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 def _count_blocks(s: str, block_char: str = "\u2588") -> int:
     return s.count(block_char)
@@ -197,3 +198,21 @@ def test_scannequin_error_rate_increases_changes(sample_text):
 
     assert diff_count(sample_text, high) >= diff_count(sample_text, low)
 
+
+
+
+def _count_zero_width(text: str) -> int:
+    return sum(text.count(ch) for ch in _DEFAULT_ZERO_WIDTH_CHARACTERS)
+
+
+
+def test_zeedub_rate_increases_insertions(sample_text):
+    zeedub.set_param("seed", 11)
+    zeedub.set_param("rate", 0.004)
+    low = cast(str, zeedub(sample_text))
+
+    zeedub.set_param("seed", 11)
+    zeedub.set_param("rate", 0.05)
+    high = cast(str, zeedub(sample_text))
+
+    assert _count_zero_width(high) >= _count_zero_width(low)

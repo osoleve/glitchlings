@@ -72,7 +72,9 @@ def _python_redact_words(
     tokens = re.split(r"(\s+)", text)
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
     if not word_indices:
-        raise ValueError("Cannot redact words because the input text contains no redactable words.")
+        raise ValueError(
+            "Cannot redact words because the input text contains no redactable words."
+        )
     weights: list[float] = []
     for index in word_indices:
         word = tokens[index]
@@ -139,7 +141,7 @@ def redact_words(
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=redaction_rate,
-        default=0.05,
+        default=0.025,
         legacy_name="redaction_rate",
     )
 
@@ -188,7 +190,7 @@ class Redactyl(Glitchling):
         effective_rate = resolve_rate(
             rate=rate,
             legacy_value=redaction_rate,
-            default=0.05,
+            default=0.025,
             legacy_name="redaction_rate",
         )
         super().__init__(

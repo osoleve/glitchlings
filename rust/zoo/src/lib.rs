@@ -4,6 +4,7 @@ mod resources;
 mod rng;
 mod text_buffer;
 mod typogre;
+mod zeedub;
 
 use glitch_ops::{GlitchOp, GlitchRng};
 use pyo3::prelude::*;
@@ -322,6 +323,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
+    m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     Ok(())
 }
 

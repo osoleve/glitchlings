@@ -16,6 +16,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
    - [Scannequin](glitchlings/scannequin.md)
+   - [Zeedub](glitchlings/zeedub.md)
 6. [Dataset workflows](#dataset-workflows)
 7. [Prime Intellect integration](#prime-intellect-integration)
 8. [Ensuring determinism](#ensuring-determinism)
@@ -134,14 +135,14 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 
 Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. Dive into the dedicated pages below for signatures, behaviours, and usage tips:
 
-- [Typogre](glitchlings/typogre.md) – keyboard-adjacent typos and doubled characters for fat-finger chaos.
-- [Mim1c](glitchlings/mim1c.md) – homoglyph swaps that sneak confusable Unicode into your text.
-- [Reduple](glitchlings/reduple.md) – word-level reduplication for hesitant transcripts.
-- [Rushmore](glitchlings/rushmore.md) – targeted deletions that erode context without shredding structure.
-- [Redactyl](glitchlings/redactyl.md) – block out sensitive words with configurable redaction glyphs.
-- [Jargoyle](glitchlings/jargoyle.md) – WordNet-driven synonym substitutions tuned by part of speech.
-- [Scannequin](glitchlings/scannequin.md) – OCR-style misreads and confusable spans with deterministic sampling.
-
+- [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
+- [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
+- [Reduple](glitchlings/reduple.md) - word-level reduplication for hesitant transcripts.
+- [Rushmore](glitchlings/rushmore.md) - targeted deletions that erode context without shredding structure.
+- [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
+- [Jargoyle](glitchlings/jargoyle.md) - WordNet-driven synonym substitutions tuned by part of speech.
+- [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
+- [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 ## Dataset workflows
 
 Leverage the Hugging Face integration to perturb large corpora reproducibly:
