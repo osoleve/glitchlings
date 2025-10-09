@@ -1,7 +1,12 @@
+import importlib
 import math
+import random
 from typing import cast
 from glitchlings import typogre, mim1c, reduple, rushmore, redactyl, scannequin
 
+reduple_module = importlib.import_module("glitchlings.zoo.reduple")
+rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
+redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 
 def _count_blocks(s: str, block_char: str = "\u2588") -> int:
     return s.count(block_char)
@@ -42,12 +47,62 @@ def test_reduple_rate_increases_tokens():
     assert len(out.split()) >= len(text.split())
 
 
+def test_reduple_unweighted_matches_python_reference():
+    text = "alpha beta gamma delta epsilon zeta"
+    seed = 1
+    rate = 0.5
+    weighted = reduple_module._python_reduplicate_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+    )
+    unweighted_expected = reduple_module._python_reduplicate_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    assert unweighted_expected != weighted
+    instance = reduple.clone()
+    instance.set_param("seed", seed)
+    instance.set_param("rate", rate)
+    instance.set_param("unweighted", True)
+    result = cast(str, instance(text))
+    assert result == unweighted_expected
+
+
+
 def test_rushmore_rate_decreases_tokens():
     text = "a b c d e f g h"
     rushmore.set_param("seed", 5)
     rushmore.set_param("rate", 0.5)
     out = cast(str, rushmore(text))
     assert len(out.split()) <= len(text.split())
+
+
+def test_rushmore_unweighted_matches_python_reference():
+    text = "alpha beta gamma delta epsilon"
+    seed = 11
+    rate = 0.5
+    weighted = rushmore_module._python_delete_random_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+    )
+    unweighted_expected = rushmore_module._python_delete_random_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    assert unweighted_expected != weighted
+    instance = rushmore.clone()
+    instance.set_param("seed", seed)
+    instance.set_param("rate", rate)
+    instance.set_param("unweighted", True)
+    result = cast(str, instance(text))
+    assert result == unweighted_expected
+
 
 
 def test_rushmore_max_deletion_cap():
@@ -95,6 +150,38 @@ def test_redactyl_replacement_char_and_merge():
     assert "# #" not in out  # merged
 
 
+def test_redactyl_unweighted_matches_python_reference():
+    text = "alpha beta gamma delta epsilon"
+    seed = 5
+    rate = 0.5
+    replacement_char = "#"
+    weighted = redactyl_module._python_redact_words(
+        text,
+        replacement_char=replacement_char,
+        rate=rate,
+        merge_adjacent=False,
+        rng=random.Random(seed),
+    )
+    unweighted_expected = redactyl_module._python_redact_words(
+        text,
+        replacement_char=replacement_char,
+        rate=rate,
+        merge_adjacent=False,
+        rng=random.Random(seed),
+        unweighted=True,
+    )
+    assert unweighted_expected != weighted
+    instance = redactyl.clone()
+    instance.set_param("seed", seed)
+    instance.set_param("rate", rate)
+    instance.set_param("replacement_char", replacement_char)
+    instance.set_param("merge_adjacent", False)
+    instance.set_param("unweighted", True)
+    result = cast(str, instance(text))
+    assert result == unweighted_expected
+
+
+
 def test_scannequin_error_rate_increases_changes(sample_text):
     # count character diffs vs original
     def diff_count(a: str, b: str) -> int:
@@ -109,3 +196,4 @@ def test_scannequin_error_rate_increases_changes(sample_text):
     high = cast(str, scannequin(sample_text))
 
     assert diff_count(sample_text, high) >= diff_count(sample_text, low)
+

@@ -37,10 +37,7 @@ fn detect_python() -> Option<OsString> {
     ];
 
     for candidate in CANDIDATES {
-        let status = Command::new(candidate)
-            .arg("-c")
-            .arg("import sys")
-            .output();
+        let status = Command::new(candidate).arg("-c").arg("import sys").output();
 
         if let Ok(output) = status {
             if output.status.success() {
@@ -143,4 +140,3 @@ fn prepare_confusion_table() -> io::Result<()> {
     fs::copy(&source_path, out_dir.join("ocr_confusions.tsv"))?;
     Ok(())
 }
-

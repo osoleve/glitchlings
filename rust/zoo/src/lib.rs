@@ -82,7 +82,11 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
             .get_item("operation")?
             .ok_or_else(|| PyValueError::new_err("descriptor missing 'operation' field"))?
             .extract()?;
-        Ok(Self { name, seed, operation })
+        Ok(Self {
+            name,
+            seed,
+            operation,
+        })
     }
 }
 
@@ -90,14 +94,17 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
 enum PyGlitchOperation {
     Reduplicate {
         reduplication_rate: f64,
+        unweighted: bool,
     },
     Delete {
         max_deletion_rate: f64,
+        unweighted: bool,
     },
     Redact {
         replacement_char: String,
         redaction_rate: f64,
         merge_adjacent: bool,
+        unweighted: bool,
     },
     Ocr {
         error_rate: f64,
@@ -119,8 +126,14 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         PyValueError::new_err("reduplicate operation missing 'reduplication_rate'")
                     })?
                     .extract()?;
+                let unweighted = dict
+                    .get_item("unweighted")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or(false);
                 Ok(PyGlitchOperation::Reduplicate {
                     reduplication_rate: rate,
+                    unweighted,
                 })
             }
             "delete" => {
@@ -130,8 +143,14 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         PyValueError::new_err("delete operation missing 'max_deletion_rate'")
                     })?
                     .extract()?;
+                let unweighted = dict
+                    .get_item("unweighted")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or(false);
                 Ok(PyGlitchOperation::Delete {
                     max_deletion_rate: rate,
+                    unweighted,
                 })
             }
             "redact" => {
@@ -153,10 +172,16 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         PyValueError::new_err("redact operation missing 'merge_adjacent'")
                     })?
                     .extract()?;
+                let unweighted = dict
+                    .get_item("unweighted")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or(false);
                 Ok(PyGlitchOperation::Redact {
                     replacement_char,
                     redaction_rate,
                     merge_adjacent,
+                    unweighted,
                 })
             }
             "ocr" => {
@@ -170,6 +195,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 "unsupported operation type: {other}"
             ))),
         }
+
     }
 }
 
@@ -191,9 +217,13 @@ where
 fn reduplicate_words(
     text: &str,
     reduplication_rate: f64,
+    unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    let op = ReduplicateWordsOp { reduplication_rate };
+    let op = ReduplicateWordsOp {
+        reduplication_rate,
+        unweighted,
+    };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -201,9 +231,13 @@ fn reduplicate_words(
 fn delete_random_words(
     text: &str,
     max_deletion_rate: f64,
+    unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    let op = DeleteRandomWordsOp { max_deletion_rate };
+    let op = DeleteRandomWordsOp {
+        max_deletion_rate,
+        unweighted,
+    };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -219,12 +253,14 @@ fn redact_words(
     replacement_char: &str,
     redaction_rate: f64,
     merge_adjacent: bool,
+    unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
     let op = RedactWordsOp {
         replacement_char: replacement_char.to_string(),
         redaction_rate,
         merge_adjacent,
+        unweighted,
     };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
@@ -239,22 +275,28 @@ fn compose_glitchlings(
         .into_iter()
         .map(|descriptor| {
             let operation = match descriptor.operation {
-                PyGlitchOperation::Reduplicate { reduplication_rate } => {
+                PyGlitchOperation::Reduplicate { reduplication_rate, unweighted } => {
                     GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
                         reduplication_rate,
+                        unweighted,
                     })
                 }
-                PyGlitchOperation::Delete { max_deletion_rate } => {
-                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { max_deletion_rate })
+                PyGlitchOperation::Delete { max_deletion_rate, unweighted } => {
+                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp {
+                        max_deletion_rate,
+                        unweighted,
+                    })
                 }
                 PyGlitchOperation::Redact {
                     replacement_char,
                     redaction_rate,
                     merge_adjacent,
+                    unweighted,
                 } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
                     replacement_char,
                     redaction_rate,
                     merge_adjacent,
+                    unweighted,
                 }),
                 PyGlitchOperation::Ocr { error_rate } => {
                     GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
@@ -282,3 +324,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     Ok(())
 }
+
+
+
+

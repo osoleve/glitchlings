@@ -108,7 +108,6 @@ fn repeat_char(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
     let idx_obj = python_choice(rng, &positions)?;
     let idx: usize = idx_obj.extract(rng.py())?;
     if idx < chars.len() {
-
         let c = chars[idx];
         chars.insert(idx, c);
     }
@@ -163,7 +162,6 @@ fn positional_action(
         }
         "extra_char" => {
             if idx < chars.len() {
-
                 let ch = chars[idx];
                 let mut neighbors = neighbors_for_char(layout, ch);
                 if neighbors.is_empty() {

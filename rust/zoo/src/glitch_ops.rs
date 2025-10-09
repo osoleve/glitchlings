@@ -58,6 +58,7 @@ impl From<PyRngError> for GlitchOpError {
 pub trait GlitchRng {
     fn random(&mut self) -> Result<f64, GlitchOpError>;
     fn rand_index(&mut self, upper: usize) -> Result<usize, GlitchOpError>;
+    #[allow(dead_code)]
     fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, GlitchOpError>;
 }
 
@@ -71,9 +72,113 @@ impl GlitchRng for PyRng {
         Ok(value as usize)
     }
 
+    #[allow(dead_code)]
     fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, GlitchOpError> {
         PyRng::sample_indices(self, population, k).map_err(GlitchOpError::from)
     }
+}
+
+fn core_length_for_weight(core: &str, original: &str) -> usize {
+    let mut length = if !core.is_empty() {
+        core.chars().count()
+    } else {
+        original.chars().count()
+    };
+    if length == 0 {
+        let trimmed = original.trim();
+        length = if trimmed.is_empty() {
+            original.chars().count()
+        } else {
+            trimmed.chars().count()
+        };
+    }
+    if length == 0 {
+        length = 1;
+    }
+    length
+}
+
+fn inverse_length_weight(core: &str, original: &str) -> f64 {
+    1.0 / (core_length_for_weight(core, original) as f64)
+}
+
+fn direct_length_weight(core: &str, original: &str) -> f64 {
+    core_length_for_weight(core, original) as f64
+}
+
+#[derive(Debug)]
+struct ReduplicateCandidate {
+    index: usize,
+    prefix: String,
+    core: String,
+    suffix: String,
+    weight: f64,
+}
+
+#[derive(Debug)]
+struct DeleteCandidate {
+    index: usize,
+    prefix: String,
+    suffix: String,
+    weight: f64,
+}
+
+#[derive(Debug)]
+struct RedactCandidate {
+    index: usize,
+    prefix: String,
+    suffix: String,
+    repeat: usize,
+    weight: f64,
+}
+
+fn weighted_sample_without_replacement(
+    rng: &mut dyn GlitchRng,
+    items: &[(usize, f64)],
+    k: usize,
+) -> Result<Vec<usize>, GlitchOpError> {
+    if k == 0 || items.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut pool: Vec<(usize, f64)> = items
+        .iter()
+        .map(|(index, weight)| (*index, *weight))
+        .collect();
+
+    if k > pool.len() {
+        return Err(GlitchOpError::ExcessiveRedaction {
+            requested: k,
+            available: pool.len(),
+        });
+    }
+
+    let mut selections: Vec<usize> = Vec::with_capacity(k);
+    for _ in 0..k {
+        if pool.is_empty() {
+            break;
+        }
+        let total_weight: f64 = pool.iter().map(|(_, weight)| weight.max(0.0)).sum();
+        let chosen_index = if total_weight <= f64::EPSILON {
+            rng.rand_index(pool.len())?
+        } else {
+            let threshold = rng.random()? * total_weight;
+            let mut cumulative = 0.0;
+            let mut selected = pool.len() - 1;
+            for (idx, (_, weight)) in pool.iter().enumerate() {
+                cumulative += weight.max(0.0);
+                if cumulative >= threshold {
+                    selected = idx;
+                    break;
+                }
+            }
+            selected
+        };
+        let (value, _) = pool.remove(chosen_index);
+        selections.push(value);
+    }
+
+    Ok(selections)
 }
 
 /// Trait implemented by each glitchling mutation so they can be sequenced by
@@ -86,6 +191,7 @@ pub trait GlitchOp {
 #[derive(Debug, Clone, Copy)]
 pub struct ReduplicateWordsOp {
     pub reduplication_rate: f64,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for ReduplicateWordsOp {
@@ -94,35 +200,68 @@ impl GlitchOp for ReduplicateWordsOp {
             return Ok(());
         }
 
-        let mut word_index = 0;
-        while word_index < buffer.word_count() {
-            let Some(segment) = buffer.word_segment(word_index) else {
-                break;
-            };
-            if matches!(segment.kind(), SegmentKind::Separator) {
-                word_index += 1;
-                continue;
+        let total_words = buffer.word_count();
+        let mut candidates: Vec<ReduplicateCandidate> = Vec::new();
+        for idx in 0..total_words {
+            if let Some(segment) = buffer.word_segment(idx) {
+                if matches!(segment.kind(), SegmentKind::Separator) {
+                    continue;
+                }
+                let original = segment.text().to_string();
+                if original.trim().is_empty() {
+                    continue;
+                }
+                let (prefix, core, suffix) = split_affixes(&original);
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    inverse_length_weight(&core, &original)
+                };
+                candidates.push(ReduplicateCandidate {
+                    index: idx,
+                    prefix,
+                    core,
+                    suffix,
+                    weight,
+                });
             }
-            let original = segment.text().to_string();
-            if original.trim().is_empty() {
-                word_index += 1;
+        }
+
+        if candidates.is_empty() {
+            return Ok(());
+        }
+
+        let effective_rate = self.reduplication_rate.max(0.0);
+        if effective_rate <= 0.0 {
+            return Ok(());
+        }
+
+        let mean_weight = candidates
+            .iter()
+            .map(|candidate| candidate.weight)
+            .sum::<f64>()
+            / (candidates.len() as f64);
+
+        let mut offset = 0usize;
+        for candidate in candidates.into_iter() {
+            let probability = if effective_rate >= 1.0 {
+                1.0
+            } else if mean_weight <= f64::EPSILON {
+                effective_rate
+            } else {
+                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
+            };
+
+            if rng.random()? >= probability {
                 continue;
             }
 
-            if rng.random()? < self.reduplication_rate {
-                let (prefix, core, suffix) = split_affixes(&original);
-                if core.is_empty() {
-                    word_index += 1;
-                    continue;
-                }
-                let first = format!("{prefix}{core}");
-                let second = format!("{core}{suffix}");
-                buffer.replace_word(word_index, &first)?;
-                buffer.insert_word_after(word_index, &second, Some(" "))?;
-                word_index += 2;
-            } else {
-                word_index += 1;
-            }
+            let target = candidate.index + offset;
+            let first = format!("{}{}", candidate.prefix, candidate.core);
+            let second = format!("{}{}", candidate.core, candidate.suffix);
+            buffer.replace_word(target, &first)?;
+            buffer.insert_word_after(target, &second, Some(" "))?;
+            offset += 1;
         }
 
         Ok(())
@@ -133,6 +272,7 @@ impl GlitchOp for ReduplicateWordsOp {
 #[derive(Debug, Clone, Copy)]
 pub struct DeleteRandomWordsOp {
     pub max_deletion_rate: f64,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for DeleteRandomWordsOp {
@@ -141,13 +281,27 @@ impl GlitchOp for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let mut candidates: Vec<(usize, String)> = Vec::new();
-        for idx in 1..buffer.word_count() {
+        let total_words = buffer.word_count();
+        let mut candidates: Vec<DeleteCandidate> = Vec::new();
+        for idx in 1..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
                 let text = segment.text();
-                if !text.is_empty() && !is_whitespace_only(text) {
-                    candidates.push((idx, text.to_string()));
+                if text.is_empty() || is_whitespace_only(text) {
+                    continue;
                 }
+                let original = text.to_string();
+                let (prefix, core, suffix) = split_affixes(&original);
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    inverse_length_weight(&core, &original)
+                };
+                candidates.push(DeleteCandidate {
+                    index: idx,
+                    prefix,
+                    suffix,
+                    weight,
+                });
             }
         }
 
@@ -155,23 +309,43 @@ impl GlitchOp for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let allowed = ((candidates.len() as f64) * self.max_deletion_rate).floor() as usize;
+        let effective_rate = self.max_deletion_rate.max(0.0);
+        if effective_rate <= 0.0 {
+            return Ok(());
+        }
+
+        let allowed = ((candidates.len() as f64) * effective_rate).floor() as usize;
         if allowed == 0 {
             return Ok(());
         }
 
+        let mean_weight = candidates
+            .iter()
+            .map(|candidate| candidate.weight)
+            .sum::<f64>()
+            / (candidates.len() as f64);
+
         let mut deletions = 0usize;
-        for (word_index, original) in candidates {
+        for candidate in candidates.into_iter() {
             if deletions >= allowed {
                 break;
             }
 
-            if rng.random()? < self.max_deletion_rate {
-                let (prefix, _, suffix) = split_affixes(&original);
-                let replacement = format!("{}{}", prefix.trim(), suffix.trim());
-                buffer.replace_word(word_index, &replacement)?;
-                deletions += 1;
+            let probability = if effective_rate >= 1.0 {
+                1.0
+            } else if mean_weight <= f64::EPSILON {
+                effective_rate
+            } else {
+                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
+            };
+
+            if rng.random()? >= probability {
+                continue;
             }
+
+            let replacement = format!("{}{}", candidate.prefix.trim(), candidate.suffix.trim());
+            buffer.replace_word(candidate.index, &replacement)?;
+            deletions += 1;
         }
 
         let mut joined = buffer.to_string();
@@ -191,6 +365,7 @@ pub struct RedactWordsOp {
     pub replacement_char: String,
     pub redaction_rate: f64,
     pub merge_adjacent: bool,
+    pub unweighted: bool,
 }
 
 impl GlitchOp for RedactWordsOp {
@@ -199,51 +374,77 @@ impl GlitchOp for RedactWordsOp {
             return Err(GlitchOpError::NoRedactableWords);
         }
 
-        let mut word_indices: Vec<(usize, String)> = Vec::new();
-        for idx in 0..buffer.word_count() {
+        let total_words = buffer.word_count();
+        let mut candidates: Vec<RedactCandidate> = Vec::new();
+        for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
                 let text = segment.text();
-                if !text.trim().is_empty() {
-                    word_indices.push((idx, text.to_string()));
+                if text.trim().is_empty() {
+                    continue;
                 }
+                let original = text.to_string();
+                let (prefix, core, suffix) = split_affixes(&original);
+                if core.is_empty() {
+                    continue;
+                }
+                let repeat = core.chars().count();
+                if repeat == 0 {
+                    continue;
+                }
+                let weight = if self.unweighted {
+                    1.0
+                } else {
+                    direct_length_weight(&core, &original)
+                };
+                candidates.push(RedactCandidate {
+                    index: idx,
+                    prefix,
+                    suffix,
+                    repeat,
+                    weight,
+                });
             }
         }
 
-        if word_indices.is_empty() {
+        if candidates.is_empty() {
             return Err(GlitchOpError::NoRedactableWords);
         }
 
-        let mut num_to_redact =
-            ((word_indices.len() as f64) * self.redaction_rate).floor() as usize;
+        let effective_rate = self.redaction_rate.max(0.0);
+        let mut num_to_redact = ((candidates.len() as f64) * effective_rate).floor() as usize;
         if num_to_redact < 1 {
             num_to_redact = 1;
         }
-        if num_to_redact > word_indices.len() {
+        if num_to_redact > candidates.len() {
             return Err(GlitchOpError::ExcessiveRedaction {
                 requested: num_to_redact,
-                available: word_indices.len(),
+                available: candidates.len(),
             });
         }
 
-        let mut selections = rng.sample_indices(word_indices.len(), num_to_redact)?;
-        selections.sort_unstable();
+        let weighted_indices: Vec<(usize, f64)> = candidates
+            .iter()
+            .enumerate()
+            .map(|(idx, candidate)| (idx, candidate.weight))
+            .collect();
+
+        let mut selections =
+            weighted_sample_without_replacement(rng, &weighted_indices, num_to_redact)?;
+        selections.sort_unstable_by_key(|candidate_idx| candidates[*candidate_idx].index);
 
         for selection in selections {
-            let (word_index, original) = &word_indices[selection];
-            let (prefix, core, suffix) = split_affixes(original);
-            if core.is_empty() {
-                continue;
-            }
-            let repeat = core.chars().count();
+            let candidate = &candidates[selection];
             let mut replacement = String::with_capacity(
-                prefix.len() + suffix.len() + self.replacement_char.len() * repeat,
+                candidate.prefix.len()
+                    + candidate.suffix.len()
+                    + self.replacement_char.len() * candidate.repeat,
             );
-            replacement.push_str(&prefix);
-            for _ in 0..repeat {
+            replacement.push_str(&candidate.prefix);
+            for _ in 0..candidate.repeat {
                 replacement.push_str(&self.replacement_char);
             }
-            replacement.push_str(&suffix);
-            buffer.replace_word(*word_index, &replacement)?;
+            replacement.push_str(&candidate.suffix);
+            buffer.replace_word(candidate.index, &replacement)?;
         }
 
         if self.merge_adjacent {
@@ -384,6 +585,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = ReduplicateWordsOp {
             reduplication_rate: 1.0,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
             .expect("reduplication works");
@@ -396,6 +598,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = DeleteRandomWordsOp {
             max_deletion_rate: 0.75,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion works");
         assert_eq!(buffer.to_string(), "One three four");
@@ -409,6 +612,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.8,
             merge_adjacent: true,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction works");
         let result = buffer.to_string();
@@ -423,6 +627,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.5,
             merge_adjacent: false,
+            unweighted: false,
         };
         let error = op.apply(&mut buffer, &mut rng).unwrap_err();
         match error {
@@ -448,13 +653,11 @@ mod tests {
         let mut rng = PyRng::new(123);
         let op = ReduplicateWordsOp {
             reduplication_rate: 0.5,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
             .expect("reduplication succeeds");
-        assert_eq!(
-            buffer.to_string(),
-            "The The quick quick brown brown fox fox"
-        );
+        assert_eq!(buffer.to_string(), "The The quick quick brown fox fox");
     }
 
     #[test]
@@ -463,6 +666,7 @@ mod tests {
         let mut rng = PyRng::new(123);
         let op = DeleteRandomWordsOp {
             max_deletion_rate: 0.5,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion succeeds");
         assert_eq!(buffer.to_string(), "The over the lazy dog.");
@@ -476,9 +680,10 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 0.5,
             merge_adjacent: false,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction succeeds");
-        assert_eq!(buffer.to_string(), "████ these words ██████");
+        assert_eq!(buffer.to_string(), "████ these █████ please");
     }
 
     #[test]
@@ -489,6 +694,7 @@ mod tests {
             replacement_char: "█".to_string(),
             redaction_rate: 1.0,
             merge_adjacent: true,
+            unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("redaction succeeds");
         assert_eq!(buffer.to_string(), "█████████████████");
@@ -503,3 +709,5 @@ mod tests {
         assert_eq!(buffer.to_string(), "Tlie rn rri");
     }
 }
+
+
