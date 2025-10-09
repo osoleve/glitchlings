@@ -43,24 +43,21 @@ pub(crate) fn inject_zero_widths(
     let total = positions.len();
     let target = clamped_rate * total as f64;
     let mut count = target.floor() as usize;
-    if count > total {
-        count = total;
-    }
-
     let remainder = target - count as f64;
-    if remainder > 0.0 && count < total {
+
+    if remainder > 0.0 {
         let draw: f64 = rng.call_method0("random")?.extract()?;
         if draw < remainder {
             count += 1;
         }
     }
 
-    if count == 0 {
-        return Ok(text.to_string());
-    }
-
     if count > total {
         count = total;
+    }
+
+    if count == 0 {
+        return Ok(text.to_string());
     }
 
     let py = rng.py();
