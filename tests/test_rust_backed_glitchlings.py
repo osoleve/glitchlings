@@ -249,6 +249,23 @@ def test_redactyl_merge_adjacent_blocks():
     assert result == expected == "█████████████████"
 
 
+
+def test_redactyl_zero_rate_is_noop(monkeypatch):
+    text = "alpha beta gamma"
+    monkeypatch.setattr(redactyl_module, "_redact_words_rust", None, raising=False)
+
+    result = redactyl_module.redact_words(text, rate=0.0, seed=42)
+    assert result == text
+
+    python_result = redactyl_module._python_redact_words(
+        text,
+        replacement_char=redactyl_module.FULL_BLOCK,
+        rate=0.0,
+        merge_adjacent=False,
+        rng=random.Random(42),
+    )
+    assert python_result == text
+
 def test_redactyl_empty_text_raises_value_error():
     message = "contains no redactable words"
     with pytest.raises(ValueError, match=message):
