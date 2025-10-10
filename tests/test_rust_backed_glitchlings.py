@@ -49,6 +49,7 @@ scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
+adjax_module = importlib.import_module("glitchlings.zoo.adjax")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
@@ -148,6 +149,40 @@ def test_rushmore_unweighted_matches_python_fallback():
     )
     assert result == expected
 
+
+def test_adjax_matches_python_fallback():
+    text = "Signal integrity matters greatly"
+    seed = 23
+    rate = 0.8
+    expected = adjax_module._python_swap_adjacent_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+    )
+    result = adjax_module.swap_adjacent_words(
+        text,
+        rate=rate,
+        seed=seed,
+    )
+    assert result == expected
+
+
+def test_adjax_respects_explicit_rng():
+    text = "Keep the formatting intact"
+    rate = 0.6
+    rng_expected = random.Random(13)
+    expected = adjax_module._python_swap_adjacent_words(
+        text,
+        rate=rate,
+        rng=rng_expected,
+    )
+    rng_actual = random.Random(13)
+    result = adjax_module.swap_adjacent_words(
+        text,
+        rate=rate,
+        rng=rng_actual,
+    )
+    assert result == expected
 
 
 def test_scannequin_matches_python_fallback():
@@ -301,6 +336,12 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
                 rate=operation["max_deletion_rate"],
                 rng=rng,
             )
+        elif op_type == "swap_adjacent":
+            current = adjax_module._python_swap_adjacent_words(
+                current,
+                rate=operation["swap_rate"],
+                rng=rng,
+            )
         elif op_type == "redact":
             current = redactyl_module._python_redact_words(
                 current,
@@ -322,9 +363,12 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
 
 def test_compose_glitchlings_matches_python_pipeline():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    if not hasattr(zoo_rust, "swap_adjacent_words"):
+        pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
         {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
         {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5, "unweighted": False}},
+        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.6}},
         {
             "name": "Redactyl",
             "operation": {
@@ -347,9 +391,12 @@ def test_compose_glitchlings_matches_python_pipeline():
 
 def test_compose_glitchlings_is_deterministic():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    if not hasattr(zoo_rust, "swap_adjacent_words"):
+        pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
         {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
         {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
+        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.4}},
         {
             "name": "Redactyl",
             "operation": {

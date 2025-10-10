@@ -1,6 +1,6 @@
 [project]
 name = "glitchlings"
-version = "0.2.6"
+version = "0.3.0"
 description = "Monsters for your language games."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [
     { name = "osoleve" }
 ]
 
-keywords = ["nlp", "text", "adversarial augmentation", "text augmentation", "large language models", "llms", "data augmentation", "confusables", "typo", ""]
+keywords = ["nlp", "text", "adversarial augmentation", "text augmentation", "large language models", "llms", "data augmentation", "rlvr"]
 
 classifiers = [
     "Development Status :: 3 - Alpha",

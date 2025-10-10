@@ -10,27 +10,73 @@ One morning, when Gregor Samsa woke from troubled dreams, he found himself trans
 
 All examples use a base seed of `404` with per-glitchling offsets to keep results deterministic across runs.
 
+## Adjax
+
+### 1% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 5% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 10% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself in transformed his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches stiff into sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 25% corruption
+
+```text
+One morning, Gregor when woke Samsa troubled from dreams, he himself found transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head little a he could see his brown belly, domed slightly divided and by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide any off His. moment many legs, pitifully thin compared with the size of the of rest him, waved about helplessly he as looked.
+```
+
+## Jargoyle
+
+### 1% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 5% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dream, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 10% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed inch his bed into a horrible varmint. He lay on his armour-like back, and if he lifted his caput a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+```
+### 25% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, helium found himself transformed in his bottom into angstrom unit horrible vermin. He ballad on his armour-like back, and if helium lifted his head a little atomic number 2 could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the residual of him, waved about helplessly as he looked.
+```
+
 ## Mim1c
 
 ### 1% corruption
 
 ```text
-One mᴏrning, when Gregor Sａmsa woke from troubleⅾ dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+Onꬲ morning, when Gregor Samsa woke from troubleԁ dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, ϱitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 5% corruption
 
 ```text
-Onｅ mогninᶃ, wһｅn Gꭇegσr Sɑmѕa wᴏke frσm troubƖeԁ dreamꜱ, he found himseΙf transformed in his bed into a horribǀe vermin. He laγ on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+Οnｅ mᴏrning, wһｅn Grꬲgоr Sаmsа wᴏke ꞙrοm trouЬleⅾ ԁreａms, he founⅾ himself transformed in his Ьed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-Οnе mοᴦnⅰng, ԝһꬲn Gгеgοᴦ Sаmƽａ ԝꬽkе ꬵꭈоm tᴦoʋbΙeⅾ ԁreamｓ, һe founⅾ һimƽelf tranｓformed in һis bed into a ｈorrible vermin. He laу on his armour-like baⅽk, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the siᴢe of the rest of him, waved about helplessly as he looked.
+Onꬲ mｏгnӏnɡ, wһҽn Gꭇｅｇσᴦ Sαmƽɑ wοkе from troꞟƄӀҽd drҽɑmѕ, һе found ｈimꜱeǀf trɑnѕformed in his bed into a horribⅼe vermin. He Iaγ on his armour-like back, and if he lifted his head a little he could see his brown bellγ, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, ｐitifully thin comрared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 25% corruption
 
 ```text
-Onｅ mοꭇnɩnᶃ, ԝｈｅn Gꭇеƍᴏᴦ Sɑmѕɑ ᴡᴑkе ſᴦｏm tꭇｏυЬƖҽԁ ⅾrҽɑmѕ, ｈꬲ ſоυnԁ ｈımｓｅǀꬵ trａnѕꬵοrmꬲⅾ ꙇn ｈɩƽ bеⅾ ιntｏ α һꬽrrͺbⅠꬲ ѵermin. He Ɩａʏ on ｈiƽ ａrmoꞟr-like bαｃk, anⅾ iſ ｈe lifteⅾ ｈiｓ ｈeaԁ a little һe ᴄoꭎlԁ see һis brown bellʏ, slightlỿ domed and diνided bᶌ arches into stiff sections. The bedding was hardlу able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+Onꬲ mᴑᴦnｉnɡ, ԝһеn Ԍꭇｅgοꭇ Sаmƽａ ɯᴑkе ꬵꭇоm tгｏꞟЬІꬲⅾ ⅾrｅаmѕ, һｅ ꞙᴑꭎnⅾ ｈımｓҽｌꞙ trɑnѕſоrmҽԁ іn hιꜱ Ƅҽԁ ⅰntσ α horrｉЬӀе ᴠꬲrmӏn. Ηҽ ⅼαỿ on hiѕ аrmour-Ιikꬲ baｃk, anⅾ iꬵ he ｌifteⅾ hiꜱ heaⅾ a ＩittIe he сould ꜱee his brown belly, slightly domed and diｖided by arｃhes into stiff seᴄtions. The bedding was hardly able to ᴄover it and seemed ready to slide off any moment. Ｈis many legs, ρitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 
 ## Redactyl
@@ -38,22 +84,22 @@ Onｅ mοꭇnɩnᶃ, ԝｈｅn Gꭇеƍᴏᴦ Sɑmѕɑ ᴡᴑkе ſᴦｏm tꭇ�
 ### 1% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able ██ cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself ███████████ in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 5% corruption
 
 ```text
-One morning, when Gregor █████ woke ████ troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many ████, pitifully thin compared ████ the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and ███████ by arches into stiff sections. The bedding was hardly able to cover it ███ seemed ready to slide off any moment. His many ████, █████████ thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he █████ ███████ transformed in his bed into █ horrible vermin. He lay on his armour-like back, ███ if he ██████ his head a little he could see his brown belly, slightly domed and divided by arches ████ stiff sections. The bedding was hardly able to cover it ███ seemed ready ██ slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor █████ woke from ████████ dreams, he found himself ███████████ in his bed ████ a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he █████ see his brown belly, slightly █████ and divided by arches into stiff ████████. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin ████████ with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 25% corruption
 
 ```text
-One morning, ████ Gregor Samsa woke from ████████ dreams, he found himself ███████████ ██ ███ bed into a horrible ██████. He ███ on his armour-like back, and if he lifted his ████ a little he could see his brown █████, ████████ █████ and divided by arches into stiff ████████. The ███████ was hardly able ██ cover it and ██████ ready to █████ off any moment. ███ many ████, pitifully thin compared with ███ size of the rest of him, █████ █████ helplessly as he looked.
+One morning, when ██████ Samsa ████ ████ ████████ dreams, he █████ himself transformed in his bed into a horrible vermin. He lay on ███ armour-like back, and if ██ lifted his head a ██████ ██ could ███ his brown belly, slightly domed and divided by arches into stiff sections. The ███████ was hardly able to cover it and ██████ █████ to slide off any ██████. His many legs, █████████ thin ████████ with the size ██ ███ ████ of him, █████ about ██████████ as he looked.
 ```
 
 ## Reduple
@@ -61,22 +107,22 @@ One morning, ████ Gregor Samsa woke from ████████ dreams
 ### 1% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 5% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed transformed in his bed into a horrible vermin. He lay lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved waved about helplessly as he looked.
+One morning, when Gregor Samsa Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He He lay on his armour-like back, and if if he lifted his head a a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with with the size of the rest of of him, waved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible horrible vermin. He lay on his armour-like back, and if if he lifted his head head a little he could see his his brown belly belly, slightly domed and divided by arches into stiff sections. The bedding was was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the the size of the rest of him, waved about helplessly as as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his his bed into a horrible vermin vermin. He lay on his armour-like back, and and if he he lifted his head a a little he could see his brown belly, slightly domed and and divided by by arches into stiff sections. The bedding was hardly able to cover cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 25% corruption
 
 ```text
-One morning morning, when Gregor Samsa Samsa woke woke from troubled dreams, he found found himself transformed transformed in his bed into a a horrible vermin. He lay on his armour-like back, and if if he lifted his head a little little he could see his brown brown belly belly, slightly domed and divided by by arches into stiff stiff sections. The bedding bedding was hardly hardly able to to cover it it and seemed seemed ready to slide off off any moment. His His many legs legs, pitifully thin compared compared with with the size of the the rest of him, waved about helplessly as he looked.
+One morning, when when Gregor Samsa Samsa woke from troubled dreams, he found found himself transformed in in his bed into into a a horrible vermin. He He lay on his armour-like back, and and if if he he lifted his head a a little he could see his brown brown belly, slightly domed and divided by by arches into stiff sections. The The bedding was hardly able to to cover it it and seemed ready to slide off any any moment. His His many legs, pitifully thin compared with the the size size of of the rest rest of him him, waved about helplessly as he looked.
 ```
 
 ## Rushmore
@@ -89,17 +135,17 @@ One morning, when Gregor Samsa woke from troubled dreams, he found himself trans
 ### 5% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head little he could see his belly, slightly domed and divided by into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted head little he could see brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-One morning, Gregor Samsa from troubled dreams, he found himself in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head little he could see his brown, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and ready to slide off any moment. His many legs, pitifully thin compared with the of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and he lifted his head a little he could see his brown, domed and divided by arches stiff sections. The bedding was hardly able to cover it seemed ready to slide off any moment. His legs, pitifully thin compared with the size the rest of him, waved about helplessly as he looked.
 ```
 ### 25% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled, he found himself transformed bed into a horrible. lay his armour-like, and if he lifted his a he see his belly, slightly domed and divided into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully compared the size the rest him, helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed his bed into horrible vermin. lay on armour-like, and if lifted his head little he could see his brown belly, slightly domed and arches into stiff sections. The was hardly able cover it seemed ready slide off any moment. His many legs, pitifully thin compared with size of rest of him, waved about helplessly he looked.
 ```
 
 ## Scannequin
@@ -107,22 +153,22 @@ One morning, when Gregor Samsa woke from troubled, he found himself transformed 
 ### 1% corruption
 
 ```text
-One morning, when Gregor Samsa woke frorn troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it ancl seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 5% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he fourid himself transformed in his bed into a liorrible vermin. He lay on liis armour-like back, and if he lifted his head a Iittle he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seerned reacly to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One rnorning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on liis armour-like back, ancl if he lifted his heacl a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it arid seemed ready to slide off any moment. His many Iegs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-One rnorning, when Gregor Samsa woke from troubled dreams, he found himself transformecl in his bed into a horrible vermin. He Iay on his armour-like back, and if he lifted his heacl a little he could see his brown belly, slightly dornecl and divided by arches into stiff sections. The bedding was harclIy able to cover it and seemed ready to slicle off any moment. His many legs, pitifully thin compared with the size of tlie rest of him, vvaved about helplessly as he lookecl.
+Orie morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on liis armour-like back, and if he Iifted his head a littIe he could see his brown beI1y, slightly clomed ancl divided by arches into stiff sections. The bedding vvas hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifuIly thin comparecl vvith the size of the rest of him, waved about helplessly as he looked.
 ```
 ### 25% corruption
 
 ```text
-One moming, vvhen Gregor Samsa woke from troubIed dreams, he found himse1f transformed in his bed into a liorrible vermin. He lay on his armour-hke back, arid if lie lifted liis head a httle he could see his brown belly, s1iglitIy dorned arid divided by arches into stiff sections. Tlie bedding vvas harclly able to cover it and seemecl ready to sIicle off any mornent. His many 1egs, pitifuIly tliin compared with tlie size of the rest of him, vvavecl about helpless1y as he lookecl.
+One morriing, when Gregor Sarnsa vvoke from troubled clrearns, he found himself trarisformed in liis bed into a liorrible verrnin. He lay ori his arrnour-hke back, and if lie lifted his lieacl a little lie coulcl see his brown belly, shghtly domed arid dividecl by arches irito stiff sections. The beclding was hardly able to cover it and seemed reacly to slide off ariy moment. His many Iegs, pitifuI1y thin comparecl with the size of the rest of him, waved about lie1plessly as he looked.
 ```
 
 ## Typogre
@@ -130,21 +176,44 @@ One moming, vvhen Gregor Samsa woke from troubIed dreams, he found himse1f trans
 ### 1% corruption
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into ahorrible vermin. He lay on hisarmour-like back, and if he livfted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and semed ready to  slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+One morning, when Gregor Samsa woke from troubled dreams, he fuond himself trabnsformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slighty domed and divided by arches into stiff sections. The bedding was hardly able to cover it and semed ready to slide off any moment. His many legs, pitifully thin compared with the s ize of the rest of him, waved about helplessly as he looked.
 ```
 ### 5% corruption
 
 ```text
-One morning, whne Gregor Ssamsa w9ke from troubled dreams, he foundhikself tranxsformed in his bed into a horible vermin. He lay on his armlour-like back, and if  he lifted his head alittle he co7uld s ee his brown bely, slihgtly domed and divided by arches into stiff sections. The bedding wqas hardly able to cover it and  seemed ready to slide off any moment. His many legs, pitifully thin comparred wit h the size of the rest of hm, wavedabout helplessly as he looked.
+One mroning, when Gregor Samsa woke fom troubledfdreams, he foumd himself transformed in hkis bed into a h9rible vermin. He lay on hos armour-li ke back, and if he lifted his head a litle he could see his brown belly, slightly domed and divied by archs int o stiff sections. The bedding wass hardly anble to cover it and seenedd reayd to slide off any momennt. His many l4egs, pitifully thin compared with the size of the resst of him, wved about helplessly as he looked.
 ```
 ### 10% corruption
 
 ```text
-One m0oning, when Gregor Sqmsa wkoe frm troubleddreqms, he found  h9imself trzansfor jmed in his bed into a horrible vermin. He la y on hsi armour-like back, and if he lifted his head a ltle he could senis brown bely, slihghtly domed annd divided by arches into stiff sectins. The beddng was hardlyable to cover it amjd semde reafy to slideoff  any moment. His mny legs, piyifully thin comadewith the sizefo the rest of him, wa ved abut helplessly ashe looked.
+One mjmmorning,  when Gregor Samsa woke from troubled dreams, he found hi, self trzansfformed in h8s bed into a horible vermi n. He lqay on his armuor-lke badck,and if hee lifted hishezd alittle he could see hs brown bely, slightly domed and divided by acrhes infto stiff secti9nzs. The bedign waas hradly a bleto cover it andsemed rady to slide off anymoment. His many legs, pitifully thin com[pared with the size oof the rest of him, wqved about helpelssly as he looked.
 ```
 ### 25% corruption
 
 ```text
-One mornnig, when Gr gor Samxsa woke from troub led drea ms, heefound hmixeee lftrandspormed in his brd into a hrorigple vermni. Hde lay oon  hi s ar mu por-lioe back, and if h e lifted his hea da lit;e he coud seehis brown brly, sloihghtoly dlomdanxddibued by archs ingto  stff se tions. Te bdsding waas hardly ale to cover i t and seemed ready to slideorrff any momwnt.His many leys, pif7oytyicn jared withh the size of tthe rexst of him, waved ab out hee lpll es,ly as he looo,kedd.
+Oemorning,whwen Gregor SS amsa woke from truobles5as, he foud himse.lf transromed in his bed ino a horible vver mni. He lay on hsi aromu r-likeback, and if he lifted his hada litle he cohlds ee hisbrown bdooy, slibvgh5tly doed adn duibvdidedd by arches i nto stiff swdc5tinos. Tue b3ed dingwasahrdly able to c over it and semd re ay to silsde off any mome nt. His msnylwegs, pifuly thin com;aredwith  t he sieof th4rest ofhmi, waved about hepesl y as holkwd.
+```
+
+## Zeedub
+
+### 1% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a li​ttle h﻿e could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helpl⁠essly as he looked.
+```
+### 5% corruption
+
+```text
+One morning, when Gregor Samsa woke from troubled dreams, he found himself tran‌sformed in his bed into a horrible vermin. He lay on his armour-‌like back, a​nd i‌f he lifted his head a little he cou‍ld see hi‌s brown belly, slig﻿htly d​omed and divided by arches into stiff sections. The bedding w​as hardly able to cove‍r it and seem‍ed read⁠y to slide off any moment. His many legs, pitifully thin compared with the size of t﻿he res﻿t of him, waved about helpl‍essly as he looked.
+```
+### 10% corruption
+
+```text
+One morning, when Gregor S‌ams‍a woke from troubled dreams, he fou﻿nd himself t‌ransformed in h‌is bed into a horrible vermin​. He lay on his arm﻿our-like back, and if he lifted his head a little he could see his brown belly, s﻿l‍ightl‍y domed and d﻿ivided by arches into sti﻿f⁠f sections. The bedding was hardly able to cover it and seemed read⁠y t‍o slide off any momen‍t. His m‍any legs, p​i‌ti﻿fully thin c⁠ompar⁠ed with the size of th‍e r‌est of h⁠im, waved abou‌t help‍l​essly as h﻿e loo⁠ked.
+```
+### 25% corruption
+
+```text
+On‍e mor﻿nin⁠g, when Gre‍gor Samsa wo​k​e f​ro⁠m t‍r‍ouble​d dr﻿eams, he found h​imsel⁠f tra‌ns‌forme﻿d in hi‍s bed into a h‍or​rible v‌er‌min﻿. He l﻿ay o‍n hi​s arm‌our-lik﻿e back, and if he lifted his hea⁠d a litt​l‍e he c‌o⁠uld se⁠e h‌is brown belly, sl‌ightl​y domed a‌n‍d di‌vi​de﻿d by ar‍c⁠hes i⁠n‍to s‌tiff sectio‍n⁠s. The bedd​ing wa‍s h⁠ardly able to cov‍er i⁠t and s​eemed re‌ady t﻿o slide off any m​oment. H⁠is m​an‍y legs, pitifu⁠ll‍y thi⁠n compared w​it‌h t‍he size of the res‌t of him, wave﻿d ab﻿out hel‌pl﻿e​ssl﻿y as he looke﻿d.
 ```
 
