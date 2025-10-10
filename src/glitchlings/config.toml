@@ -1,0 +1,3 @@
+[lexicon]
+priority = ["vector", "graph", "wordnet"]
+vector_cache = "lexicon/data/default_vector_cache.json"

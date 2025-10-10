@@ -1,0 +1,16 @@
+{
+  "sing": ["croon", "warble", "chant", "serenade"],
+  "happy": ["cheerful", "joyful", "contented", "gleeful"],
+  "songs": ["tunes", "melodies", "ballads", "airs"],
+  "quickly": ["rapidly", "swiftly", "speedily", "promptly"],
+  "text": ["passage", "excerpt", "phrase", "content"],
+  "words": ["terms", "phrases", "lexemes", "expressions"],
+  "alpha": ["beta", "gamma", "delta"],
+  "beta": ["alpha", "gamma", "delta"],
+  "gamma": ["alpha", "beta", "delta"],
+  "delta": ["alpha", "beta", "gamma"],
+  "they": ["these people", "those folks", "those individuals"],
+  "quick": ["rapid", "swift", "brisk", "prompt"],
+  "fast": ["rapid", "swift", "quick", "speedy"],
+  "slow": ["sluggish", "lethargic", "unhurried", "deliberate"]
+}

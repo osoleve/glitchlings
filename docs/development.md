@@ -26,12 +26,25 @@ This guide walks through preparing a local development environment, running the 
    ```
 
    Add the `prime` extra (`pip install -e .[dev,prime]`) when you need the Prime Intellect integration and its `verifiers` dependency.
+   Enable the embedding-backed lexicon helpers with the `vectors` extra (`pip install -e .[dev,vectors]`) to pull in `numpy`, `spaCy`, and `gensim`.
 
-3. If you plan to use the Jargoyle glitchling, download the WordNet corpus once per machine:
+3. The package ships a compact vector-cache for Jargoyle so you can exercise synonym swaps without heavyweight models. Regenerate or extend that cache with the bundled CLI when you have larger embeddings available:
 
    ```bash
-   python -m nltk.downloader wordnet
+   glitchlings build-lexicon \
+       --source spacy:en_core_web_md \
+       --output data/vector_lexicon.json \
+       --limit 50000 \
+       --overwrite
    ```
+
+   The command accepts gensim-compatible KeyedVectors or Word2Vec formats via `--source /path/to/vectors.kv`. Pass `--tokens words.txt` to restrict caching to a curated vocabulary, tweak `--min-similarity`/`--max-neighbors` to trade breadth for precision, and bake in deterministic seeds with `--seed`.
+
+   Working with ConceptNet Numberbatch instead? Point the `GraphLexicon` at the gzipped embedding dump and let it derive synonyms directly. Persist the results with `graph.save_cache("data/graph_lexicon.json")` so repeated runs avoid reloading the full matrix when the embeddings are unavailable.
+
+   Need to sanity-check new lexical sources? Import `glitchlings.lexicon.metrics` and call `compare_lexicons(...)` to benchmark synonym diversity, ≥3-substitute coverage, and mean cosine similarity against previously captured baselines.
+
+   Prefer the legacy WordNet behaviour? Install `nltk`, download its WordNet corpus (`python -m nltk.downloader wordnet`), and update `config.toml` so the `lexicon.priority` includes `"wordnet"` ahead of the vector cache.
 
 ## Run the test suite
 
@@ -41,7 +54,7 @@ Execute the automated tests from the repository root:
 pytest
 ```
 
-The suite covers determinism guarantees, dataset integrations, and parity between Python and Rust implementations. When the WordNet corpus is unavailable, the Jargoyle-specific tests skip automatically.
+The suite covers determinism guarantees, dataset integrations, and parity between Python and Rust implementations. Vector-backed lexicons ship with the repository so the Jargoyle tests run without external downloads, while optional WordNet checks are gated behind the legacy backend being available.
 
 ## Rust acceleration
 

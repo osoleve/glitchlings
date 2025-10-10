@@ -2,122 +2,32 @@ import random
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import Any, Literal, cast
 
-try:  # pragma: no cover - exercised in environments with NLTK installed
-    import nltk  # type: ignore[import]
-except ModuleNotFoundError as exc:  # pragma: no cover - triggered when NLTK missing
-    nltk = None  # type: ignore[assignment]
-    find = None  # type: ignore[assignment]
-    _NLTK_IMPORT_ERROR = exc
-else:  # pragma: no cover - executed when NLTK is available
-    from nltk.corpus.reader import WordNetCorpusReader as _WordNetCorpusReader  # type: ignore[import]
-    from nltk.data import find as _nltk_find  # type: ignore[import]
+from glitchlings.lexicon import Lexicon, get_default_lexicon
 
-    find = _nltk_find
-    _NLTK_IMPORT_ERROR = None
+try:  # pragma: no cover - optional WordNet dependency
+    from glitchlings.lexicon.wordnet import (
+        WordNetLexicon,
+        dependencies_available as _lexicon_dependencies_available,
+        ensure_wordnet as _lexicon_ensure_wordnet,
+    )
+except Exception:  # pragma: no cover - triggered when nltk unavailable
+    WordNetLexicon = None  # type: ignore[assignment]
 
-if TYPE_CHECKING:  # pragma: no cover - typing aid only
-    from nltk.corpus.reader import WordNetCorpusReader  # type: ignore[import]
-else:  # Use ``Any`` at runtime to avoid hard dependency when NLTK missing
-    WordNetCorpusReader = Any
+    def _lexicon_dependencies_available() -> bool:
+        return False
 
-if nltk is not None:  # pragma: no cover - guarded by import success
-    try:
-        from nltk.corpus import wordnet as _WORDNET_MODULE  # type: ignore[import]
-    except ModuleNotFoundError:  # pragma: no cover - only hit on namespace packages
-        _WORDNET_MODULE = None
-    else:
-        WordNetCorpusReader = _WordNetCorpusReader  # type: ignore[assignment]
-else:
-    _WORDNET_MODULE = None
-
-from .core import AttackWave, Glitchling
-from ._rate import resolve_rate
-
-_WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
-
-_wordnet_ready = False
-
-
-def _require_nltk() -> None:
-    """Ensure the NLTK dependency is present before continuing."""
-
-    if nltk is None or find is None:
-        message = (
-            "The NLTK package is required for the jargoyle glitchling; install "
-            "the 'wordnet' extra via `pip install glitchlings[wordnet]`."
+    def _lexicon_ensure_wordnet() -> None:
+        raise RuntimeError(
+            "The WordNet backend is no longer bundled by default. Install NLTK "
+            "and download its WordNet corpus manually if you need legacy synonyms."
         )
-        if '_NLTK_IMPORT_ERROR' in globals() and _NLTK_IMPORT_ERROR is not None:
-            raise RuntimeError(message) from _NLTK_IMPORT_ERROR
-        raise RuntimeError(message)
 
-
-def dependencies_available() -> bool:
-    """Return ``True`` when the runtime NLTK dependency is present."""
-
-    return nltk is not None and find is not None
-
-
-def _load_wordnet_reader() -> WordNetCorpusReader:
-    """Return a WordNet corpus reader from the downloaded corpus files."""
-
-    _require_nltk()
-
-    try:
-        root = find("corpora/wordnet")
-    except LookupError:
-        try:
-            zip_root = find("corpora/wordnet.zip")
-        except LookupError as exc:
-            raise RuntimeError(
-                "The NLTK WordNet corpus is not installed; run `nltk.download('wordnet')`."
-            ) from exc
-        root = zip_root.join("wordnet/")
-
-    return WordNetCorpusReader(root, None)
-
-
-def _wordnet(force_refresh: bool = False) -> WordNetCorpusReader | Any:
-    """Retrieve the active WordNet handle, rebuilding it on demand."""
-
-    global _WORDNET_HANDLE
-
-    if force_refresh:
-        _WORDNET_HANDLE = _WORDNET_MODULE
-
-    if _WORDNET_HANDLE is not None:
-        return _WORDNET_HANDLE
-
-    _WORDNET_HANDLE = _load_wordnet_reader()
-    return _WORDNET_HANDLE
-
-
-def ensure_wordnet() -> None:
-    """Ensure the WordNet corpus is available before use."""
-
-    global _wordnet_ready
-    if _wordnet_ready:
-        return
-
-    _require_nltk()
-
-    resource = _wordnet()
-
-    try:
-        resource.ensure_loaded()
-    except LookupError:
-        nltk.download("wordnet", quiet=True)
-        try:
-            resource = _wordnet(force_refresh=True)
-            resource.ensure_loaded()
-        except LookupError as exc:  # pragma: no cover - only triggered when download fails
-            raise RuntimeError(
-                "Unable to load NLTK WordNet corpus for the jargoyle glitchling."
-            ) from exc
-
-    _wordnet_ready = True
-
+from ._rate import resolve_rate
+from .core import AttackWave, Glitchling
+ensure_wordnet = _lexicon_ensure_wordnet
+dependencies_available = _lexicon_dependencies_available
 
 # Backwards compatibility for callers relying on the previous private helper name.
 _ensure_wordnet = ensure_wordnet
@@ -173,41 +83,8 @@ class CandidateInfo:
     prefix: str
     core_word: str
     suffix: str
-    parts_of_speech: NormalizedPartsOfSpeech
-
-
-def _collect_synonyms(
-    word: str, parts_of_speech: NormalizedPartsOfSpeech
-) -> list[str]:
-    """Gather deterministic synonym candidates for the supplied word."""
-
-    normalized_word = word.lower()
-    wordnet = _wordnet()
-    synonyms: set[str] = set()
-    for pos_tag in parts_of_speech:
-        synsets = wordnet.synsets(word, pos=pos_tag)
-        if not synsets:
-            continue
-
-        for synset in synsets:
-            lemmas_list = [lemma.name() for lemma in cast(Any, synset).lemmas()]
-            if not lemmas_list:
-                continue
-
-            filtered = []
-            for lemma_str in lemmas_list:
-                cleaned = lemma_str.replace("_", " ")
-                if cleaned.lower() != normalized_word:
-                    filtered.append(cleaned)
-
-            if filtered:
-                synonyms.update(filtered)
-                break
-
-        if synonyms:
-            break
-
-    return sorted(synonyms)
+    part_of_speech: str | None
+    synonyms: list[str]
 
 
 def substitute_random_synonyms(
@@ -218,22 +95,27 @@ def substitute_random_synonyms(
     rng: random.Random | None = None,
     *,
     replacement_rate: float | None = None,
+    lexicon: Lexicon | None = None,
 ) -> str:
-    """Replace words with random WordNet synonyms.
+    """Replace words with random lexicon-driven synonyms.
 
     Parameters
     - text: Input text.
     - rate: Max proportion of candidate words to replace (default 0.1).
     - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
-      any iterable of those tags, or "any" to include all four.
+      any iterable of those tags, or "any" to include all four. Backends that do
+      not differentiate parts of speech simply ignore the setting.
     - rng: Optional RNG instance used for deterministic sampling.
     - seed: Optional seed if `rng` not provided.
+    - lexicon: Optional :class:`~glitchlings.lexicon.Lexicon` implementation to
+      supply synonyms. Defaults to the configured lexicon priority, typically the
+      packaged vector cache.
 
     Determinism
     - Candidates collected in left-to-right order; no set() reordering.
     - Replacement positions chosen via rng.sample.
-    - Synonyms sorted before rng.choice to fix ordering.
-    - For each POS, the first synset containing alternate lemmas is used for stability.
+    - Synonyms sourced through the lexicon; the default backend derives
+      deterministic subsets per word and part-of-speech using the active seed.
     """
     effective_rate = resolve_rate(
         rate=rate,
@@ -242,14 +124,18 @@ def substitute_random_synonyms(
         legacy_name="replacement_rate",
     )
 
-    ensure_wordnet()
-    wordnet = _wordnet()
-
     active_rng: random.Random
     if rng is not None:
         active_rng = rng
     else:
         active_rng = random.Random(seed)
+
+    if lexicon is None:
+        active_lexicon = get_default_lexicon(seed=seed)
+    else:
+        active_lexicon = lexicon
+        if seed is not None:
+            active_lexicon.reseed(seed)
 
     target_pos = _normalize_parts_of_speech(part_of_speech)
 
@@ -265,16 +151,28 @@ def substitute_random_synonyms(
             if not core_word:
                 continue
 
-            available_pos: NormalizedPartsOfSpeech = tuple(
-                pos for pos in target_pos if wordnet.synsets(core_word, pos=pos)
-            )
-            if available_pos:
+            chosen_pos: str | None = None
+            synonyms: list[str] = []
+
+            for pos in target_pos:
+                if not active_lexicon.supports_pos(pos):
+                    continue
+                synonyms = active_lexicon.get_synonyms(core_word, pos=pos)
+                if synonyms:
+                    chosen_pos = pos
+                    break
+
+            if not synonyms and active_lexicon.supports_pos(None):
+                synonyms = active_lexicon.get_synonyms(core_word, pos=None)
+
+            if synonyms:
                 candidate_indices.append(idx)
                 candidate_metadata[idx] = CandidateInfo(
                     prefix=prefix,
                     core_word=core_word,
                     suffix=suffix,
-                    parts_of_speech=available_pos,
+                    part_of_speech=chosen_pos,
+                    synonyms=synonyms,
                 )
 
     if not candidate_indices:
@@ -292,18 +190,17 @@ def substitute_random_synonyms(
 
     for pos in replace_positions:
         metadata = candidate_metadata[pos]
-        synonyms = _collect_synonyms(metadata.core_word, metadata.parts_of_speech)
-        if not synonyms:
+        if not metadata.synonyms:
             continue
 
-        replacement = active_rng.choice(synonyms)
+        replacement = active_rng.choice(metadata.synonyms)
         tokens[pos] = f"{metadata.prefix}{replacement}{metadata.suffix}"
 
     return "".join(tokens)
 
 
 class Jargoyle(Glitchling):
-    """Glitchling that swaps words with random WordNet synonyms."""
+    """Glitchling that swaps words with lexicon-driven synonyms."""
 
     def __init__(
         self,
@@ -312,6 +209,7 @@ class Jargoyle(Glitchling):
         replacement_rate: float | None = None,
         part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
+        lexicon: Lexicon | None = None,
     ) -> None:
         self._param_aliases = {"replacement_rate": "rate"}
         effective_rate = resolve_rate(
@@ -320,6 +218,9 @@ class Jargoyle(Glitchling):
             default=0.1,
             legacy_name="replacement_rate",
         )
+        prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
+        if lexicon is not None and seed is not None:
+            prepared_lexicon.reseed(seed)
         super().__init__(
             name="Jargoyle",
             corruption_function=substitute_random_synonyms,
@@ -327,7 +228,21 @@ class Jargoyle(Glitchling):
             seed=seed,
             rate=effective_rate,
             part_of_speech=part_of_speech,
+            lexicon=prepared_lexicon,
         )
+
+    def set_param(self, key: str, value: Any) -> None:
+        super().set_param(key, value)
+
+        aliases = getattr(self, "_param_aliases", {})
+        canonical = aliases.get(key, key)
+
+        if canonical == "seed":
+            current_lexicon = getattr(self, "lexicon", None)
+            if isinstance(current_lexicon, Lexicon):
+                current_lexicon.reseed(self.seed)
+        elif canonical == "lexicon" and isinstance(value, Lexicon):
+            value.reseed(self.seed)
 
 
 jargoyle = Jargoyle()

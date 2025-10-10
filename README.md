@@ -176,7 +176,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 > Args
 >
 > - `rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
-> - `part_of_speech`: The WordNet part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all.
+- `part_of_speech`: The WordNet-style part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all. Vector/graph backends ignore this filter while still honouring deterministic sampling.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Reduple

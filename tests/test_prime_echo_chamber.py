@@ -34,18 +34,8 @@ verifiers_stub.load_environment = _load_environment
 sys.modules["verifiers"] = verifiers_stub
 
 import glitchlings.zoo.core as zoo_core
-import glitchlings.zoo.jargoyle as jargoyle
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 from glitchlings.dlc import prime
-
-
-def _no_op_ensure_wordnet() -> None:
-    jargoyle._wordnet_ready = True
-
-
-jargoyle.ensure_wordnet = _no_op_ensure_wordnet
-jargoyle._ensure_wordnet = _no_op_ensure_wordnet
-jargoyle._wordnet_ready = True
 
 
 
