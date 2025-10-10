@@ -112,6 +112,7 @@ mod tests {
     use super::{derive_seed, GlitchDescriptor, Pipeline};
     use crate::glitch_ops::{
         DeleteRandomWordsOp, GlitchOperation, OcrArtifactsOp, RedactWordsOp, ReduplicateWordsOp,
+        SwapAdjacentWordsOp,
     };
 
     #[test]
@@ -206,5 +207,19 @@ mod tests {
             .run("Guard the vault at midnight")
             .expect("pipeline run succeeds");
         assert_eq!(output, "Guard the ██ at ██████████");
+    }
+    #[test]
+    fn pipeline_swaps_adjacent_words() {
+        let master_seed = 2025i128;
+        let descriptors = vec![GlitchDescriptor {
+            name: "Adjax".to_string(),
+            seed: derive_seed(master_seed, "Adjax", 0),
+            operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { swap_rate: 1.0 }),
+        }];
+        let pipeline = Pipeline::new(master_seed, descriptors);
+        let output = pipeline
+            .run("Echo this line please")
+            .expect("pipeline succeeds");
+        assert_eq!(output, "this Echo please line");
     }
 }
