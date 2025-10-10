@@ -359,6 +359,61 @@ impl GlitchOp for DeleteRandomWordsOp {
     }
 }
 
+/// Swaps adjacent word cores while keeping punctuation and spacing intact.
+#[derive(Debug, Clone, Copy)]
+pub struct SwapAdjacentWordsOp {
+    pub swap_rate: f64,
+}
+
+impl GlitchOp for SwapAdjacentWordsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        let total_words = buffer.word_count();
+        if total_words < 2 {
+            return Ok(());
+        }
+
+        let clamped = self.swap_rate.max(0.0).min(1.0);
+        if clamped <= 0.0 {
+            return Ok(());
+        }
+
+        let mut index = 0usize;
+        while index + 1 < total_words {
+            let left_segment = match buffer.word_segment(index) {
+                Some(segment) => segment,
+                None => break,
+            };
+            let right_segment = match buffer.word_segment(index + 1) {
+                Some(segment) => segment,
+                None => break,
+            };
+
+            let left_original = left_segment.text().to_string();
+            let right_original = right_segment.text().to_string();
+
+            let (left_prefix, left_core, left_suffix) = split_affixes(&left_original);
+            let (right_prefix, right_core, right_suffix) = split_affixes(&right_original);
+
+            if left_core.is_empty() || right_core.is_empty() {
+                index += 2;
+                continue;
+            }
+
+            let should_swap = clamped >= 1.0 || rng.random()? < clamped;
+            if should_swap {
+                let left_replacement = format!("{left_prefix}{right_core}{left_suffix}");
+                let right_replacement = format!("{right_prefix}{left_core}{right_suffix}");
+                buffer.replace_word(index, &left_replacement)?;
+                buffer.replace_word(index + 1, &right_replacement)?;
+            }
+
+            index += 2;
+        }
+
+        Ok(())
+    }
+}
+
 /// Redacts words by replacing core characters with a replacement token.
 #[derive(Debug, Clone)]
 pub struct RedactWordsOp {
@@ -555,6 +610,7 @@ impl GlitchOp for OcrArtifactsOp {
 pub enum GlitchOperation {
     Reduplicate(ReduplicateWordsOp),
     Delete(DeleteRandomWordsOp),
+    SwapAdjacent(SwapAdjacentWordsOp),
     Redact(RedactWordsOp),
     Ocr(OcrArtifactsOp),
 }
@@ -564,6 +620,7 @@ impl GlitchOp for GlitchOperation {
         match self {
             GlitchOperation::Reduplicate(op) => op.apply(buffer, rng),
             GlitchOperation::Delete(op) => op.apply(buffer, rng),
+            GlitchOperation::SwapAdjacent(op) => op.apply(buffer, rng),
             GlitchOperation::Redact(op) => op.apply(buffer, rng),
             GlitchOperation::Ocr(op) => op.apply(buffer, rng),
         }
@@ -574,7 +631,7 @@ impl GlitchOp for GlitchOperation {
 mod tests {
     use super::{
         DeleteRandomWordsOp, GlitchOp, GlitchOpError, OcrArtifactsOp, RedactWordsOp,
-        ReduplicateWordsOp,
+        ReduplicateWordsOp, SwapAdjacentWordsOp,
     };
     use crate::rng::PyRng;
     use crate::text_buffer::TextBuffer;
@@ -590,6 +647,27 @@ mod tests {
         op.apply(&mut buffer, &mut rng)
             .expect("reduplication works");
         assert_eq!(buffer.to_string(), "Hello Hello world world");
+    }
+
+    #[test]
+    fn swap_adjacent_words_swaps_cores() {
+        let mut buffer = TextBuffer::from_str("Alpha, beta! Gamma delta");
+        let mut rng = PyRng::new(7);
+        let op = SwapAdjacentWordsOp { swap_rate: 1.0 };
+        op.apply(&mut buffer, &mut rng)
+            .expect("swap operation succeeds");
+        assert_eq!(buffer.to_string(), "beta, Alpha! delta Gamma");
+    }
+
+    #[test]
+    fn swap_adjacent_words_respects_zero_rate() {
+        let original = "Do not move these words";
+        let mut buffer = TextBuffer::from_str(original);
+        let mut rng = PyRng::new(42);
+        let op = SwapAdjacentWordsOp { swap_rate: 0.0 };
+        op.apply(&mut buffer, &mut rng)
+            .expect("swap operation succeeds");
+        assert_eq!(buffer.to_string(), original);
     }
 
     #[test]
