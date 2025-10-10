@@ -2,8 +2,13 @@ import re
 import random
 from typing import Any
 
-from .core import Glitchling, AttackWave
 from ._rate import resolve_rate
+from ._text_utils import (
+    split_preserving_whitespace,
+    split_token_edges,
+    token_core_length,
+)
+from .core import AttackWave, Glitchling
 
 FULL_BLOCK = "█"
 
@@ -68,8 +73,7 @@ def _python_redact_words(
     - rng: RNG used for sampling decisions.
     - unweighted: When True, sample words uniformly instead of by length.
     """
-    # Preserve exact spacing and punctuation by using regex
-    tokens = re.split(r"(\s+)", text)
+    tokens = split_preserving_whitespace(text)
     word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
     if not word_indices:
         raise ValueError(
@@ -78,14 +82,8 @@ def _python_redact_words(
     weights: list[float] = []
     for index in word_indices:
         word = tokens[index]
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        core = match.group(2) if match else word
-        core_length = len(core) if core else len(word)
-        if core_length <= 0:
-            core_length = len(word.strip()) or len(word)
-        if core_length <= 0:
-            core_length = 1
-        weights.append(1.0 if unweighted else float(core_length))
+        length = token_core_length(word)
+        weights.append(1.0 if unweighted else float(length))
     raw_quota = len(word_indices) * rate
     num_to_redact = int(raw_quota)
     if rate > 0:
@@ -105,16 +103,11 @@ def _python_redact_words(
             break
 
         word = tokens[i]
-        if not word or word.isspace():  # Skip empty or whitespace
+        if not word or word.isspace():
             continue
 
-        # Check if word has trailing punctuation
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, core, suffix = match.groups()
-            tokens[i] = f"{prefix}{replacement_char * len(core)}{suffix}"
-        else:
-            tokens[i] = f"{replacement_char * len(word)}"
+        prefix, core, suffix = split_token_edges(word)
+        tokens[i] = f"{prefix}{replacement_char * len(core)}{suffix}"
 
     text = "".join(tokens)
 

@@ -56,6 +56,7 @@ word_sequences = st.lists(
 ).map(lambda parts: " ".join(parts))
 
 
+@settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     master_seed=st.integers(min_value=-(2**63), max_value=2**63 - 1),
     specs=st.lists(glitchling_specs(), min_size=1, max_size=5, unique_by=lambda s: s["name"]),
