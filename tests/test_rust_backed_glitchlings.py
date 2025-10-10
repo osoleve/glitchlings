@@ -442,9 +442,9 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     pytest.importorskip("glitchlings._zoo_rust")
 
     def _fail(*_args: object, **_kwargs: object) -> str:
-        raise AssertionError("Rust pipeline should not run when feature flag is disabled")
+        raise AssertionError("Rust pipeline should not run when explicitly disabled")
 
-    monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
     monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
 
     gaggle = core_module.Gaggle(
@@ -517,10 +517,14 @@ def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
 
 def test_rust_pipeline_feature_flag_introspection(monkeypatch):
     monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
-    assert not core_module._pipeline_feature_flag_enabled()
+    assert core_module._pipeline_feature_flag_enabled()
     assert core_module.Gaggle.rust_pipeline_supported() is (
         core_module._compose_glitchlings_rust is not None
     )
+    assert core_module.Gaggle.rust_pipeline_enabled() is core_module.Gaggle.rust_pipeline_supported()
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    assert not core_module._pipeline_feature_flag_enabled()
     assert not core_module.Gaggle.rust_pipeline_enabled()
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")

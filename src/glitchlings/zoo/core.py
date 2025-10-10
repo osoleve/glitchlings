@@ -27,17 +27,25 @@ log = logging.getLogger(__name__)
 
 
 _PIPELINE_FEATURE_FLAG_ENV = "GLITCHLINGS_RUST_PIPELINE"
+_PIPELINE_ENABLE_VALUES = {"1", "true", "yes", "on"}
+_PIPELINE_DISABLE_VALUES = {"0", "false", "no", "off"}
 
 
 def _pipeline_feature_flag_enabled() -> bool:
-    """Return ``True`` when the environment explicitly opts into the Rust pipeline."""
+    """Return ``True`` when the environment does not explicitly disable the Rust pipeline."""
 
     value = os.environ.get(_PIPELINE_FEATURE_FLAG_ENV)
     if value is None:
-        return False
+        return True
 
     normalized = value.strip().lower()
-    return normalized in {"1", "true", "yes", "on"}
+    if normalized in _PIPELINE_DISABLE_VALUES:
+        return False
+
+    if normalized in _PIPELINE_ENABLE_VALUES:
+        return True
+
+    return True
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from datasets import Dataset  # type: ignore
@@ -356,7 +364,7 @@ class Gaggle(Glitchling):
 
     @staticmethod
     def rust_pipeline_enabled() -> bool:
-        """Return ``True`` when the Rust pipeline is available and opted in."""
+        """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
 
         return Gaggle.rust_pipeline_supported() and _pipeline_feature_flag_enabled()
 
