@@ -1,9 +1,13 @@
-import re
 import random
 from typing import Any
 
-from .core import Glitchling, AttackWave
 from ._rate import resolve_rate
+from ._text_utils import (
+    split_preserving_whitespace,
+    split_token_edges,
+    token_core_length,
+)
+from .core import AttackWave, Glitchling
 
 try:
     from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust
@@ -30,26 +34,16 @@ def _python_reduplicate_words(
     - Preserves spacing and punctuation by tokenizing with separators.
     - Deterministic when run with a fixed seed or via Gaggle.
     """
-    # Preserve exact spacing and punctuation by using regex
-    tokens = re.split(r"(\s+)", text)  # Split but keep separators
+    tokens = split_preserving_whitespace(text)
 
     candidate_weights: list[tuple[int, float]] = []
-    for i in range(0, len(tokens), 2):  # Every other token is a word
-        if i >= len(tokens):
-            break
-
+    for i in range(0, len(tokens), 2):
         word = tokens[i]
-        if not word or word.isspace():  # Skip empty or whitespace
+        if not word or word.isspace():
             continue
 
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        core = match.group(2) if match else word
-        core_length = len(core) if core else len(word)
-        if core_length <= 0:
-            core_length = len(word.strip()) or len(word)
-        if core_length <= 0:
-            core_length = 1
-        weight = 1.0 if unweighted else 1.0 / core_length
+        length = token_core_length(word)
+        weight = 1.0 if unweighted else 1.0 / length
         candidate_weights.append((i, weight))
 
     if not candidate_weights:
@@ -75,13 +69,8 @@ def _python_reduplicate_words(
             continue
 
         word = tokens[index]
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, core, suffix = match.groups()
-            # Reduplicate with a space: "word" -> "word word"
-            tokens[index] = f"{prefix}{core} {core}{suffix}"
-        else:
-            tokens[index] = f"{word} {word}"
+        prefix, core, suffix = split_token_edges(word)
+        tokens[index] = f"{prefix}{core} {core}{suffix}"
     return "".join(tokens)
 
 
