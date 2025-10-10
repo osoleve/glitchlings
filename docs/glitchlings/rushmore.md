@@ -3,9 +3,10 @@
 Rushmore deletes words to remove context and test summarisation resilience.
 
 - **Scope**: word level.
-- **Signature**: `Rushmore(rate=0.01, seed=None)`.
+- **Signature**: `Rushmore(rate=0.01, seed=None, unweighted=False)`.
 - **Behaviour**: deletes randomly selected words (skipping the first to preserve context) and tidies double spaces/punctuation afterwards.
 - **Usage tips**:
   - Keep `rate` conservative (<0.03) to avoid stripping sentences bare.
+  - Toggle `unweighted=True` to sample words uniformly instead of favouring shorter tokens.
   - Because the first word is preserved, prepend short context sentences when you need deletions deeper in the passage.
   - Sandwich between Reduple and Redactyl to test summarisation robustness under missing context.

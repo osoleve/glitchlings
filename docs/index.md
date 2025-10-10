@@ -216,6 +216,8 @@ Before publishing changes or documenting new glitchlings, run the Pytest suite f
 pytest
 ```
 
+If the Python pipeline regression guard fails on slower hardware, raise the safety margin with `GLITCHLINGS_BENCHMARK_SAFETY_FACTOR` (default: `12`) or set `GLITCHLINGS_BENCHMARK_STRICT=1` to re-enable the historical baseline thresholds.
+
 Some tests require the NLTK WordNet corpus. If you see skips mentioning WordNet, install it with:
 
 ```bash

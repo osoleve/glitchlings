@@ -18,20 +18,22 @@ The TestPyPI workflow can be triggered manually from the GitHub Actions tab:
 
 This will build and publish the current version specified in `pyproject.toml` to TestPyPI.
 
-### Method 2: Using the Retry Script
+### Method 2: Manual Tag Recreation
 
-For retrying a specific version release, use the `retry_testpypi_release.sh` script:
+When you need to retry the same version, recreate the tag on `trunk` and push it again so the publish workflow reruns:
 
 ```bash
 # From the repository root
-./scripts/retry_testpypi_release.sh v0.2.1
+git fetch origin
+git checkout trunk
+git pull --ff-only origin trunk
+
+# Recreate the version tag
+git tag -f v0.2.1
+git push --force origin v0.2.1
 ```
 
-This script will:
-1. Sync the `dev` branch with `trunk`
-2. Push the updated `dev` branch (triggers the TestPyPI workflow)
-3. Create/recreate the specified tag on `trunk`
-4. Push the tag to GitHub
+Recreating the tag ensures the GitHub Actions workflow rebuilds and republishes the existing version. Remember that forcing a tag push rewrites history for that tag, so coordinate with the team before doing so.
 
 ### Method 3: Manual Branch Push
 
@@ -117,3 +119,4 @@ Before publishing to PyPI:
    ```
 
 3. Verify the installed package works as expected
+

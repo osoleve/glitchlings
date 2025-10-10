@@ -187,7 +187,8 @@ _Did you say that or did I?_
 >
 > Args
 >
-> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
+> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.01, 1%).
+> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Rushmore
@@ -199,6 +200,7 @@ _I accidentally an entire word._
 > Args
 >
 > - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Redactyl
@@ -209,9 +211,10 @@ _Oops, that was my black highlighter._
 >
 > ### Args
 >
-> - `replacement_char (str)`: The character to use for redaction (default: █).
-> - `rate (float)`: The maximum proportion of words to redact (default: 0.05, 5%).
+> - `replacement_char (str)`: The character to use for redaction (default: FULL_BLOCK).
+> - `rate (float)`: The maximum proportion of words to redact (default: 0.025, 2.5%).
 > - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
+> - `unweighted (bool)`: Sample words uniformly instead of biasing toward longer tokens (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ## Field Report: Uncontained Specimens
