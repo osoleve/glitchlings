@@ -245,7 +245,8 @@ _Did you say that or did I?_
 >
 > ### Reduple Args
 >
-> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.05, 5%).
+> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.01, 1%).
+> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -289,6 +290,7 @@ _I accidentally an entire word._
 > ### Rushmore Args
 >
 > - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
@@ -317,5 +319,52 @@ _I accidentally an entire word._
 > - **Senses** blindsight 10 ft.
 > - **Languages** --
 > - **Challenge** 1 (200 XP)
+>
+> ---
+
+
+## Redactyl
+
+_Oops, that was my black highlighter._
+
+> Medium Construct (bureaucratic), Lawful Neutral
+>
+> ---
+>
+> _**FOIA Reply.**_ Redactyl blankets selected words in block glyphs, hiding meaning while leaving punctuation and sentence structure intact.
+>
+> ### Redactyl Args
+>
+> - `replacement_char (str)`: The character to use for redaction (default: FULL_BLOCK).
+> - `rate (float)`: The maximum proportion of words to redact (default: 0.025, 2.5%).
+> - `merge_adjacent (bool)`: Whether neighbouring redactions collapse into a single bar (default: False).
+> - `unweighted (bool)`: Sample words uniformly instead of biasing toward longer tokens (default: False).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import redactyl
+> >>> print(redactyl(sample_text))
+> ```
+>
+> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a ███████ vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and ████ seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+>
+> ---
+>
+> - **Armor Class** 15 (paper shield)
+> - **Hit Points** 27 (5d8 + 5)
+> - **Speed** 20 ft., 40 cpm (forms)
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |10 |8 |14 |16 |9 |12 |
+>
+> ---
+>
+> - **Skills** Deception +5, Investigation +4
+> - **Damage Resistances** psychic; immunity to transparency requests
+> - **Languages** Common, Legalese
+> - **Challenge** 2 (450 XP)
 >
 > ---
