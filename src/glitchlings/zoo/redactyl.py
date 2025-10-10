@@ -86,7 +86,10 @@ def _python_redact_words(
         if core_length <= 0:
             core_length = 1
         weights.append(1.0 if unweighted else float(core_length))
-    num_to_redact = max(1, int(len(word_indices) * rate))
+    raw_quota = len(word_indices) * rate
+    num_to_redact = int(raw_quota)
+    if rate > 0:
+        num_to_redact = max(1, num_to_redact)
     if num_to_redact > len(word_indices):
         raise ValueError("Sample larger than population or is negative")
     indices_to_redact = _weighted_sample_without_replacement(

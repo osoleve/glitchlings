@@ -8,11 +8,12 @@ import statistics
 import sys
 import time
 import types
-from typing import Callable, Iterable
+from dataclasses import dataclass
+from typing import Callable, Iterable, Sequence
 
 
 def _ensure_datasets_stub() -> None:
-    """Install a minimal ``datasets`` stub so imports remain lightweight."""
+    """Install a minimal `datasets` stub so imports remain lightweight."""
 
     if "datasets" in sys.modules:
         return
@@ -31,6 +32,8 @@ reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
+zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
+typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 try:  # pragma: no cover - optional dependency
@@ -42,25 +45,60 @@ except ImportError:  # pragma: no cover - optional dependency
 Descriptor = dict[str, object]
 
 
-DESCRIPTORS: list[Descriptor] = [
-    {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4}},
-    {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3}},
+BASE_DESCRIPTORS: list[Descriptor] = [
+    {
+        "name": "Reduple",
+        "operation": {"type": "reduplicate", "reduplication_rate": 0.01},
+    },
+    {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.01}},
     {
         "name": "Redactyl",
         "operation": {
             "type": "redact",
             "replacement_char": redactyl_module.FULL_BLOCK,
-            "redaction_rate": 0.6,
+            "redaction_rate": 0.05,
             "merge_adjacent": True,
         },
     },
-    {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.25}},
+    {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.02}},
+    # {"name": "Zeedub", "operation": {"type": "zwj", "rate": 0.1}},
+    # {"name": "Typogre", "operation": {"type": "typo", "rate": 0.05}},
 ]
 
 
-SHORT_TEXT = "Guard the vault at midnight."
-MEDIUM_TEXT = " ".join([SHORT_TEXT] * 8)
-LONG_TEXT = " ".join([SHORT_TEXT] * 32)
+def _seeded_descriptors(
+    master_seed: int, descriptors: Sequence[Descriptor]
+) -> list[Descriptor]:
+    """Return pipeline descriptors enriched with per-glitchling seeds."""
+
+    seeded: list[Descriptor] = []
+    for index, descriptor in enumerate(descriptors):
+        seeded.append(
+            {
+                "name": descriptor["name"],
+                "operation": dict(descriptor["operation"]),
+                "seed": int(
+                    core_module.Gaggle.derive_seed(
+                        master_seed, descriptor["name"], index
+                    )
+                ),
+            }
+        )
+    return seeded
+
+
+SHORT_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin."
+MEDIUM_TEXT = " ".join([SHORT_TEXT] * 16)
+LONG_TEXT = " ".join([SHORT_TEXT] * 128)
+
+
+DEFAULT_TEXTS: tuple[tuple[str, str], ...] = (
+    ("short", SHORT_TEXT),
+    ("medium", MEDIUM_TEXT),
+    ("long", LONG_TEXT),
+)
+DEFAULT_ITERATIONS = 25
+MASTER_SEED = 151
 
 
 def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
@@ -96,6 +134,20 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 rate=operation["error_rate"],
                 rng=rng,
             )
+        elif op_type == "zwj":
+            current = zeedub_module._python_insert_zero_widths(
+                current,
+                rate=operation["rate"],
+                rng=rng,
+                characters=zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS,
+            )
+        elif op_type == "typo":
+            current = typogre_module._fatfinger_python(
+                current,
+                rate=operation["rate"],
+                rng=rng,
+                layout=typogre_module.KEYNEIGHBORS.CURATOR_QWERTY,  # type: ignore[attr-defined]
+            )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
@@ -104,33 +156,90 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
 BenchmarkSubject = Callable[[], None]
 
 
-def _time_subject(subject: BenchmarkSubject, iterations: int) -> tuple[float, float]:
+@dataclass(frozen=True)
+class BenchmarkStatistics:
+    """Aggregate timing metrics for a single benchmark subject."""
+
+    mean_seconds: float
+    stdev_seconds: float
+
+    @property
+    def mean_ms(self) -> float:
+        return self.mean_seconds * 1000
+
+    @property
+    def stdev_ms(self) -> float:
+        return self.stdev_seconds * 1000
+
+
+@dataclass(frozen=True)
+class BenchmarkResult:
+    """Timing results for a single text sample."""
+
+    label: str
+    char_count: int
+    python: BenchmarkStatistics
+    rust: BenchmarkStatistics | None
+
+
+def _time_subject(subject: BenchmarkSubject, iterations: int) -> BenchmarkStatistics:
     samples: list[float] = []
     for _ in range(iterations):
         start = time.perf_counter()
         subject()
         samples.append(time.perf_counter() - start)
-    return statistics.mean(samples), statistics.pstdev(samples)
+    return BenchmarkStatistics(statistics.mean(samples), statistics.pstdev(samples))
 
 
-def _format_stats(mean_seconds: float, stdev_seconds: float) -> str:
-    mean_ms = mean_seconds * 1000
-    stdev_ms = stdev_seconds * 1000
-    return f"{mean_ms:8.3f} ms (σ={stdev_ms:5.3f} ms)"
+def _format_stats(stats: BenchmarkStatistics) -> str:
+    return f"{stats.mean_ms:8.3f} ms (σ={stats.stdev_ms:5.3f} ms)"
+
+
+def _print_results(results: Sequence[BenchmarkResult]) -> None:
+    for result in results:
+        print(f"\nText size: {result.label} ({result.char_count} chars)")
+        print(f"  Python pipeline : {_format_stats(result.python)}")
+        if result.rust is None:
+            print("  Rust pipeline   : unavailable (extension not built)")
+        else:
+            print(f"  Rust pipeline   : {_format_stats(result.rust)}")
+
+
+def collect_benchmark_results(
+    texts: Iterable[tuple[str, str]] | None = None,
+    iterations: int = DEFAULT_ITERATIONS,
+) -> list[BenchmarkResult]:
+    """Return structured benchmark results without printing to stdout."""
+
+    samples = tuple(DEFAULT_TEXTS if texts is None else texts)
+
+    results: list[BenchmarkResult] = []
+    for label, text in samples:
+        python_subject = lambda text=text: _python_pipeline(
+            text, BASE_DESCRIPTORS, MASTER_SEED
+        )
+        python_stats = _time_subject(python_subject, iterations)
+        rust_stats: BenchmarkStatistics | None = None
+        if zoo_rust is not None:
+            rust_subject = lambda text=text: zoo_rust.compose_glitchlings(
+                text,
+                _seeded_descriptors(MASTER_SEED, BASE_DESCRIPTORS),
+                MASTER_SEED,
+            )
+            rust_stats = _time_subject(rust_subject, iterations)
+        results.append(
+            BenchmarkResult(
+                label=label,
+                char_count=len(text),
+                python=python_stats,
+                rust=rust_stats,
+            )
+        )
+    return results
 
 
 def run_benchmarks(texts: Iterable[tuple[str, str]], iterations: int) -> None:
-    for label, text in texts:
-        print(f"\nText size: {label} ({len(text)} chars)")
-        python_subject = lambda: _python_pipeline(text, DESCRIPTORS, 151)
-        mean_py, stdev_py = _time_subject(python_subject, iterations)
-        print(f"  Python pipeline : {_format_stats(mean_py, stdev_py)}")
-        if zoo_rust is None:
-            print("  Rust pipeline   : unavailable (extension not built)")
-            continue
-        rust_subject = lambda: zoo_rust.compose_glitchlings(text, DESCRIPTORS, 151)
-        mean_rust, stdev_rust = _time_subject(rust_subject, iterations)
-        print(f"  Rust pipeline   : {_format_stats(mean_rust, stdev_rust)}")
+    _print_results(collect_benchmark_results(texts, iterations))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -138,16 +247,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--iterations",
         type=int,
-        default=25,
-        help="Number of timing samples to collect for each text size (default: 25)",
+        default=DEFAULT_ITERATIONS,
+        help=f"Number of timing samples to collect for each text size (default: {DEFAULT_ITERATIONS})",
     )
     args = parser.parse_args(argv)
-    texts = [
-        ("short", SHORT_TEXT),
-        ("medium", MEDIUM_TEXT),
-        ("long", LONG_TEXT),
-    ]
-    run_benchmarks(texts, args.iterations)
+    run_benchmarks(DEFAULT_TEXTS, args.iterations)
     return 0
 
 

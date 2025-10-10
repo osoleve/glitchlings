@@ -179,6 +179,30 @@ class _RecordingGaggle:
         return dataset
 
 
+
+def test_prime_resolve_columns_handles_streaming_dataset():
+    row = {"context": "alpha", "score": 1, "response": "beta"}
+
+    class StreamingDataset:
+        def __init__(self):
+            self.column_names = ["context", "score", "response"]
+
+        def __len__(self):
+            raise TypeError("Streaming dataset does not define __len__.")
+
+        def __getitem__(self, index):
+            raise TypeError("Streaming dataset does not support indexing.")
+
+        def take(self, n):
+            return [row][:n]
+
+        def __iter__(self):
+            return iter([row])
+
+    inferred = prime._resolve_columns(StreamingDataset(), None)
+
+    assert inferred == ["context", "response"]
+
 def test_load_environment_respects_explicit_columns(monkeypatch):
     dataset = Dataset.from_dict({"prompt": ["alpha"], "extra": ["beta"]})
     stub = _RecordingGaggle()

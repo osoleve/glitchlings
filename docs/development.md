@@ -43,19 +43,20 @@ pytest
 
 The suite covers determinism guarantees, dataset integrations, and parity between Python and Rust implementations. When the WordNet corpus is unavailable, the Jargoyle-specific tests skip automatically.
 
-## Optional Rust acceleration
+## Rust acceleration
 
-Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin. Compile them with `maturin` and toggle the feature flag to exercise the new Rust pipeline:
+Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
 
 ```bash
 # Compile the shared Rust crate (rerun after Rust or Python updates)
 maturin develop -m rust/zoo/Cargo.toml
 
-# Enable the fast path before importing glitchlings
-export GLITCHLINGS_RUST_PIPELINE=1
+# Optional: disable the fast path before importing glitchlings
+export GLITCHLINGS_RUST_PIPELINE=0
 ```
 
-Unset the environment variable (or set it to `0`/`false`) to fall back to the pure-Python orchestrator. The test suite automatically covers both code paths—re-run `pytest` with and without the flag to verify new changes across implementations.
+`Gaggle` prefers the compiled fast path whenever the extension is importable. Set the environment variable to `0`/`false` (or any other falsey value) to force the pure-Python orchestrator when debugging or profiling. The test suite automatically covers both code paths—re-run `pytest` once normally and once with the flag set to `0` to verify changes across implementations.
+
 
 ## Additional tips
 

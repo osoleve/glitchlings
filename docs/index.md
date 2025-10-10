@@ -6,7 +6,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 
 1. [Installation](#installation)
 2. [Quickstart](#quickstart)
-3. [Rust pipeline acceleration (opt-in)](#rust-pipeline-acceleration-opt-in)
+3. [Rust pipeline acceleration](#rust-pipeline-acceleration)
 4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
 5. [Glitchling reference](#glitchling-reference)
    - [Typogre](glitchlings/typogre.md)
@@ -99,9 +99,9 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly. Pass glitchling parameters with `-g "Name(arg=value, ...)"` to mirror the Python API without writing code.
 
-## Rust pipeline acceleration (opt-in)
+## Rust pipeline acceleration
 
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. Enable it behind the feature flag when the compiled extension is available:
+The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
 
 1. Compile the Rust crate once per environment:
 
@@ -111,15 +111,10 @@ The refactored Rust pipeline batches compatible glitchlings in a single PyO3 cal
 
    Re-run the command after switching Python versions or pulling changes that touch the Rust sources.
 
-2. Export the feature flag before importing `glitchlings`:
-
-   ```bash
-   export GLITCHLINGS_RUST_PIPELINE=1
-   ```
-
-   Any truthy value (`1`, `true`, `yes`, `on`) enables the fast path. When the flag is unset or the extension is missing, `Gaggle` transparently falls back to the pure-Python pipeline.
+To temporarily fall back to the pure-Python pipeline (for debugging or targeted tests), set `GLITCHLINGS_RUST_PIPELINE` to a falsey value (`0`, `false`, `no`, `off`) before importing `glitchlings`.
 
 The orchestrator automatically groups Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin into the accelerated wave order while leaving incompatible glitchlings (or custom implementations) on the legacy path.
+
 
 ## The Gaggle orchestrator
 

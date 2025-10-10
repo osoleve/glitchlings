@@ -49,7 +49,24 @@ def _resolve_columns(dataset: Dataset, columns: Sequence[str] | None) -> list[st
         if candidate in available:
             return [candidate]
 
-    sample = dataset[0] if len(dataset) else {}
+    try:
+        dataset_length = len(dataset)  # type: ignore[arg-type]
+    except TypeError:
+        preview_rows: list[dict[str, Any]]
+        take_fn = getattr(dataset, "take", None)
+        if callable(take_fn):
+            preview_rows = list(take_fn(1))
+        else:
+            iterator = iter(dataset)
+            try:
+                first_row = next(iterator)
+            except StopIteration:
+                preview_rows = []
+            else:
+                preview_rows = [first_row]
+        sample = dict(preview_rows[0]) if preview_rows else {}
+    else:
+        sample = dataset[0] if dataset_length else {}
     inferred = [
         name
         for name in dataset.column_names
