@@ -88,8 +88,8 @@ def _seeded_descriptors(
 
 
 SHORT_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin."
-MEDIUM_TEXT = " ".join([SHORT_TEXT] * 16)
-LONG_TEXT = " ".join([SHORT_TEXT] * 128)
+MEDIUM_TEXT = " ".join([SHORT_TEXT] * 32)
+LONG_TEXT = " ".join([SHORT_TEXT] * 256)
 
 
 DEFAULT_TEXTS: tuple[tuple[str, str], ...] = (

@@ -3,8 +3,13 @@ import random
 import re
 from typing import Any
 
-from .core import Glitchling, AttackWave
 from ._rate import resolve_rate
+from ._text_utils import (
+    split_preserving_whitespace,
+    split_token_edges,
+    token_core_length,
+)
+from .core import AttackWave, Glitchling
 
 try:
     from glitchlings._zoo_rust import delete_random_words as _delete_random_words_rust
@@ -25,22 +30,16 @@ def _python_delete_random_words(
     if effective_rate <= 0.0:
         return text
 
-    tokens = re.split(r"(\s+)", text)  # Split but keep separators for later rejoin
+    tokens = split_preserving_whitespace(text)
 
     candidate_data: list[tuple[int, float]] = []
-    for i in range(2, len(tokens), 2):  # Every other token is a word, skip the first word
+    for i in range(2, len(tokens), 2):
         word = tokens[i]
         if not word or word.isspace():
             continue
 
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        core = match.group(2) if match else word
-        core_length = len(core) if core else len(word)
-        if core_length <= 0:
-            core_length = len(word.strip()) or len(word)
-        if core_length <= 0:
-            core_length = 1
-        weight = 1.0 if unweighted else 1.0 / core_length
+        length = token_core_length(word)
+        weight = 1.0 if unweighted else 1.0 / length
         candidate_data.append((i, weight))
 
     if not candidate_data:
@@ -70,12 +69,8 @@ def _python_delete_random_words(
             continue
 
         word = tokens[index]
-        match = re.match(r"^(\W*)(.*?)(\W*)$", word)
-        if match:
-            prefix, _, suffix = match.groups()
-            tokens[index] = f"{prefix.strip()}{suffix.strip()}"
-        else:
-            tokens[index] = ""
+        prefix, _, suffix = split_token_edges(word)
+        tokens[index] = f"{prefix.strip()}{suffix.strip()}"
 
         deletions += 1
 

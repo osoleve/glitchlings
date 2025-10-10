@@ -59,17 +59,25 @@ else:
         def with_transform(self, function: Any) -> "Dataset": ...
 
 
-def _is_transcript(value: Any) -> bool:
-    """Return True when the value resembles a chat transcript."""
+def _is_transcript(
+    value: Any,
+    *,
+    allow_empty: bool = True,
+    require_all_content: bool = False,
+) -> bool:
+    """Return `True` when `value` appears to be a chat transcript."""
 
     if not isinstance(value, list):
         return False
 
     if not value:
-        return True
+        return allow_empty
 
     if not all(isinstance(turn, dict) for turn in value):
         return False
+
+    if require_all_content:
+        return all("content" in turn for turn in value)
 
     return "content" in value[-1]
 
@@ -233,21 +241,15 @@ class Glitchling:
             message = "datasets is not installed"
             raise ModuleNotFoundError(message) from _datasets_error
 
-        def _is_transcript(value: Any) -> bool:
-            """Return ``True`` when the value resembles a chat transcript."""
-
-            if not isinstance(value, list) or not value:
-                return False
-
-            return all(
-                isinstance(turn, dict) and "content" in turn for turn in value
-            )
-
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
             row = dict(row)
             for column in columns:
                 value = row[column]
-                if _is_transcript(value):
+                if _is_transcript(
+                    value,
+                    allow_empty=False,
+                    require_all_content=True,
+                ):
                     row[column] = self.corrupt(value)
                 elif isinstance(value, list):
                     row[column] = [self.corrupt(item) for item in value]
