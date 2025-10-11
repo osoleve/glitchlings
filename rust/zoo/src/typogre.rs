@@ -11,9 +11,7 @@ fn layout_cache() -> &'static RwLock<CachedLayouts> {
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
-fn extract_layout_map(
-    layout: &Bound<'_, PyDict>,
-) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
+fn extract_layout_map(layout: &Bound<'_, PyDict>) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
     let key = layout.as_ptr() as usize;
     if let Some(cached) = layout_cache()
         .read()
@@ -99,11 +97,7 @@ fn python_rand_index(rng: &Bound<'_, PyAny>, upper: usize) -> PyResult<usize> {
     rng.call_method1("randrange", (upper,))?.extract()
 }
 
-fn python_randrange(
-    rng: &Bound<'_, PyAny>,
-    start: usize,
-    stop: usize,
-) -> PyResult<usize> {
+fn python_randrange(rng: &Bound<'_, PyAny>, start: usize, stop: usize) -> PyResult<usize> {
     rng.call_method1("randrange", (start, stop))?.extract()
 }
 
