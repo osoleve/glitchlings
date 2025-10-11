@@ -1,8 +1,10 @@
 import difflib
+import importlib
 
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
+from glitchlings.lexicon import Lexicon
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
@@ -10,6 +12,7 @@ from glitchlings.main import (
     build_parser,
     read_text,
     run_cli,
+    main as cli_main,
 )
 
 
@@ -33,6 +36,48 @@ def render_expected_list_output() -> str:
 def render_expected_corruption(text: str, seed: int = 151) -> str:
     gaggle = summon(DEFAULT_GLITCHLING_NAMES, seed=seed)
     return gaggle(text)
+
+
+def test_cli_build_lexicon_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, list[str]] = {}
+
+    def fake_main(argv: list[str]) -> int:
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr("glitchlings.lexicon.vector.main", fake_main)
+
+    exit_code = cli_main(
+        [
+            "build-lexicon",
+            "--source",
+            "spacy:en_core_web_md",
+            "--output",
+            "cache.json",
+            "--max-neighbors",
+            "20",
+            "--min-similarity",
+            "0.1",
+            "--normalizer",
+            "identity",
+            "--overwrite",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["argv"] == [
+        "--source",
+        "spacy:en_core_web_md",
+        "--output",
+        "cache.json",
+        "--max-neighbors",
+        "20",
+        "--min-similarity",
+        "0.1",
+        "--normalizer",
+        "identity",
+        "--overwrite",
+    ]
 
 
 def test_run_cli_lists_glitchlings(capsys):
@@ -176,3 +221,27 @@ def test_run_cli_rejects_positional_glitchling_arguments(capsys):
 
     captured = capsys.readouterr()
     assert "keyword arguments" in captured.err
+
+
+def test_default_roster_includes_jargoyle_without_wordnet(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = importlib.import_module("glitchlings.zoo.jargoyle")
+
+    class DummyLexicon(Lexicon):
+        def __init__(self) -> None:
+            super().__init__()
+
+        def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+            return []
+
+    monkeypatch.setattr(module, "_lexicon_dependencies_available", lambda: False)
+    monkeypatch.setattr(module, "WordNetLexicon", None)
+    monkeypatch.setattr(module, "get_default_lexicon", lambda seed=None: DummyLexicon())
+
+    zoo_module = importlib.import_module("glitchlings.zoo")
+    try:
+        reloaded = importlib.reload(zoo_module)
+        assert "jargoyle" in reloaded.DEFAULT_GLITCHLING_NAMES
+    finally:
+        monkeypatch.undo()
+        importlib.reload(zoo_module)
+        importlib.reload(importlib.import_module("glitchlings"))
