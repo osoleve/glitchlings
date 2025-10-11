@@ -21,6 +21,7 @@ from .zoo import (
     Gaggle,
     summon,
 )
+from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 
 
@@ -47,4 +48,7 @@ __all__ = [
     "Glitchling",
     "Gaggle",
     "SAMPLE_TEXT",
+    "AttackConfig",
+    "build_gaggle",
+    "load_attack_config",
 ]

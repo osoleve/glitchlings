@@ -1,9 +1,11 @@
+import argparse
 import difflib
 import importlib
 
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
+from glitchlings.config import build_gaggle, load_attack_config
 from glitchlings.lexicon import Lexicon
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
@@ -21,6 +23,10 @@ def invoke_cli(arguments: list[str]):
     args = parser.parse_args(arguments)
     exit_code = run_cli(args, parser)
     return exit_code
+
+
+def _effective_seed(args: argparse.Namespace) -> int:
+    return args.seed if args.seed is not None else 151
 
 
 def render_expected_list_output() -> str:
@@ -103,7 +109,7 @@ def test_run_cli_outputs_corrupted_sample_text(monkeypatch, capsys):
     exit_code = run_cli(args, parser)
     captured = capsys.readouterr()
     assert exit_code == 0
-    expected = render_expected_corruption(SAMPLE_TEXT, seed=args.seed)
+    expected = render_expected_corruption(SAMPLE_TEXT, seed=_effective_seed(args))
     assert captured.out == expected + "\n"
     assert captured.err == ""
 
@@ -115,7 +121,7 @@ def test_run_cli_diff_mode(capsys):
     captured = capsys.readouterr()
     assert exit_code == 0
     original = "Hello, world!"
-    corrupted = render_expected_corruption(original, seed=args.seed)
+    corrupted = render_expected_corruption(original, seed=_effective_seed(args))
     diff_lines = list(
         difflib.unified_diff(
             original.splitlines(keepends=True),
@@ -142,7 +148,7 @@ def test_run_cli_reads_text_from_file(tmp_path, capsys):
     exit_code = run_cli(args, parser)
     captured = capsys.readouterr()
     assert exit_code == 0
-    expected = render_expected_corruption(input_text, seed=args.seed)
+    expected = render_expected_corruption(input_text, seed=_effective_seed(args))
     assert captured.out == expected + "\n"
     assert captured.err == ""
 
@@ -205,7 +211,7 @@ def test_run_cli_configured_glitchling_matches_library(capsys):
     captured = capsys.readouterr()
 
     configured = Typogre(rate=0.2)
-    expected = summon([configured], seed=args.seed)("Hello there")
+    expected = summon([configured], seed=_effective_seed(args))("Hello there")
 
     assert exit_code == 0
     assert captured.out == expected + "\n"
@@ -245,3 +251,56 @@ def test_default_roster_includes_jargoyle_without_wordnet(monkeypatch: pytest.Mo
         monkeypatch.undo()
         importlib.reload(zoo_module)
         importlib.reload(importlib.import_module("glitchlings"))
+
+
+def test_run_cli_uses_yaml_config(tmp_path, capsys):
+    config_path = tmp_path / "attack.yaml"
+    config_path.write_text(
+        "seed: 12\nglitchlings:\n  - name: Typogre\n    rate: 0.02\n",
+        encoding="utf-8",
+    )
+    parser = build_parser()
+    args = parser.parse_args(["--config", str(config_path), "Hello there"])
+
+    exit_code = run_cli(args, parser)
+    captured = capsys.readouterr()
+
+    config = load_attack_config(config_path)
+    expected = build_gaggle(config)("Hello there")
+
+    assert exit_code == 0
+    assert captured.out == expected + "\n"
+    assert captured.err == ""
+
+
+def test_run_cli_seed_overrides_config(tmp_path, capsys):
+    config_path = tmp_path / "attack.yaml"
+    config_path.write_text(
+        "seed: 3\nglitchlings:\n  - name: Typogre\n    rate: 0.02\n",
+        encoding="utf-8",
+    )
+    parser = build_parser()
+    args = parser.parse_args(["--config", str(config_path), "--seed", "9", "Hello there"])
+
+    exit_code = run_cli(args, parser)
+    captured = capsys.readouterr()
+
+    config = load_attack_config(config_path)
+    expected = build_gaggle(config, seed_override=9)("Hello there")
+
+    assert exit_code == 0
+    assert captured.out == expected + "\n"
+    assert captured.err == ""
+
+
+def test_run_cli_rejects_mixed_config_and_glitchling(tmp_path, capsys):
+    config_path = tmp_path / "attack.yaml"
+    config_path.write_text("glitchlings:\n  - Typogre\n", encoding="utf-8")
+    parser = build_parser()
+    args = parser.parse_args(["--config", str(config_path), "--glitchling", "Typogre", "payload"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "Cannot combine --config with --glitchling" in captured.err

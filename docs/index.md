@@ -8,7 +8,8 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 2. [Quickstart](#quickstart)
 3. [Rust pipeline acceleration](#rust-pipeline-acceleration)
 4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
-5. [Glitchling reference](#glitchling-reference)
+5. [Declarative attack configurations](#declarative-attack-configurations)
+6. [Glitchling reference](#glitchling-reference)
    - [Typogre](glitchlings/typogre.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Reduple](glitchlings/reduple.md)
@@ -18,11 +19,11 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Jargoyle](glitchlings/jargoyle.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
-6. [Dataset workflows](#dataset-workflows)
-7. [Prime Intellect integration](#prime-intellect-integration)
-8. [Ensuring determinism](#ensuring-determinism)
-9. [Testing checklist](#testing-checklist)
-10. [Additional resources](#additional-resources)
+7. [Dataset workflows](#dataset-workflows)
+8. [Prime Intellect integration](#prime-intellect-integration)
+9. [Ensuring determinism](#ensuring-determinism)
+10. [Testing checklist](#testing-checklist)
+11. [Additional resources](#additional-resources)
     - [Glitchling gallery](glitchling-gallery.md)
     - [Keyboard layout reference](keyboard-layouts.md)
 
@@ -162,11 +163,35 @@ The orchestrator automatically groups Typogre, Mim1c, Reduple, Adjax, Rushmore, 
 
 The `Gaggle` class coordinates multiple glitchlings with deterministic sequencing and shared seeding:
 
-- **Seed derivation** – pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
+- **Seed derivation** - pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
 - **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Adjax, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
-- **Dataset utilities** – after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
-- **Summoning from shorthand** – `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
+- **Dataset utilities** - after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
+- **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
+
+## Declarative attack configurations
+
+Keep repeatable experiments outside your codebase by describing rosters in YAML. Each entry can either reference a built-in glitchling by name (with optional keyword arguments) or provide a mapping with `name` plus parameters:
+
+```yaml
+seed: 2024
+glitchlings:
+  - "Typogre(rate=0.03)"
+  - name: Rushmore
+    parameters:
+      rate: 0.08
+      unweighted: true
+  - name: Zeedub
+    rate: 0.01          # top-level keys become parameters when `parameters` is omitted
+```
+
+Feed the file to the CLI with:
+
+```bash
+glitchlings --config experiments/story-mode.yaml --diff "Here be dragons."
+```
+
+Omit `--seed` to honour the configuration's `seed`; supply `--seed` to override it on the fly while keeping the same roster. In Python, load the same file with `glitchlings.load_attack_config(path)` and convert it into a callable `Gaggle` via `glitchlings.build_gaggle(...)`.
 
 ## Glitchling reference
 

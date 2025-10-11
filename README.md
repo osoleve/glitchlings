@@ -107,9 +107,29 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
+
+# Load a roster from a YAML attack configuration.
+glitchlings --config experiments/chaos.yaml "Let slips the glitchlings of war"
 ```
 
 Use `--help` for a complete breakdown of available options, including support for parameterised glitchlings via `-g "Name(arg=value, ...)"` to mirror the Python API.
+
+Attack configurations live in plain YAML files so you can version-control experiments without touching code:
+
+```yaml
+# experiments/chaos.yaml
+seed: 31337
+glitchlings:
+  - name: Typogre
+    rate: 0.04
+  - "Rushmore(rate=0.12, unweighted=True)"
+  - name: Zeedub
+    parameters:
+      rate: 0.02
+      characters: ["\u200b", "\u2060"]
+```
+
+Pass the file to `glitchlings --config` or load it from Python with `glitchlings.load_attack_config` and `glitchlings.build_gaggle`.
 
 ## Development
 
