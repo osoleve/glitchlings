@@ -2,6 +2,10 @@ use pyo3::prelude::*;
 use pyo3::types::PyList;
 use pyo3::Bound;
 
+fn python_rand_index(rng: &Bound<'_, PyAny>, upper: usize) -> PyResult<usize> {
+    rng.call_method1("randrange", (upper,))?.extract()
+}
+
 #[pyfunction]
 pub(crate) fn inject_zero_widths(
     text: &str,
@@ -66,21 +70,23 @@ pub(crate) fn inject_zero_widths(
     let mut chosen: Vec<usize> = sample_obj.extract()?;
     chosen.sort_unstable();
 
-    let palette_list = PyList::new_bound(py, &palette);
+    let mut inserts: Vec<(usize, String)> = Vec::with_capacity(chosen.len());
+    for &position in chosen.iter().rev() {
+        let index = python_rand_index(rng, palette.len())?;
+        inserts.push((position, palette[index].clone()));
+    }
+    inserts.sort_unstable_by_key(|(position, _)| *position);
 
     let mut result = String::with_capacity(text.len() + count);
-    let mut iter = chosen.into_iter();
-    let mut next_insert = iter.next();
+    let mut iter = inserts.into_iter().peekable();
 
     for (index, ch) in chars.iter().enumerate() {
         result.push(*ch);
         let insert_pos = index + 1;
-        if let Some(pos) = next_insert {
-            if pos == insert_pos {
-                let choice_obj = rng.call_method1("choice", (&palette_list,))?;
-                let insertion: String = choice_obj.extract()?;
-                result.push_str(&insertion);
-                next_insert = iter.next();
+        if let Some((target_index, insertion)) = iter.peek() {
+            if *target_index == insert_pos {
+                result.push_str(insertion);
+                iter.next();
             }
         }
     }

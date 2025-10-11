@@ -407,4 +407,5 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "regex",
+ "smallvec",
 ]

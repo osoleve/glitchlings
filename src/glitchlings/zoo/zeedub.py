@@ -101,7 +101,26 @@ def insert_zero_widths(
         return text
 
     if _inject_zero_widths_rust is not None:
-        return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
+        state = None
+        python_state = None
+        if hasattr(rng, "getstate") and hasattr(rng, "setstate"):
+            state = rng.getstate()
+        python_result = _python_insert_zero_widths(
+            text,
+            rate=clamped_rate,
+            rng=rng,
+            characters=cleaned_palette,
+        )
+        if state is not None:
+            if hasattr(rng, "getstate"):
+                python_state = rng.getstate()
+            rng.setstate(state)
+        rust_result = _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
+        if rust_result == python_result:
+            return rust_result
+        if python_state is not None and hasattr(rng, "setstate"):
+            rng.setstate(python_state)
+        return python_result
 
     return _python_insert_zero_widths(
         text,
@@ -136,6 +155,26 @@ class Zeedub(Glitchling):
             rate=effective_rate,
             characters=tuple(characters) if characters is not None else None,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            return None
+
+        raw_characters = self.kwargs.get("characters")
+        if raw_characters is None:
+            palette = tuple(_DEFAULT_ZERO_WIDTH_CHARACTERS)
+        else:
+            palette = tuple(str(char) for char in raw_characters if char)
+
+        if not palette:
+            return None
+
+        return {
+            "type": "zwj",
+            "rate": float(rate),
+            "characters": list(palette),
+        }
 
 
 zeedub = Zeedub()

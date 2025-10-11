@@ -1,7 +1,38 @@
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyList};
+use pyo3::types::{PyAny, PyDict};
 use pyo3::Bound;
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock, RwLock};
+
+type CachedLayouts = HashMap<usize, Arc<HashMap<String, Vec<String>>>>;
+
+fn layout_cache() -> &'static RwLock<CachedLayouts> {
+    static CACHE: OnceLock<RwLock<CachedLayouts>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn extract_layout_map(layout: &Bound<'_, PyDict>) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
+    let key = layout.as_ptr() as usize;
+    if let Some(cached) = layout_cache()
+        .read()
+        .expect("layout cache poisoned")
+        .get(&key)
+    {
+        return Ok(cached.clone());
+    }
+
+    let mut materialised: HashMap<String, Vec<String>> = HashMap::new();
+    for (entry_key, entry_value) in layout.iter() {
+        materialised.insert(entry_key.extract()?, entry_value.extract()?);
+    }
+    let arc = Arc::new(materialised);
+
+    let mut guard = layout_cache()
+        .write()
+        .expect("layout cache poisoned during write");
+    let entry = guard.entry(key).or_insert_with(|| arc.clone());
+    Ok(entry.clone())
+}
 
 #[inline]
 fn is_word_char(c: char) -> bool {
@@ -33,13 +64,13 @@ fn draw_eligible_index(
     }
 
     for _ in 0..max_tries {
-        let idx: usize = rng.call_method1("randrange", (n,))?.extract()?;
+        let idx = python_rand_index(rng, n)?;
         if eligible_idx(chars, idx) {
             return Ok(Some(idx));
         }
     }
 
-    let start: usize = rng.call_method1("randrange", (n,))?.extract()?;
+    let start = python_rand_index(rng, n)?;
     if !eligible_idx(chars, start) {
         let mut i = (start + 1) % n;
         while i != start {
@@ -54,17 +85,20 @@ fn draw_eligible_index(
     }
 }
 
-fn neighbors_for_char(layout: &HashMap<String, Vec<String>>, ch: char) -> Vec<String> {
+fn neighbors_for_char<'a>(
+    layout: &'a HashMap<String, Vec<String>>,
+    ch: char,
+) -> Option<&'a [String]> {
     let lowered: String = ch.to_lowercase().collect();
-    layout.get(&lowered).cloned().unwrap_or_default()
+    layout.get(lowered.as_str()).map(|values| values.as_slice())
 }
 
-fn python_choice<'py, T>(rng: &Bound<'py, PyAny>, candidates: &[T]) -> PyResult<Py<PyAny>>
-where
-    T: ToPyObject,
-{
-    let list = PyList::new_bound(rng.py(), candidates);
-    Ok(rng.call_method1("choice", (&list,))?.into())
+fn python_rand_index(rng: &Bound<'_, PyAny>, upper: usize) -> PyResult<usize> {
+    rng.call_method1("randrange", (upper,))?.extract()
+}
+
+fn python_randrange(rng: &Bound<'_, PyAny>, start: usize, stop: usize) -> PyResult<usize> {
+    rng.call_method1("randrange", (start, stop))?.extract()
 }
 
 fn remove_space(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
@@ -76,8 +110,8 @@ fn remove_space(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
     if positions.is_empty() {
         return Ok(());
     }
-    let idx_obj = python_choice(rng, &positions)?;
-    let idx: usize = idx_obj.extract(rng.py())?;
+    let choice = python_rand_index(rng, positions.len())?;
+    let idx = positions[choice];
     if idx < chars.len() {
         chars.remove(idx);
     }
@@ -89,7 +123,7 @@ fn insert_space(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
         return Ok(());
     }
     let stop = chars.len();
-    let idx: usize = rng.call_method1("randrange", (1, stop))?.extract()?;
+    let idx = python_randrange(rng, 1, stop)?;
     if idx <= chars.len() {
         chars.insert(idx, ' ');
     }
@@ -105,8 +139,8 @@ fn repeat_char(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult<()> {
     if positions.is_empty() {
         return Ok(());
     }
-    let idx_obj = python_choice(rng, &positions)?;
-    let idx: usize = idx_obj.extract(rng.py())?;
+    let choice = python_rand_index(rng, positions.len())?;
+    let idx = positions[choice];
     if idx < chars.len() {
         let c = chars[idx];
         chars.insert(idx, c);
@@ -131,8 +165,8 @@ fn collapse_duplicate(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult
     if matches.is_empty() {
         return Ok(());
     }
-    let idx_obj = python_choice(rng, &matches)?;
-    let start: usize = idx_obj.extract(rng.py())?;
+    let choice = python_rand_index(rng, matches.len())?;
+    let start = matches[choice];
     if start + 1 < chars.len() {
         chars.remove(start + 1);
     }
@@ -141,7 +175,7 @@ fn collapse_duplicate(rng: &Bound<'_, PyAny>, chars: &mut Vec<char>) -> PyResult
 
 fn positional_action(
     rng: &Bound<'_, PyAny>,
-    action: &str,
+    action: usize,
     chars: &mut Vec<char>,
     layout: &HashMap<String, Vec<String>>,
 ) -> PyResult<()> {
@@ -150,38 +184,44 @@ fn positional_action(
     };
 
     match action {
-        "char_swap" => {
+        0 => {
             if idx + 1 < chars.len() {
                 chars.swap(idx, idx + 1);
             }
         }
-        "missing_char" => {
+        1 => {
             if eligible_idx(chars, idx) {
                 chars.remove(idx);
             }
         }
-        "extra_char" => {
+        2 => {
             if idx < chars.len() {
                 let ch = chars[idx];
-                let mut neighbors = neighbors_for_char(layout, ch);
-                if neighbors.is_empty() {
-                    neighbors.push(ch.to_string());
-                }
-                let choice = python_choice(rng, &neighbors)?;
-                let ins: String = choice.extract(rng.py())?;
-                let insert_chars: Vec<char> = ins.chars().collect();
+                let insertion = match neighbors_for_char(layout, ch) {
+                    Some(neighbors) if !neighbors.is_empty() => {
+                        let choice = python_rand_index(rng, neighbors.len())?;
+                        neighbors[choice].clone()
+                    }
+                    _ => {
+                        // Maintain RNG parity with Python's fallback path.
+                        python_rand_index(rng, 1)?;
+                        ch.to_string()
+                    }
+                };
+                let insert_chars: Vec<char> = insertion.chars().collect();
                 chars.splice(idx..idx, insert_chars);
             }
         }
-        "nearby_char" => {
+        3 => {
             if idx < chars.len() {
                 let ch = chars[idx];
-                let neighbors = neighbors_for_char(layout, ch);
-                if !neighbors.is_empty() {
-                    let choice = python_choice(rng, &neighbors)?;
-                    let replacement: String = choice.extract(rng.py())?;
-                    let rep_chars: Vec<char> = replacement.chars().collect();
-                    chars.splice(idx..idx + 1, rep_chars);
+                if let Some(neighbors) = neighbors_for_char(layout, ch) {
+                    if neighbors.is_empty() {
+                        return Ok(());
+                    }
+                    let choice = python_rand_index(rng, neighbors.len())?;
+                    let replacement: Vec<char> = neighbors[choice].chars().collect();
+                    chars.splice(idx..idx + 1, replacement);
                 }
             }
         }
@@ -214,12 +254,7 @@ pub(crate) fn fatfinger(
     }
 
     let mut chars: Vec<char> = text.chars().collect();
-    let mut layout_map: HashMap<String, Vec<String>> = HashMap::new();
-    for (key, value) in layout.iter() {
-        let key: String = key.extract()?;
-        let values: Vec<String> = value.extract()?;
-        layout_map.insert(key, values);
-    }
+    let layout_map = extract_layout_map(layout)?;
 
     let length = chars.len();
     let mut max_changes = (length as f64 * max_change_rate).ceil() as usize;
@@ -227,24 +262,27 @@ pub(crate) fn fatfinger(
         max_changes = 1;
     }
 
-    let positional = ["char_swap", "missing_char", "extra_char", "nearby_char"];
-    let global = ["skipped_space", "random_space", "unichar", "repeated_char"];
-    let mut all_actions = Vec::with_capacity(positional.len() + global.len());
-    all_actions.extend_from_slice(&positional);
-    all_actions.extend_from_slice(&global);
-
-    let mut actions = Vec::with_capacity(max_changes);
+    const POSITIONAL_COUNT: usize = 4;
+    const TOTAL_ACTIONS: usize = 8;
+    let mut actions: Vec<u8> = Vec::with_capacity(max_changes);
     for _ in 0..max_changes {
-        let action_obj = python_choice(rng, &all_actions)?;
-        let action: String = action_obj.extract(rng.py())?;
-        actions.push(action);
+        let action_idx = python_rand_index(rng, TOTAL_ACTIONS)?;
+        actions.push(action_idx as u8);
     }
 
-    for action in actions {
-        if positional.contains(&action.as_str()) {
-            positional_action(rng, &action, &mut chars, &layout_map)?;
+    for action_idx in actions {
+        let action_idx = action_idx as usize;
+        if action_idx < POSITIONAL_COUNT {
+            positional_action(rng, action_idx, &mut chars, layout_map.as_ref())?;
         } else {
-            global_action(rng, &action, &mut chars)?;
+            let action = match action_idx {
+                4 => "skipped_space",
+                5 => "random_space",
+                6 => "unichar",
+                7 => "repeated_char",
+                _ => unreachable!("action index out of range"),
+            };
+            global_action(rng, action, &mut chars)?;
         }
     }
 

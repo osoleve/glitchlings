@@ -246,3 +246,36 @@ def test_zeedub_rate_increases_insertions(sample_text):
     high = cast(str, zeedub(sample_text))
 
     assert _count_zero_width(high) >= _count_zero_width(low)
+
+
+def test_zeedub_pipeline_descriptor_defaults():
+    instance = zeedub.clone()
+    instance.set_param("rate", 0.05)
+    descriptor = instance.pipeline_operation()
+    assert descriptor == {
+        "type": "zwj",
+        "rate": 0.05,
+        "characters": list(_DEFAULT_ZERO_WIDTH_CHARACTERS),
+    }
+
+
+def test_zeedub_pipeline_descriptor_filters_custom_characters():
+    instance = zeedub.clone()
+    instance.set_param("rate", 0.02)
+    instance.set_param("characters", ["", "\u200b", "\u200c"])
+    descriptor = instance.pipeline_operation()
+    assert descriptor is not None
+    assert descriptor["characters"] == ["\u200b", "\u200c"]
+
+
+def test_typogre_pipeline_descriptor_includes_layout():
+    instance = typogre.clone()
+    instance.set_param("rate", 0.01)
+    instance.set_param("keyboard", "QWERTY")
+    descriptor = instance.pipeline_operation()
+    assert descriptor is not None
+    assert descriptor["type"] == "typo"
+    assert descriptor["keyboard"] == "QWERTY"
+    layout = descriptor["layout"]
+    assert "a" in layout and isinstance(layout["a"], list)
+    assert "q" in layout and all(isinstance(entry, str) for entry in layout["q"])

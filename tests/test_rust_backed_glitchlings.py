@@ -356,6 +356,33 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
                 rate=operation["error_rate"],
                 rng=rng,
             )
+        elif op_type == "zwj":
+            characters = operation.get("characters")
+            if characters is None:
+                characters = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
+            else:
+                characters = tuple(characters)
+            current = zeedub_module._python_insert_zero_widths(
+                current,
+                rate=operation["rate"],
+                rng=rng,
+                characters=characters,
+            )
+        elif op_type == "typo":
+            keyboard = operation.get("keyboard", "CURATOR_QWERTY")
+            layout_override = operation.get("layout")
+            if layout_override is None:
+                layout = getattr(typogre_module.KEYNEIGHBORS, keyboard)
+            else:
+                layout = {
+                    key: list(value) for key, value in layout_override.items()
+                }
+            current = typogre_module._fatfinger_python(
+                current,
+                rate=operation["rate"],
+                rng=rng,
+                layout=layout,
+            )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
@@ -388,6 +415,25 @@ def test_compose_glitchlings_matches_python_pipeline():
     result = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
     assert result == expected
 
+
+
+
+def test_compose_glitchlings_supports_typo_and_zwj():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    layout = {key: list(value) for key, value in typogre_module.KEYNEIGHBORS.CURATOR_QWERTY.items()}
+    raw_descriptors = [
+        {
+            "name": "Typogre",
+            "operation": {"type": "typo", "rate": 0.02, "keyboard": "CURATOR_QWERTY", "layout": layout},
+        },
+        {"name": "Zeedub", "operation": {"type": "zwj", "rate": 0.015, "characters": ["\u200b", "\u2060"]}},
+    ]
+    master_seed = 515
+    descriptors = _with_descriptor_seeds(raw_descriptors, master_seed)
+    text_case = "Stealth glyphs haunt the interface"
+    expected = _run_python_sequence(text_case, descriptors, master_seed)
+    result = zoo_rust.compose_glitchlings(text_case, descriptors, master_seed)
+    assert result == expected
 
 def test_compose_glitchlings_is_deterministic():
     zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
@@ -513,28 +559,37 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     assert result == expected
 
 
-def test_pipeline_falls_back_for_unsupported_glitchling(monkeypatch):
+def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 1122
     text = "Synchronize thrusters before ascent"
 
-    def _make_glitchlings() -> list[core_module.Glitchling]:
-        typo = typogre_module.Typogre(rate=0.02, seed=5)
-        redup = reduple_module.Reduple(rate=0.2, seed=7)
-        return [typo, redup]
+    typo = typogre_module.Typogre(rate=0.02, seed=5)
+    typo.set_param("keyboard", "COLEMAK")
+    zwj = zeedub_module.Zeedub(rate=0.03, seed=11)
+    zwj.set_param("characters", ["\u200b", "\u2060"])
+    redup = reduple_module.Reduple(rate=0.2, seed=7)
 
-    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
-    expected = python_gaggle(text)
+    gaggle = core_module.Gaggle([typo, redup, zwj], seed=master_seed)
+    descriptors = gaggle._pipeline_descriptors()
+    assert descriptors is not None
+
+    python_expected = _run_python_sequence(text, descriptors, master_seed)
+    rust_expected = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
+    assert rust_expected == python_expected
+
+    invoked: dict[str, bool] = {}
+
+    def spy(src_text: str, ops: list[dict[str, object]], seed: int) -> str:
+        invoked["called"] = True
+        return zoo_rust.compose_glitchlings(src_text, ops, seed)
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", spy, raising=False)
 
-    def _fail(*_args: object, **_kwargs: object) -> str:
-        raise AssertionError("Rust pipeline should not run on unsupported glitchlings")
-
-    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
-    pipeline_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
-
-    assert pipeline_gaggle._pipeline_descriptors() is None
-    assert pipeline_gaggle(text) == expected
+    result = gaggle(text)
+    assert invoked.get("called") is True
+    assert result == python_expected == rust_expected
 
 
 def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):

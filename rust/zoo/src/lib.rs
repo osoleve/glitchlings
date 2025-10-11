@@ -11,10 +11,12 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
+use std::collections::HashMap;
+use std::sync::{Arc, OnceLock, RwLock};
 
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
-    ReduplicateWordsOp, SwapAdjacentWordsOp,
+    ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -91,6 +93,35 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
     }
 }
 
+type LayoutVecCache = HashMap<usize, Arc<Vec<(String, Vec<String>)>>>;
+
+fn layout_vec_cache() -> &'static RwLock<LayoutVecCache> {
+    static CACHE: OnceLock<RwLock<LayoutVecCache>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<String>)>>> {
+    let key = layout_dict.as_ptr() as usize;
+    if let Some(cached) = layout_vec_cache()
+        .read()
+        .expect("layout vec cache poisoned")
+        .get(&key)
+    {
+        return Ok(cached.clone());
+    }
+
+    let mut materialised: Vec<(String, Vec<String>)> = Vec::with_capacity(layout_dict.len());
+    for (key_obj, value_obj) in layout_dict.iter() {
+        materialised.push((key_obj.extract()?, value_obj.extract()?));
+    }
+    let arc = Arc::new(materialised);
+    let mut guard = layout_vec_cache()
+        .write()
+        .expect("layout vec cache poisoned during write");
+    let entry = guard.entry(key).or_insert_with(|| arc.clone());
+    Ok(entry.clone())
+}
+
 #[derive(Debug)]
 enum PyGlitchOperation {
     Reduplicate {
@@ -112,6 +143,14 @@ enum PyGlitchOperation {
     },
     Ocr {
         error_rate: f64,
+    },
+    Typo {
+        rate: f64,
+        layout: Arc<Vec<(String, Vec<String>)>>,
+    },
+    ZeroWidth {
+        rate: f64,
+        characters: Vec<String>,
     },
 }
 
@@ -204,6 +243,30 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .extract()?;
                 Ok(PyGlitchOperation::Ocr { error_rate })
             }
+            "typo" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("typo operation missing \'rate\' field"))?
+                    .extract()?;
+                let layout_obj = dict.get_item("layout")?.ok_or_else(|| {
+                    PyValueError::new_err("typo operation missing \'layout\' field")
+                })?;
+                let layout_dict: &PyDict = layout_obj.downcast()?;
+                let layout = cached_layout_vec(layout_dict)?;
+                Ok(PyGlitchOperation::Typo { rate, layout })
+            }
+            "zwj" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("zwj operation missing \'rate\' field"))?
+                    .extract()?;
+                let characters = dict
+                    .get_item("characters")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or_default();
+                Ok(PyGlitchOperation::ZeroWidth { rate, characters })
+            }
             other => Err(PyValueError::new_err(format!(
                 "unsupported operation type: {other}"
             ))),
@@ -254,11 +317,7 @@ fn delete_random_words(
 }
 
 #[pyfunction]
-fn swap_adjacent_words(
-    text: &str,
-    swap_rate: f64,
-    rng: &Bound<'_, PyAny>,
-) -> PyResult<String> {
+fn swap_adjacent_words(text: &str, swap_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
     let op = SwapAdjacentWordsOp { swap_rate };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
@@ -312,9 +371,7 @@ fn compose_glitchlings(
                     unweighted,
                 }),
                 PyGlitchOperation::SwapAdjacent { swap_rate } => {
-                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp {
-                        swap_rate,
-                    })
+                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { swap_rate })
                 }
                 PyGlitchOperation::Redact {
                     replacement_char,
@@ -329,6 +386,17 @@ fn compose_glitchlings(
                 }),
                 PyGlitchOperation::Ocr { error_rate } => {
                     GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
+                }
+                PyGlitchOperation::Typo { rate, layout } => {
+                    let layout_map: HashMap<String, Vec<String>> =
+                        layout.as_ref().iter().cloned().collect();
+                    GlitchOperation::Typo(glitch_ops::TypoOp {
+                        rate,
+                        layout: layout_map,
+                    })
+                }
+                PyGlitchOperation::ZeroWidth { rate, characters } => {
+                    GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
                 }
             };
             Ok(GlitchDescriptor {

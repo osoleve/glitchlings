@@ -4,11 +4,7 @@ import re
 from typing import Any
 
 from ._rate import resolve_rate
-from ._text_utils import (
-    split_preserving_whitespace,
-    split_token_edges,
-    token_core_length,
-)
+from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
 try:
@@ -31,30 +27,28 @@ def _python_delete_random_words(
         return text
 
     tokens = split_preserving_whitespace(text)
+    word_tokens = collect_word_tokens(tokens, skip_first_word=True)
 
-    candidate_data: list[tuple[int, float]] = []
-    for i in range(2, len(tokens), 2):
-        word = tokens[i]
-        if not word or word.isspace():
-            continue
+    weighted_tokens: list[tuple[int, float, WordToken]] = []
+    for token in word_tokens:
+        weight = 1.0 if unweighted else 1.0 / float(token.core_length)
+        weighted_tokens.append((token.index, weight, token))
 
-        length = token_core_length(word)
-        weight = 1.0 if unweighted else 1.0 / length
-        candidate_data.append((i, weight))
-
-    if not candidate_data:
+    if not weighted_tokens:
         return text
 
     allowed_deletions = min(
-        len(candidate_data), math.floor(len(candidate_data) * effective_rate)
+        len(weighted_tokens), math.floor(len(weighted_tokens) * effective_rate)
     )
     if allowed_deletions <= 0:
         return text
 
-    mean_weight = sum(weight for _, weight in candidate_data) / len(candidate_data)
+    mean_weight = sum(weight for _, weight, _ in weighted_tokens) / len(
+        weighted_tokens
+    )
 
     deletions = 0
-    for index, weight in candidate_data:
+    for index, weight, token in weighted_tokens:
         if deletions >= allowed_deletions:
             break
 
@@ -68,9 +62,9 @@ def _python_delete_random_words(
         if rng.random() >= probability:
             continue
 
-        word = tokens[index]
-        prefix, _, suffix = split_token_edges(word)
-        tokens[index] = f"{prefix.strip()}{suffix.strip()}"
+        prefix = token.prefix.strip()
+        suffix = token.suffix.strip()
+        tokens[index] = f"{prefix}{suffix}"
 
         deletions += 1
 

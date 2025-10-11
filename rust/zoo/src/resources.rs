@@ -95,8 +95,8 @@ pub fn split_with_separators(text: &str) -> Vec<String> {
     tokens
 }
 
-/// Splits a word into leading punctuation, core token, and trailing punctuation.
-pub fn split_affixes(word: &str) -> (String, String, String) {
+/// Returns the byte bounds of the core token (excluding prefix/suffix punctuation).
+pub fn affix_bounds(word: &str) -> Option<(usize, usize)> {
     let mut start_index: Option<usize> = None;
     let mut end_index = 0;
 
@@ -109,11 +109,16 @@ pub fn split_affixes(word: &str) -> (String, String, String) {
         }
     }
 
-    match start_index {
-        Some(start) => (
+    start_index.map(|start| (start, end_index))
+}
+
+/// Splits a word into leading punctuation, core token, and trailing punctuation.
+pub fn split_affixes(word: &str) -> (String, String, String) {
+    match affix_bounds(word) {
+        Some((start, end)) => (
             word[..start].to_string(),
-            word[start..end_index].to_string(),
-            word[end_index..].to_string(),
+            word[start..end].to_string(),
+            word[end..].to_string(),
         ),
         None => (word.to_string(), String::new(), String::new()),
     }
