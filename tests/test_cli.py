@@ -1,8 +1,10 @@
 import difflib
+import importlib
 
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
+from glitchlings.lexicon import Lexicon
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
@@ -219,3 +221,27 @@ def test_run_cli_rejects_positional_glitchling_arguments(capsys):
 
     captured = capsys.readouterr()
     assert "keyword arguments" in captured.err
+
+
+def test_default_roster_includes_jargoyle_without_wordnet(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = importlib.import_module("glitchlings.zoo.jargoyle")
+
+    class DummyLexicon(Lexicon):
+        def __init__(self) -> None:
+            super().__init__()
+
+        def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+            return []
+
+    monkeypatch.setattr(module, "_lexicon_dependencies_available", lambda: False)
+    monkeypatch.setattr(module, "WordNetLexicon", None)
+    monkeypatch.setattr(module, "get_default_lexicon", lambda seed=None: DummyLexicon())
+
+    zoo_module = importlib.import_module("glitchlings.zoo")
+    try:
+        reloaded = importlib.reload(zoo_module)
+        assert "jargoyle" in reloaded.DEFAULT_GLITCHLING_NAMES
+    finally:
+        monkeypatch.undo()
+        importlib.reload(zoo_module)
+        importlib.reload(importlib.import_module("glitchlings"))

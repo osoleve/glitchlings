@@ -24,10 +24,26 @@ except Exception:  # pragma: no cover - triggered when nltk unavailable
             "and download its WordNet corpus manually if you need legacy synonyms."
         )
 
+
 from ._rate import resolve_rate
 from .core import AttackWave, Glitchling
+
 ensure_wordnet = _lexicon_ensure_wordnet
-dependencies_available = _lexicon_dependencies_available
+
+
+def dependencies_available() -> bool:
+    """Return ``True`` when a synonym backend is accessible."""
+
+    if _lexicon_dependencies_available():
+        return True
+
+    try:
+        # Fall back to the configured default lexicon (typically the bundled vector cache).
+        get_default_lexicon(seed=None)
+    except Exception:
+        return False
+    return True
+
 
 # Backwards compatibility for callers relying on the previous private helper name.
 _ensure_wordnet = ensure_wordnet
@@ -50,7 +66,9 @@ def _split_token(token: str) -> tuple[str, str, str]:
     return prefix, core, suffix
 
 
-def _normalize_parts_of_speech(part_of_speech: PartOfSpeechInput) -> NormalizedPartsOfSpeech:
+def _normalize_parts_of_speech(
+    part_of_speech: PartOfSpeechInput,
+) -> NormalizedPartsOfSpeech:
     """Coerce user input into a tuple of valid WordNet POS tags."""
 
     if isinstance(part_of_speech, str):
@@ -130,73 +148,96 @@ def substitute_random_synonyms(
     else:
         active_rng = random.Random(seed)
 
+    active_lexicon: Lexicon
+    restore_lexicon_seed = False
+    original_lexicon_seed: int | None = None
+
     if lexicon is None:
         active_lexicon = get_default_lexicon(seed=seed)
     else:
         active_lexicon = lexicon
         if seed is not None:
-            active_lexicon.reseed(seed)
+            original_lexicon_seed = active_lexicon.seed
+            if original_lexicon_seed != seed:
+                active_lexicon.reseed(seed)
+                restore_lexicon_seed = True
 
-    target_pos = _normalize_parts_of_speech(part_of_speech)
+    try:
+        target_pos = _normalize_parts_of_speech(part_of_speech)
 
-    # Split but keep whitespace separators so we can rebuild easily
-    tokens = re.split(r"(\s+)", text)
+        # Split but keep whitespace separators so we can rebuild easily
+        tokens = re.split(r"(\s+)", text)
 
-    # Collect indices of candidate tokens (even positions 0,2,.. are words given our split design)
-    candidate_indices: list[int] = []
-    candidate_metadata: dict[int, CandidateInfo] = {}
-    for idx, tok in enumerate(tokens):
-        if idx % 2 == 0 and tok and not tok.isspace():
-            prefix, core_word, suffix = _split_token(tok)
-            if not core_word:
+        # Collect indices of candidate tokens (even positions 0,2,.. are words given our split design)
+        candidate_indices: list[int] = []
+        candidate_metadata: dict[int, CandidateInfo] = {}
+        for idx, tok in enumerate(tokens):
+            if idx % 2 == 0 and tok and not tok.isspace():
+                prefix, core_word, suffix = _split_token(tok)
+                if not core_word:
+                    continue
+
+                chosen_pos: str | None = None
+                synonyms: list[str] = []
+
+                for pos in target_pos:
+                    if not active_lexicon.supports_pos(pos):
+                        continue
+                    synonyms = active_lexicon.get_synonyms(core_word, pos=pos)
+                    if synonyms:
+                        chosen_pos = pos
+                        break
+
+                if not synonyms and active_lexicon.supports_pos(None):
+                    synonyms = active_lexicon.get_synonyms(core_word, pos=None)
+
+                if synonyms:
+                    candidate_indices.append(idx)
+                    candidate_metadata[idx] = CandidateInfo(
+                        prefix=prefix,
+                        core_word=core_word,
+                        suffix=suffix,
+                        part_of_speech=chosen_pos,
+                        synonyms=synonyms,
+                    )
+
+        if not candidate_indices:
+            return text
+
+        clamped_rate = max(0.0, effective_rate)
+        if clamped_rate == 0.0:
+            return text
+
+        population = len(candidate_indices)
+        effective_fraction = min(clamped_rate, 1.0)
+        expected_replacements = population * effective_fraction
+        max_replacements = int(expected_replacements)
+        remainder = expected_replacements - max_replacements
+        if remainder > 0.0 and active_rng.random() < remainder:
+            max_replacements += 1
+        if clamped_rate >= 1.0:
+            max_replacements = population
+        max_replacements = min(population, max_replacements)
+        if max_replacements <= 0:
+            return text
+
+        # Choose which positions to replace deterministically via rng.sample
+        replace_positions = active_rng.sample(candidate_indices, k=max_replacements)
+        # Process in ascending order to avoid affecting later indices
+        replace_positions.sort()
+
+        for pos in replace_positions:
+            metadata = candidate_metadata[pos]
+            if not metadata.synonyms:
                 continue
 
-            chosen_pos: str | None = None
-            synonyms: list[str] = []
+            replacement = active_rng.choice(metadata.synonyms)
+            tokens[pos] = f"{metadata.prefix}{replacement}{metadata.suffix}"
 
-            for pos in target_pos:
-                if not active_lexicon.supports_pos(pos):
-                    continue
-                synonyms = active_lexicon.get_synonyms(core_word, pos=pos)
-                if synonyms:
-                    chosen_pos = pos
-                    break
-
-            if not synonyms and active_lexicon.supports_pos(None):
-                synonyms = active_lexicon.get_synonyms(core_word, pos=None)
-
-            if synonyms:
-                candidate_indices.append(idx)
-                candidate_metadata[idx] = CandidateInfo(
-                    prefix=prefix,
-                    core_word=core_word,
-                    suffix=suffix,
-                    part_of_speech=chosen_pos,
-                    synonyms=synonyms,
-                )
-
-    if not candidate_indices:
-        return text
-
-    clamped_rate = max(0.0, effective_rate)
-    max_replacements = int(len(candidate_indices) * clamped_rate)
-    if max_replacements <= 0:
-        return text
-
-    # Choose which positions to replace deterministically via rng.sample
-    replace_positions = active_rng.sample(candidate_indices, k=max_replacements)
-    # Process in ascending order to avoid affecting later indices
-    replace_positions.sort()
-
-    for pos in replace_positions:
-        metadata = candidate_metadata[pos]
-        if not metadata.synonyms:
-            continue
-
-        replacement = active_rng.choice(metadata.synonyms)
-        tokens[pos] = f"{metadata.prefix}{replacement}{metadata.suffix}"
-
-    return "".join(tokens)
+        return "".join(tokens)
+    finally:
+        if restore_lexicon_seed:
+            active_lexicon.reseed(original_lexicon_seed)
 
 
 class Jargoyle(Glitchling):
@@ -212,24 +253,32 @@ class Jargoyle(Glitchling):
         lexicon: Lexicon | None = None,
     ) -> None:
         self._param_aliases = {"replacement_rate": "rate"}
+        self._owns_lexicon = lexicon is None
+        self._external_lexicon_original_seed = (
+            lexicon.seed if isinstance(lexicon, Lexicon) else None
+        )
+        self._initializing = True
         effective_rate = resolve_rate(
             rate=rate,
             legacy_value=replacement_rate,
-            default=0.1,
+            default=0.01,
             legacy_name="replacement_rate",
         )
         prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
         if lexicon is not None and seed is not None:
             prepared_lexicon.reseed(seed)
-        super().__init__(
-            name="Jargoyle",
-            corruption_function=substitute_random_synonyms,
-            scope=AttackWave.WORD,
-            seed=seed,
-            rate=effective_rate,
-            part_of_speech=part_of_speech,
-            lexicon=prepared_lexicon,
-        )
+        try:
+            super().__init__(
+                name="Jargoyle",
+                corruption_function=substitute_random_synonyms,
+                scope=AttackWave.WORD,
+                seed=seed,
+                rate=effective_rate,
+                part_of_speech=part_of_speech,
+                lexicon=prepared_lexicon,
+            )
+        finally:
+            self._initializing = False
 
     def set_param(self, key: str, value: Any) -> None:
         super().set_param(key, value)
@@ -240,9 +289,35 @@ class Jargoyle(Glitchling):
         if canonical == "seed":
             current_lexicon = getattr(self, "lexicon", None)
             if isinstance(current_lexicon, Lexicon):
-                current_lexicon.reseed(self.seed)
+                if getattr(self, "_owns_lexicon", False):
+                    current_lexicon.reseed(self.seed)
+                else:
+                    if self.seed is not None:
+                        current_lexicon.reseed(self.seed)
+                    else:
+                        if hasattr(self, "_external_lexicon_original_seed"):
+                            original_seed = getattr(
+                                self, "_external_lexicon_original_seed", None
+                            )
+                            current_lexicon.reseed(original_seed)
         elif canonical == "lexicon" and isinstance(value, Lexicon):
-            value.reseed(self.seed)
+            if getattr(self, "_initializing", False):
+                if getattr(self, "_owns_lexicon", False):
+                    if self.seed is not None:
+                        value.reseed(self.seed)
+                else:
+                    if getattr(self, "_external_lexicon_original_seed", None) is None:
+                        self._external_lexicon_original_seed = value.seed
+                    if self.seed is not None:
+                        value.reseed(self.seed)
+                return
+
+            self._owns_lexicon = False
+            self._external_lexicon_original_seed = value.seed
+            if self.seed is not None:
+                value.reseed(self.seed)
+            elif value.seed != self._external_lexicon_original_seed:
+                value.reseed(self._external_lexicon_original_seed)
 
 
 jargoyle = Jargoyle()
