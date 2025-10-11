@@ -137,6 +137,26 @@ class Zeedub(Glitchling):
             characters=tuple(characters) if characters is not None else None,
         )
 
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            return None
+
+        raw_characters = self.kwargs.get("characters")
+        if raw_characters is None:
+            palette = tuple(_DEFAULT_ZERO_WIDTH_CHARACTERS)
+        else:
+            palette = tuple(str(char) for char in raw_characters if char)
+
+        if not palette:
+            return None
+
+        return {
+            "type": "zwj",
+            "rate": float(rate),
+            "characters": list(palette),
+        }
+
 
 zeedub = Zeedub()
 

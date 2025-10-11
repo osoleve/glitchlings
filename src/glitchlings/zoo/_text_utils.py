@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
+from typing import Sequence
 
 _WORD_SPLIT_PATTERN = re.compile(r"(\s+)")
 _TOKEN_EDGES_PATTERN = re.compile(r"^(\W*)(.*?)(\W*)$")
@@ -35,8 +37,68 @@ def token_core_length(token: str) -> int:
     return length
 
 
+@dataclass(frozen=True)
+class WordToken:
+    """Metadata describing a non-whitespace token yielded by word splitters."""
+
+    index: int
+    prefix: str
+    core: str
+    suffix: str
+    core_length: int
+
+    @property
+    def has_core(self) -> bool:
+        """Return ``True`` when the token contains at least one core character."""
+
+        return bool(self.core)
+
+
+def collect_word_tokens(
+    tokens: Sequence[str],
+    *,
+    skip_first_word: bool = False,
+) -> list[WordToken]:
+    """Return structured metadata for non-whitespace tokens within ``tokens``.
+
+    Args:
+        tokens: Token sequence produced by :func:`split_preserving_whitespace`.
+        skip_first_word: Exclude the first candidate token (used by Rushmore to
+            preserve leading words).
+    """
+
+    start = 2 if skip_first_word else 0
+    collected: list[WordToken] = []
+    for index in range(start, len(tokens), 2):
+        token = tokens[index]
+        if not token or token.isspace():
+            continue
+
+        prefix, core, suffix = split_token_edges(token)
+        core_length = len(core)
+        if core_length <= 0:
+            stripped = token.strip()
+            core_length = len(stripped) if stripped else len(token)
+        if core_length <= 0:
+            core_length = 1
+
+        collected.append(
+            WordToken(
+                index=index,
+                prefix=prefix,
+                core=core,
+                suffix=suffix,
+                core_length=core_length,
+            )
+        )
+
+    return collected
+
+
 __all__ = [
     "split_preserving_whitespace",
     "split_token_edges",
     "token_core_length",
+    "WordToken",
+    "collect_word_tokens",
 ]

@@ -2,11 +2,7 @@ import random
 from typing import Any
 
 from ._rate import resolve_rate
-from ._text_utils import (
-    split_preserving_whitespace,
-    split_token_edges,
-    token_core_length,
-)
+from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
 try:
@@ -35,29 +31,23 @@ def _python_reduplicate_words(
     - Deterministic when run with a fixed seed or via Gaggle.
     """
     tokens = split_preserving_whitespace(text)
+    word_tokens = collect_word_tokens(tokens)
 
-    candidate_weights: list[tuple[int, float]] = []
-    for i in range(0, len(tokens), 2):
-        word = tokens[i]
-        if not word or word.isspace():
-            continue
+    weighted_tokens: list[tuple[int, float, WordToken]] = []
+    for token in word_tokens:
+        weight = 1.0 if unweighted else 1.0 / float(token.core_length)
+        weighted_tokens.append((token.index, weight, token))
 
-        length = token_core_length(word)
-        weight = 1.0 if unweighted else 1.0 / length
-        candidate_weights.append((i, weight))
-
-    if not candidate_weights:
+    if not weighted_tokens:
         return "".join(tokens)
 
     effective_rate = max(rate, 0.0)
     if effective_rate <= 0.0:
         return "".join(tokens)
 
-    mean_weight = sum(weight for _, weight in candidate_weights) / len(
-        candidate_weights
-    )
+    mean_weight = sum(weight for _, weight, _ in weighted_tokens) / len(weighted_tokens)
 
-    for index, weight in candidate_weights:
+    for index, weight, token in weighted_tokens:
         if effective_rate >= 1.0:
             probability = 1.0
         else:
@@ -68,8 +58,7 @@ def _python_reduplicate_words(
         if rng.random() >= probability:
             continue
 
-        word = tokens[index]
-        prefix, core, suffix = split_token_edges(word)
+        prefix, core, suffix = token.prefix, token.core, token.suffix
         tokens[index] = f"{prefix}{core} {core}{suffix}"
     return "".join(tokens)
 

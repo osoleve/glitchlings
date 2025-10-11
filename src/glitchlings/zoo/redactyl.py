@@ -4,9 +4,9 @@ from typing import Any
 
 from ._rate import resolve_rate
 from ._text_utils import (
+    WordToken,
+    collect_word_tokens,
     split_preserving_whitespace,
-    split_token_edges,
-    token_core_length,
 )
 from .core import AttackWave, Glitchling
 
@@ -74,39 +74,45 @@ def _python_redact_words(
     - unweighted: When True, sample words uniformly instead of by length.
     """
     tokens = split_preserving_whitespace(text)
-    word_indices = [i for i, token in enumerate(tokens) if i % 2 == 0 and token.strip()]
-    if not word_indices:
+    word_tokens = collect_word_tokens(tokens)
+    if not word_tokens:
         raise ValueError(
             "Cannot redact words because the input text contains no redactable words."
         )
-    weights: list[float] = []
-    for index in word_indices:
-        word = tokens[index]
-        length = token_core_length(word)
-        weights.append(1.0 if unweighted else float(length))
-    raw_quota = len(word_indices) * rate
+
+    population = [token.index for token in word_tokens]
+    weights = [
+        1.0 if unweighted else float(token.core_length) for token in word_tokens
+    ]
+
+    clamped_rate = max(0.0, min(rate, 1.0))
+    raw_quota = len(population) * clamped_rate
     num_to_redact = int(raw_quota)
-    if rate > 0:
+    if clamped_rate > 0.0:
         num_to_redact = max(1, num_to_redact)
-    if num_to_redact > len(word_indices):
-        raise ValueError("Sample larger than population or is negative")
+    num_to_redact = min(num_to_redact, len(population))
+    if num_to_redact <= 0:
+        return "".join(tokens)
+
     indices_to_redact = _weighted_sample_without_replacement(
-        word_indices,
+        population,
         weights,
         k=num_to_redact,
         rng=rng,
     )
     indices_to_redact.sort()
 
+    token_by_index: dict[int, WordToken] = {token.index: token for token in word_tokens}
+
     for i in indices_to_redact:
         if i >= len(tokens):
             break
 
-        word = tokens[i]
-        if not word or word.isspace():
+        token = token_by_index.get(i)
+        if token is None:
             continue
 
-        prefix, core, suffix = split_token_edges(word)
+        prefix, core, suffix = token.prefix, token.core, token.suffix
         tokens[i] = f"{prefix}{replacement_char * len(core)}{suffix}"
 
     text = "".join(tokens)
@@ -144,7 +150,7 @@ def redact_words(
     if rng is None:
         rng = random.Random(seed)
 
-    clamped_rate = max(0.0, effective_rate)
+    clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
     use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
