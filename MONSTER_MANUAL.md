@@ -199,7 +199,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ### Jargoyle Args
 >
-> - `rate (float)`: The maximum proportion of words to replace (default: 0.1, 10%).
+> - `rate (float)`: The maximum proportion of words to replace (default: 0.01, 1%).
 > - `part_of_speech`: The WordNet part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >

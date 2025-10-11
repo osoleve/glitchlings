@@ -34,15 +34,56 @@ Install the latest release directly from PyPI:
 pip install -U glitchlings
 ```
 
-Need the optional Prime Intellect loader or the NLTK-powered Jargoyle?
+Need the optional Prime Intellect loader or extra lexicon tooling?
 
 ```bash
 # Prime Intellect DLC + verifiers dependency
 pip install -U 'glitchlings[prime]'
 
-# NLTK WordNet corpora for Jargoyle synonym swaps
+# Embedding-based lexicon helpers (spaCy/gensim + NumPy)
+pip install -U 'glitchlings[vectors]'
+
+# Optional: NLTK WordNet corpora if you want the legacy synonym backend
 python -m nltk.downloader wordnet
 ```
+
+### Precomputing vector lexicon caches
+
+The vector backend prefers cached nearest neighbours for fast, deterministic lookups. Build a cache from a spaCy pipeline or a gensim `KeyedVectors` file:
+
+```bash
+glitchlings build-lexicon \
+    --source spacy:en_core_web_md \
+    --output data/vector_lexicon.json \
+    --overwrite
+```
+
+Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
+
+### ConceptNet graph lexicon
+
+Prefer ConceptNet-style knowledge graphs? The `GraphLexicon` backend consumes [Numberbatch embeddings](https://github.com/commonsense/conceptnet-numberbatch) and automatically normalises queries by case, punctuation, and lightweight lemmatisation.
+
+Download the English slice of Numberbatch, then wire it up directly:
+
+```python
+from glitchlings.lexicon import GraphLexicon
+
+lexicon = GraphLexicon(
+    source="data/numberbatch-en.txt.gz",
+    max_neighbors=32,
+    min_similarity=0.15,
+)
+
+lexicon.get_synonyms("muttering")
+# ['mutter', 'whisper', 'complain', ...]
+```
+
+When the embeddings are unavailable, the graph backend gracefully falls back to any cached synonyms you've precomputed with `GraphLexicon.save_cache(...)` so deterministic runs stay reproducible.
+
+### Lexicon evaluation metrics
+
+Compare alternative synonym sources or refreshed caches with `glitchlings.lexicon.metrics`. The `compare_lexicons(...)` helper reports average synonym diversity, the share of tokens with three or more substitutes, and mean cosine similarity using any embedding table you pass in. These utilities underpin the lexicon regression tests so new backends stay deterministic without sacrificing coverage or semantic cohesion.
 
 ### Source install
 
@@ -136,7 +177,7 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Reduple](glitchlings/reduple.md) - word-level reduplication for hesitant transcripts.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions that erode context without shredding structure.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
-- [Jargoyle](glitchlings/jargoyle.md) - WordNet-driven synonym substitutions tuned by part of speech.
+- [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 ## Dataset workflows
@@ -219,11 +260,9 @@ pytest
 
 If the Python pipeline regression guard fails on slower hardware, raise the safety margin with `GLITCHLINGS_BENCHMARK_SAFETY_FACTOR` (default: `12`) or set `GLITCHLINGS_BENCHMARK_STRICT=1` to re-enable the historical baseline thresholds.
 
-Some tests require the NLTK WordNet corpus. If you see skips mentioning WordNet, install it with:
+Lexicon-specific regressions live in `tests/test_lexicon_metrics.py`; they verify that new backends stay within striking distance of the recorded synonym diversity, coverage, and cosine-similarity baselines. Pair them with `tests/test_jargoyle.py::test_jargoyle_custom_lexicon_deterministic` when validating alternative backends in the Jargoyle pipeline.
 
-```bash
-python -c "import nltk; nltk.download('wordnet')"
-```
+Want to compare against the legacy WordNet lexicon? Install `nltk` and download the corpus manually (`python -m nltk.downloader wordnet`), then add `"wordnet"` to the `lexicon.priority` list in `config.toml`.
 
 ## Additional resources
 
