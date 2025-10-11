@@ -2,13 +2,16 @@ use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 use regex::{Captures, Regex};
 use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 
 use crate::resources::{
-    confusion_table, is_whitespace_only, split_affixes, MULTIPLE_WHITESPACE,
+    affix_bounds, confusion_table, is_whitespace_only, split_affixes, MULTIPLE_WHITESPACE,
     SPACE_BEFORE_PUNCTUATION,
 };
 use crate::rng::{PyRng, PyRngError};
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
+
+static MERGE_REGEX_CACHE: OnceLock<Mutex<HashMap<String, Regex>>> = OnceLock::new();
 
 /// Errors produced while applying a [`GlitchOp`].
 #[derive(Debug)]
@@ -127,10 +130,25 @@ struct DeleteCandidate {
 #[derive(Debug)]
 struct RedactCandidate {
     index: usize,
-    prefix: String,
-    suffix: String,
+    core_start: usize,
+    core_end: usize,
     repeat: usize,
     weight: f64,
+}
+
+fn cached_merge_regex(token: &str) -> Result<Regex, GlitchOpError> {
+    let cache = MERGE_REGEX_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+    if let Some(regex) = cache.lock().unwrap().get(token).cloned() {
+        return Ok(regex);
+    }
+
+    let pattern = format!("{}\\W+{}", regex::escape(token), regex::escape(token));
+    let compiled = Regex::new(&pattern)
+        .map_err(|err| GlitchOpError::Regex(format!("failed to build merge regex: {err}")))?;
+
+    let mut guard = cache.lock().unwrap();
+    let entry = guard.entry(token.to_string()).or_insert_with(|| compiled);
+    Ok(entry.clone())
 }
 
 fn weighted_sample_without_replacement(
@@ -435,14 +453,13 @@ impl GlitchOp for RedactWordsOp {
         for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
                 let text = segment.text();
-                if text.trim().is_empty() {
+                let Some((core_start, core_end)) = affix_bounds(text) else {
+                    continue;
+                };
+                if core_start == core_end {
                     continue;
                 }
-                let original = text.to_string();
-                let (prefix, core, suffix) = split_affixes(&original);
-                if core.is_empty() {
-                    continue;
-                }
+                let core = &text[core_start..core_end];
                 let repeat = core.chars().count();
                 if repeat == 0 {
                     continue;
@@ -450,12 +467,12 @@ impl GlitchOp for RedactWordsOp {
                 let weight = if self.unweighted {
                     1.0
                 } else {
-                    direct_length_weight(&core, &original)
+                    direct_length_weight(core, text)
                 };
                 candidates.push(RedactCandidate {
                     index: idx,
-                    prefix,
-                    suffix,
+                    core_start,
+                    core_end,
                     repeat,
                     weight,
                 });
@@ -490,29 +507,39 @@ impl GlitchOp for RedactWordsOp {
 
         for selection in selections {
             let candidate = &candidates[selection];
-            let mut replacement = String::with_capacity(
-                candidate.prefix.len()
-                    + candidate.suffix.len()
-                    + self.replacement_char.len() * candidate.repeat,
-            );
-            replacement.push_str(&candidate.prefix);
-            for _ in 0..candidate.repeat {
-                replacement.push_str(&self.replacement_char);
-            }
-            replacement.push_str(&candidate.suffix);
+            let Some(segment) = buffer.word_segment(candidate.index) else {
+                continue;
+            };
+            let text = segment.text();
+            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
+                && candidate.core_start <= candidate.core_end
+                && candidate.core_start <= text.len()
+            {
+                (candidate.core_start, candidate.core_end, candidate.repeat)
+            } else if let Some((start, end)) = affix_bounds(text) {
+                let repeat = text[start..end].chars().count();
+                if repeat == 0 {
+                    continue;
+                }
+                (start, end, repeat)
+            } else {
+                continue;
+            };
+
+            let prefix = &text[..core_start];
+            let suffix = &text[core_end..];
+            let repeated = self.replacement_char.repeat(repeat);
+            let mut replacement =
+                String::with_capacity(prefix.len() + repeated.len() + suffix.len());
+            replacement.push_str(prefix);
+            replacement.push_str(&repeated);
+            replacement.push_str(suffix);
             buffer.replace_word(candidate.index, &replacement)?;
         }
 
         if self.merge_adjacent {
             let text = buffer.to_string();
-            let pattern = format!(
-                "{}\\W+{}",
-                regex::escape(&self.replacement_char),
-                regex::escape(&self.replacement_char)
-            );
-            let regex = Regex::new(&pattern).map_err(|err| {
-                GlitchOpError::Regex(format!("failed to build merge regex: {err}"))
-            })?;
+            let regex = cached_merge_regex(&self.replacement_char)?;
             let merged = regex
                 .replace_all(&text, |caps: &Captures| {
                     let matched = caps.get(0).map_or("", |m| m.as_str());
