@@ -154,9 +154,19 @@ The refactored Rust pipeline batches compatible glitchlings in a single PyO3 cal
 
    Re-run the command after switching Python versions or pulling changes that touch the Rust sources.
 
-To temporarily fall back to the pure-Python pipeline (for debugging or targeted tests), set `GLITCHLINGS_RUST_PIPELINE` to a falsey value (`0`, `false`, `no`, `off`) before importing `glitchlings`.
+2. Opt out temporarily (for debugging or profiling) by exporting `GLITCHLINGS_RUST_PIPELINE=0` (accepted values: `0`, `false`, `no`, `off`). Any truthy value re-enables the accelerator, while the default is enabled when the extension imports successfully.
 
-The orchestrator automatically groups Typogre, Mim1c, Reduple, Adjax, Rushmore, Redactyl, and Scannequin into the accelerated wave order while leaving incompatible glitchlings (or custom implementations) on the legacy path.
+Supported operations and their Rust counterparts:
+
+- `Reduple` (`type: "reduplicate"`) – deterministic word reduplication with optional length weighting.
+- `Rushmore` (`type: "delete"`) – word deletions that retain punctuation spacing.
+- `Redactyl` (`type: "redact"`) – block-character redactions with merge and weighting controls.
+- `Adjax` (`type: "swap_adjacent"`) – adjacent word-core swaps that respect affixes.
+- `Scannequin` (`type: "ocr"`) – OCR-style confusions sourced from the shared lookup table.
+- `Typogre` (`type: "typo"`) – character-level fat-finger edits preserving the configured keyboard layout.
+- `Zeedub` (`type: "zwj"`) – zero-width glyph injections with per-glitchling palettes.
+
+Glitchlings that do not expose a pipeline descriptor (including custom subclasses) continue to run on the Python orchestrator automatically, and mixed rosters downgrade gracefully when any member lacks Rust support.
 
 
 ## The Gaggle orchestrator

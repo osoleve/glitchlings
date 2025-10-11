@@ -1,6 +1,7 @@
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 use regex::{Captures, Regex};
+use std::collections::HashMap;
 
 use crate::resources::{
     confusion_table, is_whitespace_only, split_affixes, MULTIPLE_WHITESPACE,
@@ -605,6 +606,335 @@ impl GlitchOp for OcrArtifactsOp {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ZeroWidthOp {
+    pub rate: f64,
+    pub characters: Vec<String>,
+}
+
+impl GlitchOp for ZeroWidthOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        let palette: Vec<String> = self
+            .characters
+            .iter()
+            .filter(|value| !value.is_empty())
+            .cloned()
+            .collect();
+        if palette.is_empty() {
+            return Ok(());
+        }
+
+        let text = buffer.to_string();
+        if text.is_empty() {
+            return Ok(());
+        }
+
+        let chars: Vec<char> = text.chars().collect();
+        if chars.len() < 2 {
+            return Ok(());
+        }
+
+        let mut positions: Vec<usize> = Vec::new();
+        for index in 0..(chars.len() - 1) {
+            if !chars[index].is_whitespace() && !chars[index + 1].is_whitespace() {
+                positions.push(index + 1);
+            }
+        }
+
+        if positions.is_empty() {
+            return Ok(());
+        }
+
+        let clamped_rate = if self.rate.is_nan() {
+            0.0
+        } else {
+            self.rate.max(0.0)
+        };
+        if clamped_rate <= 0.0 {
+            return Ok(());
+        }
+
+        let total = positions.len();
+        let mut count = (clamped_rate * total as f64).floor() as usize;
+        let remainder = clamped_rate * total as f64 - count as f64;
+        if remainder > 0.0 && rng.random()? < remainder {
+            count += 1;
+        }
+        if count > total {
+            count = total;
+        }
+        if count == 0 {
+            return Ok(());
+        }
+
+        let mut index_samples = rng.sample_indices(total, count)?;
+        index_samples.sort_unstable();
+        let mut chosen: Vec<usize> = index_samples
+            .into_iter()
+            .map(|sample| positions[sample])
+            .collect();
+
+        let mut result = String::with_capacity(text.len() + count);
+        let mut iter = chosen.into_iter();
+        let mut next = iter.next();
+
+        for (idx, ch) in chars.iter().enumerate() {
+            result.push(*ch);
+            if let Some(insert_pos) = next {
+                if insert_pos == idx + 1 {
+                    let palette_idx = rng.rand_index(palette.len())?;
+                    result.push_str(&palette[palette_idx]);
+                    next = iter.next();
+                }
+            }
+        }
+
+        *buffer = TextBuffer::from_owned(result);
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypoOp {
+    pub rate: f64,
+    pub layout: HashMap<String, Vec<String>>,
+}
+
+impl TypoOp {
+    fn is_word_char(c: char) -> bool {
+        c.is_alphanumeric() || c == '_'
+    }
+
+    fn eligible_idx(chars: &[char], idx: usize) -> bool {
+        if idx == 0 || idx + 1 >= chars.len() {
+            return false;
+        }
+        if !Self::is_word_char(chars[idx]) {
+            return false;
+        }
+        Self::is_word_char(chars[idx - 1]) && Self::is_word_char(chars[idx + 1])
+    }
+
+    fn draw_eligible_index(
+        rng: &mut dyn GlitchRng,
+        chars: &[char],
+        max_tries: usize,
+    ) -> Result<Option<usize>, GlitchOpError> {
+        let n = chars.len();
+        if n == 0 {
+            return Ok(None);
+        }
+
+        for _ in 0..max_tries {
+            let idx = rng.rand_index(n)?;
+            if Self::eligible_idx(chars, idx) {
+                return Ok(Some(idx));
+            }
+        }
+
+        let start = rng.rand_index(n)?;
+        if Self::eligible_idx(chars, start) {
+            return Ok(Some(start));
+        }
+
+        let mut i = (start + 1) % n;
+        while i != start {
+            if Self::eligible_idx(chars, i) {
+                return Ok(Some(i));
+            }
+            i = (i + 1) % n;
+        }
+
+        Ok(None)
+    }
+
+    fn neighbors_for_char(&self, ch: char) -> Vec<String> {
+        let key: String = ch.to_lowercase().collect();
+        self.layout.get(&key).cloned().unwrap_or_default()
+    }
+
+    fn remove_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+        let positions: Vec<usize> = chars
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, ch)| if *ch == ' ' { Some(idx) } else { None })
+            .collect();
+        if positions.is_empty() {
+            return Ok(());
+        }
+        let choice = rng.rand_index(positions.len())?;
+        let idx = positions[choice];
+        if idx < chars.len() {
+            chars.remove(idx);
+        }
+        Ok(())
+    }
+
+    fn insert_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+        if chars.len() < 2 {
+            return Ok(());
+        }
+        let idx = rng.rand_index(chars.len() - 1)? + 1;
+        if idx <= chars.len() {
+            chars.insert(idx, ' ');
+        }
+        Ok(())
+    }
+
+    fn repeat_char(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+        let positions: Vec<usize> = chars
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, ch)| if ch.is_whitespace() { None } else { Some(idx) })
+            .collect();
+        if positions.is_empty() {
+            return Ok(());
+        }
+        let choice = rng.rand_index(positions.len())?;
+        let idx = positions[choice];
+        if idx < chars.len() {
+            let ch = chars[idx];
+            chars.insert(idx, ch);
+        }
+        Ok(())
+    }
+
+    fn collapse_duplicate(
+        rng: &mut dyn GlitchRng,
+        chars: &mut Vec<char>,
+    ) -> Result<(), GlitchOpError> {
+        if chars.len() < 3 {
+            return Ok(());
+        }
+        let mut matches: Vec<usize> = Vec::new();
+        let mut i = 0;
+        while i + 2 < chars.len() {
+            if chars[i] == chars[i + 1] && Self::is_word_char(chars[i + 2]) {
+                matches.push(i);
+                i += 2;
+            } else {
+                i += 1;
+            }
+        }
+        if matches.is_empty() {
+            return Ok(());
+        }
+        let choice = rng.rand_index(matches.len())?;
+        let idx = matches[choice];
+        if idx + 1 < chars.len() {
+            chars.remove(idx + 1);
+        }
+        Ok(())
+    }
+}
+
+impl GlitchOp for TypoOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        let text = buffer.to_string();
+        if text.is_empty() {
+            return Ok(());
+        }
+
+        let clamped_rate = if self.rate.is_nan() {
+            0.0
+        } else {
+            self.rate.max(0.0)
+        };
+        if clamped_rate <= 0.0 {
+            return Ok(());
+        }
+
+        let mut chars: Vec<char> = text.chars().collect();
+        if chars.is_empty() {
+            return Ok(());
+        }
+
+        let mut max_changes = (chars.len() as f64 * clamped_rate).ceil() as usize;
+        if max_changes == 0 {
+            return Ok(());
+        }
+
+        const ACTIONS: [&str; 8] = [
+            "char_swap",
+            "missing_char",
+            "extra_char",
+            "nearby_char",
+            "skipped_space",
+            "random_space",
+            "unichar",
+            "repeated_char",
+        ];
+
+        let mut sequence: Vec<&str> = Vec::with_capacity(max_changes);
+        for _ in 0..max_changes {
+            let idx = rng.rand_index(ACTIONS.len())?;
+            sequence.push(ACTIONS[idx]);
+        }
+
+        for action in sequence {
+            match action {
+                "char_swap" | "missing_char" | "extra_char" | "nearby_char" => {
+                    if let Some(idx) = Self::draw_eligible_index(rng, &chars, 16)? {
+                        match action {
+                            "char_swap" => {
+                                if idx + 1 < chars.len() {
+                                    chars.swap(idx, idx + 1);
+                                }
+                            }
+                            "missing_char" => {
+                                if idx < chars.len() {
+                                    chars.remove(idx);
+                                }
+                            }
+                            "extra_char" => {
+                                if idx <= chars.len() {
+                                    let ch = chars[idx];
+                                    let mut neighbors = self.neighbors_for_char(ch);
+                                    if neighbors.is_empty() {
+                                        neighbors.push(ch.to_string());
+                                    }
+                                    let choice = rng.rand_index(neighbors.len())?;
+                                    let insertion: Vec<char> = neighbors[choice].chars().collect();
+                                    chars.splice(idx..idx, insertion);
+                                }
+                            }
+                            "nearby_char" => {
+                                if idx < chars.len() {
+                                    let neighbors = self.neighbors_for_char(chars[idx]);
+                                    if neighbors.is_empty() {
+                                        continue;
+                                    }
+                                    let choice = rng.rand_index(neighbors.len())?;
+                                    let replacement: Vec<char> =
+                                        neighbors[choice].chars().collect();
+                                    chars.splice(idx..idx + 1, replacement);
+                                }
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                "skipped_space" => {
+                    Self::remove_space(rng, &mut chars)?;
+                }
+                "random_space" => {
+                    Self::insert_space(rng, &mut chars)?;
+                }
+                "unichar" => {
+                    Self::collapse_duplicate(rng, &mut chars)?;
+                }
+                "repeated_char" => {
+                    Self::repeat_char(rng, &mut chars)?;
+                }
+                _ => {}
+            }
+        }
+
+        *buffer = TextBuffer::from_owned(chars.into_iter().collect());
+        Ok(())
+    }
+}
+
 /// Type-erased glitchling operation for pipeline sequencing.
 #[derive(Debug, Clone)]
 pub enum GlitchOperation {
@@ -613,6 +943,8 @@ pub enum GlitchOperation {
     SwapAdjacent(SwapAdjacentWordsOp),
     Redact(RedactWordsOp),
     Ocr(OcrArtifactsOp),
+    Typo(TypoOp),
+    ZeroWidth(ZeroWidthOp),
 }
 
 impl GlitchOp for GlitchOperation {
@@ -623,6 +955,8 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::SwapAdjacent(op) => op.apply(buffer, rng),
             GlitchOperation::Redact(op) => op.apply(buffer, rng),
             GlitchOperation::Ocr(op) => op.apply(buffer, rng),
+            GlitchOperation::Typo(op) => op.apply(buffer, rng),
+            GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
         }
     }
 }

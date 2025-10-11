@@ -61,8 +61,26 @@ BASE_DESCRIPTORS: list[Descriptor] = [
         },
     },
     {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.02}},
-    # {"name": "Zeedub", "operation": {"type": "zwj", "rate": 0.1}},
-    # {"name": "Typogre", "operation": {"type": "typo", "rate": 0.05}},
+    {
+        "name": "Zeedub",
+        "operation": {
+            "type": "zwj",
+            "rate": 0.02,
+            "characters": list(zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS),
+        },
+    },
+    {
+        "name": "Typogre",
+        "operation": {
+            "type": "typo",
+            "rate": 0.02,
+            "keyboard": "CURATOR_QWERTY",
+            "layout": {
+                key: list(value)
+                for key, value in typogre_module.KEYNEIGHBORS.CURATOR_QWERTY.items()
+            },
+        },
+    },
 ]
 
 
@@ -135,18 +153,29 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 rng=rng,
             )
         elif op_type == "zwj":
+            characters = operation.get("characters")
+            if characters is None:
+                characters = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
+            else:
+                characters = tuple(characters)
             current = zeedub_module._python_insert_zero_widths(
                 current,
                 rate=operation["rate"],
                 rng=rng,
-                characters=zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS,
+                characters=characters,
             )
         elif op_type == "typo":
+            keyboard = operation.get("keyboard", "CURATOR_QWERTY")
+            layout_override = operation.get("layout")
+            if layout_override is None:
+                layout = getattr(typogre_module.KEYNEIGHBORS, keyboard)
+            else:
+                layout = {key: list(value) for key, value in layout_override.items()}
             current = typogre_module._fatfinger_python(
                 current,
                 rate=operation["rate"],
                 rng=rng,
-                layout=typogre_module.KEYNEIGHBORS.CURATOR_QWERTY,  # type: ignore[attr-defined]
+                layout=layout,
             )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")

@@ -11,10 +11,11 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyList, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
+use std::collections::HashMap;
 
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
-    ReduplicateWordsOp, SwapAdjacentWordsOp,
+    ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -113,6 +114,14 @@ enum PyGlitchOperation {
     Ocr {
         error_rate: f64,
     },
+    Typo {
+        rate: f64,
+        layout: Vec<(String, Vec<String>)>,
+    },
+    ZeroWidth {
+        rate: f64,
+        characters: Vec<String>,
+    },
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
@@ -204,6 +213,33 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .extract()?;
                 Ok(PyGlitchOperation::Ocr { error_rate })
             }
+            "typo" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("typo operation missing \'rate\' field"))?
+                    .extract()?;
+                let layout_obj = dict.get_item("layout")?.ok_or_else(|| {
+                    PyValueError::new_err("typo operation missing \'layout\' field")
+                })?;
+                let layout_dict: &PyDict = layout_obj.downcast()?;
+                let mut layout: Vec<(String, Vec<String>)> = Vec::new();
+                for (key, value) in layout_dict.iter() {
+                    layout.push((key.extract()?, value.extract()?));
+                }
+                Ok(PyGlitchOperation::Typo { rate, layout })
+            }
+            "zwj" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("zwj operation missing \'rate\' field"))?
+                    .extract()?;
+                let characters = dict
+                    .get_item("characters")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or_default();
+                Ok(PyGlitchOperation::ZeroWidth { rate, characters })
+            }
             other => Err(PyValueError::new_err(format!(
                 "unsupported operation type: {other}"
             ))),
@@ -254,11 +290,7 @@ fn delete_random_words(
 }
 
 #[pyfunction]
-fn swap_adjacent_words(
-    text: &str,
-    swap_rate: f64,
-    rng: &Bound<'_, PyAny>,
-) -> PyResult<String> {
+fn swap_adjacent_words(text: &str, swap_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
     let op = SwapAdjacentWordsOp { swap_rate };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
@@ -312,9 +344,7 @@ fn compose_glitchlings(
                     unweighted,
                 }),
                 PyGlitchOperation::SwapAdjacent { swap_rate } => {
-                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp {
-                        swap_rate,
-                    })
+                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { swap_rate })
                 }
                 PyGlitchOperation::Redact {
                     replacement_char,
@@ -329,6 +359,16 @@ fn compose_glitchlings(
                 }),
                 PyGlitchOperation::Ocr { error_rate } => {
                     GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
+                }
+                PyGlitchOperation::Typo { rate, layout } => {
+                    let layout_map: HashMap<String, Vec<String>> = layout.into_iter().collect();
+                    GlitchOperation::Typo(glitch_ops::TypoOp {
+                        rate,
+                        layout: layout_map,
+                    })
+                }
+                PyGlitchOperation::ZeroWidth { rate, characters } => {
+                    GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
                 }
             };
             Ok(GlitchDescriptor {

@@ -3,6 +3,7 @@ import random
 from typing import Any
 
 from ._rate import resolve_rate
+from ._sampling import weighted_sample_without_replacement
 from ._text_utils import (
     WordToken,
     collect_word_tokens,
@@ -17,41 +18,6 @@ try:
     from glitchlings._zoo_rust import redact_words as _redact_words_rust
 except ImportError:  # pragma: no cover - compiled extension not present
     _redact_words_rust = None
-
-
-def _weighted_sample_without_replacement(
-    population: list[int],
-    weights: list[float],
-    *,
-    k: int,
-    rng: random.Random,
-) -> list[int]:
-    """Select `k` unique indices according to the given weights."""
-
-    selections: list[int] = []
-    items = list(zip(population, weights))
-    if k <= 0 or not items:
-        return selections
-    if k > len(items):
-        raise ValueError("Sample larger than population or is negative")
-
-    for _ in range(k):
-        total_weight = sum(weight for _, weight in items)
-        if total_weight <= 0:
-            chosen_index = rng.randrange(len(items))
-        else:
-            threshold = rng.random() * total_weight
-            cumulative = 0.0
-            chosen_index = len(items) - 1
-            for idx, (_, weight) in enumerate(items):
-                cumulative += weight
-                if cumulative >= threshold:
-                    chosen_index = idx
-                    break
-        value, _ = items.pop(chosen_index)
-        selections.append(value)
-
-    return selections
 
 
 def _python_redact_words(
@@ -94,7 +60,7 @@ def _python_redact_words(
     if num_to_redact <= 0:
         return "".join(tokens)
 
-    indices_to_redact = _weighted_sample_without_replacement(
+    indices_to_redact = weighted_sample_without_replacement(
         population,
         weights,
         k=num_to_redact,

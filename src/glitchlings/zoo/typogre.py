@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Optional
+from typing import Any, Optional
 
 from .core import Glitchling, AttackWave, AttackOrder
 from ._rate import resolve_rate
@@ -203,6 +203,27 @@ class Typogre(Glitchling):
             rate=effective_rate,
             keyboard=keyboard,
         )
+
+    def pipeline_operation(self) -> dict[str, Any] | None:
+        rate = self.kwargs.get("rate")
+        if rate is None:
+            rate = self.kwargs.get("max_change_rate")
+        if rate is None:
+            return None
+
+        keyboard = self.kwargs.get("keyboard", "CURATOR_QWERTY")
+        layout = getattr(KEYNEIGHBORS, str(keyboard), None)
+        if layout is None:
+            return None
+
+        serialized_layout = {key: list(value) for key, value in layout.items()}
+
+        return {
+            "type": "typo",
+            "rate": float(rate),
+            "keyboard": str(keyboard),
+            "layout": serialized_layout,
+        }
 
 
 typogre = Typogre()

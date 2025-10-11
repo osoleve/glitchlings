@@ -266,3 +266,16 @@ def test_zeedub_pipeline_descriptor_filters_custom_characters():
     descriptor = instance.pipeline_operation()
     assert descriptor is not None
     assert descriptor["characters"] == ["\u200b", "\u200c"]
+
+
+def test_typogre_pipeline_descriptor_includes_layout():
+    instance = typogre.clone()
+    instance.set_param("rate", 0.01)
+    instance.set_param("keyboard", "QWERTY")
+    descriptor = instance.pipeline_operation()
+    assert descriptor is not None
+    assert descriptor["type"] == "typo"
+    assert descriptor["keyboard"] == "QWERTY"
+    layout = descriptor["layout"]
+    assert "a" in layout and isinstance(layout["a"], list)
+    assert "q" in layout and all(isinstance(entry, str) for entry in layout["q"])
