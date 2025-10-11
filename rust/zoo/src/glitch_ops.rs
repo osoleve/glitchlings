@@ -748,9 +748,11 @@ impl TypoOp {
         Ok(None)
     }
 
-    fn neighbors_for_char(&self, ch: char) -> Vec<String> {
+    fn neighbors_for_char(&self, ch: char) -> Option<&[String]> {
         let key: String = ch.to_lowercase().collect();
-        self.layout.get(&key).cloned().unwrap_or_default()
+        self.layout
+            .get(key.as_str())
+            .map(|values| values.as_slice())
     }
 
     fn remove_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
@@ -849,84 +851,81 @@ impl GlitchOp for TypoOp {
             return Ok(());
         }
 
-        let mut max_changes = (chars.len() as f64 * clamped_rate).ceil() as usize;
+        let max_changes = (chars.len() as f64 * clamped_rate).ceil() as usize;
         if max_changes == 0 {
             return Ok(());
         }
 
-        const ACTIONS: [&str; 8] = [
-            "char_swap",
-            "missing_char",
-            "extra_char",
-            "nearby_char",
-            "skipped_space",
-            "random_space",
-            "unichar",
-            "repeated_char",
-        ];
-
-        let mut sequence: Vec<&str> = Vec::with_capacity(max_changes);
+        const TOTAL_ACTIONS: usize = 8;
+        let mut actions: Vec<u8> = Vec::with_capacity(max_changes);
         for _ in 0..max_changes {
-            let idx = rng.rand_index(ACTIONS.len())?;
-            sequence.push(ACTIONS[idx]);
+            let action_idx = rng.rand_index(TOTAL_ACTIONS)?;
+            actions.push(action_idx as u8);
         }
 
-        for action in sequence {
-            match action {
-                "char_swap" | "missing_char" | "extra_char" | "nearby_char" => {
+        for action_idx in actions {
+            match action_idx as usize {
+                0 | 1 | 2 | 3 => {
                     if let Some(idx) = Self::draw_eligible_index(rng, &chars, 16)? {
-                        match action {
-                            "char_swap" => {
+                        match action_idx {
+                            0 => {
                                 if idx + 1 < chars.len() {
                                     chars.swap(idx, idx + 1);
                                 }
                             }
-                            "missing_char" => {
+                            1 => {
                                 if idx < chars.len() {
                                     chars.remove(idx);
                                 }
                             }
-                            "extra_char" => {
-                                if idx <= chars.len() {
+                            2 => {
+                                if idx < chars.len() {
                                     let ch = chars[idx];
-                                    let mut neighbors = self.neighbors_for_char(ch);
-                                    if neighbors.is_empty() {
-                                        neighbors.push(ch.to_string());
-                                    }
-                                    let choice = rng.rand_index(neighbors.len())?;
-                                    let insertion: Vec<char> = neighbors[choice].chars().collect();
-                                    chars.splice(idx..idx, insertion);
+                                    let insertion = match self.neighbors_for_char(ch) {
+                                        Some(neighbors) if !neighbors.is_empty() => {
+                                            let choice = rng.rand_index(neighbors.len())?;
+                                            neighbors[choice].clone()
+                                        }
+                                        _ => {
+                                            // Match Python fallback that still advances RNG state.
+                                            rng.rand_index(1)?;
+                                            ch.to_string()
+                                        }
+                                    };
+                                    let insertion_chars: Vec<char> = insertion.chars().collect();
+                                    chars.splice(idx..idx, insertion_chars);
                                 }
                             }
-                            "nearby_char" => {
+                            3 => {
                                 if idx < chars.len() {
-                                    let neighbors = self.neighbors_for_char(chars[idx]);
-                                    if neighbors.is_empty() {
-                                        continue;
+                                    if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
+                                        if neighbors.is_empty() {
+                                            continue;
+                                        }
+                                        let choice = rng.rand_index(neighbors.len())?;
+                                        let replacement: Vec<char> =
+                                            neighbors[choice].chars().collect();
+                                        chars.splice(idx..idx + 1, replacement);
                                     }
-                                    let choice = rng.rand_index(neighbors.len())?;
-                                    let replacement: Vec<char> =
-                                        neighbors[choice].chars().collect();
-                                    chars.splice(idx..idx + 1, replacement);
                                 }
                             }
                             _ => {}
                         }
                     }
                 }
-                "skipped_space" => {
+                4 => {
                     Self::remove_space(rng, &mut chars)?;
                 }
-                "random_space" => {
+                5 => {
                     Self::insert_space(rng, &mut chars)?;
                 }
-                "unichar" => {
+                6 => {
                     Self::collapse_duplicate(rng, &mut chars)?;
                 }
-                "repeated_char" => {
+                7 => {
                     Self::repeat_char(rng, &mut chars)?;
                 }
-                _ => {}
+                _ => unreachable!("action index out of range"),
             }
         }
 
