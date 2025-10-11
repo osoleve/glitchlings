@@ -177,7 +177,7 @@ _How can a computer need reading glasses?_
 
 ### Zeedub
 
-_A whispering glyph parasite that lives in the interstices of codepoints, marking territory with invisible traces._
+_Watch your step around here._
 
 > _**Invisible Ink.**_ Zeedub slips zero-width codepoints between non-space character pairs, forcing models to reason about text whose visible form masks hidden glyphs.
 >
