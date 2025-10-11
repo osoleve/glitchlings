@@ -2,6 +2,39 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use pyo3::Bound;
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock, RwLock};
+
+type CachedLayouts = HashMap<usize, Arc<HashMap<String, Vec<String>>>>;
+
+fn layout_cache() -> &'static RwLock<CachedLayouts> {
+    static CACHE: OnceLock<RwLock<CachedLayouts>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn extract_layout_map(
+    layout: &Bound<'_, PyDict>,
+) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
+    let key = layout.as_ptr() as usize;
+    if let Some(cached) = layout_cache()
+        .read()
+        .expect("layout cache poisoned")
+        .get(&key)
+    {
+        return Ok(cached.clone());
+    }
+
+    let mut materialised: HashMap<String, Vec<String>> = HashMap::new();
+    for (entry_key, entry_value) in layout.iter() {
+        materialised.insert(entry_key.extract()?, entry_value.extract()?);
+    }
+    let arc = Arc::new(materialised);
+
+    let mut guard = layout_cache()
+        .write()
+        .expect("layout cache poisoned during write");
+    let entry = guard.entry(key).or_insert_with(|| arc.clone());
+    Ok(entry.clone())
+}
 
 #[inline]
 fn is_word_char(c: char) -> bool {
@@ -227,12 +260,7 @@ pub(crate) fn fatfinger(
     }
 
     let mut chars: Vec<char> = text.chars().collect();
-    let mut layout_map: HashMap<String, Vec<String>> = HashMap::new();
-    for (key, value) in layout.iter() {
-        let key: String = key.extract()?;
-        let values: Vec<String> = value.extract()?;
-        layout_map.insert(key, values);
-    }
+    let layout_map = extract_layout_map(layout)?;
 
     let length = chars.len();
     let mut max_changes = (length as f64 * max_change_rate).ceil() as usize;
@@ -251,7 +279,7 @@ pub(crate) fn fatfinger(
     for action_idx in actions {
         let action_idx = action_idx as usize;
         if action_idx < POSITIONAL_COUNT {
-            positional_action(rng, action_idx, &mut chars, &layout_map)?;
+            positional_action(rng, action_idx, &mut chars, layout_map.as_ref())?;
         } else {
             let action = match action_idx {
                 4 => "skipped_space",

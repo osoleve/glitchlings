@@ -12,6 +12,7 @@ use pyo3::types::{PyAny, PyDict, PyList, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
 use std::collections::HashMap;
+use std::sync::{Arc, OnceLock, RwLock};
 
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
@@ -92,6 +93,35 @@ impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
     }
 }
 
+type LayoutVecCache = HashMap<usize, Arc<Vec<(String, Vec<String>)>>>;
+
+fn layout_vec_cache() -> &'static RwLock<LayoutVecCache> {
+    static CACHE: OnceLock<RwLock<LayoutVecCache>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<String>)>>> {
+    let key = layout_dict.as_ptr() as usize;
+    if let Some(cached) = layout_vec_cache()
+        .read()
+        .expect("layout vec cache poisoned")
+        .get(&key)
+    {
+        return Ok(cached.clone());
+    }
+
+    let mut materialised: Vec<(String, Vec<String>)> = Vec::with_capacity(layout_dict.len());
+    for (key_obj, value_obj) in layout_dict.iter() {
+        materialised.push((key_obj.extract()?, value_obj.extract()?));
+    }
+    let arc = Arc::new(materialised);
+    let mut guard = layout_vec_cache()
+        .write()
+        .expect("layout vec cache poisoned during write");
+    let entry = guard.entry(key).or_insert_with(|| arc.clone());
+    Ok(entry.clone())
+}
+
 #[derive(Debug)]
 enum PyGlitchOperation {
     Reduplicate {
@@ -116,7 +146,7 @@ enum PyGlitchOperation {
     },
     Typo {
         rate: f64,
-        layout: Vec<(String, Vec<String>)>,
+        layout: Arc<Vec<(String, Vec<String>)>>,
     },
     ZeroWidth {
         rate: f64,
@@ -222,10 +252,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     PyValueError::new_err("typo operation missing \'layout\' field")
                 })?;
                 let layout_dict: &PyDict = layout_obj.downcast()?;
-                let mut layout: Vec<(String, Vec<String>)> = Vec::new();
-                for (key, value) in layout_dict.iter() {
-                    layout.push((key.extract()?, value.extract()?));
-                }
+                let layout = cached_layout_vec(layout_dict)?;
                 Ok(PyGlitchOperation::Typo { rate, layout })
             }
             "zwj" => {
@@ -361,7 +388,8 @@ fn compose_glitchlings(
                     GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
                 }
                 PyGlitchOperation::Typo { rate, layout } => {
-                    let layout_map: HashMap<String, Vec<String>> = layout.into_iter().collect();
+                    let layout_map: HashMap<String, Vec<String>> =
+                        layout.as_ref().iter().cloned().collect();
                     GlitchOperation::Typo(glitch_ops::TypoOp {
                         rate,
                         layout: layout_map,

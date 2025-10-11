@@ -669,7 +669,7 @@ impl GlitchOp for ZeroWidthOp {
 
         let mut index_samples = rng.sample_indices(total, count)?;
         index_samples.sort_unstable();
-        let mut chosen: Vec<usize> = index_samples
+        let chosen: Vec<usize> = index_samples
             .into_iter()
             .map(|sample| positions[sample])
             .collect();
