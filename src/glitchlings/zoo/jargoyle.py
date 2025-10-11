@@ -119,7 +119,7 @@ def substitute_random_synonyms(
 
     Parameters
     - text: Input text.
-    - rate: Max proportion of candidate words to replace (default 0.1).
+    - rate: Max proportion of candidate words to replace (default 0.01).
     - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
       any iterable of those tags, or "any" to include all four. Backends that do
       not differentiate parts of speech simply ignore the setting.

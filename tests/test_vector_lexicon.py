@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from glitchlings.lexicon.vector import VectorLexicon, build_vector_cache, main
+from glitchlings.lexicon.vector import (
+    VectorLexicon,
+    build_vector_cache,
+    load_vector_source,
+    main,
+)
 
 
 @pytest.fixture()
@@ -95,3 +100,94 @@ def test_vector_cache_cli(tmp_path: Path, toy_embeddings: dict[str, list[float]]
         payload = json.load(handle)
 
     assert sorted(payload) == ["alpha", "delta"]
+
+
+def test_vector_cache_cli_case_sensitive_preserves_case(tmp_path: Path) -> None:
+    vectors_path = tmp_path / "vectors.json"
+    output_path = tmp_path / "output.json"
+    tokens_path = tmp_path / "tokens.txt"
+
+    embeddings = {
+        "Alpha": [1.0, 0.0],
+        "alpha": [0.99, 0.01],
+        "Beta": [0.9, 0.1],
+    }
+
+    with vectors_path.open("w", encoding="utf8") as handle:
+        json.dump(embeddings, handle)
+
+    with tokens_path.open("w", encoding="utf8") as handle:
+        handle.write("Alpha\nalpha\n")
+
+    exit_code = main(
+        [
+            "--source",
+            str(vectors_path),
+            "--output",
+            str(output_path),
+            "--tokens",
+            str(tokens_path),
+            "--case-sensitive",
+            "--overwrite",
+        ]
+    )
+
+    assert exit_code == 0
+    with output_path.open("r", encoding="utf8") as handle:
+        payload = json.load(handle)
+
+    assert "Alpha" in payload and "alpha" in payload
+    assert "alpha" in payload["Alpha"]
+
+
+def test_vector_cache_cli_case_sensitive_falls_back_to_lowercase_source(tmp_path: Path) -> None:
+    vectors_path = tmp_path / "vectors.json"
+    output_path = tmp_path / "output.json"
+    tokens_path = tmp_path / "tokens.txt"
+
+    embeddings = {
+        "alpha": [1.0, 0.0],
+        "beta": [0.99, 0.01],
+    }
+
+    with vectors_path.open("w", encoding="utf8") as handle:
+        json.dump(embeddings, handle)
+
+    with tokens_path.open("w", encoding="utf8") as handle:
+        handle.write("Alpha\n")
+
+    exit_code = main(
+        [
+            "--source",
+            str(vectors_path),
+            "--output",
+            str(output_path),
+            "--tokens",
+            str(tokens_path),
+            "--case-sensitive",
+            "--overwrite",
+        ]
+    )
+
+    assert exit_code == 0
+    with output_path.open("r", encoding="utf8") as handle:
+        payload = json.load(handle)
+
+    assert "Alpha" in payload
+    assert "beta" in payload["Alpha"]
+
+
+def test_load_vector_source_expands_user_paths(tmp_path: Path, monkeypatch) -> None:
+    home_dir = tmp_path / "home"
+    home_dir.mkdir()
+    vectors_path = home_dir / "vectors.json"
+
+    embeddings = {"alpha": [1.0, 0.0], "beta": [0.0, 1.0]}
+    with vectors_path.open("w", encoding="utf8") as handle:
+        json.dump(embeddings, handle)
+
+    monkeypatch.setenv("HOME", str(home_dir))
+    monkeypatch.setenv("USERPROFILE", str(home_dir))
+
+    loaded = load_vector_source("~/vectors.json")
+    assert loaded["alpha"] == [1.0, 0.0]

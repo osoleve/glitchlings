@@ -304,14 +304,20 @@ class VectorLexicon(Lexicon):
         self._cache_dirty = False
         self._case_sensitive = case_sensitive
         if normalizer is not None:
-            self._normalizer = normalizer
+            self._lookup_normalizer: Callable[[str], str] = normalizer
+            self._dedupe_normalizer: Callable[[str], str] = normalizer
         elif case_sensitive:
-            self._normalizer = lambda value: value
+            self._lookup_normalizer = str.lower
+            self._dedupe_normalizer = lambda value: value
         else:
-            self._normalizer = lambda value: value.lower()
+            self._lookup_normalizer = str.lower
+            self._dedupe_normalizer = str.lower
 
-    def _normalize(self, word: str) -> str:
-        return self._normalizer(word)
+    def _normalize_for_lookup(self, word: str) -> str:
+        return self._lookup_normalizer(word)
+
+    def _normalize_for_dedupe(self, word: str) -> str:
+        return self._dedupe_normalizer(word)
 
     def _fetch_neighbors(
         self, *, original: str, normalized: str, limit: int
@@ -351,17 +357,26 @@ class VectorLexicon(Lexicon):
             original=original, normalized=normalized, limit=neighbor_limit
         )
         synonyms: list[str] = []
-        seen_normalized: set[str] = set()
-        original_norm = self._normalize(original)
+        seen_candidates: set[str] = set()
+        original_lookup = normalized
+        original_dedupe = self._normalize_for_dedupe(original)
         for candidate, similarity in neighbors:
-            candidate_norm = self._normalize(candidate)
-            if candidate_norm == original_norm:
-                continue
             if similarity < self._min_similarity:
                 continue
-            if candidate_norm in seen_normalized:
+            if self._case_sensitive:
+                if candidate == original:
+                    continue
+                dedupe_key = self._normalize_for_dedupe(candidate)
+                if dedupe_key == original_dedupe:
+                    continue
+            else:
+                candidate_lookup = self._normalize_for_lookup(candidate)
+                if candidate_lookup == original_lookup:
+                    continue
+                dedupe_key = candidate_lookup
+            if dedupe_key in seen_candidates:
                 continue
-            seen_normalized.add(candidate_norm)
+            seen_candidates.add(dedupe_key)
             synonyms.append(candidate)
 
         self._cache[cache_key] = synonyms
@@ -372,14 +387,14 @@ class VectorLexicon(Lexicon):
     def get_synonyms(
         self, word: str, pos: str | None = None, n: int = 5
     ) -> list[str]:
-        normalized = self._normalize(word)
+        normalized = self._normalize_for_lookup(word)
         synonyms = self._ensure_cached(original=word, normalized=normalized)
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
 
     def precompute(self, word: str, *, limit: int | None = None) -> list[str]:
         """Populate the cache for ``word`` and return the stored synonyms."""
 
-        normalized = self._normalize(word)
+        normalized = self._normalize_for_lookup(word)
         return list(
             self._ensure_cached(original=word, normalized=normalized, limit=limit)
         )
@@ -457,7 +472,7 @@ def load_vector_source(spec: str) -> Any:
         model_name = spec.split(":", 1)[1]
         return _load_spacy_language(model_name)
 
-    path = Path(spec)
+    path = Path(spec).expanduser()
     if not path.exists():
         raise RuntimeError(f"Vector source '{spec}' does not exist.")
 
@@ -551,9 +566,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     if args.normalizer == "lower":
-        normalizer: Callable[[str], str] | None = str.lower
+        normalizer: Callable[[str], str] | None = (
+            None if args.case_sensitive else str.lower
+        )
     else:
-        normalizer = None
+        normalizer = lambda value: value
 
     source = load_vector_source(args.source)
     if args.tokens is not None:
