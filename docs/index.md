@@ -12,6 +12,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Typogre](glitchlings/typogre.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Reduple](glitchlings/reduple.md)
+   - [Adjax](glitchlings/adjax.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
@@ -154,7 +155,7 @@ The refactored Rust pipeline batches compatible glitchlings in a single PyO3 cal
 
 To temporarily fall back to the pure-Python pipeline (for debugging or targeted tests), set `GLITCHLINGS_RUST_PIPELINE` to a falsey value (`0`, `false`, `no`, `off`) before importing `glitchlings`.
 
-The orchestrator automatically groups Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin into the accelerated wave order while leaving incompatible glitchlings (or custom implementations) on the legacy path.
+The orchestrator automatically groups Typogre, Mim1c, Reduple, Adjax, Rushmore, Redactyl, and Scannequin into the accelerated wave order while leaving incompatible glitchlings (or custom implementations) on the legacy path.
 
 
 ## The Gaggle orchestrator
@@ -162,7 +163,7 @@ The orchestrator automatically groups Typogre, Mim1c, Reduple, Rushmore, Redacty
 The `Gaggle` class coordinates multiple glitchlings with deterministic sequencing and shared seeding:
 
 - **Seed derivation** – pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
-- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
+- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Adjax, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
 - **Dataset utilities** – after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
 - **Summoning from shorthand** – `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).

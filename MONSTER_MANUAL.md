@@ -277,6 +277,50 @@ _Did you say that or did I?_
 >
 > ---
 
+## Adjax
+
+_Shuffle enough sentences and the truth trips over its own shoelaces._
+
+> Tiny Fey (choreographed), Chaotic Neutral
+>
+> ---
+>
+> _**Perfect Shuffle.**_ Adjax swaps the cores of neighbouring words while leaving punctuation, casing, and spacing glued in place, producing prose that still scans even as the meaning slides sideways.
+>
+> ### Adjax Args
+>
+> - `rate (float)`: Probability that each adjacent pair swaps cores (default: 0.5, 50%).
+> - `swap_rate (float)`: Alias for `rate`, retained for backwards compatibility.
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import adjax
+> >>> print(adjax(sample_text))
+> ```
+>
+> > One morning, when Samsa Gregor woke from dreams troubled, he himself found transformed in his bed into a horrible vermin. He lay on armour-like his back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, thin pitifully compared with the size of the rest of him, waved about helplessly as he looked.
+>
+> ---
+>
+> - **Armor Class** 15 (mirror-bright buckler)
+> - **Hit Points** 12 (5d4 + 5)
+> - **Speed** 30 ft., 120 bpm
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |8 |18 |12 |10 |11 |16 |
+>
+> ---
+>
+> - **Skills** Performance +5, Acrobatics +7
+> - **Condition Immunities** prone (always on its toes)
+> - **Languages** Common, Elvish (spoken backwards)
+> - **Challenge** 2 (450 XP)
+>
+> ---
+
 ## Rushmore
 
 _I accidentally an entire word._

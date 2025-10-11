@@ -58,7 +58,7 @@ The suite covers determinism guarantees, dataset integrations, and parity betwee
 
 ## Rust acceleration
 
-Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
+Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Adjax, Rushmore, Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
 
 ```bash
 # Compile the shared Rust crate (rerun after Rust or Python updates)

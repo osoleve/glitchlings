@@ -10,6 +10,7 @@ from glitchlings import (
     redactyl,
     scannequin,
     zeedub,
+    adjax,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling
 
@@ -55,6 +56,13 @@ def test_rushmore_determinism(sample_text):
     rushmore.set_param("seed", 42)
     rushmore.set_param("rate", 0.01)
     a, b = _twice(rushmore, sample_text)
+    assert a == b
+
+
+def test_adjax_determinism(sample_text):
+    adjax.set_param("seed", 42)
+    adjax.set_param("rate", 0.5)
+    a, b = _twice(adjax, sample_text)
     assert a == b
 
 

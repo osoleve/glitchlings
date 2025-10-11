@@ -14,7 +14,7 @@ use pyo3::{exceptions::PyValueError, FromPyObject};
 
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
-    ReduplicateWordsOp,
+    ReduplicateWordsOp, SwapAdjacentWordsOp,
 };
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -101,6 +101,9 @@ enum PyGlitchOperation {
         max_deletion_rate: f64,
         unweighted: bool,
     },
+    SwapAdjacent {
+        swap_rate: f64,
+    },
     Redact {
         replacement_char: String,
         redaction_rate: f64,
@@ -153,6 +156,15 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     max_deletion_rate: rate,
                     unweighted,
                 })
+            }
+            "swap_adjacent" => {
+                let rate = dict
+                    .get_item("swap_rate")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("swap_adjacent operation missing 'swap_rate'")
+                    })?
+                    .extract()?;
+                Ok(PyGlitchOperation::SwapAdjacent { swap_rate: rate })
             }
             "redact" => {
                 let replacement_char = dict
@@ -242,6 +254,16 @@ fn delete_random_words(
 }
 
 #[pyfunction]
+fn swap_adjacent_words(
+    text: &str,
+    swap_rate: f64,
+    rng: &Bound<'_, PyAny>,
+) -> PyResult<String> {
+    let op = SwapAdjacentWordsOp { swap_rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+}
+
+#[pyfunction]
 fn ocr_artifacts(text: &str, error_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
     let op = OcrArtifactsOp { error_rate };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
@@ -289,6 +311,11 @@ fn compose_glitchlings(
                     max_deletion_rate,
                     unweighted,
                 }),
+                PyGlitchOperation::SwapAdjacent { swap_rate } => {
+                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp {
+                        swap_rate,
+                    })
+                }
                 PyGlitchOperation::Redact {
                     replacement_char,
                     redaction_rate,
@@ -320,6 +347,7 @@ fn compose_glitchlings(
 fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
+    m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;

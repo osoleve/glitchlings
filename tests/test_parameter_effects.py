@@ -2,8 +2,9 @@ import importlib
 import math
 import random
 from typing import cast
-from glitchlings import typogre, mim1c, reduple, rushmore, redactyl, scannequin, zeedub
+from glitchlings import adjax, typogre, mim1c, reduple, rushmore, redactyl, scannequin, zeedub
 
+adjax_module = importlib.import_module("glitchlings.zoo.adjax")
 reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
@@ -138,6 +139,35 @@ def test_rushmore_preserves_leading_token_and_spacing():
         for marker in (" ,", " ;", " :", " ."):
             assert marker not in out
         assert out == out.strip()
+
+
+def test_adjax_full_rate_swaps_word_cores():
+    text = "Alpha, beta! Gamma delta"
+    adjax.set_param("seed", 11)
+    adjax.set_param("rate", 1.0)
+    out = cast(str, adjax(text))
+    assert out == "beta, Alpha! delta Gamma"
+
+
+def test_adjax_python_equivalence():
+    text = "One two three four five six"
+    seed = 17
+    rate = 0.75
+    expected = adjax_module._python_swap_adjacent_words(
+        text,
+        rate=rate,
+        rng=random.Random(seed),
+    )
+    result = adjax_module.swap_adjacent_words(text, rate=rate, seed=seed)
+    assert result == expected
+
+
+def test_adjax_zero_rate_preserves_text():
+    text = "Leave punctuation intact, please."
+    adjax.set_param("seed", 7)
+    adjax.set_param("rate", 0.0)
+    out = cast(str, adjax(text))
+    assert out == text
 
 
 def test_redactyl_replacement_char_and_merge():
