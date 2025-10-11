@@ -39,6 +39,7 @@ __all__ = [
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",
     "parse_glitchling_spec",
+    "get_glitchling_class",
 ]
 
 _HAS_JARGOYLE = _jargoyle_available()
@@ -123,6 +124,20 @@ def parse_glitchling_spec(specification: str) -> Glitchling:
         return glitchling_type(**kwargs)
     except TypeError as exc:
         raise ValueError(f"Failed to instantiate glitchling '{name}': {exc}") from exc
+
+
+def get_glitchling_class(name: str) -> type[Glitchling]:
+    """Look up the glitchling class registered under ``name``."""
+
+    key = name.strip().lower()
+    if not key:
+        raise ValueError("Glitchling name cannot be empty.")
+
+    glitchling_type = _BUILTIN_GLITCHLING_TYPES.get(key)
+    if glitchling_type is None:
+        raise ValueError(f"Glitchling '{name}' not found.")
+
+    return glitchling_type
 
 
 def summon(glitchlings: list[str | Glitchling], seed: int = 151) -> Gaggle:

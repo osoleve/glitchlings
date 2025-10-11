@@ -8,6 +8,7 @@ from pathlib import Path
 import sys
 
 from . import SAMPLE_TEXT
+from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from .zoo import (
     Glitchling,
     Gaggle,
@@ -53,7 +54,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-s",
         "--seed",
         type=int,
-        default=151,
+        default=None,
         help="Seed controlling deterministic corruption order (default: 151).",
     )
     parser.add_argument(
@@ -76,6 +77,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--list",
         action="store_true",
         help="List available glitchlings and exit.",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        help="Load glitchlings from a YAML configuration file.",
     )
     return parser
 
@@ -197,9 +204,26 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
 
 
 def summon_glitchlings(
-    names: list[str] | None, parser: argparse.ArgumentParser, seed: int
+    names: list[str] | None,
+    parser: argparse.ArgumentParser,
+    seed: int | None,
+    *,
+    config_path: Path | None = None,
 ) -> Gaggle:
     """Instantiate the requested glitchlings and bundle them in a ``Gaggle``."""
+
+    if config_path is not None:
+        if names:
+            parser.error("Cannot combine --config with --glitchling.")
+            raise AssertionError("parser.error should exit")
+
+        try:
+            config = load_attack_config(config_path)
+        except (TypeError, ValueError) as exc:
+            parser.error(str(exc))
+            raise AssertionError("parser.error should exit")
+
+        return build_gaggle(config, seed_override=seed)
 
     if names:
         normalized: list[str | Glitchling] = []
@@ -212,8 +236,10 @@ def summon_glitchlings(
     else:
         normalized = DEFAULT_GLITCHLING_NAMES
 
+    effective_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
+
     try:
-        return summon(normalized, seed=seed)
+        return summon(normalized, seed=effective_seed)
     except ValueError as exc:
         parser.error(str(exc))
         raise AssertionError("parser.error should exit")
@@ -255,7 +281,12 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         return 0
 
     text = read_text(args, parser)
-    gaggle = summon_glitchlings(args.glitchlings, parser, args.seed)
+    gaggle = summon_glitchlings(
+        args.glitchlings,
+        parser,
+        args.seed,
+        config_path=args.config,
+    )
 
     corrupted = gaggle(text)
 
