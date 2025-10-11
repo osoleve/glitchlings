@@ -13,6 +13,7 @@ pyo3 = { workspace = true }
 regex = { workspace = true }
 once_cell = { workspace = true }
 blake2 = { workspace = true }
+smallvec = "1"
 
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"

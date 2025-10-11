@@ -1,6 +1,7 @@
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 use regex::{Captures, Regex};
+use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
@@ -783,18 +784,27 @@ impl TypoOp {
     }
 
     fn remove_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
-        let positions: Vec<usize> = chars
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, ch)| if *ch == ' ' { Some(idx) } else { None })
-            .collect();
-        if positions.is_empty() {
+        let mut count = 0usize;
+        for ch in chars.iter() {
+            if *ch == ' ' {
+                count += 1;
+            }
+        }
+        if count == 0 {
             return Ok(());
         }
-        let choice = rng.rand_index(positions.len())?;
-        let idx = positions[choice];
-        if idx < chars.len() {
-            chars.remove(idx);
+        let choice = rng.rand_index(count)?;
+        let mut seen = 0usize;
+        for (idx, ch) in chars.iter().enumerate() {
+            if *ch == ' ' {
+                if seen == choice {
+                    if idx < chars.len() {
+                        chars.remove(idx);
+                    }
+                    break;
+                }
+                seen += 1;
+            }
         }
         Ok(())
     }
@@ -811,19 +821,26 @@ impl TypoOp {
     }
 
     fn repeat_char(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
-        let positions: Vec<usize> = chars
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, ch)| if ch.is_whitespace() { None } else { Some(idx) })
-            .collect();
-        if positions.is_empty() {
+        let mut count = 0usize;
+        for ch in chars.iter() {
+            if !ch.is_whitespace() {
+                count += 1;
+            }
+        }
+        if count == 0 {
             return Ok(());
         }
-        let choice = rng.rand_index(positions.len())?;
-        let idx = positions[choice];
-        if idx < chars.len() {
-            let ch = chars[idx];
-            chars.insert(idx, ch);
+        let choice = rng.rand_index(count)?;
+        let mut seen = 0usize;
+        for idx in 0..chars.len() {
+            if !chars[idx].is_whitespace() {
+                if seen == choice {
+                    let ch = chars[idx];
+                    chars.insert(idx, ch);
+                    break;
+                }
+                seen += 1;
+            }
         }
         Ok(())
     }
@@ -884,13 +901,10 @@ impl GlitchOp for TypoOp {
         }
 
         const TOTAL_ACTIONS: usize = 8;
-        let mut actions: Vec<u8> = Vec::with_capacity(max_changes);
-        for _ in 0..max_changes {
-            let action_idx = rng.rand_index(TOTAL_ACTIONS)?;
-            actions.push(action_idx as u8);
-        }
+        let mut scratch = SmallVec::<[char; 4]>::new();
 
-        for action_idx in actions {
+        for _ in 0..max_changes {
+            let action_idx = rng.rand_index(TOTAL_ACTIONS)? as u8;
             match action_idx as usize {
                 0 | 1 | 2 | 3 => {
                     if let Some(idx) = Self::draw_eligible_index(rng, &chars, 16)? {
@@ -908,19 +922,21 @@ impl GlitchOp for TypoOp {
                             2 => {
                                 if idx < chars.len() {
                                     let ch = chars[idx];
-                                    let insertion = match self.neighbors_for_char(ch) {
+                                    scratch.clear();
+                                    match self.neighbors_for_char(ch) {
                                         Some(neighbors) if !neighbors.is_empty() => {
                                             let choice = rng.rand_index(neighbors.len())?;
-                                            neighbors[choice].clone()
+                                            scratch.extend(neighbors[choice].chars());
                                         }
                                         _ => {
                                             // Match Python fallback that still advances RNG state.
                                             rng.rand_index(1)?;
-                                            ch.to_string()
+                                            scratch.push(ch);
                                         }
-                                    };
-                                    let insertion_chars: Vec<char> = insertion.chars().collect();
-                                    chars.splice(idx..idx, insertion_chars);
+                                    }
+                                    if !scratch.is_empty() {
+                                        chars.splice(idx..idx, scratch.iter().copied());
+                                    }
                                 }
                             }
                             3 => {
@@ -930,9 +946,11 @@ impl GlitchOp for TypoOp {
                                             continue;
                                         }
                                         let choice = rng.rand_index(neighbors.len())?;
-                                        let replacement: Vec<char> =
-                                            neighbors[choice].chars().collect();
-                                        chars.splice(idx..idx + 1, replacement);
+                                        scratch.clear();
+                                        scratch.extend(neighbors[choice].chars());
+                                        if !scratch.is_empty() {
+                                            chars.splice(idx..idx + 1, scratch.iter().copied());
+                                        }
                                     }
                                 }
                             }
