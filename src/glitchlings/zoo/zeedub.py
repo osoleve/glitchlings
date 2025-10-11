@@ -102,6 +102,7 @@ def insert_zero_widths(
 
     if _inject_zero_widths_rust is not None:
         state = None
+        python_state = None
         if hasattr(rng, "getstate") and hasattr(rng, "setstate"):
             state = rng.getstate()
         python_result = _python_insert_zero_widths(
@@ -111,10 +112,14 @@ def insert_zero_widths(
             characters=cleaned_palette,
         )
         if state is not None:
+            if hasattr(rng, "getstate"):
+                python_state = rng.getstate()
             rng.setstate(state)
         rust_result = _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
         if rust_result == python_result:
             return rust_result
+        if python_state is not None and hasattr(rng, "setstate"):
+            rng.setstate(python_state)
         return python_result
 
     return _python_insert_zero_widths(
