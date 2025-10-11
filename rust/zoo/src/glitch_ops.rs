@@ -795,15 +795,19 @@ impl TypoOp {
         }
         let choice = rng.rand_index(count)?;
         let mut seen = 0usize;
+        let mut target: Option<usize> = None;
         for (idx, ch) in chars.iter().enumerate() {
             if *ch == ' ' {
                 if seen == choice {
-                    if idx < chars.len() {
-                        chars.remove(idx);
-                    }
+                    target = Some(idx);
                     break;
                 }
                 seen += 1;
+            }
+        }
+        if let Some(idx) = target {
+            if idx < chars.len() {
+                chars.remove(idx);
             }
         }
         Ok(())

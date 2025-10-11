@@ -28,6 +28,7 @@ _ensure_datasets_stub()
 import importlib
 import random
 
+adjax_module = importlib.import_module("glitchlings.zoo.adjax")
 reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
@@ -82,6 +83,101 @@ BASE_DESCRIPTORS: list[Descriptor] = [
         },
     },
 ]
+
+
+def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
+    """Return a deep-ish copy of descriptor templates suitable for reuse."""
+
+    return [
+        {
+            "name": descriptor["name"],
+            "operation": dict(descriptor["operation"]),
+        }
+        for descriptor in descriptors
+    ]
+
+
+def _descriptor_template(name: str) -> Descriptor:
+    """Fetch a descriptor template by name from the baseline set."""
+
+    for descriptor in BASE_DESCRIPTORS:
+        if descriptor["name"] == name:
+            return {
+                "name": name,
+                "operation": dict(descriptor["operation"]),
+            }
+    raise KeyError(f"Unknown descriptor template: {name}")
+
+
+def _make_descriptor(name: str, **operation_overrides: object) -> Descriptor:
+    descriptor = _descriptor_template(name)
+    descriptor["operation"].update(operation_overrides)
+    return descriptor
+
+
+def _baseline_descriptors() -> list[Descriptor]:
+    return _clone_descriptors(BASE_DESCRIPTORS)
+
+
+def _shuffle_mix_descriptors() -> list[Descriptor]:
+    descriptors = _clone_descriptors(BASE_DESCRIPTORS)
+    descriptors.insert(
+        2,
+        {
+            "name": "Adjax",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.35},
+        },
+    )
+    return descriptors
+
+
+def _aggressive_cleanup_descriptors() -> list[Descriptor]:
+    return [
+        _make_descriptor("Rushmore", max_deletion_rate=0.03),
+        {
+            "name": "Adjax-Deep",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.6},
+        },
+        {
+            "name": "Redactyl-Deep",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_module.FULL_BLOCK,
+                "redaction_rate": 0.12,
+                "merge_adjacent": True,
+            },
+        },
+        _make_descriptor("Scannequin", error_rate=0.03),
+        _make_descriptor("Typogre", rate=0.03),
+    ]
+
+
+def _stealth_noise_descriptors() -> list[Descriptor]:
+    return [
+        _make_descriptor("Typogre", rate=0.025),
+        _make_descriptor("Zeedub", rate=0.035),
+        {
+            "name": "Adjax-Lite",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.25},
+        },
+        {
+            "name": "Redactyl-Lite",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_module.FULL_BLOCK,
+                "redaction_rate": 0.02,
+                "merge_adjacent": False,
+            },
+        },
+    ]
+
+
+SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
+    "baseline": _baseline_descriptors,
+    "shuffle_mix": _shuffle_mix_descriptors,
+    "aggressive_cleanup": _aggressive_cleanup_descriptors,
+    "stealth_noise": _stealth_noise_descriptors,
+}
 
 
 def _seeded_descriptors(
@@ -177,6 +273,13 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 rng=rng,
                 layout=layout,
             )
+        elif op_type == "swap_adjacent":
+            swap_rate = operation.get("swap_rate", operation.get("rate", 0.5))
+            current = adjax_module._python_swap_adjacent_words(
+                current,
+                rate=float(swap_rate),
+                rng=rng,
+            )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
@@ -224,35 +327,62 @@ def _format_stats(stats: BenchmarkStatistics) -> str:
     return f"{stats.mean_ms:8.3f} ms (σ={stats.stdev_ms:5.3f} ms)"
 
 
-def _print_results(results: Sequence[BenchmarkResult]) -> None:
+def _format_table_stats(stats: BenchmarkStatistics) -> str:
+    return f"{stats.mean_ms:7.3f} ms (σ={stats.stdev_ms:5.3f})"
+
+
+def _print_results(scenario: str, results: Sequence[BenchmarkResult]) -> None:
+    print(f"\n=== Scenario: {scenario} ===")
+    header = (
+        "| Text size | Characters | Python (ms)           | Rust (ms)             | Speedup |\n"
+        "| ---       | ---:       | ---:                  | ---:                  | ---:    |"
+    )
+    print(header)
     for result in results:
-        print(f"\nText size: {result.label} ({result.char_count} chars)")
-        print(f"  Python pipeline : {_format_stats(result.python)}")
+        python_cell = _format_table_stats(result.python)
         if result.rust is None:
-            print("  Rust pipeline   : unavailable (extension not built)")
+            rust_cell = "unavailable"
+            speedup_cell = "N/A"
         else:
-            print(f"  Rust pipeline   : {_format_stats(result.rust)}")
+            rust_cell = _format_table_stats(result.rust)
+            speedup_value = (
+                result.python.mean_seconds / result.rust.mean_seconds
+                if result.rust.mean_seconds > 0
+                else float("inf")
+            )
+            speedup_cell = f"{speedup_value:5.2f}x"
+        print(
+            f"| {result.label:<9} | {result.char_count:10d} | {python_cell:<21} | {rust_cell:<21} | {speedup_cell:>6} |"
+        )
 
 
 def collect_benchmark_results(
     texts: Iterable[tuple[str, str]] | None = None,
     iterations: int = DEFAULT_ITERATIONS,
+    descriptors: Sequence[Descriptor] | None = None,
 ) -> list[BenchmarkResult]:
     """Return structured benchmark results without printing to stdout."""
 
     samples = tuple(DEFAULT_TEXTS if texts is None else texts)
+    descriptor_template: tuple[Descriptor, ...] = tuple(
+        _clone_descriptors(
+            descriptors if descriptors is not None else BASE_DESCRIPTORS
+        )
+    )
 
     results: list[BenchmarkResult] = []
     for label, text in samples:
         python_subject = lambda text=text: _python_pipeline(
-            text, BASE_DESCRIPTORS, MASTER_SEED
+            text,
+            _clone_descriptors(descriptor_template),
+            MASTER_SEED,
         )
         python_stats = _time_subject(python_subject, iterations)
         rust_stats: BenchmarkStatistics | None = None
         if zoo_rust is not None:
             rust_subject = lambda text=text: zoo_rust.compose_glitchlings(
                 text,
-                _seeded_descriptors(MASTER_SEED, BASE_DESCRIPTORS),
+                _seeded_descriptors(MASTER_SEED, descriptor_template),
                 MASTER_SEED,
             )
             rust_stats = _time_subject(rust_subject, iterations)
@@ -267,8 +397,16 @@ def collect_benchmark_results(
     return results
 
 
-def run_benchmarks(texts: Iterable[tuple[str, str]], iterations: int) -> None:
-    _print_results(collect_benchmark_results(texts, iterations))
+def run_benchmarks(
+    scenarios: Sequence[str], texts: Iterable[tuple[str, str]], iterations: int
+) -> None:
+    for scenario in scenarios:
+        builder = SCENARIOS.get(scenario)
+        if builder is None:
+            raise KeyError(f"Unknown scenario: {scenario}")
+        descriptor_set = builder()
+        results = collect_benchmark_results(texts, iterations, descriptor_set)
+        _print_results(scenario, results)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -279,8 +417,27 @@ def main(argv: list[str] | None = None) -> int:
         default=DEFAULT_ITERATIONS,
         help=f"Number of timing samples to collect for each text size (default: {DEFAULT_ITERATIONS})",
     )
+    parser.add_argument(
+        "--scenario",
+        action="append",
+        dest="scenarios",
+        choices=sorted(SCENARIOS.keys()),
+        help="Scenario(s) to benchmark (can be passed multiple times; default: all).",
+    )
+    parser.add_argument(
+        "--list-scenarios",
+        action="store_true",
+        help="List available benchmark scenarios and exit.",
+    )
     args = parser.parse_args(argv)
-    run_benchmarks(DEFAULT_TEXTS, args.iterations)
+
+    if args.list_scenarios:
+        for key in SCENARIOS:
+            print(key)
+        return 0
+
+    selected_scenarios = args.scenarios or list(SCENARIOS.keys())
+    run_benchmarks(selected_scenarios, DEFAULT_TEXTS, args.iterations)
     return 0
 
 
