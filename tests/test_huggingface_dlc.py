@@ -55,6 +55,20 @@ def test_dataset_glitch_accepts_gaggle() -> None:
     assert list(dataset)[0]["text"] == "alpha"
 
 
+def test_dataset_glitch_accepts_multiple_columns() -> None:
+    dataset = Dataset.from_dict({"text": ["alpha", "beta"], "notes": ["one", "two"]})
+    glitchling = Glitchling("rngster", append_rng_token, AttackWave.SENTENCE, seed=1337)
+    gaggle = Gaggle([glitchling], seed=21)
+
+    corrupted = list(dataset.glitch(gaggle, column=("text", "notes")))
+
+    comparison = list(Gaggle([glitchling.clone()], seed=21).corrupt_dataset(dataset, ["text", "notes"]))
+    assert corrupted == comparison
+    original_rows = list(dataset)
+    assert original_rows[0]["text"] == "alpha"
+    assert original_rows[0]["notes"] == "one"
+
+
 def test_dataset_glitch_accepts_names_and_respects_seed() -> None:
     dataset = Dataset.from_dict({"text": ["alpha", "beta"]})
 

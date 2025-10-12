@@ -1,3 +1,4 @@
+import io
 import textwrap
 from pathlib import Path
 
@@ -110,6 +111,22 @@ def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch
     assert config.lexicon.graph_cache == (config_path.parent / "graph.json").resolve()
 
 
+def test_get_config_rejects_non_sequence_priority(monkeypatch, tmp_path):
+    config_path = tmp_path / "bad_priority.toml"
+    config_path.write_text(
+        "[lexicon]\npriority = \"vector\"\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
+    reset_config()
+    try:
+        with pytest.raises(ValueError, match="priority must be a sequence"):
+            get_config()
+    finally:
+        reset_config()
+        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+
 def test_load_attack_config_errors_for_missing_file(tmp_path):
     missing = tmp_path / "nope.yaml"
     with pytest.raises(ValueError, match="was not found"):
@@ -131,3 +148,49 @@ def test_load_attack_config_requires_integer_seed(tmp_path):
     )
     with pytest.raises(ValueError, match="Seed in"):
         load_attack_config(bad_seed)
+
+
+def test_load_attack_config_supports_parameters_section() -> None:
+    yaml_stream = io.StringIO(
+        textwrap.dedent(
+            """
+            seed: 11
+            glitchlings:
+              - name: Typogre
+                parameters:
+                  rate: 0.05
+                  keyboard: COLEMAK
+              - type: Rushmore
+                parameters:
+                  max_deletion_rate: 0.15
+                  unweighted: true
+            """
+        )
+    )
+    config = load_attack_config(yaml_stream)
+
+    assert config.seed == 11
+    assert len(config.glitchlings) == 2
+
+    first, second = config.glitchlings
+    assert isinstance(first, Typogre)
+    assert pytest.approx(first.kwargs["rate"], rel=1e-6) == 0.05
+    assert first.kwargs["keyboard"] == "COLEMAK"
+
+    assert second.name == "Rushmore"
+    assert pytest.approx(second.kwargs["rate"], rel=1e-6) == 0.15
+    assert second.kwargs["unweighted"] is True
+
+
+def test_load_attack_config_parameters_must_be_mapping() -> None:
+    yaml_stream = io.StringIO(
+        textwrap.dedent(
+            """
+            glitchlings:
+              - name: Typogre
+                parameters: 1
+            """
+        )
+    )
+    with pytest.raises(ValueError, match="parameters must be a mapping"):
+        load_attack_config(yaml_stream)
