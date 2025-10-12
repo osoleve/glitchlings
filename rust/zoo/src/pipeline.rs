@@ -68,6 +68,57 @@ impl Pipeline {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GagglePlanEntry {
+    pub index: usize,
+    pub seed: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct GagglePlanInput {
+    pub index: usize,
+    pub name: String,
+    pub scope: i32,
+    pub order: i32,
+}
+
+struct PlannedGlitchling {
+    index: usize,
+    name: String,
+    scope: i32,
+    order: i32,
+    seed: u64,
+}
+
+pub fn plan_gaggle(inputs: Vec<GagglePlanInput>, master_seed: i128) -> Vec<GagglePlanEntry> {
+    let mut planned: Vec<PlannedGlitchling> = inputs
+        .into_iter()
+        .map(|input| PlannedGlitchling {
+            seed: derive_seed(master_seed, &input.name, input.index as i128),
+            index: input.index,
+            name: input.name,
+            scope: input.scope,
+            order: input.order,
+        })
+        .collect();
+
+    planned.sort_by(|left, right| {
+        left.scope
+            .cmp(&right.scope)
+            .then(left.order.cmp(&right.order))
+            .then(left.name.cmp(&right.name))
+            .then(left.index.cmp(&right.index))
+    });
+
+    planned
+        .into_iter()
+        .map(|item| GagglePlanEntry {
+            index: item.index,
+            seed: item.seed,
+        })
+        .collect()
+}
+
 pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
     let mut hasher = Blake2s::<U8>::new();
     Digest::update(&mut hasher, int_to_bytes(master_seed));
@@ -109,7 +160,9 @@ fn int_to_bytes(value: i128) -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
-    use super::{derive_seed, GlitchDescriptor, Pipeline};
+    use super::{
+        derive_seed, plan_gaggle, GagglePlanEntry, GagglePlanInput, GlitchDescriptor, Pipeline,
+    };
     use crate::glitch_ops::{
         DeleteRandomWordsOp, GlitchOperation, OcrArtifactsOp, RedactWordsOp, ReduplicateWordsOp,
         SwapAdjacentWordsOp,
@@ -221,5 +274,56 @@ mod tests {
             .run("Echo this line please")
             .expect("pipeline succeeds");
         assert_eq!(output, "this Echo please line");
+    }
+
+    #[test]
+    fn plan_gaggle_orders_by_scope_order_and_name() {
+        let master_seed = 5151i128;
+        let inputs = vec![
+            GagglePlanInput {
+                index: 0,
+                name: "Typogre".to_string(),
+                scope: 5,
+                order: 3,
+            },
+            GagglePlanInput {
+                index: 1,
+                name: "Reduple".to_string(),
+                scope: 4,
+                order: 3,
+            },
+            GagglePlanInput {
+                index: 2,
+                name: "Rushmore".to_string(),
+                scope: 4,
+                order: 2,
+            },
+            GagglePlanInput {
+                index: 3,
+                name: "Mim1c".to_string(),
+                scope: 5,
+                order: 2,
+            },
+        ];
+        let plan = plan_gaggle(inputs, master_seed);
+        let expected = vec![
+            GagglePlanEntry {
+                index: 2,
+                seed: derive_seed(master_seed, "Rushmore", 2),
+            },
+            GagglePlanEntry {
+                index: 1,
+                seed: derive_seed(master_seed, "Reduple", 1),
+            },
+            GagglePlanEntry {
+                index: 3,
+                seed: derive_seed(master_seed, "Mim1c", 3),
+            },
+            GagglePlanEntry {
+                index: 0,
+                seed: derive_seed(master_seed, "Typogre", 0),
+            },
+        ];
+        assert_eq!(plan, expected);
     }
 }

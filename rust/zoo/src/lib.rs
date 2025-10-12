@@ -123,6 +123,47 @@ fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<Stri
 }
 
 #[derive(Debug)]
+struct PyGagglePlanInput {
+    name: String,
+    scope: i32,
+    order: i32,
+}
+
+impl<'py> FromPyObject<'py> for PyGagglePlanInput {
+    fn extract(obj: &'py PyAny) -> PyResult<Self> {
+        if let Ok(dict) = obj.downcast::<PyDict>() {
+            let name: String = dict
+                .get_item("name")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'name' field"))?
+                .extract()?;
+            let scope: i32 = dict
+                .get_item("scope")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'scope' field"))?
+                .extract()?;
+            let order: i32 = dict
+                .get_item("order")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'order' field"))?
+                .extract()?;
+            return Ok(Self { name, scope, order });
+        }
+
+        let name = obj
+            .getattr("name")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'name'"))?
+            .extract()?;
+        let scope = obj
+            .getattr("scope")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'scope'"))?
+            .extract()?;
+        let order = obj
+            .getattr("order")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'order'"))?
+            .extract()?;
+        Ok(Self { name, scope, order })
+    }
+}
+
+#[derive(Debug)]
 enum PyGlitchOperation {
     Reduplicate {
         reduplication_rate: f64,
@@ -347,6 +388,30 @@ fn redact_words(
 }
 
 #[pyfunction]
+fn plan_glitchlings(
+    glitchlings: Vec<PyGagglePlanInput>,
+    master_seed: i128,
+) -> PyResult<Vec<(usize, u64)>> {
+    let plan = pipeline::plan_gaggle(
+        glitchlings
+            .into_iter()
+            .enumerate()
+            .map(|(index, input)| pipeline::GagglePlanInput {
+                index,
+                name: input.name,
+                scope: input.scope,
+                order: input.order,
+            })
+            .collect(),
+        master_seed,
+    );
+    Ok(plan
+        .into_iter()
+        .map(|entry| (entry.index, entry.seed))
+        .collect())
+}
+
+#[pyfunction]
 fn compose_glitchlings(
     text: &str,
     descriptors: Vec<PyGlitchDescriptor>,
@@ -418,6 +483,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
+    m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;

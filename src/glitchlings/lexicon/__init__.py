@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from hashlib import blake2s
+from pathlib import Path
 import random
 from typing import Callable, Iterable
 
 from glitchlings.config import get_config
+from ._cache import CacheEntries, CacheSnapshot
 
 
 class Lexicon(ABC):
@@ -77,6 +79,21 @@ class Lexicon(ABC):
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation
         return f"{self.__class__.__name__}(seed={self._seed!r})"
+
+
+class LexiconBackend(Lexicon):
+    """Extended lexicon interface that supports cache persistence."""
+
+    Cache = CacheEntries
+
+    @classmethod
+    @abstractmethod
+    def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        """Return a validated cache snapshot loaded from ``path``."""
+
+    @abstractmethod
+    def save_cache(self, path: str | Path | None = None) -> Path | None:
+        """Persist the backend cache to ``path`` and return the destination."""
 
 
 from .graph import GraphLexicon
@@ -176,6 +193,7 @@ def get_default_lexicon(seed: int | None = None) -> Lexicon:
 
 __all__ = [
     "Lexicon",
+    "LexiconBackend",
     "VectorLexicon",
     "GraphLexicon",
     "WordNetLexicon",

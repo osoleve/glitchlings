@@ -171,6 +171,35 @@ impl TextBuffer {
         Ok(())
     }
 
+    /// Replace multiple words in a single pass, avoiding repeated reindexing.
+    pub fn replace_words_bulk<I>(
+        &mut self,
+        replacements: I,
+    ) -> Result<(), TextBufferError>
+    where
+        I: IntoIterator<Item = (usize, String)>,
+    {
+        let mut applied_any = false;
+        for (word_index, replacement) in replacements {
+            let segment_index = self
+                .word_segment_indices
+                .get(word_index)
+                .copied()
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+            let segment = self
+                .segments
+                .get_mut(segment_index)
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+            segment.set_text(replacement, SegmentKind::Word);
+            applied_any = true;
+        }
+
+        if applied_any {
+            self.reindex();
+        }
+        Ok(())
+    }
+
     /// Deletes the word at the requested index.
     pub fn delete_word(&mut self, word_index: usize) -> Result<(), TextBufferError> {
         let segment_index = self
@@ -400,6 +429,22 @@ mod tests {
         assert_eq!(buffer.to_string(), "Hello, there world");
         assert_eq!(buffer.word_count(), 3);
         assert_eq!(buffer.spans().len(), 5);
+    }
+
+    #[test]
+    fn bulk_replace_words_updates_multiple_entries() {
+        let mut buffer = TextBuffer::from_str("alpha beta gamma delta");
+        buffer
+            .replace_words_bulk(vec![
+                (0, "delta".to_string()),
+                (3, "alpha".to_string()),
+            ])
+            .expect("bulk replace succeeds");
+        assert_eq!(buffer.to_string(), "delta beta gamma alpha");
+        let spans = buffer.spans();
+        assert_eq!(spans[0].char_range, 0..5);
+        assert_eq!(spans.len(), 7);
+        assert_eq!(spans.last().unwrap().char_range, 17..22);
     }
 
     #[test]

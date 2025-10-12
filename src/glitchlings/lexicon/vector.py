@@ -10,7 +10,8 @@ from pathlib import Path
 import sys
 from typing import Any, Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 
-from . import Lexicon
+from . import LexiconBackend
+from ._cache import CacheSnapshot, load_cache as _load_cache_file, write_cache as _write_cache_file
 
 
 def _cosine_similarity(vector_a: Sequence[float], vector_b: Sequence[float]) -> float:
@@ -241,38 +242,7 @@ def _resolve_source(source: Any | None) -> _Adapter | None:
     raise RuntimeError("Unsupported vector source supplied to VectorLexicon.")
 
 
-def _load_cache(path: Path) -> dict[str, list[str]]:
-    """Load a synonym cache from ``path`` if it exists."""
-
-    if not path.exists():
-        return {}
-
-    with path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
-
-    if not isinstance(payload, Mapping):
-        raise RuntimeError("Synonym cache must be a JSON mapping of strings to lists.")
-
-    cache: dict[str, list[str]] = {}
-    for key, values in payload.items():
-        if not isinstance(key, str):
-            raise RuntimeError("Synonym cache keys must be strings.")
-        if not isinstance(values, Sequence):
-            raise RuntimeError("Synonym cache values must be lists of strings.")
-        cache[key] = [str(value) for value in values]
-
-    return cache
-
-
-def _write_cache(path: Path, cache: Mapping[str, Sequence[str]]) -> None:
-    """Write ``cache`` to ``path`` deterministically."""
-
-    serialisable = {key: list(values) for key, values in sorted(cache.items())}
-    with path.open("w", encoding="utf8") as handle:
-        json.dump(serialisable, handle, ensure_ascii=False, indent=2, sort_keys=True)
-
-
-class VectorLexicon(Lexicon):
+class VectorLexicon(LexiconBackend):
     """Lexicon implementation backed by dense word embeddings."""
 
     def __init__(
@@ -292,9 +262,13 @@ class VectorLexicon(Lexicon):
         self._max_neighbors = max(1, max_neighbors)
         self._min_similarity = min_similarity
         self._cache: MutableMapping[str, list[str]] = {}
+        self._cache_path: Path | None
+        self._cache_checksum: str | None = None
         if cache_path is not None:
             path = Path(cache_path)
-            self._cache.update(_load_cache(path))
+            snapshot = _load_cache_file(path)
+            self._cache.update(snapshot.entries)
+            self._cache_checksum = snapshot.checksum
             self._cache_path = path
         else:
             self._cache_path = None
@@ -411,6 +385,12 @@ class VectorLexicon(Lexicon):
 
         return {key: list(values) for key, values in self._cache.items()}
 
+    @classmethod
+    def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        """Load and validate a cache file for reuse."""
+
+        return _load_cache_file(Path(path))
+
     def save_cache(self, path: str | Path | None = None) -> Path:
         """Persist the current cache to disk, returning the path used."""
 
@@ -422,7 +402,8 @@ class VectorLexicon(Lexicon):
             target = Path(path)
             self._cache_path = target
 
-        _write_cache(target, self._cache)
+        snapshot = _write_cache_file(target, self._cache)
+        self._cache_checksum = snapshot.checksum
         self._cache_dirty = False
         return target
 

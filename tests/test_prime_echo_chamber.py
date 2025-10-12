@@ -169,6 +169,11 @@ class _RecordingGaggle:
         return dataset
 
 
+def test_resolve_environment_rejects_invalid_type():
+    with pytest.raises(TypeError, match="Invalid environment type"):
+        prime._resolve_environment(object())
+
+
 
 def test_prime_resolve_columns_handles_streaming_dataset():
     row = {"context": "alpha", "score": 1, "response": "beta"}
@@ -256,6 +261,83 @@ def test_similarity_handles_identical_and_extreme_inputs() -> None:
     both_empty = prime.symmetric_damerau_levenshtein_similarity(None, "", "")
     assert empty_answer == 0.0
     assert both_empty == 1.0
+
+
+def test_echo_chamber_uses_custom_reward(monkeypatch: pytest.MonkeyPatch) -> None:
+    base_dataset = Dataset.from_dict({"text": ["alpha"]})
+
+    def _fake_load_dataset(*args, **kwargs):
+        return base_dataset
+
+    datasets_stub = types.ModuleType("datasets")
+    datasets_stub.Dataset = Dataset
+    datasets_stub.DatasetDict = dict
+    datasets_stub.load_dataset = _fake_load_dataset
+    monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+
+    recorder = _RecordingGaggle()
+    monkeypatch.setattr(prime, "_as_gaggle", lambda glitchlings, seed: recorder)
+
+    def custom_reward(*_args, **_kwargs) -> float:
+        return 0.0
+
+    env = prime.echo_chamber(
+        dataset_id="stub/dataset",
+        column="text",
+        glitchlings=["Typogre"],
+        reward_function=custom_reward,
+    )
+
+    assert env.rubric.funcs == [custom_reward]
+    assert recorder.columns_seen == [["prompt"]]
+
+
+def test_echo_chamber_passes_split_to_loader(monkeypatch: pytest.MonkeyPatch) -> None:
+    base_dataset = Dataset.from_dict({"text": ["alpha"]})
+    captured: dict[str, object] = {}
+
+    def _fake_load_dataset(dataset_id, *, split=None, **kwargs):
+        captured["split"] = split
+        return base_dataset
+
+    datasets_stub = types.ModuleType("datasets")
+    datasets_stub.Dataset = Dataset
+    datasets_stub.DatasetDict = dict
+    datasets_stub.load_dataset = _fake_load_dataset
+    monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+
+    monkeypatch.setattr(prime, "_as_gaggle", lambda glitchlings, seed: _RecordingGaggle())
+
+    prime.echo_chamber(
+        dataset_id="stub/dataset",
+        column="text",
+        glitchlings=["Typogre"],
+        split="train",
+    )
+
+    assert captured["split"] == "train"
+
+
+def test_echo_chamber_requires_non_empty_column(monkeypatch: pytest.MonkeyPatch) -> None:
+    empty_dataset = Dataset.from_dict({"text": [None, None]})
+
+    def _fake_load_dataset(*args, **kwargs):
+        return empty_dataset
+
+    datasets_stub = types.ModuleType("datasets")
+    datasets_stub.Dataset = Dataset
+    datasets_stub.DatasetDict = dict
+    datasets_stub.load_dataset = _fake_load_dataset
+    monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+
+    monkeypatch.setattr(prime, "_as_gaggle", lambda *args, **kwargs: _RecordingGaggle())
+
+    with pytest.raises(ValueError, match="did not yield any textual entries"):
+        prime.echo_chamber(
+            dataset_id="stub/dataset",
+            column="text",
+            glitchlings=["Typogre"],
+        )
 def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     base_dataset = Dataset.from_dict({
         "text": ["alpha", None, "beta"],

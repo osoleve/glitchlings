@@ -18,9 +18,13 @@ else:
     _datasets_error = None
 
 try:  # pragma: no cover - optional dependency
-    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
+    from glitchlings._zoo_rust import (
+        compose_glitchlings as _compose_glitchlings_rust,
+        plan_glitchlings as _plan_glitchlings_rust,
+    )
 except ImportError:  # pragma: no cover - compiled extension not present
     _compose_glitchlings_rust = None
+    _plan_glitchlings_rust = None
 
 
 log = logging.getLogger(__name__)
@@ -46,6 +50,76 @@ def _pipeline_feature_flag_enabled() -> bool:
         return True
 
     return True
+
+def _plan_glitchlings_python(
+    specs: list[dict[str, Any]],
+    master_seed: int,
+) -> list[tuple[int, int]]:
+    """Pure-Python fallback for orchestrating glitchlings in deterministic order."""
+
+    master_seed_int = int(master_seed)
+    planned: list[tuple[int, int, int, int, str]] = []
+    for index, spec in enumerate(specs):
+        name = str(spec["name"])
+        scope = int(spec["scope"])
+        order = int(spec["order"])
+        derived_seed = Gaggle.derive_seed(master_seed_int, name, index)
+        planned.append((index, derived_seed, scope, order, name))
+
+    planned.sort(key=lambda entry: (entry[2], entry[3], entry[4], entry[0]))
+    return [(index, seed) for index, seed, *_ in planned]
+
+
+def _plan_glitchlings_with_rust(
+    specs: list[dict[str, Any]],
+    master_seed: int,
+) -> list[tuple[int, int]] | None:
+    """Attempt to obtain the orchestration plan from the compiled Rust module."""
+
+    if _plan_glitchlings_rust is None:
+        return None
+
+    try:
+        plan = _plan_glitchlings_rust(specs, int(master_seed))
+    except Exception:  # pragma: no cover - defer to Python fallback on failure
+        log.debug("Rust orchestration planning failed; falling back to Python plan", exc_info=True)
+        return None
+
+    return [(int(index), int(seed)) for index, seed in plan]
+
+
+def _plan_glitchling_specs(
+    specs: list[dict[str, Any]],
+    master_seed: int | None,
+) -> list[tuple[int, int]]:
+    """Resolve orchestration order and seeds from glitchling specifications."""
+
+    if master_seed is None:
+        message = "Gaggle orchestration requires a master seed"
+        raise ValueError(message)
+
+    master_seed_int = int(master_seed)
+    plan = _plan_glitchlings_with_rust(specs, master_seed_int)
+    if plan is not None:
+        return plan
+
+    return _plan_glitchlings_python(specs, master_seed_int)
+
+
+def _plan_glitchling_sequence(
+    glitchlings: list["Glitchling"], master_seed: int | None
+) -> list[tuple[int, int]]:
+    """Derive orchestration plan for concrete glitchling instances."""
+
+    specs = [
+        {
+            "name": glitchling.name,
+            "scope": int(glitchling.level),
+            "order": int(glitchling.order),
+        }
+        for glitchling in glitchlings
+    ]
+    return _plan_glitchling_specs(specs, master_seed)
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from datasets import Dataset  # type: ignore
@@ -309,17 +383,17 @@ class Gaggle(Glitchling):
         """
 
         super().__init__("Gaggle", self.corrupt, AttackWave.DOCUMENT, seed=seed)
+        self._clones_by_index: list[Glitchling] = []
+        for idx, glitchling in enumerate(glitchlings):
+            clone = glitchling.clone()
+            setattr(clone, "_gaggle_index", idx)
+            self._clones_by_index.append(clone)
+
         self.glitchlings: dict[AttackWave, list[Glitchling]] = {
             level: [] for level in AttackWave
         }
         self.apply_order: list[Glitchling] = []
-        # Derive deterministic per-glitchling seeds from master seed if provided
-        for idx, g in enumerate(glitchlings):
-            _g = g.clone()
-            derived_seed = Gaggle.derive_seed(seed, _g.name, idx)
-            _g.reset_rng(derived_seed)
-            setattr(_g, "_gaggle_index", idx)
-            self.glitchlings[g.level].append(_g)
+        self._plan: list[tuple[int, int]] = []
         self.sort_glitchlings()
 
     @staticmethod
@@ -352,11 +426,27 @@ class Gaggle(Glitchling):
     def sort_glitchlings(self) -> None:
         """Sort glitchlings by wave then order to produce application order."""
 
-        self.apply_order = [
-            g
-            for _, glitchlings in sorted(self.glitchlings.items())
-            for g in sorted(glitchlings, key=lambda x: (x.order, x.name))
-        ]
+        plan = _plan_glitchling_sequence(self._clones_by_index, self.seed)
+        self._plan = plan
+
+        self.glitchlings = {level: [] for level in AttackWave}
+        for clone in self._clones_by_index:
+            self.glitchlings[clone.level].append(clone)
+
+        missing = set(range(len(self._clones_by_index)))
+        apply_order: list[Glitchling] = []
+        for index, derived_seed in plan:
+            clone = self._clones_by_index[index]
+            clone.reset_rng(int(derived_seed))
+            apply_order.append(clone)
+            missing.discard(index)
+
+        if missing:
+            missing_indices = ", ".join(str(idx) for idx in sorted(missing))
+            message = f"Orchestration plan missing glitchlings at indices: {missing_indices}"
+            raise RuntimeError(message)
+
+        self.apply_order = apply_order
 
     @staticmethod
     def rust_pipeline_supported() -> bool:

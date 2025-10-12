@@ -6,6 +6,87 @@ from pathlib import Path
 
 import pytest
 
+COLEMAK_SERIALIZED_LAYOUT = {
+    "'": ["[", "]", "\\", "o", ".", "/"],
+    ",": ["e", "i", "o", "m", "."],
+    "-": ["0", "=", ";", "[", "]"],
+    ".": ["i", "o", "'", ",", "/"],
+    "/": ["o", "'", "."],
+    "0": ["9", "-", "y", ";", "["],
+    "1": ["`", "2", "q", "w"],
+    "2": ["1", "3", "q", "w", "f"],
+    "3": ["2", "4", "w", "f", "p"],
+    "4": ["3", "5", "f", "p", "g"],
+    "5": ["4", "6", "p", "g", "j"],
+    "6": ["5", "7", "g", "j", "l"],
+    "7": ["6", "8", "j", "l", "u"],
+    "8": ["7", "9", "l", "u", "y"],
+    "9": ["8", "0", "u", "y", ";"],
+    ";": ["9", "0", "-", "y", "[", "e", "i", "o"],
+    "=": ["-", "[", "]", "\\"],
+    "[": ["0", "-", "=", ";", "]", "i", "o", "'"],
+    "\\": ["=", "]", "'"],
+    "]": ["-", "=", "[", "\\", "o", "'"],
+    "`": ["1", "q"],
+    "a": ["q", "w", "f", "r", "z"],
+    "b": ["d", "h", "n", "v", "k"],
+    "c": ["s", "t", "d", "x", "v"],
+    "d": ["g", "j", "l", "t", "h", "c", "v", "b"],
+    "e": ["u", "y", ";", "n", "i", "k", "m", ","],
+    "f": ["2", "3", "4", "w", "p", "a", "r", "s"],
+    "g": ["4", "5", "6", "p", "j", "s", "t", "d"],
+    "h": ["j", "l", "u", "d", "n", "v", "b", "k"],
+    "i": ["y", ";", "[", "e", "o", "m", ",", "."],
+    "j": ["5", "6", "7", "g", "l", "t", "d", "h"],
+    "k": ["h", "n", "e", "b", "m"],
+    "l": ["6", "7", "8", "j", "u", "d", "h", "n"],
+    "m": ["n", "e", "i", "k", ","],
+    "n": ["l", "u", "y", "h", "e", "b", "k", "m"],
+    "o": [";", "[", "]", "i", "'", ",", ".", "/"],
+    "p": ["3", "4", "5", "f", "g", "r", "s", "t"],
+    "q": ["`", "1", "2", "w", "a"],
+    "r": ["w", "f", "p", "a", "s", "z", "x"],
+    "s": ["f", "p", "g", "r", "t", "z", "x", "c"],
+    "t": ["p", "g", "j", "s", "d", "x", "c", "v"],
+    "u": ["7", "8", "9", "l", "y", "h", "n", "e"],
+    "v": ["t", "d", "h", "c", "b"],
+    "w": ["1", "2", "3", "q", "f", "a", "r"],
+    "x": ["r", "s", "t", "z", "c"],
+    "y": ["8", "9", "0", "u", ";", "n", "e", "i"],
+    "z": ["a", "r", "s", "x"],
+}
+
+CURATOR_QWERTY_SERIALIZED_LAYOUT = {
+    "a": ["q", "w", "s", "z"],
+    "b": ["v", "g", "h", "n", " ", " "],
+    "c": ["x", "d", "f", "v", " ", " "],
+    "d": ["s", "e", "r", "f", "c", "x"],
+    "e": ["w", "s", "d", "r", "f", "3", "4"],
+    "f": ["d", "r", "t", "g", "v", "c"],
+    "g": ["f", "t", "y", "h", "b", "v"],
+    "h": ["g", "y", "u", "j", "n", "b"],
+    "i": ["u", "j", "k", "o", "8", "9"],
+    "j": ["h", "u", "i", "k", "m", "n"],
+    "k": ["j", "i", "l", "o", "m", ","],
+    "l": ["k", "o", "p", ";", ".", ","],
+    "m": ["n", "j", "k", ",", " ", " "],
+    "n": ["b", "h", "j", "m", " ", " "],
+    "o": ["i", "k", "l", "p", "9", "0"],
+    "p": ["o", "0", "-", "[", ";", "l"],
+    "q": ["w", "a", "s", " ", "1", "2"],
+    "r": ["e", "d", "f", "t", "4", "5"],
+    "s": ["a", "w", "e", "d", "x", "z"],
+    "t": ["r", "5", "6", "y", "g", "f"],
+    "u": ["y", "7", "8", "i", "j", "h"],
+    "v": ["c", "f", "g", "b", " ", " "],
+    "w": ["q", "2", "3", "e", "s", "a"],
+    "x": ["z", "s", "d", "c", " ", " "],
+    "y": ["t", "6", "7", "u", "h", "g"],
+    "z": ["a", "s", "x"],
+}
+
+DEFAULT_ZWJ_CHARACTERS = ["\u200b", "\u200c", "\u200d", "\ufeff", "\u2060"]
+
 
 
 def _ensure_rust_extension_importable() -> None:
@@ -68,6 +149,39 @@ def _with_descriptor_seeds(
             }
         )
     return seeded
+
+
+def test_orchestration_plan_matches_python_reference():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 24680
+    specs = [
+        {
+            "name": "Rushmore",
+            "scope": int(core_module.AttackWave.WORD),
+            "order": int(core_module.AttackOrder.EARLY),
+        },
+        {
+            "name": "Reduple",
+            "scope": int(core_module.AttackWave.WORD),
+            "order": int(core_module.AttackOrder.NORMAL),
+        },
+        {
+            "name": "Typogre",
+            "scope": int(core_module.AttackWave.CHARACTER),
+            "order": int(core_module.AttackOrder.NORMAL),
+        },
+    ]
+
+    plan_fn = getattr(zoo_rust, "plan_glitchlings", None)
+    if plan_fn is None:
+        pytest.skip("plan_glitchlings not available in compiled extension")
+
+    try:
+        rust_plan = plan_fn(specs, master_seed)
+    except AttributeError:
+        pytest.skip("plan_glitchlings requires a rebuilt Rust extension")
+    python_plan = core_module._plan_glitchlings_python(specs, master_seed)
+    assert rust_plan == python_plan
 
 
 def test_reduple_matches_python_fallback():
@@ -564,19 +678,53 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
     master_seed = 1122
     text = "Synchronize thrusters before ascent"
 
-    typo = typogre_module.Typogre(rate=0.02, seed=5)
-    typo.set_param("keyboard", "COLEMAK")
-    zwj = zeedub_module.Zeedub(rate=0.03, seed=11)
-    zwj.set_param("characters", ["\u200b", "\u2060"])
-    redup = reduple_module.Reduple(rate=0.2, seed=7)
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        typo = typogre_module.Typogre(rate=0.02, seed=5)
+        typo.set_param("keyboard", "COLEMAK")
+        zwj = zeedub_module.Zeedub(rate=0.03, seed=11)
+        zwj.set_param("characters", ["\u200b", "\u2060"])
+        redup = reduple_module.Reduple(rate=0.2, seed=7)
+        return [typo, redup, zwj]
 
-    gaggle = core_module.Gaggle([typo, redup, zwj], seed=master_seed)
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    python_expected = python_gaggle(text)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
     descriptors = gaggle._pipeline_descriptors()
-    assert descriptors is not None
+    assert descriptors == [
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.2,
+                "unweighted": False,
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),
+        },
+        {
+            "name": "Typogre",
+            "operation": {
+                "type": "typo",
+                "rate": 0.02,
+                "keyboard": "COLEMAK",
+                "layout": dict(COLEMAK_SERIALIZED_LAYOUT),
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Typogre", 0),
+        },
+        {
+            "name": "Zeedub",
+            "operation": {
+                "type": "zwj",
+                "rate": 0.03,
+                "characters": ["\u200b", "\u2060"],
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Zeedub", 2),
+        },
+    ]
 
-    python_expected = _run_python_sequence(text, descriptors, master_seed)
     rust_expected = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
-    assert rust_expected == python_expected
 
     invoked: dict[str, bool] = {}
 
@@ -584,12 +732,53 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
         invoked["called"] = True
         return zoo_rust.compose_glitchlings(src_text, ops, seed)
 
-    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
     monkeypatch.setattr(core_module, "_compose_glitchlings_rust", spy, raising=False)
 
     result = gaggle(text)
     assert invoked.get("called") is True
     assert result == python_expected == rust_expected
+
+
+def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 1777
+    text = "Verify resonance before launch"
+
+    base_glitchlings = [
+        typogre_module.Typogre(rate=0.02, seed=5),
+        reduple_module.Reduple(rate=0.2, seed=7),
+        zeedub_module.Zeedub(rate=0.03, seed=11),
+    ]
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    rust_gaggle = core_module.Gaggle(
+        [glitch.clone() for glitch in base_glitchlings],
+        seed=master_seed,
+    )
+    rust_result = rust_gaggle(text)
+    rust_plan = rust_gaggle._plan
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    python_gaggle = core_module.Gaggle(
+        [glitch.clone() for glitch in base_glitchlings],
+        seed=master_seed,
+    )
+    python_result = python_gaggle(text)
+    python_plan = python_gaggle._plan
+
+    assert rust_result == python_result
+    assert rust_plan == python_plan
+
+    specs = [
+        {
+            "name": glitch.name,
+            "scope": int(glitch.level),
+            "order": int(glitch.order),
+        }
+        for glitch in base_glitchlings
+    ]
+    python_reference = core_module._plan_glitchlings_python(specs, master_seed)
+    assert python_plan == python_reference == rust_plan
 
 
 def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
@@ -615,6 +804,69 @@ def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
 
     assert pipeline_gaggle._pipeline_descriptors() is None
     assert pipeline_gaggle(text) == expected
+
+
+def test_pipeline_falls_back_when_compose_raises(monkeypatch):
+    _ = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 5150
+    text = "Stabilise the uplink before the storm hits"
+
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        return [
+            typogre_module.Typogre(rate=0.04, seed=3),
+            reduple_module.Reduple(rate=0.25, seed=5),
+            zeedub_module.Zeedub(rate=0.02, seed=7),
+        ]
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    python_expected = python_gaggle(text)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    fail_calls: dict[str, bool] = {}
+
+    def _fail(*_args: object, **_kwargs: object) -> str:
+        fail_calls["invoked"] = True
+        raise RuntimeError("simulated rust pipeline failure")
+
+    monkeypatch.setattr(core_module, "_compose_glitchlings_rust", _fail, raising=False)
+
+    gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    descriptors = gaggle._pipeline_descriptors()
+    assert descriptors == [
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.25,
+                "unweighted": False,
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),
+        },
+        {
+            "name": "Typogre",
+            "operation": {
+                "type": "typo",
+                "rate": 0.04,
+                "keyboard": "CURATOR_QWERTY",
+                "layout": dict(CURATOR_QWERTY_SERIALIZED_LAYOUT),
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Typogre", 0),
+        },
+        {
+            "name": "Zeedub",
+            "operation": {
+                "type": "zwj",
+                "rate": 0.02,
+                "characters": list(DEFAULT_ZWJ_CHARACTERS),
+            },
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Zeedub", 2),
+        },
+    ]
+
+    result = gaggle(text)
+    assert fail_calls.get("invoked") is True
+    assert result == python_expected
 
 
 def test_rust_pipeline_feature_flag_introspection(monkeypatch):
