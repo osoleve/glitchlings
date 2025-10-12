@@ -8,14 +8,9 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol
 
-_datasets_error: ModuleNotFoundError | None = None
-try:  # pragma: no cover - optional dependency
-    from datasets import Dataset as _DatasetsDataset
-except ModuleNotFoundError as error:  # pragma: no cover - optional dependency
-    _DatasetsDataset = None  # type: ignore[assignment]
-    _datasets_error = error
-else:
-    _datasets_error = None
+from ..compat import datasets, get_datasets_dataset, require_datasets
+
+_DatasetsDataset = get_datasets_dataset()
 
 try:  # pragma: no cover - optional dependency
     from glitchlings._zoo_rust import (
@@ -311,9 +306,7 @@ class Glitchling:
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
 
-        if _DatasetsDataset is None:
-            message = "datasets is not installed"
-            raise ModuleNotFoundError(message) from _datasets_error
+        require_datasets("datasets is not installed")
 
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
             row = dict(row)
