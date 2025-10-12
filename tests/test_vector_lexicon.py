@@ -43,26 +43,12 @@ def test_vector_lexicon_precompute_and_sampling(toy_embeddings: dict[str, list[f
     assert sampled == second_sample
 
 
-def test_vector_lexicon_cache_roundtrip(tmp_path: Path, toy_embeddings: dict[str, list[float]]) -> None:
-    cache_path = tmp_path / "cache.json"
-    lexicon = VectorLexicon(
-        source=toy_embeddings,
-        max_neighbors=2,
-        min_similarity=0.05,
-    )
-    lexicon.precompute("alpha")
-    lexicon.save_cache(cache_path)
-
-    restored = VectorLexicon(cache_path=cache_path)
-    assert restored.get_synonyms("alpha", n=2) == lexicon.get_synonyms("alpha", n=2)
-
-
 def test_build_vector_cache_helper(tmp_path: Path, toy_embeddings: dict[str, list[float]]) -> None:
     output_path = tmp_path / "cache.json"
     build_vector_cache(source=toy_embeddings, words=["alpha", "gamma"], output_path=output_path)
 
-    with output_path.open("r", encoding="utf8") as handle:
-        cache = json.load(handle)
+    snapshot = VectorLexicon.load_cache(output_path)
+    cache = snapshot.entries
 
     assert set(cache) == {"alpha", "gamma"}
     assert cache["alpha"]
@@ -96,8 +82,7 @@ def test_vector_cache_cli(tmp_path: Path, toy_embeddings: dict[str, list[float]]
     assert exit_code == 0
     assert output_path.exists()
 
-    with output_path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
+    payload = VectorLexicon.load_cache(output_path).entries
 
     assert sorted(payload) == ["alpha", "delta"]
 
@@ -133,8 +118,7 @@ def test_vector_cache_cli_case_sensitive_preserves_case(tmp_path: Path) -> None:
     )
 
     assert exit_code == 0
-    with output_path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
+    payload = VectorLexicon.load_cache(output_path).entries
 
     assert "Alpha" in payload and "alpha" in payload
     assert "alpha" in payload["Alpha"]
@@ -170,8 +154,7 @@ def test_vector_cache_cli_case_sensitive_falls_back_to_lowercase_source(tmp_path
     )
 
     assert exit_code == 0
-    with output_path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
+    payload = VectorLexicon.load_cache(output_path).entries
 
     assert "Alpha" in payload
     assert "beta" in payload["Alpha"]

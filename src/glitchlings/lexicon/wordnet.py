@@ -32,7 +32,10 @@ if nltk is not None:  # pragma: no cover - guarded by import success
 else:
     _WORDNET_MODULE = None
 
-from . import Lexicon
+from pathlib import Path
+
+from . import LexiconBackend
+from ._cache import CacheSnapshot
 
 _WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
 _wordnet_ready = False
@@ -151,7 +154,7 @@ def _collect_synonyms(word: str, parts_of_speech: tuple[str, ...]) -> list[str]:
     return sorted(synonyms)
 
 
-class WordNetLexicon(Lexicon):
+class WordNetLexicon(LexiconBackend):
     """Lexicon that retrieves synonyms from the NLTK WordNet corpus."""
 
     def get_synonyms(
@@ -174,6 +177,13 @@ class WordNetLexicon(Lexicon):
         if pos is None:
             return True
         return pos.lower() in _VALID_POS
+
+    @classmethod
+    def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        raise RuntimeError("WordNetLexicon does not persist or load caches.")
+
+    def save_cache(self, path: str | Path | None = None) -> Path | None:
+        raise RuntimeError("WordNetLexicon does not persist or load caches.")
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation
         return f"WordNetLexicon(seed={self.seed!r})"

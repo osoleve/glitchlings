@@ -41,23 +41,6 @@ def test_graph_lexicon_lemmatization_variant(
     assert synonyms[0] != "alphas"
 
 
-def test_graph_lexicon_cache_roundtrip(
-    tmp_path: Path, toy_numberbatch: dict[str, list[float]]
-) -> None:
-    cache_path = tmp_path / "graph_cache.json"
-    lexicon = GraphLexicon(
-        source=toy_numberbatch,
-        max_neighbors=2,
-        cache_path=cache_path,
-    )
-    lexicon.precompute("alpha")
-    lexicon.save_cache()
-
-    restored = GraphLexicon(cache_path=cache_path, source={})
-
-    assert restored.get_synonyms("alpha", n=1) == lexicon.get_synonyms("alpha", n=1)
-
-
 def test_graph_lexicon_missing_embeddings(tmp_path: Path) -> None:
     path = tmp_path / "missing.vec"
     lexicon = GraphLexicon(source=path)

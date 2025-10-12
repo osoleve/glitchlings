@@ -122,11 +122,45 @@ fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<Stri
     Ok(entry.clone())
 }
 
-#[derive(Debug, FromPyObject)]
+#[derive(Debug)]
 struct PyGagglePlanInput {
     name: String,
     scope: i32,
     order: i32,
+}
+
+impl<'py> FromPyObject<'py> for PyGagglePlanInput {
+    fn extract(obj: &'py PyAny) -> PyResult<Self> {
+        if let Ok(dict) = obj.downcast::<PyDict>() {
+            let name: String = dict
+                .get_item("name")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'name' field"))?
+                .extract()?;
+            let scope: i32 = dict
+                .get_item("scope")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'scope' field"))?
+                .extract()?;
+            let order: i32 = dict
+                .get_item("order")?
+                .ok_or_else(|| PyValueError::new_err("plan input missing 'order' field"))?
+                .extract()?;
+            return Ok(Self { name, scope, order });
+        }
+
+        let name = obj
+            .getattr("name")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'name'"))?
+            .extract()?;
+        let scope = obj
+            .getattr("scope")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'scope'"))?
+            .extract()?;
+        let order = obj
+            .getattr("order")
+            .map_err(|_| PyValueError::new_err("plan input missing attribute 'order'"))?
+            .extract()?;
+        Ok(Self { name, scope, order })
+    }
 }
 
 #[derive(Debug)]
