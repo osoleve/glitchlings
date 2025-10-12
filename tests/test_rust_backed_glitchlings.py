@@ -70,6 +70,36 @@ def _with_descriptor_seeds(
     return seeded
 
 
+def test_orchestration_plan_matches_python_reference():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 24680
+    specs = [
+        {
+            "name": "Rushmore",
+            "scope": int(core_module.AttackWave.WORD),
+            "order": int(core_module.AttackOrder.EARLY),
+        },
+        {
+            "name": "Reduple",
+            "scope": int(core_module.AttackWave.WORD),
+            "order": int(core_module.AttackOrder.NORMAL),
+        },
+        {
+            "name": "Typogre",
+            "scope": int(core_module.AttackWave.CHARACTER),
+            "order": int(core_module.AttackOrder.NORMAL),
+        },
+    ]
+
+    plan_fn = getattr(zoo_rust, "plan_glitchlings", None)
+    if plan_fn is None:
+        pytest.skip("plan_glitchlings not available in compiled extension")
+
+    rust_plan = plan_fn(specs, master_seed)
+    python_plan = core_module._plan_glitchlings_python(specs, master_seed)
+    assert rust_plan == python_plan
+
+
 def test_reduple_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
     expected = reduple_module._python_reduplicate_words(
@@ -590,6 +620,48 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
     result = gaggle(text)
     assert invoked.get("called") is True
     assert result == python_expected == rust_expected
+
+
+def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 1777
+    text = "Verify resonance before launch"
+
+    base_glitchlings = [
+        typogre_module.Typogre(rate=0.03),
+        reduple_module.Reduple(rate=0.25),
+        zeedub_module.Zeedub(rate=0.05),
+    ]
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    rust_gaggle = core_module.Gaggle(
+        [glitch.clone() for glitch in base_glitchlings],
+        seed=master_seed,
+    )
+    rust_result = rust_gaggle(text)
+    rust_plan = rust_gaggle._plan
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    python_gaggle = core_module.Gaggle(
+        [glitch.clone() for glitch in base_glitchlings],
+        seed=master_seed,
+    )
+    python_result = python_gaggle(text)
+    python_plan = python_gaggle._plan
+
+    assert rust_result == python_result
+    assert rust_plan == python_plan
+
+    specs = [
+        {
+            "name": glitch.name,
+            "scope": int(glitch.level),
+            "order": int(glitch.order),
+        }
+        for glitch in base_glitchlings
+    ]
+    python_reference = core_module._plan_glitchlings_python(specs, master_seed)
+    assert python_plan == python_reference == rust_plan
 
 
 def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):

@@ -122,6 +122,13 @@ fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<Stri
     Ok(entry.clone())
 }
 
+#[derive(Debug, FromPyObject)]
+struct PyGagglePlanInput {
+    name: String,
+    scope: i32,
+    order: i32,
+}
+
 #[derive(Debug)]
 enum PyGlitchOperation {
     Reduplicate {
@@ -347,6 +354,30 @@ fn redact_words(
 }
 
 #[pyfunction]
+fn plan_glitchlings(
+    glitchlings: Vec<PyGagglePlanInput>,
+    master_seed: i128,
+) -> PyResult<Vec<(usize, u64)>> {
+    let plan = pipeline::plan_gaggle(
+        glitchlings
+            .into_iter()
+            .enumerate()
+            .map(|(index, input)| pipeline::GagglePlanInput {
+                index,
+                name: input.name,
+                scope: input.scope,
+                order: input.order,
+            })
+            .collect(),
+        master_seed,
+    );
+    Ok(plan
+        .into_iter()
+        .map(|entry| (entry.index, entry.seed))
+        .collect())
+}
+
+#[pyfunction]
 fn compose_glitchlings(
     text: &str,
     descriptors: Vec<PyGlitchDescriptor>,
@@ -418,6 +449,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
+    m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
