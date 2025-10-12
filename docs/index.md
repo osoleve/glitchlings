@@ -146,6 +146,8 @@ Append `--diff` to render a unified diff comparing the original and corrupted ou
 
 The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
 
+Parity with the pure-Python pipeline is asserted in `tests/test_rust_backed_glitchlings.py`.
+
 1. Compile the Rust crate once per environment:
 
    ```bash
@@ -178,6 +180,8 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
 - **Dataset utilities** - after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
 - **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
+
+Deep integration tests for the orchestration stack live in `tests/test_glitchling_core.py`, and the CLI argument matrix in `tests/test_parameter_effects.py`.
 
 ## Declarative attack configurations
 
@@ -236,8 +240,10 @@ corrupted = gaggle.corrupt_dataset(
 Key points:
 
 - When `columns` is omitted, Glitchlings infers targets (`prompt`, `question`, or all string columns) using `_resolve_columns` semantics from the Prime loader.
-- The returned dataset is a shallow copy containing both clean and corrupted columns—persist it with `corrupted.push_to_hub(...)` or `corrupted.save_to_disk(...)`.
+- The returned dataset is a shallow copy containing both clean and corrupted columns-persist it with `corrupted.push_to_hub(...)` or `corrupted.save_to_disk(...)`.
 - Use dataset-level seeds (`seed=` on the gaggle) so repeated corruptions are stable across machines.
+
+Integration coverage for Hugging Face datasets lives in `tests/test_dataset_corruption.py`, while the DLC-specific loaders are exercised in `tests/test_huggingface_dlc.py`.
 
 ## Prime Intellect integration
 
@@ -285,6 +291,8 @@ Capabilities at a glance:
 - Use `set_param` to expose tunable values so they can be reset between tests.
 - When writing new glitchlings, route randomness through the instance RNG rather than module-level state.
 
+These determinism checks are enforced in `tests/test_glitchlings_determinism.py`.
+
 ## Testing checklist
 
 Before publishing changes or documenting new glitchlings, run the Pytest suite from the repository root:
@@ -301,8 +309,8 @@ Want to compare against the legacy WordNet lexicon? Install `nltk` and download 
 
 ## Additional resources
 
-- [Monster Manual](../MONSTER_MANUAL.md) – complete bestiary with flavour text.
-- [Repository README](../README.md) – project overview and ASCII ambience.
-- [Development setup](development.md) – local environment, testing, and Rust acceleration guide.
-- [Glitchling gallery](glitchling-gallery.md) – side-by-side outputs for each glitchling at multiple rates.
-- [Keyboard layout reference](keyboard-layouts.md) – available adjacency maps for Typogre and related features.
+- Monster Manual (`MONSTER_MANUAL.md` in the repository root) - complete bestiary with flavour text.
+- Repository README (`README.md` in the repository root) - project overview and ASCII ambience.
+- [Development setup](development.md) - local environment, testing, and Rust acceleration guide.
+- [Glitchling gallery](glitchling-gallery.md) - side-by-side outputs for each glitchling at multiple rates.
+- [Keyboard layout reference](keyboard-layouts.md) - available adjacency maps for Typogre and related features.

@@ -56,6 +56,11 @@ dev = [
     "pytest>=8.0.0",
     "hypothesis>=6.140.0",
     "numpy>=1.24,<=2.0",
+    "mkdocs>=1.6.0",
+    "mkdocstrings[python]>=0.24.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings-python>=1.10.0",
+    "interrogate>=1.5.0",
 ]
 
 [build-system]
@@ -84,4 +89,23 @@ debug = false
 [tool.pytest.ini_options]
 pythonpath = [
     "src",
+]
+
+[tool.interrogate]
+config = true
+fail-under = 80
+ignore-init-module = true
+ignore-module = true
+ignore-nested-functions = true
+ignore-private = true
+ignore-semiprivate = true
+ignore-magic = true
+ignore-property-decorators = false
+color = true
+quiet = false
+exclude = [
+    "tests",
+    "docs",
+    "rust",
+    "benchmarks",
 ]

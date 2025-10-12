@@ -1,0 +1,40 @@
+name: Documentation
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  docs-hygiene:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install ".[dev]"
+
+      - name: Ensure CLI examples are current
+        run: |
+          python docs/build_cli_reference.py
+          git diff --exit-code README.md
+
+      - name: Check docstring coverage
+        run: |
+          python -m interrogate src/glitchlings
+
+      - name: Build MkDocs site
+        run: |
+          mkdocs build --strict --config-file mkdocs.yml

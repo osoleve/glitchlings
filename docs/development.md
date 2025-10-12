@@ -56,6 +56,12 @@ pytest
 
 The suite covers determinism guarantees, dataset integrations, and parity between Python and Rust implementations. Vector-backed lexicons ship with the repository so the Jargoyle tests run without external downloads, while optional WordNet checks are gated behind the legacy backend being available.
 
+Key regression guardrails live in:
+
+- `tests/test_glitchling_core.py` for `Gaggle` orchestration and feature flags.
+- `tests/test_cli.py` for CLI argument wiring and diff output.
+- `tests/test_rust_backed_glitchlings.py` to ensure the acceleration layer mirrors the Python pipeline.
+
 ## Rust acceleration
 
 Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Adjax, Rushmore, Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:

@@ -95,10 +95,66 @@ They're horrible little gremlins, but they're not _unreasonable_.
 
 Keyboard warriors can challenge them directly via the `glitchlings` command:
 
+<!-- BEGIN: CLI_USAGE -->
 ```bash
 # Discover which glitchlings are currently on the loose.
 glitchlings --list
+```
 
+```text
+   Typogre — scope: Character, order: early
+     Mim1c — scope: Character, order: last
+  Jargoyle — scope: Word, order: normal
+     Adjax — scope: Word, order: normal
+   Reduple — scope: Word, order: normal
+  Rushmore — scope: Word, order: normal
+  Redactyl — scope: Word, order: normal
+Scannequin — scope: Character, order: late
+    Zeedub — scope: Character, order: last
+```
+
+```bash
+# Review the full CLI contract.
+glitchlings --help
+```
+
+```text
+usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
+                   [--list] [-c CONFIG]
+                   [text]
+
+Summon glitchlings to corrupt text. Provide input text as an argument, via
+--file, or pipe it on stdin.
+
+positional arguments:
+  text                  Text to corrupt. If omitted, stdin is used or --sample
+                        provides fallback text.
+
+options:
+  -h, --help            show this help message and exit
+  -g SPEC, --glitchling SPEC
+                        Glitchling to apply, optionally with parameters like
+                        Typogre(rate=0.05). Repeat for multiples; defaults to
+                        all built-ins.
+  -s SEED, --seed SEED  Seed controlling deterministic corruption order
+                        (default: 151).
+  -f FILE, --file FILE  Read input text from a file instead of the command
+                        line argument.
+  --sample              Use the included SAMPLE_TEXT when no other input is
+                        provided.
+  --diff                Show a unified diff between the original and corrupted
+                        text.
+  --list                List available glitchlings and exit.
+  -c CONFIG, --config CONFIG
+                        Load glitchlings from a YAML configuration file.
+```
+<!-- END: CLI_USAGE -->
+
+Run `python docs/build_cli_reference.py` whenever you tweak the CLI so the README stays in sync with the actual output. The script executes the commands above and replaces the block between the markers automatically.
+
+Prefer inline tweaks? You can still configure glitchlings directly in the shell:
+
+```bash
 # Run Typogre against the contents of a file and inspect the diff.
 glitchlings -g typogre --file documents/report.txt --diff
 
@@ -111,8 +167,6 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 # Load a roster from a YAML attack configuration.
 glitchlings --config experiments/chaos.yaml "Let slips the glitchlings of war"
 ```
-
-Use `--help` for a complete breakdown of available options, including support for parameterised glitchlings via `-g "Name(arg=value, ...)"` to mirror the Python API.
 
 Attack configurations live in plain YAML files so you can version-control experiments without touching code:
 

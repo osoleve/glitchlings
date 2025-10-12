@@ -1,0 +1,58 @@
+site_name: Glitchlings Field Guide
+site_description: Deterministic text corruption companions.
+site_url: https://osoleve.github.io/glitchlings/
+repo_url: https://github.com/osoleve/glitchlings
+repo_name: osoleve/glitchlings
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: readthedocs
+  features:
+    - content.code.copy
+    - navigation.sections
+    - navigation.tabs
+    - toc.integrate
+
+nav:
+  - Overview: index.md
+  - Development: development.md
+  - Performance:
+      - Summary: performance-comparison.md
+      - Gallery Builder: glitchling-gallery.md
+  - Glitchling Reference:
+      - Typogre: glitchlings/typogre.md
+      - Mim1c: glitchlings/mim1c.md
+      - Reduple: glitchlings/reduple.md
+      - Rushmore: glitchlings/rushmore.md
+      - Redactyl: glitchlings/redactyl.md
+      - Jargoyle: glitchlings/jargoyle.md
+      - Scannequin: glitchlings/scannequin.md
+      - Zeedub: glitchlings/zeedub.md
+      - Adjax: glitchlings/adjax.md
+  - API:
+      - Python Modules: api/index.md
+  - Operations:
+      - Release Process: release-process.md
+      - Keyboard Layouts: keyboard-layouts.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          setup_commands:
+            - import sys
+            - sys.path.append("src")
+          options:
+            docstring_style: sphinx
+            show_root_heading: true
+            show_source: true
+            inherited_members: true
+
+markdown_extensions:
+  - admonition
+  - codehilite
+  - footnotes
+  - toc:
+      permalink: "#"
