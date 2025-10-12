@@ -15,7 +15,11 @@ if str(ROOT) not in sys.path:
 
 from benchmarks.pipeline_benchmark import (
     BenchmarkResult,
+    BenchmarkStatistics,
+    SCENARIOS,
     collect_benchmark_results,
+    main,
+    run_benchmarks,
 )
 
 STRICT_ENV_VAR = "GLITCHLINGS_BENCHMARK_STRICT"
@@ -86,3 +90,48 @@ def test_python_pipeline_regression_guard(
         f"'{label}' text exceeded {threshold:.3f}s: {mean_seconds:.3f}s. "
         f"Set {SAFETY_FACTOR_ENV_VAR} or {STRICT_ENV_VAR} to adjust the guard."
     )
+
+
+def test_pipeline_benchmark_main_lists_scenarios(capsys) -> None:
+    exit_code = main(["--list-scenarios"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    for key in SCENARIOS:
+        assert key in captured.out
+
+
+def test_run_benchmarks_supports_stub_scenario(monkeypatch) -> None:
+    stub_called: dict[str, bool] = {}
+
+    def _stub_builder():
+        stub_called["built"] = True
+        return ()
+
+    monkeypatch.setitem(SCENARIOS, "stub", _stub_builder)
+
+    fake_result = BenchmarkResult(
+        label="tiny",
+        char_count=4,
+        python=BenchmarkStatistics(mean_seconds=0.001, stdev_seconds=0.0),
+        rust=None,
+    )
+
+    monkeypatch.setattr(
+        "benchmarks.pipeline_benchmark.collect_benchmark_results",
+        lambda texts, iterations, descriptors: [fake_result],
+    )
+
+    captured: dict[str, object] = {}
+
+    def _capture_results(scenario: str, results: list[BenchmarkResult]) -> None:
+        captured["scenario"] = scenario
+        captured["results"] = results
+
+    monkeypatch.setattr("benchmarks.pipeline_benchmark._print_results", _capture_results)
+
+    run_benchmarks(["stub"], [("tiny", "data")], iterations=1)
+
+    assert stub_called.get("built") is True
+    assert captured["scenario"] == "stub"
+    assert captured["results"] == [fake_result]

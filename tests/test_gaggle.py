@@ -1,5 +1,6 @@
 import pytest
 
+import glitchlings.zoo.core as core_module
 from glitchlings import Typogre, summon
 from glitchlings.zoo.core import Gaggle
 
@@ -44,3 +45,24 @@ def test_summon_accepts_parameterized_specification():
 def test_summon_rejects_positional_parameter_specifications():
     with pytest.raises(ValueError, match="keyword arguments"):
         summon(["Typogre(0.2)"])
+
+
+def test_gaggle_requires_master_seed():
+    glitchling = Typogre(rate=0.05)
+
+    with pytest.raises(ValueError, match="master seed"):
+        Gaggle([glitchling], seed=None)
+
+
+def test_gaggle_detects_missing_plan_indices(monkeypatch):
+    glitchlings = [Typogre(rate=0.01, seed=3), Typogre(rate=0.02, seed=5)]
+
+    monkeypatch.setattr(
+        core_module,
+        "_plan_glitchling_sequence",
+        lambda *_args, **_kwargs: [(0, 123456789)],
+        raising=False,
+    )
+
+    with pytest.raises(RuntimeError, match="missing glitchlings"):
+        Gaggle(glitchlings, seed=99)

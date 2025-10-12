@@ -324,6 +324,25 @@ mod tests {
     }
 
     #[test]
+    fn random_matches_python_for_additional_seed() {
+        let mut rng = PyRng::new(3815924951222172525);
+        let expected = [
+            0.18518006574496737,
+            0.5841689581060610,
+            0.3699113163178772,
+            0.7394349068470196,
+            0.6855497906317899,
+        ];
+        for value in expected {
+            let actual = rng.random();
+            assert!(
+                (actual - value).abs() < 1e-15,
+                "expected {value}, got {actual}"
+            );
+        }
+    }
+
+    #[test]
     fn randrange_supports_default_arguments() {
         let mut rng = PyRng::new(151);
         let expected = [6, 3, 5, 4, 5];

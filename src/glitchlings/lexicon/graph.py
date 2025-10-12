@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 from typing import Iterable, Mapping, MutableMapping, Sequence
 
-from . import Lexicon
+from . import LexiconBackend
+from ._cache import CacheSnapshot, load_cache as _load_cache_file, write_cache as _write_cache_file
 from .vector import VectorLexicon
 
 
@@ -140,30 +140,7 @@ def _load_numberbatch(path: Path, *, languages: set[str]) -> Mapping[str, list[f
     return embeddings
 
 
-def _load_cache(path: Path) -> dict[str, list[str]]:
-    if not path.exists():
-        return {}
-    with path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
-    if not isinstance(payload, Mapping):
-        raise RuntimeError("Graph lexicon cache must be a mapping of strings to lists.")
-    cache: dict[str, list[str]] = {}
-    for key, values in payload.items():
-        if not isinstance(key, str):
-            raise RuntimeError("Graph lexicon cache keys must be strings.")
-        if not isinstance(values, Sequence):
-            raise RuntimeError("Graph lexicon cache values must be sequences of strings.")
-        cache[key] = [str(value) for value in values]
-    return cache
-
-
-def _write_cache(path: Path, cache: Mapping[str, Sequence[str]]) -> None:
-    serialisable = {key: list(values) for key, values in sorted(cache.items())}
-    with path.open("w", encoding="utf8") as handle:
-        json.dump(serialisable, handle, ensure_ascii=False, indent=2, sort_keys=True)
-
-
-class GraphLexicon(Lexicon):
+class GraphLexicon(LexiconBackend):
     """Lexicon backed by ConceptNet/Numberbatch embeddings."""
 
     def __init__(
@@ -184,9 +161,12 @@ class GraphLexicon(Lexicon):
         self._max_neighbors = max(1, max_neighbors)
         self._min_similarity = min_similarity
         self._cache: MutableMapping[str, list[str]] = {}
-        self._cache_path = Path(cache_path) if cache_path is not None else None
+        self._cache_path: Path | None = Path(cache_path) if cache_path is not None else None
+        self._cache_checksum: str | None = None
         if self._cache_path is not None:
-            self._cache.update(_load_cache(self._cache_path))
+            snapshot = _load_cache_file(self._cache_path)
+            self._cache.update(snapshot.entries)
+            self._cache_checksum = snapshot.checksum
         if cache is not None:
             for key, values in cache.items():
                 self._cache[str(key)] = [str(value) for value in values]
@@ -278,6 +258,12 @@ class GraphLexicon(Lexicon):
     def export_cache(self) -> dict[str, list[str]]:
         return {key: list(values) for key, values in self._cache.items()}
 
+    @classmethod
+    def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        """Load and validate a persisted ConceptNet cache file."""
+
+        return _load_cache_file(Path(path))
+
     def save_cache(self, path: str | Path | None = None) -> Path:
         if path is None:
             if self._cache_path is None:
@@ -286,7 +272,8 @@ class GraphLexicon(Lexicon):
         else:
             target = Path(path)
             self._cache_path = target
-        _write_cache(target, self._cache)
+        snapshot = _write_cache_file(target, self._cache)
+        self._cache_checksum = snapshot.checksum
         self._cache_dirty = False
         return target
 

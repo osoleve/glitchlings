@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import gzip
 from pathlib import Path
 
 import pytest
 
-from glitchlings.lexicon.graph import GraphLexicon
+from glitchlings.lexicon.graph import GraphLexicon, _load_numberbatch
 
 
 @pytest.fixture()
@@ -41,23 +42,6 @@ def test_graph_lexicon_lemmatization_variant(
     assert synonyms[0] != "alphas"
 
 
-def test_graph_lexicon_cache_roundtrip(
-    tmp_path: Path, toy_numberbatch: dict[str, list[float]]
-) -> None:
-    cache_path = tmp_path / "graph_cache.json"
-    lexicon = GraphLexicon(
-        source=toy_numberbatch,
-        max_neighbors=2,
-        cache_path=cache_path,
-    )
-    lexicon.precompute("alpha")
-    lexicon.save_cache()
-
-    restored = GraphLexicon(cache_path=cache_path, source={})
-
-    assert restored.get_synonyms("alpha", n=1) == lexicon.get_synonyms("alpha", n=1)
-
-
 def test_graph_lexicon_missing_embeddings(tmp_path: Path) -> None:
     path = tmp_path / "missing.vec"
     lexicon = GraphLexicon(source=path)
@@ -68,3 +52,30 @@ def test_graph_lexicon_missing_embeddings(tmp_path: Path) -> None:
 def test_empty_queries_have_no_synonyms() -> None:
     lexicon = GraphLexicon(source={})
     assert lexicon.get_synonyms("!!!", n=2) == []
+
+
+def test_graph_lexicon_save_cache_requires_path() -> None:
+    lexicon = GraphLexicon(source={})
+    with pytest.raises(RuntimeError, match="No cache path"):
+        lexicon.save_cache()
+
+
+def test_load_numberbatch_parses_gzipped_payload(tmp_path: Path) -> None:
+    archive_path = tmp_path / "numberbatch_sample.txt.gz"
+    with gzip.open(archive_path, "wt", encoding="utf8") as handle:
+        handle.write("5 2\n")  # header indicating entry and dimension counts
+        handle.write("/c/en/apple 1.0 0.0\n")
+        handle.write("/c/en/banana 0.9 0.1\n")
+        handle.write("/c/fr/pomme 0.8 0.2\n")  # non-English entry should be filtered
+        handle.write("junk\n")  # ignored line with insufficient tokens
+        handle.write("/c/en/cherry not_a_number 0.3\n")  # malformed vector skipped
+
+    embeddings = _load_numberbatch(archive_path, languages={"en"})
+    assert sorted(embeddings) == ["/c/en/apple", "/c/en/banana"]
+    assert embeddings["/c/en/apple"] == [1.0, 0.0]
+    assert embeddings["/c/en/banana"] == [0.9, 0.1]
+
+    lexicon = GraphLexicon(source=archive_path, max_neighbors=1)
+    synonyms = lexicon.get_synonyms("apple", n=1)
+    assert synonyms
+    assert "banana" in {token.replace(" ", "").lower() for token in synonyms}

@@ -398,6 +398,7 @@ impl GlitchOp for SwapAdjacentWordsOp {
         }
 
         let mut index = 0usize;
+        let mut replacements: SmallVec<[(usize, String); 8]> = SmallVec::new();
         while index + 1 < total_words {
             let left_segment = match buffer.word_segment(index) {
                 Some(segment) => segment,
@@ -423,11 +424,15 @@ impl GlitchOp for SwapAdjacentWordsOp {
             if should_swap {
                 let left_replacement = format!("{left_prefix}{right_core}{left_suffix}");
                 let right_replacement = format!("{right_prefix}{left_core}{right_suffix}");
-                buffer.replace_word(index, &left_replacement)?;
-                buffer.replace_word(index + 1, &right_replacement)?;
+                replacements.push((index, left_replacement));
+                replacements.push((index + 1, right_replacement));
             }
 
             index += 2;
+        }
+
+        if !replacements.is_empty() {
+            buffer.replace_words_bulk(replacements.into_iter())?;
         }
 
         Ok(())

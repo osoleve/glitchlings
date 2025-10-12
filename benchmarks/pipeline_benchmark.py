@@ -9,6 +9,8 @@ import sys
 import time
 import types
 from dataclasses import dataclass
+from functools import lru_cache
+from types import ModuleType
 from typing import Callable, Iterable, Sequence
 
 
@@ -28,19 +30,56 @@ _ensure_datasets_stub()
 import importlib
 import random
 
-adjax_module = importlib.import_module("glitchlings.zoo.adjax")
-reduple_module = importlib.import_module("glitchlings.zoo.reduple")
-rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
-redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
-scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
-zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
-typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 core_module = importlib.import_module("glitchlings.zoo.core")
+from glitchlings.zoo import get_glitchling_class
 
 try:  # pragma: no cover - optional dependency
     zoo_rust = importlib.import_module("glitchlings._zoo_rust")
 except ImportError:  # pragma: no cover - optional dependency
     zoo_rust = None
+
+@lru_cache(maxsize=None)
+def _glitchling_module(name: str) -> ModuleType:
+    """Return the module that defines the named glitchling."""
+
+    module_path = get_glitchling_class(name).__module__
+    return importlib.import_module(module_path)
+
+
+def _redactyl_full_block() -> str:
+    return getattr(_glitchling_module("Redactyl"), "FULL_BLOCK")
+
+
+def _zero_width_characters() -> list[str]:
+    characters = getattr(
+        _glitchling_module("Zeedub"), "_DEFAULT_ZERO_WIDTH_CHARACTERS"
+    )
+    return list(characters)
+
+
+def _keyboard_layout(keyboard: str) -> dict[str, list[str]]:
+    neighbors = getattr(_glitchling_module("Typogre"), "KEYNEIGHBORS")
+    layout = getattr(neighbors, keyboard)
+    return {key: list(value) for key, value in layout.items()}
+
+
+_OPERATION_MODULES: dict[str, str] = {
+    "reduplicate": "Reduple",
+    "delete": "Rushmore",
+    "redact": "Redactyl",
+    "ocr": "Scannequin",
+    "zwj": "Zeedub",
+    "swap_adjacent": "Adjax",
+    "typo": "Typogre",
+}
+
+
+def _module_for_operation(op_type: str) -> ModuleType:
+    try:
+        glitchling_name = _OPERATION_MODULES[op_type]
+    except KeyError as error:  # pragma: no cover - defensive fallback
+        raise KeyError(f"Unknown operation type: {op_type}") from error
+    return _glitchling_module(glitchling_name)
 
 
 Descriptor = dict[str, object]
@@ -56,7 +95,7 @@ BASE_DESCRIPTORS: list[Descriptor] = [
         "name": "Redactyl",
         "operation": {
             "type": "redact",
-            "replacement_char": redactyl_module.FULL_BLOCK,
+            "replacement_char": _redactyl_full_block(),
             "redaction_rate": 0.05,
             "merge_adjacent": True,
         },
@@ -67,7 +106,7 @@ BASE_DESCRIPTORS: list[Descriptor] = [
         "operation": {
             "type": "zwj",
             "rate": 0.02,
-            "characters": list(zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS),
+            "characters": _zero_width_characters(),
         },
     },
     {
@@ -76,10 +115,7 @@ BASE_DESCRIPTORS: list[Descriptor] = [
             "type": "typo",
             "rate": 0.02,
             "keyboard": "CURATOR_QWERTY",
-            "layout": {
-                key: list(value)
-                for key, value in typogre_module.KEYNEIGHBORS.CURATOR_QWERTY.items()
-            },
+            "layout": _keyboard_layout("CURATOR_QWERTY"),
         },
     },
 ]
@@ -142,7 +178,7 @@ def _aggressive_cleanup_descriptors() -> list[Descriptor]:
             "name": "Redactyl-Deep",
             "operation": {
                 "type": "redact",
-                "replacement_char": redactyl_module.FULL_BLOCK,
+                "replacement_char": _redactyl_full_block(),
                 "redaction_rate": 0.12,
                 "merge_adjacent": True,
             },
@@ -164,7 +200,7 @@ def _stealth_noise_descriptors() -> list[Descriptor]:
             "name": "Redactyl-Lite",
             "operation": {
                 "type": "redact",
-                "replacement_char": redactyl_module.FULL_BLOCK,
+                "replacement_char": _redactyl_full_block(),
                 "redaction_rate": 0.02,
                 "merge_adjacent": False,
             },
@@ -216,6 +252,10 @@ MASTER_SEED = 151
 
 
 def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
+    operation_modules = {
+        key: _module_for_operation(key)
+        for key in _OPERATION_MODULES
+    }
     current = text
     for index, descriptor in enumerate(descriptors):
         seed = core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)
@@ -223,19 +263,22 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
         operation = descriptor["operation"]
         op_type = operation["type"]
         if op_type == "reduplicate":
-            current = reduple_module._python_reduplicate_words(
+            module = operation_modules["reduplicate"]
+            current = module._python_reduplicate_words(
                 current,
                 rate=operation["reduplication_rate"],
                 rng=rng,
             )
         elif op_type == "delete":
-            current = rushmore_module._python_delete_random_words(
+            module = operation_modules["delete"]
+            current = module._python_delete_random_words(
                 current,
                 rate=operation["max_deletion_rate"],
                 rng=rng,
             )
         elif op_type == "redact":
-            current = redactyl_module._python_redact_words(
+            module = operation_modules["redact"]
+            current = module._python_redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
                 rate=operation["redaction_rate"],
@@ -243,7 +286,8 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 rng=rng,
             )
         elif op_type == "ocr":
-            current = scannequin_module._python_ocr_artifacts(
+            module = operation_modules["ocr"]
+            current = module._python_ocr_artifacts(
                 current,
                 rate=operation["error_rate"],
                 rng=rng,
@@ -251,10 +295,11 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
         elif op_type == "zwj":
             characters = operation.get("characters")
             if characters is None:
-                characters = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
+                characters = tuple(_zero_width_characters())
             else:
                 characters = tuple(characters)
-            current = zeedub_module._python_insert_zero_widths(
+            module = operation_modules["zwj"]
+            current = module._python_insert_zero_widths(
                 current,
                 rate=operation["rate"],
                 rng=rng,
@@ -264,10 +309,13 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             keyboard = operation.get("keyboard", "CURATOR_QWERTY")
             layout_override = operation.get("layout")
             if layout_override is None:
-                layout = getattr(typogre_module.KEYNEIGHBORS, keyboard)
+                layout = getattr(
+                    operation_modules["typo"].KEYNEIGHBORS, keyboard
+                )
             else:
                 layout = {key: list(value) for key, value in layout_override.items()}
-            current = typogre_module._fatfinger_python(
+            module = operation_modules["typo"]
+            current = module._fatfinger_python(
                 current,
                 rate=operation["rate"],
                 rng=rng,
@@ -275,7 +323,8 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             )
         elif op_type == "swap_adjacent":
             swap_rate = operation.get("swap_rate", operation.get("rate", 0.5))
-            current = adjax_module._python_swap_adjacent_words(
+            module = operation_modules["swap_adjacent"]
+            current = module._python_swap_adjacent_words(
                 current,
                 rate=float(swap_rate),
                 rng=rng,
