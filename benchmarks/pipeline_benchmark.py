@@ -9,9 +9,19 @@ import sys
 import time
 import types
 from dataclasses import dataclass
-from functools import lru_cache
-from types import ModuleType
 from typing import Callable, Iterable, Sequence
+
+from benchmarks.constants import (
+    BASE_DESCRIPTORS,
+    DEFAULT_ITERATIONS,
+    DEFAULT_TEXTS,
+    MASTER_SEED,
+    OPERATION_MODULES,
+    Descriptor,
+    zero_width_characters,
+    module_for_operation,
+    redactyl_full_block,
+)
 
 
 def _ensure_datasets_stub() -> None:
@@ -27,98 +37,16 @@ def _ensure_datasets_stub() -> None:
 
 _ensure_datasets_stub()
 
-import importlib
 import random
 
+import importlib
+
 core_module = importlib.import_module("glitchlings.zoo.core")
-from glitchlings.zoo import get_glitchling_class
 
 try:  # pragma: no cover - optional dependency
     zoo_rust = importlib.import_module("glitchlings._zoo_rust")
 except ImportError:  # pragma: no cover - optional dependency
     zoo_rust = None
-
-@lru_cache(maxsize=None)
-def _glitchling_module(name: str) -> ModuleType:
-    """Return the module that defines the named glitchling."""
-
-    module_path = get_glitchling_class(name).__module__
-    return importlib.import_module(module_path)
-
-
-def _redactyl_full_block() -> str:
-    return getattr(_glitchling_module("Redactyl"), "FULL_BLOCK")
-
-
-def _zero_width_characters() -> list[str]:
-    characters = getattr(
-        _glitchling_module("Zeedub"), "_DEFAULT_ZERO_WIDTH_CHARACTERS"
-    )
-    return list(characters)
-
-
-def _keyboard_layout(keyboard: str) -> dict[str, list[str]]:
-    neighbors = getattr(_glitchling_module("Typogre"), "KEYNEIGHBORS")
-    layout = getattr(neighbors, keyboard)
-    return {key: list(value) for key, value in layout.items()}
-
-
-_OPERATION_MODULES: dict[str, str] = {
-    "reduplicate": "Reduple",
-    "delete": "Rushmore",
-    "redact": "Redactyl",
-    "ocr": "Scannequin",
-    "zwj": "Zeedub",
-    "swap_adjacent": "Adjax",
-    "typo": "Typogre",
-}
-
-
-def _module_for_operation(op_type: str) -> ModuleType:
-    try:
-        glitchling_name = _OPERATION_MODULES[op_type]
-    except KeyError as error:  # pragma: no cover - defensive fallback
-        raise KeyError(f"Unknown operation type: {op_type}") from error
-    return _glitchling_module(glitchling_name)
-
-
-Descriptor = dict[str, object]
-
-
-BASE_DESCRIPTORS: list[Descriptor] = [
-    {
-        "name": "Reduple",
-        "operation": {"type": "reduplicate", "reduplication_rate": 0.01},
-    },
-    {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.01}},
-    {
-        "name": "Redactyl",
-        "operation": {
-            "type": "redact",
-            "replacement_char": _redactyl_full_block(),
-            "redaction_rate": 0.05,
-            "merge_adjacent": True,
-        },
-    },
-    {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.02}},
-    {
-        "name": "Zeedub",
-        "operation": {
-            "type": "zwj",
-            "rate": 0.02,
-            "characters": _zero_width_characters(),
-        },
-    },
-    {
-        "name": "Typogre",
-        "operation": {
-            "type": "typo",
-            "rate": 0.02,
-            "keyboard": "CURATOR_QWERTY",
-            "layout": _keyboard_layout("CURATOR_QWERTY"),
-        },
-    },
-]
 
 
 def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
@@ -178,7 +106,7 @@ def _aggressive_cleanup_descriptors() -> list[Descriptor]:
             "name": "Redactyl-Deep",
             "operation": {
                 "type": "redact",
-                "replacement_char": _redactyl_full_block(),
+                "replacement_char": redactyl_full_block(),
                 "redaction_rate": 0.12,
                 "merge_adjacent": True,
             },
@@ -200,7 +128,7 @@ def _stealth_noise_descriptors() -> list[Descriptor]:
             "name": "Redactyl-Lite",
             "operation": {
                 "type": "redact",
-                "replacement_char": _redactyl_full_block(),
+                "replacement_char": redactyl_full_block(),
                 "redaction_rate": 0.02,
                 "merge_adjacent": False,
             },
@@ -237,25 +165,8 @@ def _seeded_descriptors(
     return seeded
 
 
-SHORT_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin."
-MEDIUM_TEXT = " ".join([SHORT_TEXT] * 32)
-LONG_TEXT = " ".join([SHORT_TEXT] * 256)
-
-
-DEFAULT_TEXTS: tuple[tuple[str, str], ...] = (
-    ("short", SHORT_TEXT),
-    ("medium", MEDIUM_TEXT),
-    ("long", LONG_TEXT),
-)
-DEFAULT_ITERATIONS = 25
-MASTER_SEED = 151
-
-
 def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
-    operation_modules = {
-        key: _module_for_operation(key)
-        for key in _OPERATION_MODULES
-    }
+    operation_modules = {key: module_for_operation(key) for key in OPERATION_MODULES}
     current = text
     for index, descriptor in enumerate(descriptors):
         seed = core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)
@@ -295,7 +206,7 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
         elif op_type == "zwj":
             characters = operation.get("characters")
             if characters is None:
-                characters = tuple(_zero_width_characters())
+                characters = tuple(zero_width_characters())
             else:
                 characters = tuple(characters)
             module = operation_modules["zwj"]
@@ -309,9 +220,7 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             keyboard = operation.get("keyboard", "CURATOR_QWERTY")
             layout_override = operation.get("layout")
             if layout_override is None:
-                layout = getattr(
-                    operation_modules["typo"].KEYNEIGHBORS, keyboard
-                )
+                layout = getattr(operation_modules["typo"].KEYNEIGHBORS, keyboard)
             else:
                 layout = {key: list(value) for key, value in layout_override.items()}
             module = operation_modules["typo"]
@@ -414,9 +323,7 @@ def collect_benchmark_results(
 
     samples = tuple(DEFAULT_TEXTS if texts is None else texts)
     descriptor_template: tuple[Descriptor, ...] = tuple(
-        _clone_descriptors(
-            descriptors if descriptors is not None else BASE_DESCRIPTORS
-        )
+        _clone_descriptors(descriptors if descriptors is not None else BASE_DESCRIPTORS)
     )
 
     results: list[BenchmarkResult] = []

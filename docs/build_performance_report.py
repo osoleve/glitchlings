@@ -61,6 +61,7 @@ from benchmarks.pipeline_benchmark import (  # type: ignore  # pylint: disable=w
     SCENARIOS,
     collect_benchmark_results,
 )
+from benchmarks.constants import SCENARIO_DESCRIPTIONS
 
 DEFAULT_OUTPUT = REPO_ROOT / "docs" / "performance-comparison.md"
 
@@ -117,12 +118,7 @@ def build_report_content(
     for scenario in scenario_names:
         display_name = scenario.replace("_", " ").title()
         lines.append(f"### Scenario: {display_name}\n\n")
-        description = {
-            "baseline": "Default six-glitch pipeline mirroring the public benchmark configuration.",
-            "shuffle_mix": "Adds the Adjax word swapper and varies rates to stress mixed workloads.",
-            "aggressive_cleanup": "Heavy redaction and deletion pass to emulate worst-case sanitisation.",
-            "stealth_noise": "Lightweight typo and zero-width noise focused on subtle obfuscations.",
-        }.get(scenario, "")
+        description = SCENARIO_DESCRIPTIONS.get(scenario, "")
         if description:
             lines.append(f"{description}\n\n")
         lines.extend(
