@@ -12,7 +12,15 @@ from .rushmore import Rushmore, rushmore
 from .redactyl import Redactyl, redactyl
 from .scannequin import Scannequin, scannequin
 from .zeedub import Zeedub, zeedub
-from .core import Glitchling, Gaggle
+from .core import (
+    Glitchling,
+    Gaggle,
+    is_rust_pipeline_enabled,
+    is_rust_pipeline_supported,
+    pipeline_feature_flag_enabled,
+    plan_glitchlings,
+    plan_glitchling_specs,
+)
 
 __all__ = [
     "Typogre",
@@ -35,6 +43,11 @@ __all__ = [
     "zeedub",
     "Glitchling",
     "Gaggle",
+    "plan_glitchlings",
+    "plan_glitchling_specs",
+    "is_rust_pipeline_enabled",
+    "is_rust_pipeline_supported",
+    "pipeline_feature_flag_enabled",
     "summon",
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",

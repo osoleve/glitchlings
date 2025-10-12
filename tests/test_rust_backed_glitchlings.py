@@ -871,24 +871,29 @@ def test_pipeline_falls_back_when_compose_raises(monkeypatch):
 
 def test_rust_pipeline_feature_flag_introspection(monkeypatch):
     monkeypatch.delenv("GLITCHLINGS_RUST_PIPELINE", raising=False)
-    assert core_module._pipeline_feature_flag_enabled()
-    assert core_module.Gaggle.rust_pipeline_supported() is (
+    assert core_module.pipeline_feature_flag_enabled()
+    assert core_module.is_rust_pipeline_supported() is (
         core_module._compose_glitchlings_rust is not None
     )
-    assert core_module.Gaggle.rust_pipeline_enabled() is core_module.Gaggle.rust_pipeline_supported()
+    assert core_module.Gaggle.rust_pipeline_supported() is core_module.is_rust_pipeline_supported()
+    assert core_module.is_rust_pipeline_enabled() is core_module.Gaggle.rust_pipeline_enabled()
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
-    assert not core_module._pipeline_feature_flag_enabled()
+    assert not core_module.pipeline_feature_flag_enabled()
+    assert not core_module.is_rust_pipeline_enabled()
     assert not core_module.Gaggle.rust_pipeline_enabled()
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
     if core_module.Gaggle.rust_pipeline_supported():
+        assert core_module.is_rust_pipeline_enabled()
         assert core_module.Gaggle.rust_pipeline_enabled()
     else:
+        assert not core_module.is_rust_pipeline_enabled()
         assert not core_module.Gaggle.rust_pipeline_enabled()
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "false")
-    assert not core_module._pipeline_feature_flag_enabled()
+    assert not core_module.pipeline_feature_flag_enabled()
+    assert not core_module.is_rust_pipeline_enabled()
     assert not core_module.Gaggle.rust_pipeline_enabled()
 
 

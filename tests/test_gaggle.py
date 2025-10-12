@@ -59,7 +59,7 @@ def test_gaggle_detects_missing_plan_indices(monkeypatch):
 
     monkeypatch.setattr(
         core_module,
-        "_plan_glitchling_sequence",
+        "plan_glitchlings",
         lambda *_args, **_kwargs: [(0, 123456789)],
         raising=False,
     )
