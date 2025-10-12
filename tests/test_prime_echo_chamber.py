@@ -34,6 +34,7 @@ verifiers_stub.load_environment = _load_environment
 sys.modules["verifiers"] = verifiers_stub
 
 import glitchlings.zoo.core as zoo_core
+from glitchlings import compat as glitchlings_compat
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 from glitchlings.dlc import prime
 
@@ -112,8 +113,18 @@ Dataset = FakeDataset
 
 @pytest.fixture(autouse=True)
 def _install_fake_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=True)
-    monkeypatch.setattr(zoo_core, "_datasets_error", None, raising=True)
+    datasets_stub = types.ModuleType("datasets")
+    datasets_stub.Dataset = FakeDataset
+    datasets_stub.DatasetDict = dict
+
+    def _unimplemented_load(*args, **kwargs):
+        raise RuntimeError("load_dataset stub not configured for this test.")
+
+    datasets_stub.load_dataset = _unimplemented_load
+    monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+    glitchlings_compat.reset_optional_dependencies()
+    glitchlings_compat.datasets.get()
+    monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=False)
 
 
 def append_marker(text: str) -> str:
@@ -274,6 +285,8 @@ def test_echo_chamber_uses_custom_reward(monkeypatch: pytest.MonkeyPatch) -> Non
     datasets_stub.DatasetDict = dict
     datasets_stub.load_dataset = _fake_load_dataset
     monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+    glitchlings_compat.reset_optional_dependencies()
+    glitchlings_compat.datasets.get()
 
     recorder = _RecordingGaggle()
     monkeypatch.setattr(prime, "_as_gaggle", lambda glitchlings, seed: recorder)
@@ -305,6 +318,8 @@ def test_echo_chamber_passes_split_to_loader(monkeypatch: pytest.MonkeyPatch) ->
     datasets_stub.DatasetDict = dict
     datasets_stub.load_dataset = _fake_load_dataset
     monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+    glitchlings_compat.reset_optional_dependencies()
+    glitchlings_compat.datasets.get()
 
     monkeypatch.setattr(prime, "_as_gaggle", lambda glitchlings, seed: _RecordingGaggle())
 
@@ -329,6 +344,8 @@ def test_echo_chamber_requires_non_empty_column(monkeypatch: pytest.MonkeyPatch)
     datasets_stub.DatasetDict = dict
     datasets_stub.load_dataset = _fake_load_dataset
     monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+    glitchlings_compat.reset_optional_dependencies()
+    glitchlings_compat.datasets.get()
 
     monkeypatch.setattr(prime, "_as_gaggle", lambda *args, **kwargs: _RecordingGaggle())
 
@@ -352,6 +369,8 @@ def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     datasets_stub.DatasetDict = dict
     datasets_stub.load_dataset = _fake_load_dataset
     monkeypatch.setitem(sys.modules, "datasets", datasets_stub)
+    glitchlings_compat.reset_optional_dependencies()
+    glitchlings_compat.datasets.get()
 
     class _RecordingGaggle:
         def __init__(self):

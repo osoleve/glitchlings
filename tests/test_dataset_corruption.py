@@ -20,6 +20,11 @@ def _materialize(dataset: "Dataset") -> list[dict[str, Any]]:
     ]
 
 
+class _DatasetSentinel:
+    def with_transform(self, _):
+        raise AssertionError("datasets dependency check did not trigger")
+
+
 def test_corrupt_dataset_is_deterministic_across_columns() -> None:
     """Ensure ``Glitchling.corrupt_dataset`` produces stable results."""
 
@@ -83,12 +88,23 @@ def test_corrupt_dataset_requires_optional_dependency(monkeypatch: pytest.Monkey
     glitchlings = importlib.import_module("glitchlings")
     assert glitchlings is not None
 
+    from glitchlings import compat as glitchlings_compat
+
+    def _deny_import(name: str, *args: object, **kwargs: object):
+        if name == "datasets":
+            raise ModuleNotFoundError("datasets is not installed")
+        return importlib.import_module(name, package=None)
+
+    monkeypatch.setattr(glitchlings_compat, "import_module", _deny_import)
+    glitchlings_compat.reset_optional_dependencies()
+    assert glitchlings_compat.datasets.get() is None
+
     from glitchlings.zoo.core import AttackWave, Glitchling
 
     noop = Glitchling("noop", lambda text, **_: text, AttackWave.CHARACTER)
 
     with pytest.raises(ModuleNotFoundError, match="datasets is not installed"):
-        noop.corrupt_dataset(dataset=object(), columns=["text"])
+        noop.corrupt_dataset(dataset=_DatasetSentinel(), columns=["text"])
 
 
 def test_corrupt_dataset_glitches_list_columns_individually():

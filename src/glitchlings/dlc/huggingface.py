@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Any
 
-from ..compat import optional_import
+from ..compat import datasets, get_datasets_dataset, require_datasets
 from ..zoo import Gaggle, Glitchling, summon
 
 
@@ -59,7 +59,16 @@ def _glitch_dataset(
 def _ensure_dataset_class() -> Any:
     """Return the Hugging Face :class:`~datasets.Dataset` patched with ``.glitch``."""
 
-    dataset_cls = _DATASETS_DATASET.require()
+    dataset_cls = get_datasets_dataset()
+    if dataset_cls is None:  # pragma: no cover - datasets is an install-time dependency
+        require_datasets("datasets is not installed")
+        dataset_cls = get_datasets_dataset()
+        if dataset_cls is None:
+            message = "datasets is not installed"
+            error = datasets.error
+            if error is not None:
+                raise ModuleNotFoundError(message) from error
+            raise ModuleNotFoundError(message)
 
     if getattr(dataset_cls, "glitch", None) is None:
 
@@ -86,7 +95,8 @@ def install() -> None:
     _ensure_dataset_class()
 
 
-if _DATASETS_DATASET.is_available():
+_DatasetAlias = get_datasets_dataset()
+if _DatasetAlias is not None:
     Dataset = _ensure_dataset_class()
 else:  # pragma: no cover - datasets is an install-time dependency
     Dataset = None  # type: ignore[assignment]

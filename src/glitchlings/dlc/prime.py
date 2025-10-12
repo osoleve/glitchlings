@@ -6,9 +6,11 @@ from collections.abc import Iterable, Sequence
 from enum import Enum
 from typing import Any, Callable
 
-import verifiers as vf
+from ..compat import require_datasets, require_jellyfish, require_verifiers
 
-from jellyfish import damerau_levenshtein_distance
+vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
+_jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
+damerau_levenshtein_distance = _jellyfish.damerau_levenshtein_distance
 
 try:
     from .huggingface import Dataset
@@ -215,9 +217,12 @@ def echo_chamber(
             :func:`datasets.load_dataset`.
     """
 
+    datasets_module = require_datasets("datasets is required to build an echo chamber")
     try:
-        from datasets import Dataset as HFDataset, DatasetDict, load_dataset
-    except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency
+        HFDataset = datasets_module.Dataset  # type: ignore[attr-defined]
+        DatasetDict = datasets_module.DatasetDict  # type: ignore[attr-defined]
+        load_dataset = datasets_module.load_dataset  # type: ignore[attr-defined]
+    except AttributeError as exc:  # pragma: no cover - defensive
         message = "datasets is required to build an echo chamber"
         raise ModuleNotFoundError(message) from exc
 

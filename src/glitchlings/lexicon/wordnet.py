@@ -2,34 +2,45 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
-try:  # pragma: no cover - exercised when NLTK is available
-    import nltk  # type: ignore[import]
-except ModuleNotFoundError as exc:  # pragma: no cover - triggered when NLTK missing
-    nltk = None  # type: ignore[assignment]
-    find = None  # type: ignore[assignment]
-    _NLTK_IMPORT_ERROR = exc
-else:  # pragma: no cover - executed when NLTK is present
-    from nltk.corpus.reader import WordNetCorpusReader as _WordNetCorpusReader  # type: ignore[import]
-    from nltk.data import find as _nltk_find  # type: ignore[import]
+from ..compat import nltk as _nltk_dependency
 
-    find = _nltk_find
-    _NLTK_IMPORT_ERROR = None
+nltk = _nltk_dependency.get()  # type: ignore[assignment]
+_NLTK_IMPORT_ERROR = _nltk_dependency.error
 
 if TYPE_CHECKING:  # pragma: no cover - typing aid only
     from nltk.corpus.reader import WordNetCorpusReader  # type: ignore[import]
 else:  # pragma: no cover - runtime fallback to avoid hard dependency
     WordNetCorpusReader = Any
 
+find: Any | None = None
+_WORDNET_MODULE: Any | None = None
+
 if nltk is not None:  # pragma: no cover - guarded by import success
     try:
-        from nltk.corpus import wordnet as _WORDNET_MODULE  # type: ignore[import]
+        corpus_reader_module = import_module("nltk.corpus.reader")
+        WordNetCorpusReader = corpus_reader_module.WordNetCorpusReader  # type: ignore[assignment]
+    except ModuleNotFoundError as exc:  # pragma: no cover - triggered when corpus missing
+        if _NLTK_IMPORT_ERROR is None:
+            _NLTK_IMPORT_ERROR = exc  # type: ignore[assignment]
+    else:
+        try:
+            data_module = import_module("nltk.data")
+        except ModuleNotFoundError as exc:  # pragma: no cover - triggered when data missing
+            if _NLTK_IMPORT_ERROR is None:
+                _NLTK_IMPORT_ERROR = exc  # type: ignore[assignment]
+        else:
+            find = getattr(data_module, "find", None)
+
+    try:
+        _WORDNET_MODULE = import_module("nltk.corpus.wordnet")
     except ModuleNotFoundError:  # pragma: no cover - only hit on namespace packages
         _WORDNET_MODULE = None
-    else:
-        WordNetCorpusReader = _WordNetCorpusReader  # type: ignore[assignment]
 else:
+    nltk = None  # type: ignore[assignment]
+    find = None
     _WORDNET_MODULE = None
 
 from pathlib import Path

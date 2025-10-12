@@ -19,6 +19,11 @@ from .zoo import (
     zeedub,
     Glitchling,
     Gaggle,
+    is_rust_pipeline_enabled,
+    is_rust_pipeline_supported,
+    pipeline_feature_flag_enabled,
+    plan_glitchlings,
+    plan_glitchling_specs,
     summon,
 )
 from .config import AttackConfig, build_gaggle, load_attack_config
@@ -47,6 +52,11 @@ __all__ = [
     "summon",
     "Glitchling",
     "Gaggle",
+    "plan_glitchlings",
+    "plan_glitchling_specs",
+    "is_rust_pipeline_enabled",
+    "is_rust_pipeline_supported",
+    "pipeline_feature_flag_enabled",
     "SAMPLE_TEXT",
     "AttackConfig",
     "build_gaggle",
