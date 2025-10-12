@@ -7,6 +7,7 @@ datasets = pytest.importorskip("datasets")
 Dataset = datasets.Dataset
 
 from glitchlings.dlc import huggingface as hf_dlc
+from glitchlings.dlc.huggingface import _normalise_columns
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 
 
@@ -20,6 +21,11 @@ def append_rng_token(text: str, *, rng: Random) -> str:
 def ensure_glitch_installed() -> Iterable[None]:
     hf_dlc.install()
     yield
+
+
+def test_normalise_columns_rejects_empty_sequence() -> None:
+    with pytest.raises(ValueError, match="At least one column"):
+        _normalise_columns([])
 
 
 def test_install_is_idempotent() -> None:

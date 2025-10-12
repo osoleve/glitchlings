@@ -174,3 +174,15 @@ def test_load_vector_source_expands_user_paths(tmp_path: Path, monkeypatch) -> N
 
     loaded = load_vector_source("~/vectors.json")
     assert loaded["alpha"] == [1.0, 0.0]
+
+
+def test_load_vector_source_missing_file(tmp_path: Path) -> None:
+    missing = tmp_path / "missing.json"
+    with pytest.raises(RuntimeError, match="does not exist"):
+        load_vector_source(str(missing))
+
+
+def test_vector_lexicon_save_cache_requires_path(toy_embeddings: dict[str, list[float]]) -> None:
+    lexicon = VectorLexicon(source=toy_embeddings, max_neighbors=2, min_similarity=0.0)
+    with pytest.raises(RuntimeError, match="No cache path"):
+        lexicon.save_cache()

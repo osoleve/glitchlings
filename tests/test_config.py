@@ -1,9 +1,19 @@
 import textwrap
+from pathlib import Path
 
 import pytest
 
 from glitchlings import build_gaggle, load_attack_config
-from glitchlings.config import DEFAULT_ATTACK_SEED, parse_attack_config
+from glitchlings.config import (
+    CONFIG_ENV_VAR,
+    DEFAULT_ATTACK_SEED,
+    LexiconConfig,
+    RuntimeConfig,
+    get_config,
+    parse_attack_config,
+    reload_config,
+    reset_config,
+)
 from glitchlings.zoo import Typogre
 
 
@@ -57,3 +67,67 @@ def test_parse_attack_config_rejects_invalid_payload(payload, message):
     with pytest.raises(ValueError) as excinfo:
         parse_attack_config(payload, source="test")
     assert message in str(excinfo.value)
+
+
+def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
+    calls = 0
+
+    def _fake_loader():
+        nonlocal calls
+        calls += 1
+        return RuntimeConfig(lexicon=LexiconConfig(), path=Path(tmp_path / "config.toml"))
+
+    monkeypatch.setattr("glitchlings.config._load_runtime_config", _fake_loader)
+    reset_config()
+
+    config_one = get_config()
+    config_two = get_config()
+    assert config_one is config_two
+    assert calls == 1
+
+    reload_config()
+    get_config()
+    assert calls == 2
+
+
+def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch, tmp_path):
+    config_path = tmp_path / "custom.toml"
+    config_path.write_text(
+        "[lexicon]\npriority = [\"vector\"]\nvector_cache = \"vector.json\"\n"
+        "graph_cache = \"graph.json\"\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
+    reset_config()
+    try:
+        config = get_config()
+    finally:
+        reset_config()
+        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+    assert config.path == config_path
+    assert config.lexicon.vector_cache == (config_path.parent / "vector.json").resolve()
+    assert config.lexicon.graph_cache == (config_path.parent / "graph.json").resolve()
+
+
+def test_load_attack_config_errors_for_missing_file(tmp_path):
+    missing = tmp_path / "nope.yaml"
+    with pytest.raises(ValueError, match="was not found"):
+        load_attack_config(missing)
+
+
+def test_load_attack_config_surfaces_yaml_errors(tmp_path):
+    bad_path = tmp_path / "bad.yaml"
+    bad_path.write_text("glitchlings: [Typogre", encoding="utf-8")
+    with pytest.raises(ValueError, match="Failed to parse"):
+        load_attack_config(bad_path)
+
+
+def test_load_attack_config_requires_integer_seed(tmp_path):
+    bad_seed = tmp_path / "bad-seed.yaml"
+    bad_seed.write_text(
+        "seed: not_an_int\nglitchlings:\n  - Typogre\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="Seed in"):
+        load_attack_config(bad_seed)

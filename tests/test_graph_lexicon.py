@@ -51,3 +51,9 @@ def test_graph_lexicon_missing_embeddings(tmp_path: Path) -> None:
 def test_empty_queries_have_no_synonyms() -> None:
     lexicon = GraphLexicon(source={})
     assert lexicon.get_synonyms("!!!", n=2) == []
+
+
+def test_graph_lexicon_save_cache_requires_path() -> None:
+    lexicon = GraphLexicon(source={})
+    with pytest.raises(RuntimeError, match="No cache path"):
+        lexicon.save_cache()
