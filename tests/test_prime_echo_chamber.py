@@ -214,7 +214,7 @@ def test_load_environment_respects_explicit_columns(monkeypatch):
     stub = _RecordingGaggle()
 
     monkeypatch.setattr(prime, "_resolve_environment", lambda _env: _FakeEnvironment(dataset))
-    monkeypatch.setattr(prime, "summon", lambda specs, seed: stub)
+    monkeypatch.setattr(prime, "coerce_gaggle", lambda specs, seed: stub)
 
     env = prime.load_environment("ignored", glitchlings=[prime.Typogre()], seed=7, columns=["extra"])
 

@@ -6,7 +6,8 @@ from collections.abc import Iterable, Sequence
 from typing import Any
 
 from ..compat import datasets, get_datasets_dataset, require_datasets
-from ..zoo import Gaggle, Glitchling, summon
+from ..util.adapters import coerce_gaggle
+from ..zoo import Gaggle, Glitchling
 
 
 def _normalise_columns(column: str | Sequence[str]) -> list[str]:
@@ -21,20 +22,6 @@ def _normalise_columns(column: str | Sequence[str]) -> list[str]:
     return normalised
 
 
-def _as_gaggle(glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling], seed: int) -> Gaggle:
-    """Coerce any supported glitchling specification into a :class:`Gaggle`."""
-
-    if isinstance(glitchlings, Gaggle):
-        return glitchlings
-
-    if isinstance(glitchlings, (Glitchling, str)):
-        resolved: Iterable[str | Glitchling] = [glitchlings]
-    else:
-        resolved = glitchlings
-
-    return summon(list(resolved), seed=seed)
-
-
 def _glitch_dataset(
     dataset: Any,
     glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
@@ -45,7 +32,7 @@ def _glitch_dataset(
     """Internal helper implementing :meth:`Dataset.glitch`."""
 
     columns = _normalise_columns(column)
-    gaggle = _as_gaggle(glitchlings, seed=seed)
+    gaggle = coerce_gaggle(glitchlings, seed=seed)
     return gaggle.corrupt_dataset(dataset, columns)
 
 

@@ -7,6 +7,9 @@ from enum import Enum
 from typing import Any, Callable
 
 from ..compat import require_datasets, require_jellyfish, require_verifiers
+from ..util.adapters import coerce_gaggle
+from ._shared import resolve_columns as _resolve_columns_shared
+from ._shared import resolve_environment as _resolve_environment_shared
 
 vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
 _jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
@@ -20,65 +23,24 @@ else:
     if Dataset is None:  # pragma: no cover - optional dependency
         Dataset = object  # type: ignore[assignment]
 
-from ..zoo import Gaggle, Glitchling, Mim1c, Typogre, summon
+from ..zoo import Gaggle, Glitchling, Mim1c, Typogre
 
 
 def _resolve_environment(env: str | vf.Environment) -> vf.Environment:
     """Return a fully-instantiated verifier environment."""
 
-    if isinstance(env, str):
-        env = vf.load_environment(env)
-
-    if not isinstance(env, vf.Environment):
-        raise TypeError("Invalid environment type")
-
-    return env
+    resolved = _resolve_environment_shared(
+        env,
+        loader=vf.load_environment,
+        environment_type=vf.Environment,
+    )
+    return resolved
 
 
 def _resolve_columns(dataset: Dataset, columns: Sequence[str] | None) -> list[str]:
     """Identify which dataset columns should be corrupted."""
 
-    available = set(dataset.column_names)
-
-    if columns is not None:
-        missing = sorted(set(columns) - available)
-        if missing:
-            missing_str = ", ".join(missing)
-            raise ValueError(f"Columns not found in dataset: {missing_str}")
-        return list(columns)
-
-    for candidate in ("prompt", "question"):
-        if candidate in available:
-            return [candidate]
-
-    try:
-        dataset_length = len(dataset)  # type: ignore[arg-type]
-    except TypeError:
-        preview_rows: list[dict[str, Any]]
-        take_fn = getattr(dataset, "take", None)
-        if callable(take_fn):
-            preview_rows = list(take_fn(1))
-        else:
-            iterator = iter(dataset)
-            try:
-                first_row = next(iterator)
-            except StopIteration:
-                preview_rows = []
-            else:
-                preview_rows = [first_row]
-        sample = dict(preview_rows[0]) if preview_rows else {}
-    else:
-        sample = dataset[0] if dataset_length else {}
-    inferred = [
-        name
-        for name in dataset.column_names
-        if isinstance(sample.get(name), str)
-    ]
-
-    if inferred:
-        return inferred
-
-    raise ValueError("Unable to determine which dataset columns to corrupt.")
+    return _resolve_columns_shared(dataset, columns)
 
 
 class Difficulty(Enum):
@@ -122,15 +84,7 @@ def load_environment(
     if glitchlings is None:
         return environment
 
-    if isinstance(glitchlings, Gaggle):
-        gaggle = glitchlings
-    else:
-        if isinstance(glitchlings, (Glitchling, str)):
-            resolved = [glitchlings]
-        else:
-            resolved = list(glitchlings)
-
-        gaggle = summon(resolved, seed=seed)
+    gaggle = coerce_gaggle(glitchlings, seed=seed)
 
     dataset = environment.dataset
     corrupt_columns = _resolve_columns(dataset, columns)
@@ -145,15 +99,7 @@ def _as_gaggle(
 ) -> Gaggle:
     """Coerce any supported glitchling specification into a :class:`Gaggle`."""
 
-    if isinstance(glitchlings, Gaggle):
-        return glitchlings
-
-    if isinstance(glitchlings, (Glitchling, str)):
-        resolved: Iterable[str | Glitchling] = [glitchlings]
-    else:
-        resolved = glitchlings
-
-    return summon(list(resolved), seed=seed)
+    return coerce_gaggle(glitchlings, seed=seed)
 
 
 def _extract_completion_text(completion: Any) -> str:
@@ -208,7 +154,7 @@ def echo_chamber(
         dataset_id: Identifier of the Hugging Face dataset to load.
         column: Name of the column whose text should be glitched.
         glitchlings: Glitchling specifiers that will corrupt the prompts.
-        seed: RNG seed forwarded to :func:`summon`.
+        seed: RNG seed forwarded to :func:`glitchlings.util.adapters.coerce_gaggle`.
         instructions: System instructions supplied to the environment prompts.
         reward_function: Optional callable used to score completions. Defaults to
             :func:`symmetric_damerau_levenshtein_similarity` when omitted.
