@@ -15,20 +15,17 @@ Descriptor = Dict[str, object]
 @lru_cache(maxsize=None)
 def _glitchling_module(name: str) -> ModuleType:
     """Return the module that defines the named glitchling."""
-
     module_path = get_glitchling_class(name).__module__
     return importlib.import_module(module_path)
 
 
 def redactyl_full_block() -> str:
     """Expose the Redactyl full block character."""
-
     return getattr(_glitchling_module("Redactyl"), "FULL_BLOCK")
 
 
 def zero_width_characters() -> List[str]:
     """Return the default zero-width characters used by Zeedub."""
-
     characters = getattr(
         _glitchling_module("Zeedub"), "_DEFAULT_ZERO_WIDTH_CHARACTERS"
     )
@@ -37,7 +34,6 @@ def zero_width_characters() -> List[str]:
 
 def keyboard_layout(keyboard: str) -> Dict[str, List[str]]:
     """Return a mutable copy of a named keyboard layout for Typogre."""
-
     neighbors = getattr(_glitchling_module("Typogre"), "KEYNEIGHBORS")
     layout = getattr(neighbors, keyboard)
     return {key: list(value) for key, value in layout.items()}
@@ -56,7 +52,6 @@ OPERATION_MODULES: Dict[str, str] = {
 
 def module_for_operation(op_type: str) -> ModuleType:
     """Return the module that backs a named pipeline operation."""
-
     try:
         glitchling_name = OPERATION_MODULES[op_type]
     except KeyError as error:  # pragma: no cover - defensive fallback

@@ -26,7 +26,6 @@ def _build_corruption(name: str, amplitude: int):
     pseudo-random suffix that depends on the glitchling's RNG. This allows the
     tests to assert that derived seeds and ordering are both respected.
     """
-
     choices = (name + "xyz").replace("|", "_")
 
     def _corrupt(text: str, *, rng) -> str:
@@ -63,7 +62,6 @@ word_sequences = st.lists(
 )
 def test_gaggle_ordering_and_determinism(master_seed, specs):
     """Gaggles should honour ordering guarantees and deterministic RNG use."""
-
     glitchlings = [
         Glitchling(
             name=spec["name"],
@@ -106,7 +104,6 @@ def test_gaggle_ordering_and_determinism(master_seed, specs):
 )
 def test_derived_seeds_change_with_inputs(left, right):
     """Changing any component of the derivation tuple should alter the seed."""
-
     assume(left != right)
     assert Gaggle.derive_seed(*left) != Gaggle.derive_seed(*right)
 

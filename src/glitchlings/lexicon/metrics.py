@@ -18,7 +18,6 @@ def _unique_synonyms(
     sample_size: int,
 ) -> list[str]:
     """Return unique synonym candidates excluding the original token."""
-
     collected: list[str] = []
     seen: set[str] = set()
     source = word.lower()
@@ -41,7 +40,6 @@ def synonym_diversity(
     sample_size: int = 5,
 ) -> float:
     """Return the mean unique-synonym count for ``words`` using ``lexicon``."""
-
     totals = []
     for word in words:
         synonyms = _unique_synonyms(lexicon, word, pos=pos, sample_size=sample_size)
@@ -60,7 +58,6 @@ def coverage_ratio(
     min_synonyms: int = 3,
 ) -> float:
     """Return the fraction of ``words`` with at least ``min_synonyms`` candidates."""
-
     total = 0
     hits = 0
     for word in words:
@@ -96,7 +93,6 @@ def mean_cosine_similarity(
     sample_size: int = 5,
 ) -> float:
     """Return the mean cosine similarity between each word and its candidates."""
-
     total = 0.0
     count = 0
     for word in words:
@@ -126,11 +122,8 @@ def compare_lexicons(
     embeddings: Mapping[str, Sequence[float]] | None = None,
 ) -> dict[str, float]:
     """Return comparative coverage and diversity statistics for two lexicons."""
-
     stats = {
-        "baseline_diversity": synonym_diversity(
-            baseline, words, pos=pos, sample_size=sample_size
-        ),
+        "baseline_diversity": synonym_diversity(baseline, words, pos=pos, sample_size=sample_size),
         "candidate_diversity": synonym_diversity(
             candidate, words, pos=pos, sample_size=sample_size
         ),

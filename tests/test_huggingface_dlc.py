@@ -13,7 +13,6 @@ from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 
 def append_rng_token(text: str, *, rng: Random) -> str:
     """Append a deterministic RNG token to the supplied text."""
-
     return f"{text}-{rng.randint(0, 999)}"
 
 

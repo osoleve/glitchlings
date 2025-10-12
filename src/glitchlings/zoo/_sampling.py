@@ -17,7 +17,6 @@ def weighted_sample_without_replacement(
     handling and RNG interactions so the Python and Rust implementations remain
     aligned.
     """
-
     if k < 0:
         raise ValueError("Sample size cannot be negative")
 

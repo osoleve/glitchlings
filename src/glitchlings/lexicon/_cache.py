@@ -8,7 +8,6 @@ from hashlib import blake2s
 from pathlib import Path
 from typing import Mapping, Sequence
 
-
 CacheEntries = dict[str, list[str]]
 
 
@@ -22,7 +21,6 @@ class CacheSnapshot:
 
 def _normalise_entries(payload: Mapping[str, Sequence[str]]) -> CacheEntries:
     """Convert raw cache payloads into canonical mapping form."""
-
     entries: CacheEntries = {}
     for key, values in payload.items():
         if not isinstance(key, str):
@@ -35,21 +33,18 @@ def _normalise_entries(payload: Mapping[str, Sequence[str]]) -> CacheEntries:
 
 def _canonical_json(entries: Mapping[str, Sequence[str]]) -> str:
     """Return a deterministic JSON serialisation for ``entries``."""
-
     serialisable = {key: list(values) for key, values in sorted(entries.items())}
     return json.dumps(serialisable, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def compute_checksum(entries: Mapping[str, Sequence[str]]) -> str:
     """Return a BLAKE2s checksum for ``entries``."""
-
     digest = blake2s(_canonical_json(entries).encode("utf8"), digest_size=16)
     return digest.hexdigest()
 
 
 def load_cache(path: Path) -> CacheSnapshot:
     """Load a cache from ``path`` and verify its checksum if present."""
-
     if not path.exists():
         return CacheSnapshot(entries={}, checksum=None)
 
@@ -89,7 +84,6 @@ def load_cache(path: Path) -> CacheSnapshot:
 
 def write_cache(path: Path, entries: Mapping[str, Sequence[str]]) -> CacheSnapshot:
     """Persist ``entries`` to ``path`` with checksum metadata."""
-
     serialisable = {key: list(values) for key, values in sorted(entries.items())}
     checksum = compute_checksum(serialisable)
     payload = {
@@ -108,4 +102,3 @@ def write_cache(path: Path, entries: Mapping[str, Sequence[str]]) -> CacheSnapsh
 
 
 __all__ = ["CacheEntries", "CacheSnapshot", "compute_checksum", "load_cache", "write_cache"]
-

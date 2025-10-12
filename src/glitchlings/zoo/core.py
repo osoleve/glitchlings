@@ -9,15 +9,13 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union
 
-from ..compat import datasets, get_datasets_dataset, require_datasets
+from ..compat import get_datasets_dataset, require_datasets
 
 _DatasetsDataset = get_datasets_dataset()
 
 try:  # pragma: no cover - optional dependency
-    from glitchlings._zoo_rust import (
-        compose_glitchlings as _compose_glitchlings_rust,
-        plan_glitchlings as _plan_glitchlings_rust,
-    )
+    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
+    from glitchlings._zoo_rust import plan_glitchlings as _plan_glitchlings_rust
 except ImportError:  # pragma: no cover - compiled extension not present
     _compose_glitchlings_rust = None
     _plan_glitchlings_rust = None
@@ -42,7 +40,6 @@ PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
 def pipeline_feature_flag_enabled() -> bool:
     """Return ``True`` when the environment does not explicitly disable the Rust pipeline."""
-
     value = os.environ.get(_PIPELINE_FEATURE_FLAG_ENV)
     if value is None:
         return True
@@ -59,25 +56,21 @@ def pipeline_feature_flag_enabled() -> bool:
 
 def _pipeline_feature_flag_enabled() -> bool:
     """Compatibility shim for legacy callers."""
-
     return pipeline_feature_flag_enabled()
 
 
 def is_rust_pipeline_supported() -> bool:
     """Return ``True`` when the optional Rust extension is importable."""
-
     return _compose_glitchlings_rust is not None
 
 
 def is_rust_pipeline_enabled() -> bool:
     """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-
     return is_rust_pipeline_supported() and pipeline_feature_flag_enabled()
 
 
 def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
     """Create a plan specification mapping from a glitchling instance."""
-
     return {
         "name": glitchling.name,
         "scope": int(glitchling.level),
@@ -87,7 +80,6 @@ def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
 
 def _normalize_plan_entry(entry: PlanEntry) -> PlanSpecification:
     """Convert a plan entry (glitchling or mapping) into a normalized specification."""
-
     if isinstance(entry, Glitchling):
         return _spec_from_glitchling(entry)
 
@@ -109,15 +101,14 @@ def _normalize_plan_entry(entry: PlanEntry) -> PlanSpecification:
 
 def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[PlanSpecification]:
     """Normalize a collection of orchestration plan entries."""
-
     return [_normalize_plan_entry(entry) for entry in entries]
+
 
 def _plan_glitchlings_python(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int,
 ) -> list[tuple[int, int]]:
     """Pure-Python fallback for orchestrating glitchlings in deterministic order."""
-
     master_seed_int = int(master_seed)
     planned: list[tuple[int, int, int, int, str]] = []
     for index, spec in enumerate(specs):
@@ -136,7 +127,6 @@ def _plan_glitchlings_with_rust(
     master_seed: int,
 ) -> list[tuple[int, int]] | None:
     """Attempt to obtain the orchestration plan from the compiled Rust module."""
-
     if _plan_glitchlings_rust is None:
         return None
 
@@ -155,7 +145,6 @@ def _resolve_orchestration_plan(
     prefer_rust: bool,
 ) -> list[tuple[int, int]]:
     """Dispatch to the Rust planner when available, otherwise fall back to Python."""
-
     if prefer_rust:
         plan = _plan_glitchlings_with_rust(list(specs), master_seed)
         if plan is not None:
@@ -171,7 +160,6 @@ def plan_glitchling_specs(
     prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
     """Resolve orchestration order and seeds from glitchling specifications."""
-
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
@@ -188,7 +176,6 @@ def plan_glitchlings(
     prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
     """Normalize glitchling instances or specs and compute an orchestration plan."""
-
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
@@ -196,6 +183,7 @@ def plan_glitchlings(
     normalized_specs = _normalize_plan_entries(entries)
     master_seed_int = int(master_seed)
     return _resolve_orchestration_plan(normalized_specs, master_seed_int, prefer_rust)
+
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from datasets import Dataset  # type: ignore
@@ -216,7 +204,6 @@ def _is_transcript(
     require_all_content: bool = False,
 ) -> bool:
     """Return `True` when `value` appears to be a chat transcript."""
-
     if not isinstance(value, list):
         return False
 
@@ -285,8 +272,8 @@ class Glitchling:
             order: Relative ordering within the same scope.
             seed: Optional seed for deterministic random behaviour.
             **kwargs: Additional parameters forwarded to the corruption callable.
-        """
 
+        """
         # Each Glitchling maintains its own RNG for deterministic yet isolated behavior.
         # If no seed is supplied, we fall back to Python's default entropy.
         self.seed = seed
@@ -304,7 +291,6 @@ class Glitchling:
 
     def set_param(self, key: str, value: Any) -> None:
         """Persist a parameter for use by the corruption callable."""
-
         aliases = getattr(self, "_param_aliases", {})
         canonical = aliases.get(key, key)
 
@@ -326,7 +312,6 @@ class Glitchling:
 
     def pipeline_operation(self) -> dict[str, Any] | None:
         """Return the Rust pipeline operation descriptor for this glitchling."""
-
         factory = self._pipeline_descriptor_factory
         if factory is None:
             return None
@@ -335,15 +320,11 @@ class Glitchling:
 
     def _corruption_expects_rng(self) -> bool:
         """Return `True` when the corruption function accepts an rng keyword."""
-
         cached_callable = self._cached_rng_callable
         cached_expectation = self._cached_rng_expectation
         corruption_function = self.corruption_function
 
-        if (
-            cached_callable is corruption_function
-            and cached_expectation is not None
-        ):
+        if cached_callable is corruption_function and cached_expectation is not None:
             return cached_expectation
 
         expects_rng = False
@@ -361,7 +342,6 @@ class Glitchling:
 
     def __corrupt(self, text: str, *args: Any, **kwargs: Any) -> str:
         """Execute the corruption callable, injecting the RNG when required."""
-
         # Pass rng to underlying corruption function if it expects it.
         expects_rng = self._corruption_expects_rng()
 
@@ -373,20 +353,16 @@ class Glitchling:
 
     def corrupt(self, text: str | list[dict[str, Any]]) -> str | list[dict[str, Any]]:
         """Apply the corruption function to text or conversational transcripts."""
-
         if _is_transcript(text):
             transcript = [dict(turn) for turn in text]
             if transcript:
-                transcript[-1]["content"] = self.__corrupt(
-                    transcript[-1]["content"], **self.kwargs
-                )
+                transcript[-1]["content"] = self.__corrupt(transcript[-1]["content"], **self.kwargs)
             return transcript
 
         return self.__corrupt(text, **self.kwargs)
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
-
         require_datasets("datasets is not installed")
 
         def __corrupt_row(row: dict[str, Any]) -> dict[str, Any]:
@@ -409,12 +385,10 @@ class Glitchling:
 
     def __call__(self, text: str, *args: Any, **kwds: Any) -> str | list[dict[str, Any]]:
         """Allow a glitchling to be invoked directly like a callable."""
-
         return self.corrupt(text, *args, **kwds)
 
     def reset_rng(self, seed: int | None = None) -> None:
         """Reset the glitchling's RNG to its initial seed."""
-
         if seed is not None:
             self.seed = seed
         if self.seed is not None:
@@ -422,7 +396,6 @@ class Glitchling:
 
     def clone(self, seed: int | None = None) -> "Glitchling":
         """Create a copy of this glitchling, optionally with a new seed."""
-
         cls = self.__class__
         filtered_kwargs = {k: v for k, v in self.kwargs.items() if k != "seed"}
         clone_seed = seed if seed is not None else self.seed
@@ -442,9 +415,6 @@ class Glitchling:
         return cls(**filtered_kwargs)
 
 
-
-
-
 class Gaggle(Glitchling):
     """A collection of glitchlings executed in a deterministic order."""
 
@@ -454,8 +424,8 @@ class Gaggle(Glitchling):
         Args:
             glitchlings: Glitchlings to orchestrate.
             seed: Master seed used to derive per-glitchling seeds.
-        """
 
+        """
         super().__init__("Gaggle", self.corrupt, AttackWave.DOCUMENT, seed=seed)
         self._clones_by_index: list[Glitchling] = []
         for idx, glitchling in enumerate(glitchlings):
@@ -463,9 +433,7 @@ class Gaggle(Glitchling):
             setattr(clone, "_gaggle_index", idx)
             self._clones_by_index.append(clone)
 
-        self.glitchlings: dict[AttackWave, list[Glitchling]] = {
-            level: [] for level in AttackWave
-        }
+        self.glitchlings: dict[AttackWave, list[Glitchling]] = {level: [] for level in AttackWave}
         self.apply_order: list[Glitchling] = []
         self._plan: list[tuple[int, int]] = []
         self.sort_glitchlings()
@@ -473,6 +441,7 @@ class Gaggle(Glitchling):
     @staticmethod
     def derive_seed(master_seed: int, glitchling_name: str, index: int) -> int:
         """Derive a deterministic seed for a glitchling based on the master seed."""
+
         def _int_to_bytes(value: int) -> bytes:
             if value == 0:
                 return b"\x00"
@@ -499,7 +468,6 @@ class Gaggle(Glitchling):
 
     def sort_glitchlings(self) -> None:
         """Sort glitchlings by wave then order to produce application order."""
-
         plan = plan_glitchlings(self._clones_by_index, self.seed)
         self._plan = plan
 
@@ -525,13 +493,11 @@ class Gaggle(Glitchling):
     @staticmethod
     def rust_pipeline_supported() -> bool:
         """Return ``True`` when the compiled Rust pipeline is importable."""
-
         return is_rust_pipeline_supported()
 
     @staticmethod
     def rust_pipeline_enabled() -> bool:
         """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-
         return is_rust_pipeline_enabled()
 
     def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
@@ -564,7 +530,6 @@ class Gaggle(Glitchling):
 
     def corrupt(self, text: str) -> str:
         """Apply each glitchling to the provided text sequentially."""
-
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
         if master_seed is not None and descriptors is not None:

@@ -10,13 +10,11 @@ _TOKEN_EDGES_PATTERN = re.compile(r"^(\W*)(.*?)(\W*)$")
 
 def split_preserving_whitespace(text: str) -> list[str]:
     """Split text while keeping whitespace tokens for stable reconstruction."""
-
     return _WORD_SPLIT_PATTERN.split(text)
 
 
 def split_token_edges(token: str) -> tuple[str, str, str]:
     """Return leading, core, and trailing segments for a token."""
-
     match = _TOKEN_EDGES_PATTERN.match(token)
     if match is None:
         return "", token, ""
@@ -25,7 +23,6 @@ def split_token_edges(token: str) -> tuple[str, str, str]:
 
 def token_core_length(token: str) -> int:
     """Return the length of the main word characters for weighting heuristics."""
-
     _, core, _ = split_token_edges(token)
     candidate = core if core else token
     length = len(candidate)
@@ -50,7 +47,6 @@ class WordToken:
     @property
     def has_core(self) -> bool:
         """Return ``True`` when the token contains at least one core character."""
-
         return bool(self.core)
 
 
@@ -65,8 +61,8 @@ def collect_word_tokens(
         tokens: Token sequence produced by :func:`split_preserving_whitespace`.
         skip_first_word: Exclude the first candidate token (used by Rushmore to
             preserve leading words).
-    """
 
+    """
     start = 2 if skip_first_word else 0
     collected: list[WordToken] = []
     for index in range(start, len(tokens), 2):

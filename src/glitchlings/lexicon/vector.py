@@ -6,17 +6,18 @@ import argparse
 import importlib
 import json
 import math
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 
 from . import LexiconBackend
-from ._cache import CacheSnapshot, load_cache as _load_cache_file, write_cache as _write_cache_file
+from ._cache import CacheSnapshot
+from ._cache import load_cache as _load_cache_file
+from ._cache import write_cache as _write_cache_file
 
 
 def _cosine_similarity(vector_a: Sequence[float], vector_b: Sequence[float]) -> float:
     """Return the cosine similarity between two dense vectors."""
-
     dot_product = 0.0
     norm_a = 0.0
     norm_b = 0.0
@@ -144,7 +145,6 @@ class _SpaCyAdapter(_Adapter):
 
 def _load_json_vectors(path: Path) -> Mapping[str, Sequence[float]]:
     """Load embeddings from a JSON mapping of token to vector list."""
-
     with path.open("r", encoding="utf8") as handle:
         payload = json.load(handle)
 
@@ -164,11 +164,8 @@ def _load_json_vectors(path: Path) -> Mapping[str, Sequence[float]]:
 
 def _load_gensim_vectors(path: Path, *, binary: bool | None = None) -> Any:
     """Load ``gensim`` vectors from ``path``."""
-
     if importlib.util.find_spec("gensim") is None:
-        raise RuntimeError(
-            "The gensim package is required to load keyed vector embeddings."
-        )
+        raise RuntimeError("The gensim package is required to load keyed vector embeddings.")
 
     keyed_vectors_module = importlib.import_module("gensim.models.keyedvectors")
     if binary is None:
@@ -177,14 +174,11 @@ def _load_gensim_vectors(path: Path, *, binary: bool | None = None) -> Any:
     if path.suffix in {".kv", ".kv2"}:
         return keyed_vectors_module.KeyedVectors.load(str(path), mmap="r")
 
-    return keyed_vectors_module.KeyedVectors.load_word2vec_format(
-        str(path), binary=binary
-    )
+    return keyed_vectors_module.KeyedVectors.load_word2vec_format(str(path), binary=binary)
 
 
 def _load_spacy_language(model_name: str) -> Any:
     """Load a spaCy language pipeline by name."""
-
     if importlib.util.find_spec("spacy") is None:
         raise RuntimeError(
             "spaCy is required to use spaCy-backed vector lexicons; install the 'vectors' extra."
@@ -196,7 +190,6 @@ def _load_spacy_language(model_name: str) -> Any:
 
 def _resolve_source(source: Any | None) -> _Adapter | None:
     """Return an adapter instance for ``source`` if possible."""
-
     if source is None:
         return None
 
@@ -229,9 +222,7 @@ def _resolve_source(source: Any | None) -> _Adapter | None:
 
         if suffix in {".kv", ".kv2", ".bin", ".gz", ".txt", ".vec"}:
             binary_flag = False if suffix in {".txt", ".vec"} else None
-            return _GensimAdapter(
-                _load_gensim_vectors(resolved_path, binary=binary_flag)
-            )
+            return _GensimAdapter(_load_gensim_vectors(resolved_path, binary=binary_flag))
 
     if hasattr(source, "most_similar") and hasattr(source, "key_to_index"):
         return _GensimAdapter(source)
@@ -358,42 +349,33 @@ class VectorLexicon(LexiconBackend):
             self._cache_dirty = True
         return synonyms
 
-    def get_synonyms(
-        self, word: str, pos: str | None = None, n: int = 5
-    ) -> list[str]:
+    def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
         normalized = self._normalize_for_lookup(word)
         synonyms = self._ensure_cached(original=word, normalized=normalized)
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
 
     def precompute(self, word: str, *, limit: int | None = None) -> list[str]:
         """Populate the cache for ``word`` and return the stored synonyms."""
-
         normalized = self._normalize_for_lookup(word)
-        return list(
-            self._ensure_cached(original=word, normalized=normalized, limit=limit)
-        )
+        return list(self._ensure_cached(original=word, normalized=normalized, limit=limit))
 
     def iter_vocabulary(self) -> Iterator[str]:
         """Yield vocabulary tokens from the underlying embedding source."""
-
         if self._adapter is None:
             return iter(())
         return self._adapter.iter_keys()
 
     def export_cache(self) -> dict[str, list[str]]:
         """Return a copy of the in-memory synonym cache."""
-
         return {key: list(values) for key, values in self._cache.items()}
 
     @classmethod
     def load_cache(cls, path: str | Path) -> CacheSnapshot:
         """Load and validate a cache file for reuse."""
-
         return _load_cache_file(Path(path))
 
     def save_cache(self, path: str | Path | None = None) -> Path:
         """Persist the current cache to disk, returning the path used."""
-
         if path is None:
             if self._cache_path is None:
                 raise RuntimeError("No cache path supplied to VectorLexicon.")
@@ -430,7 +412,6 @@ def build_vector_cache(
     normalizer: Callable[[str], str] | None = None,
 ) -> Path:
     """Generate a synonym cache for ``words`` using ``source`` embeddings."""
-
     lexicon = VectorLexicon(
         source=source,
         max_neighbors=max_neighbors,
@@ -448,7 +429,6 @@ def build_vector_cache(
 
 def load_vector_source(spec: str) -> Any:
     """Resolve ``spec`` strings for the cache-building CLI."""
-
     if spec.startswith("spacy:"):
         model_name = spec.split(":", 1)[1]
         return _load_spacy_language(model_name)
@@ -538,7 +518,6 @@ def _iter_tokens_from_file(path: Path) -> Iterator[str]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Entry-point for ``python -m glitchlings.lexicon.vector``."""
-
     args = _parse_cli(argv)
 
     if args.output.exists() and not args.overwrite:
@@ -547,11 +526,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
 
     if args.normalizer == "lower":
-        normalizer: Callable[[str], str] | None = (
-            None if args.case_sensitive else str.lower
-        )
+        normalizer: Callable[[str], str] | None = None if args.case_sensitive else str.lower
     else:
-        normalizer = lambda value: value
+        def _identity(value: str) -> str:
+            return value
+
+        normalizer = _identity
 
     source = load_vector_source(args.source)
     if args.tokens is not None:

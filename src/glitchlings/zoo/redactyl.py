@@ -1,5 +1,5 @@
-import re
 import random
+import re
 from typing import Any
 
 from ._rate import resolve_rate
@@ -32,24 +32,22 @@ def _python_redact_words(
     """Redact random words by replacing their characters.
 
     Parameters
+    ----------
     - text: Input text.
     - replacement_char: The character to use for redaction (default FULL_BLOCK).
     - rate: Max proportion of words to redact (default 0.05).
     - merge_adjacent: If True, merges adjacent redactions across intervening non-word chars.
     - rng: RNG used for sampling decisions.
     - unweighted: When True, sample words uniformly instead of by length.
+
     """
     tokens = split_preserving_whitespace(text)
     word_tokens = collect_word_tokens(tokens)
     if not word_tokens:
-        raise ValueError(
-            "Cannot redact words because the input text contains no redactable words."
-        )
+        raise ValueError("Cannot redact words because the input text contains no redactable words.")
 
     population = [token.index for token in word_tokens]
-    weights = [
-        1.0 if unweighted else float(token.core_length) for token in word_tokens
-    ]
+    weights = [1.0 if unweighted else float(token.core_length) for token in word_tokens]
 
     clamped_rate = max(0.0, min(rate, 1.0))
     raw_quota = len(population) * clamped_rate
@@ -105,7 +103,6 @@ def redact_words(
     unweighted: bool = False,
 ) -> str:
     """Redact random words by replacing their characters."""
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=redaction_rate,

@@ -13,7 +13,6 @@ def resolve_environment(
     environment_type: type[Any],
 ) -> Any:
     """Return a fully-instantiated verifier environment."""
-
     if isinstance(env, str):
         env = loader(env)
 
@@ -25,7 +24,6 @@ def resolve_environment(
 
 def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     """Identify which dataset columns should be corrupted."""
-
     available = set(getattr(dataset, "column_names", ()))
 
     if columns is not None:
@@ -40,7 +38,7 @@ def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
             return [candidate]
 
     try:
-        dataset_length = len(dataset)  # type: ignore[arg-type]
+        dataset_length = len(dataset)
     except TypeError:
         preview_rows: list[dict[str, Any]]
         take_fn = getattr(dataset, "take", None)
@@ -58,9 +56,7 @@ def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     else:
         sample = dataset[0] if dataset_length else {}
     inferred = [
-        name
-        for name in getattr(dataset, "column_names", ())
-        if isinstance(sample.get(name), str)
+        name for name in getattr(dataset, "column_names", ()) if isinstance(sample.get(name), str)
     ]
 
     if inferred:

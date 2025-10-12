@@ -26,7 +26,6 @@ from benchmarks.constants import (
 
 def _ensure_datasets_stub() -> None:
     """Install a minimal `datasets` stub so imports remain lightweight."""
-
     if "datasets" in sys.modules:
         return
 
@@ -51,7 +50,6 @@ except ImportError:  # pragma: no cover - optional dependency
 
 def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
     """Return a deep-ish copy of descriptor templates suitable for reuse."""
-
     return [
         {
             "name": descriptor["name"],
@@ -63,7 +61,6 @@ def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
 
 def _descriptor_template(name: str) -> Descriptor:
     """Fetch a descriptor template by name from the baseline set."""
-
     for descriptor in BASE_DESCRIPTORS:
         if descriptor["name"] == name:
             return {
@@ -148,7 +145,6 @@ def _seeded_descriptors(
     master_seed: int, descriptors: Sequence[Descriptor]
 ) -> list[Descriptor]:
     """Return pipeline descriptors enriched with per-glitchling seeds."""
-
     seeded: list[Descriptor] = []
     for index, descriptor in enumerate(descriptors):
         seeded.append(
@@ -320,7 +316,6 @@ def collect_benchmark_results(
     descriptors: Sequence[Descriptor] | None = None,
 ) -> list[BenchmarkResult]:
     """Return structured benchmark results without printing to stdout."""
-
     samples = tuple(DEFAULT_TEXTS if texts is None else texts)
     descriptor_template: tuple[Descriptor, ...] = tuple(
         _clone_descriptors(descriptors if descriptors is not None else BASE_DESCRIPTORS)

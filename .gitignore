@@ -22,3 +22,5 @@ src/glitchlings/_zoo_rust*.pyd
 RELEASE.md
 .hypothesis/
 PLAN.md
+mypyerrors.txt
+rufferrors.txt

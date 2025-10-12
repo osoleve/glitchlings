@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 from importlib import import_module
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from ..compat import nltk as _nltk_dependency
+from . import LexiconBackend
+from ._cache import CacheSnapshot
 
 nltk = _nltk_dependency.get()  # type: ignore[assignment]
 _NLTK_IMPORT_ERROR = _nltk_dependency.error
@@ -43,11 +46,6 @@ else:
     find = None
     _WORDNET_MODULE = None
 
-from pathlib import Path
-
-from . import LexiconBackend
-from ._cache import CacheSnapshot
-
 _WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
 _wordnet_ready = False
 
@@ -56,26 +54,23 @@ _VALID_POS: tuple[str, ...] = ("n", "v", "a", "r")
 
 def _require_nltk() -> None:
     """Ensure the NLTK dependency is present before continuing."""
-
     if nltk is None or find is None:
         message = (
             "The NLTK package is required for WordNet-backed lexicons; install "
             "`nltk` and its WordNet corpus manually to enable this backend."
         )
-        if '_NLTK_IMPORT_ERROR' in globals() and _NLTK_IMPORT_ERROR is not None:
+        if "_NLTK_IMPORT_ERROR" in globals() and _NLTK_IMPORT_ERROR is not None:
             raise RuntimeError(message) from _NLTK_IMPORT_ERROR
         raise RuntimeError(message)
 
 
 def dependencies_available() -> bool:
     """Return ``True`` when the runtime NLTK dependency is present."""
-
     return nltk is not None and find is not None
 
 
 def _load_wordnet_reader() -> WordNetCorpusReader:
     """Return a WordNet corpus reader from the downloaded corpus files."""
-
     _require_nltk()
 
     try:
@@ -94,7 +89,6 @@ def _load_wordnet_reader() -> WordNetCorpusReader:
 
 def _wordnet(force_refresh: bool = False) -> WordNetCorpusReader | Any:
     """Retrieve the active WordNet handle, rebuilding it on demand."""
-
     global _WORDNET_HANDLE
 
     if force_refresh:
@@ -109,7 +103,6 @@ def _wordnet(force_refresh: bool = False) -> WordNetCorpusReader | Any:
 
 def ensure_wordnet() -> None:
     """Ensure the WordNet corpus is available before use."""
-
     global _wordnet_ready
     if _wordnet_ready:
         return
@@ -126,16 +119,13 @@ def ensure_wordnet() -> None:
             resource = _wordnet(force_refresh=True)
             resource.ensure_loaded()
         except LookupError as exc:  # pragma: no cover - only triggered when download fails
-            raise RuntimeError(
-                "Unable to load NLTK WordNet corpus for synonym lookups."
-            ) from exc
+            raise RuntimeError("Unable to load NLTK WordNet corpus for synonym lookups.") from exc
 
     _wordnet_ready = True
 
 
 def _collect_synonyms(word: str, parts_of_speech: tuple[str, ...]) -> list[str]:
     """Gather deterministic synonym candidates for the supplied word."""
-
     normalized_word = word.lower()
     wordnet = _wordnet()
     synonyms: set[str] = set()
@@ -168,9 +158,7 @@ def _collect_synonyms(word: str, parts_of_speech: tuple[str, ...]) -> list[str]:
 class WordNetLexicon(LexiconBackend):
     """Lexicon that retrieves synonyms from the NLTK WordNet corpus."""
 
-    def get_synonyms(
-        self, word: str, pos: str | None = None, n: int = 5
-    ) -> list[str]:
+    def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
         ensure_wordnet()
 
         if pos is None:

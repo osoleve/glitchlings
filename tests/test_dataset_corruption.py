@@ -13,7 +13,6 @@ import pytest
 
 def _materialize(dataset: "Dataset") -> list[dict[str, Any]]:
     """Eagerly load a dataset to regular dictionaries for comparison."""
-
     return [
         {column: row[column] for column in dataset.column_names}
         for row in dataset
@@ -27,7 +26,6 @@ class _DatasetSentinel:
 
 def test_corrupt_dataset_is_deterministic_across_columns() -> None:
     """Ensure ``Glitchling.corrupt_dataset`` produces stable results."""
-
     pytest.importorskip("datasets")
     from datasets import Dataset
 
@@ -66,7 +64,6 @@ def test_corrupt_dataset_is_deterministic_across_columns() -> None:
 
 def test_corrupt_dataset_requires_optional_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
     """Ensure ``Glitchling.corrupt_dataset`` surfaces a clear error."""
-
     monkeypatch.delitem(sys.modules, "datasets", raising=False)
 
     original_import = builtins.__import__

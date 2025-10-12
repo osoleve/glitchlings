@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import Iterable, Mapping, MutableMapping, Sequence
 
 from . import LexiconBackend
-from ._cache import CacheSnapshot, load_cache as _load_cache_file, write_cache as _write_cache_file
+from ._cache import CacheSnapshot
+from ._cache import load_cache as _load_cache_file
+from ._cache import write_cache as _write_cache_file
 from .vector import VectorLexicon
-
 
 _CONCEPT_RE = re.compile(r"^/c/(?P<lang>[a-z]{2})/(?P<term>[^/]+)")
 _PUNCTUATION_RE = re.compile(r"[^\w\s-]+", re.UNICODE)
@@ -17,7 +18,6 @@ _PUNCTUATION_RE = re.compile(r"[^\w\s-]+", re.UNICODE)
 
 def _lemmatize_token(token: str) -> str:
     """Return a lightweight lemma for ``token`` using heuristic rules."""
-
     irregular = {
         "children": "child",
         "mice": "mouse",
@@ -60,7 +60,6 @@ def _lemmatize_token(token: str) -> str:
 
 def _normalize_phrase(phrase: str) -> str:
     """Normalise ``phrase`` for ConceptNet lookups."""
-
     stripped = _PUNCTUATION_RE.sub(" ", phrase.lower())
     tokens = [token for token in stripped.split() if token]
     if not tokens:
@@ -71,7 +70,6 @@ def _normalize_phrase(phrase: str) -> str:
 
 def _concept_terms(normalized: str) -> list[str]:
     """Return ConceptNet term variants for ``normalized``."""
-
     collapsed = normalized.replace(" ", "_")
     if not collapsed:
         return []
@@ -83,7 +81,6 @@ def _concept_terms(normalized: str) -> list[str]:
 
 def _surface_from_concept(concept: str) -> str | None:
     """Return a human-readable surface form for ``concept``."""
-
     match = _CONCEPT_RE.match(concept)
     if match is None:
         return None
@@ -102,7 +99,6 @@ def _language_from_concept(concept: str) -> str | None:
 
 def _load_numberbatch(path: Path, *, languages: set[str]) -> Mapping[str, list[float]]:
     """Load ConceptNet Numberbatch embeddings from ``path``."""
-
     if not path.exists():
         return {}
 
@@ -240,9 +236,7 @@ class GraphLexicon(LexiconBackend):
             self._cache_dirty = True
         return synonyms
 
-    def get_synonyms(
-        self, word: str, pos: str | None = None, n: int = 5
-    ) -> list[str]:
+    def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
         normalized = _normalize_phrase(word)
         if not normalized:
             return []
@@ -261,7 +255,6 @@ class GraphLexicon(LexiconBackend):
     @classmethod
     def load_cache(cls, path: str | Path) -> CacheSnapshot:
         """Load and validate a persisted ConceptNet cache file."""
-
         return _load_cache_file(Path(path))
 
     def save_cache(self, path: str | Path | None = None) -> Path:
@@ -287,4 +280,3 @@ class GraphLexicon(LexiconBackend):
             f"GraphLexicon(languages={sorted(self._languages)!r}, "
             f"max_neighbors={self._max_neighbors}, seed={self.seed!r}, state={state})"
         )
-

@@ -9,11 +9,8 @@ def resolve_rate(
     legacy_name: str,
 ) -> float:
     """Return the effective rate while enforcing mutual exclusivity."""
-
     if rate is not None and legacy_value is not None:
-        raise ValueError(
-            f"Specify either 'rate' or '{legacy_name}', not both."
-        )
+        raise ValueError(f"Specify either 'rate' or '{legacy_name}', not both.")
     if rate is not None:
         return rate
     if legacy_value is not None:

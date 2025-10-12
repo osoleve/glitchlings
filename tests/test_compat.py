@@ -12,7 +12,6 @@ from glitchlings import compat
 
 def _force_missing(monkeypatch: pytest.MonkeyPatch, module_name: str) -> None:
     """Simulate a missing dependency regardless of the local environment."""
-
     monkeypatch.delitem(sys.modules, module_name, raising=False)
 
     original_import = import_module

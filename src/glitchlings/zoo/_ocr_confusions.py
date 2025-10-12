@@ -26,9 +26,7 @@ def load_confusion_table() -> list[tuple[str, list[str]]]:
 
     # Sort longer patterns first to avoid overlapping matches, mirroring the
     # behaviour of the Rust `confusion_table` helper.
-    indexed_entries.sort(
-        key=lambda item: (-len(item[1][0]), item[0])
-    )
+    indexed_entries.sort(key=lambda item: (-len(item[1][0]), item[0]))
     entries = [entry for _, entry in indexed_entries]
     _CONFUSION_TABLE = entries
     return entries

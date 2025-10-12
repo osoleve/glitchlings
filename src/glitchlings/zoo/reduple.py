@@ -21,14 +21,17 @@ def _python_reduplicate_words(
     """Randomly reduplicate words in the text.
 
     Parameters
+    ----------
     - text: Input text.
     - rate: Max proportion of words to reduplicate (default 0.05).
     - rng: RNG used for sampling decisions.
     - unweighted: When True, sample words uniformly instead of length-weighted.
 
     Notes
+    -----
     - Preserves spacing and punctuation by tokenizing with separators.
     - Deterministic when run with a fixed seed or via Gaggle.
+
     """
     tokens = split_preserving_whitespace(text)
     word_tokens = collect_word_tokens(tokens)
@@ -77,7 +80,6 @@ def reduplicate_words(
     Falls back to the Python implementation when the optional Rust
     extension is unavailable.
     """
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=reduplication_rate,

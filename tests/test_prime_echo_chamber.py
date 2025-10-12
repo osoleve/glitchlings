@@ -129,7 +129,6 @@ def _install_fake_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def append_marker(text: str) -> str:
     """Tag the provided text with a deterministic marker."""
-
     return f"{text}<<<"
 
 

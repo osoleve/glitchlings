@@ -20,7 +20,6 @@ def _python_swap_adjacent_words(
     rng: random.Random,
 ) -> str:
     """Swap the cores of adjacent words while keeping affixes and spacing intact."""
-
     tokens = split_preserving_whitespace(text)
     if len(tokens) < 2:
         return text
@@ -72,7 +71,6 @@ def swap_adjacent_words(
     swap_rate: float | None = None,
 ) -> str:
     """Swap adjacent word cores while preserving spacing and punctuation."""
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=swap_rate,

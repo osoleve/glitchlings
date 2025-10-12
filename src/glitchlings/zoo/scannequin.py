@@ -1,10 +1,10 @@
-import re
 import random
+import re
 from typing import Any
 
 from ._ocr_confusions import load_confusion_table
-from .core import Glitchling, AttackWave, AttackOrder
 from ._rate import resolve_rate
+from .core import AttackOrder, AttackWave, Glitchling
 
 try:
     from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust
@@ -21,17 +21,20 @@ def _python_ocr_artifacts(
     """Introduce OCR-like artifacts into text.
 
     Parameters
+    ----------
     - text: Input text to corrupt.
     - rate: Max proportion of eligible confusion matches to replace (default 0.02).
     - seed: Optional seed if `rng` not provided.
     - rng: Optional RNG; overrides seed.
 
     Notes
+    -----
     - Uses a curated set of common OCR confusions (rn↔m, cl↔d, O↔0, l/I/1, etc.).
     - Collects all non-overlapping candidate spans in reading order, then samples
       a subset deterministically with the provided RNG.
     - Replacements can change length (e.g., m→rn), so edits are applied from left
       to right using precomputed spans to avoid index drift.
+
     """
     if not text:
         return text
@@ -107,7 +110,6 @@ def ocr_artifacts(
 
     Prefers the Rust implementation when available.
     """
-
     if not text:
         return text
 
@@ -162,7 +164,6 @@ class Scannequin(Glitchling):
         if rate is None:
             return None
         return {"type": "ocr", "error_rate": float(rate)}
-
 
 
 scannequin = Scannequin()

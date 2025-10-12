@@ -4,42 +4,59 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
 from enum import Enum
-from typing import Any, Callable
+from typing import Any, Callable, Protocol, cast
 
 from ..compat import require_datasets, require_jellyfish, require_verifiers
 from ..util.adapters import coerce_gaggle
+from ..zoo import Gaggle, Glitchling, Mim1c, Typogre
 from ._shared import resolve_columns as _resolve_columns_shared
 from ._shared import resolve_environment as _resolve_environment_shared
+
+
+class VerifierEnvironment(Protocol):
+    """Minimal interface for verifiers environments."""
+
+    dataset: Any
+
+
+class VerifierSingleTurnEnv(Protocol):
+    """Minimal interface for single-turn verifier environments."""
+
+    dataset: Any
+    rubric: Any
+
 
 vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
 _jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
 damerau_levenshtein_distance = _jellyfish.damerau_levenshtein_distance
 
 try:
-    from .huggingface import Dataset
+    from .huggingface import Dataset as _HuggingFaceDataset
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    Dataset = object  # type: ignore[assignment]
+    _HuggingFaceDataset = None
 else:
-    if Dataset is None:  # pragma: no cover - optional dependency
-        Dataset = object  # type: ignore[assignment]
+    if _HuggingFaceDataset is None:  # pragma: no cover - optional dependency
+        _HuggingFaceDataset = None
 
-from ..zoo import Gaggle, Glitchling, Mim1c, Typogre
+Dataset: type[Any]
+if _HuggingFaceDataset is None:
+    Dataset = object
+else:
+    Dataset = _HuggingFaceDataset
 
 
-def _resolve_environment(env: str | vf.Environment) -> vf.Environment:
+def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
     """Return a fully-instantiated verifier environment."""
-
     resolved = _resolve_environment_shared(
         env,
         loader=vf.load_environment,
-        environment_type=vf.Environment,
+        environment_type=cast(type[Any], vf.Environment),
     )
-    return resolved
+    return cast(VerifierEnvironment, resolved)
 
 
-def _resolve_columns(dataset: Dataset, columns: Sequence[str] | None) -> list[str]:
+def _resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     """Identify which dataset columns should be corrupted."""
-
     return _resolve_columns_shared(dataset, columns)
 
 
@@ -54,12 +71,11 @@ class Difficulty(Enum):
 
 
 def tutorial_level(
-    env: vf.Environment | str,
+    env: VerifierEnvironment | str,
     seed: int = 151,
     difficulty: Difficulty = Difficulty.Normal,
-) -> vf.Environment:
+) -> VerifierEnvironment:
     """Create a low-corruption environment using tuned defaults."""
-
     tuned_mim1c = Mim1c(rate=0.01 * difficulty.value)
     tuned_typogre = Typogre(rate=0.025 * difficulty.value)
 
@@ -71,14 +87,13 @@ def tutorial_level(
 
 
 def load_environment(
-    env: str | vf.Environment,
+    env: str | VerifierEnvironment,
     glitchlings: Iterable[str | Glitchling] | Glitchling | str | Gaggle | None = None,
     *,
     seed: int = 151,
     columns: Sequence[str] | None = None,
-) -> vf.Environment:
+) -> VerifierEnvironment:
     """Load an environment and optionally corrupt it with glitchlings."""
-
     environment = _resolve_environment(env)
 
     if glitchlings is None:
@@ -98,13 +113,11 @@ def _as_gaggle(
     seed: int,
 ) -> Gaggle:
     """Coerce any supported glitchling specification into a :class:`Gaggle`."""
-
     return coerce_gaggle(glitchlings, seed=seed)
 
 
 def _extract_completion_text(completion: Any) -> str:
     """Normalise a completion payload into a plain string."""
-
     if isinstance(completion, str):
         return completion
 
@@ -123,11 +136,10 @@ def symmetric_damerau_levenshtein_similarity(
     answer: str,
 ) -> float:
     """Return ``1 - (distance / max_len)`` using Damerau-Levenshtein distance."""
-
     completion_text = _extract_completion_text(completion)
     target = answer or ""
     denominator = max(len(completion_text), len(target), 1)
-    distance = damerau_levenshtein_distance(completion_text, target)
+    distance = cast(int, damerau_levenshtein_distance(completion_text, target))
     score = 1.0 - (distance / denominator)
     return max(0.0, min(1.0, score))
 
@@ -147,7 +159,7 @@ def echo_chamber(
     reward_function: Callable[..., float] | None = None,
     split: str | None = None,
     **load_dataset_kwargs: Any,
-) -> vf.Environment:
+) -> VerifierSingleTurnEnv:
     """Create an Echo Chamber Prime environment from a Hugging Face dataset column.
 
     Args:
@@ -161,21 +173,20 @@ def echo_chamber(
         split: Optional dataset split to load.
         **load_dataset_kwargs: Extra keyword arguments forwarded to
             :func:`datasets.load_dataset`.
+
     """
-
     datasets_module = require_datasets("datasets is required to build an echo chamber")
-    try:
-        HFDataset = datasets_module.Dataset  # type: ignore[attr-defined]
-        DatasetDict = datasets_module.DatasetDict  # type: ignore[attr-defined]
-        load_dataset = datasets_module.load_dataset  # type: ignore[attr-defined]
-    except AttributeError as exc:  # pragma: no cover - defensive
+    load_dataset = getattr(datasets_module, "load_dataset", None)
+    if load_dataset is None:  # pragma: no cover - defensive
         message = "datasets is required to build an echo chamber"
-        raise ModuleNotFoundError(message) from exc
+        raise ModuleNotFoundError(message)
 
-    hf_dataset: HFDataset | DatasetDict
+    dataset_dict_cls = getattr(datasets_module, "DatasetDict", dict)
+
+    hf_dataset: Any
     if split is None:
         hf_dataset = load_dataset(dataset_id, **load_dataset_kwargs)
-        if isinstance(hf_dataset, DatasetDict):
+        if isinstance(hf_dataset, dataset_dict_cls):
             try:
                 hf_dataset = next(iter(hf_dataset.values()))
             except StopIteration as exc:  # pragma: no cover - defensive
@@ -183,10 +194,8 @@ def echo_chamber(
     else:
         hf_dataset = load_dataset(dataset_id, split=split, **load_dataset_kwargs)
 
-    if isinstance(hf_dataset, DatasetDict):
-        raise ValueError(
-            "Specify which split to use when the dataset loads as a DatasetDict."
-        )
+    if isinstance(hf_dataset, dataset_dict_cls):
+        raise ValueError("Specify which split to use when the dataset loads as a DatasetDict.")
 
     filtered_dataset = hf_dataset.filter(
         lambda row: row.get(column) is not None,
@@ -210,7 +219,7 @@ def echo_chamber(
     )
 
     try:
-        dataset_length = len(base_dataset)  # type: ignore[arg-type]
+        dataset_length = len(base_dataset)
     except TypeError:
         preview_rows: list[dict[str, Any]]
         take_fn = getattr(base_dataset, "take", None)
@@ -239,4 +248,7 @@ def echo_chamber(
 
     rubric_func = reward_function or symmetric_damerau_levenshtein_similarity
     rubric = vf.Rubric(funcs=[rubric_func], weights=[1.0])
-    return vf.SingleTurnEnv(dataset=glitched_dataset, rubric=rubric)
+    return cast(
+        VerifierSingleTurnEnv,
+        vf.SingleTurnEnv(dataset=glitched_dataset, rubric=rubric),
+    )

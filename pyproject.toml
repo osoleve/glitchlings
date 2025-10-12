@@ -61,6 +61,11 @@ dev = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings-python>=1.10.0",
     "interrogate>=1.5.0",
+    "black>=24.4.0",
+    "isort>=5.13.0",
+    "ruff>=0.6.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.8.0",
 ]
 
 [build-system]
@@ -109,3 +114,47 @@ exclude = [
     "rust",
     "benchmarks",
 ]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+follow_imports = "skip"
+ignore_missing_imports = true
+enable_error_code = ["ignore-without-code"]
+
+[[tool.mypy.overrides]]
+module = [
+    "glitchlings.util.adapters",
+    "glitchlings.dlc._shared",
+    "glitchlings.dlc.huggingface",
+    "glitchlings.dlc.prime",
+]
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "glitchlings.compat",
+    "glitchlings.config",
+    "glitchlings.lexicon",
+    "glitchlings.lexicon.*",
+    "glitchlings.zoo",
+    "glitchlings.zoo.*",
+    "glitchlings.main",
+    "glitchlings.__main__",
+    "glitchlings.__init__",
+]
+ignore_errors = true

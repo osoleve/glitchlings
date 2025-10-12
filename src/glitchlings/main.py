@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import argparse
 import difflib
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from . import SAMPLE_TEXT
 from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from .zoo import (
-    Glitchling,
-    Gaggle,
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
+    Gaggle,
+    Glitchling,
     parse_glitchling_spec,
     summon,
 )
@@ -26,8 +26,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     Returns:
         argparse.ArgumentParser: The configured argument parser instance.
-    """
 
+    """
     parser = argparse.ArgumentParser(
         description=(
             "Summon glitchlings to corrupt text. Provide input text as an argument, "
@@ -157,7 +157,6 @@ def build_lexicon_parser() -> argparse.ArgumentParser:
 
 def list_glitchlings() -> None:
     """Print information about the available built-in glitchlings."""
-
     for key in DEFAULT_GLITCHLING_NAMES:
         glitchling = BUILTIN_GLITCHLINGS[key]
         display_name = glitchling.name
@@ -178,8 +177,8 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
 
     Raises:
         SystemExit: Raised indirectly via ``parser.error`` on failure.
-    """
 
+    """
     if args.file is not None:
         try:
             return args.file.read_text(encoding="utf-8")
@@ -198,7 +197,8 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
         return SAMPLE_TEXT
 
     parser.error(
-        "No input text provided. Supply text as an argument, use --file, pipe input, or pass --sample."
+        "No input text provided. Supply text as an argument, use --file, pipe input, or "
+        "pass --sample."
     )
     raise AssertionError("parser.error should exit")
 
@@ -211,7 +211,6 @@ def summon_glitchlings(
     config_path: Path | None = None,
 ) -> Gaggle:
     """Instantiate the requested glitchlings and bundle them in a ``Gaggle``."""
-
     if config_path is not None:
         if names:
             parser.error("Cannot combine --config with --glitchling.")
@@ -245,10 +244,8 @@ def summon_glitchlings(
         raise AssertionError("parser.error should exit")
 
 
-
 def show_diff(original: str, corrupted: str) -> None:
     """Display a unified diff between the original and corrupted text."""
-
     diff_lines = list(
         difflib.unified_diff(
             original.splitlines(keepends=True),
@@ -274,8 +271,8 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
     Returns:
         int: Exit code for the process (``0`` on success).
-    """
 
+    """
     if args.list:
         list_glitchlings()
         return 0
@@ -300,7 +297,6 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
 def run_build_lexicon(args: argparse.Namespace) -> int:
     """Delegate to the vector lexicon cache builder using CLI arguments."""
-
     from glitchlings.lexicon.vector import main as vector_main
 
     vector_args = [
@@ -337,8 +333,8 @@ def main(argv: list[str] | None = None) -> int:
 
     Returns:
         int: Exit code suitable for use with ``sys.exit``.
-    """
 
+    """
     if argv is None:
         raw_args = sys.argv[1:]
     else:

@@ -3,9 +3,10 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
+from typing import Any
 
-from .core import Glitchling, AttackWave, AttackOrder
 from ._rate import resolve_rate
+from .core import AttackOrder, AttackWave, Glitchling
 
 try:
     from glitchlings._zoo_rust import inject_zero_widths as _inject_zero_widths_rust
@@ -77,7 +78,6 @@ def insert_zero_widths(
     characters: Sequence[str] | None = None,
 ) -> str:
     """Inject zero-width characters between non-space character pairs."""
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=None,

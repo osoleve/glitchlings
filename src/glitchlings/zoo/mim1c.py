@@ -1,11 +1,11 @@
-from collections.abc import Collection
 import random
+from collections.abc import Collection
 from typing import Literal
 
 from confusable_homoglyphs import confusables
 
-from .core import AttackOrder, AttackWave, Glitchling
 from ._rate import resolve_rate
+from .core import AttackOrder, AttackWave, Glitchling
 
 
 def swap_homoglyphs(
@@ -21,16 +21,21 @@ def swap_homoglyphs(
     """Replace characters with visually confusable homoglyphs.
 
     Parameters
+    ----------
     - text: Input text.
     - rate: Max proportion of eligible characters to replace (default 0.02).
-    - classes: Restrict replacements to these Unicode script classes (default ["LATIN","GREEK","CYRILLIC"]). Use "all" to allow any.
+    - classes: Restrict replacements to these Unicode script classes (default
+      ["LATIN", "GREEK", "CYRILLIC"]). Use "all" to allow any.
     - banned_characters: Characters that must never appear as replacements.
     - seed: Optional seed if `rng` not provided.
     - rng: Optional RNG; overrides seed.
 
     Notes
-    - Only replaces characters present in confusables.confusables_data with single-codepoint alternatives.
+    -----
+    - Only replaces characters present in ``confusables.confusables_data`` with
+      single-codepoint alternatives.
     - Maintains determinism by shuffling candidates and sampling via the provided RNG.
+
     """
     effective_rate = resolve_rate(
         rate=rate,
@@ -46,9 +51,7 @@ def swap_homoglyphs(
         classes = ["LATIN", "GREEK", "CYRILLIC"]
 
     target_chars = [char for char in text if char.isalnum()]
-    confusable_chars = [
-        char for char in target_chars if char in confusables.confusables_data
-    ]
+    confusable_chars = [char for char in target_chars if char in confusables.confusables_data]
     clamped_rate = max(0.0, effective_rate)
     num_replacements = int(len(confusable_chars) * clamped_rate)
     done = 0
@@ -57,9 +60,7 @@ def swap_homoglyphs(
     for char in confusable_chars:
         if done >= num_replacements:
             break
-        options = [
-            o["c"] for o in confusables.confusables_data[char] if len(o["c"]) == 1
-        ]
+        options = [o["c"] for o in confusables.confusables_data[char] if len(o["c"]) == 1]
         if classes != "all":
             options = [opt for opt in options if confusables.alias(opt) in classes]
         if banned_set:

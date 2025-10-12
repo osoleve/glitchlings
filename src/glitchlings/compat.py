@@ -40,7 +40,6 @@ class OptionalDependency:
 
     def get(self) -> ModuleType | None:
         """Return the imported module or ``None`` when unavailable."""
-
         if self._cached is _MISSING:
             return self._attempt_import()
         if self._cached is None:
@@ -49,7 +48,6 @@ class OptionalDependency:
 
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
-
         module = self.get()
         if module is None:
             error = self._error
@@ -61,7 +59,6 @@ class OptionalDependency:
 
     def require(self, message: str) -> ModuleType:
         """Return the dependency or raise ``ModuleNotFoundError`` with ``message``."""
-
         try:
             return self.load()
         except ModuleNotFoundError as exc:
@@ -69,18 +66,15 @@ class OptionalDependency:
 
     def available(self) -> bool:
         """Return ``True`` when the dependency can be imported."""
-
         return self.get() is not None
 
     def reset(self) -> None:
         """Forget any cached import result."""
-
         self._cached = _MISSING
         self._error = None
 
     def attr(self, attribute: str) -> Any | None:
         """Return ``attribute`` from the dependency when available."""
-
         module = self.get()
         if module is None:
             return None
@@ -89,7 +83,6 @@ class OptionalDependency:
     @property
     def error(self) -> ModuleNotFoundError | None:
         """Return the most recent ``ModuleNotFoundError`` (if any)."""
-
         self.get()
         return self._error
 
@@ -102,32 +95,27 @@ nltk = OptionalDependency("nltk")
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-
     for dependency in (datasets, verifiers, jellyfish, nltk):
         dependency.reset()
 
 
 def get_datasets_dataset() -> Any | None:
     """Return Hugging Face ``Dataset`` class when the dependency is installed."""
-
     return datasets.attr("Dataset")
 
 
 def require_datasets(message: str = "datasets is not installed") -> ModuleType:
     """Ensure the Hugging Face datasets dependency is present."""
-
     return datasets.require(message)
 
 
 def require_verifiers(message: str = "verifiers is not installed") -> ModuleType:
     """Ensure the verifiers dependency is present."""
-
     return verifiers.require(message)
 
 
 def require_jellyfish(message: str = "jellyfish is not installed") -> ModuleType:
     """Ensure the jellyfish dependency is present."""
-
     return jellyfish.require(message)
 
 
@@ -137,7 +125,6 @@ def get_installed_extras(
     distribution: str = "glitchlings",
 ) -> dict[str, bool]:
     """Return a mapping of optional extras to installation availability."""
-
     try:
         dist = metadata.distribution(distribution)
     except metadata.PackageNotFoundError:

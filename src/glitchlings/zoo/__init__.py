@@ -3,24 +3,25 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .typogre import Typogre, typogre
-from .mim1c import Mim1c, mim1c
-from .jargoyle import Jargoyle, jargoyle, dependencies_available as _jargoyle_available
 from .adjax import Adjax, adjax
-from .reduple import Reduple, reduple
-from .rushmore import Rushmore, rushmore
-from .redactyl import Redactyl, redactyl
-from .scannequin import Scannequin, scannequin
-from .zeedub import Zeedub, zeedub
 from .core import (
-    Glitchling,
     Gaggle,
+    Glitchling,
     is_rust_pipeline_enabled,
     is_rust_pipeline_supported,
     pipeline_feature_flag_enabled,
-    plan_glitchlings,
     plan_glitchling_specs,
+    plan_glitchlings,
 )
+from .jargoyle import Jargoyle, jargoyle
+from .jargoyle import dependencies_available as _jargoyle_available
+from .mim1c import Mim1c, mim1c
+from .redactyl import Redactyl, redactyl
+from .reduple import Reduple, reduple
+from .rushmore import Rushmore, rushmore
+from .scannequin import Scannequin, scannequin
+from .typogre import Typogre, typogre
+from .zeedub import Zeedub, zeedub
 
 __all__ = [
     "Typogre",
@@ -84,7 +85,6 @@ DEFAULT_GLITCHLING_NAMES: list[str] = list(BUILTIN_GLITCHLINGS.keys())
 
 def parse_glitchling_spec(specification: str) -> Glitchling:
     """Return a glitchling instance configured according to ``specification``."""
-
     text = specification.strip()
     if not text:
         raise ValueError("Glitchling specification cannot be empty.")
@@ -111,14 +111,10 @@ def parse_glitchling_spec(specification: str) -> Glitchling:
     try:
         call_expr = ast.parse(f"_({arg_source})", mode="eval").body
     except SyntaxError as exc:
-        raise ValueError(
-            f"Invalid parameter syntax for glitchling '{name}': {exc.msg}"
-        ) from exc
+        raise ValueError(f"Invalid parameter syntax for glitchling '{name}': {exc.msg}") from exc
 
     if not isinstance(call_expr, ast.Call) or call_expr.args:
-        raise ValueError(
-            f"Glitchling '{name}' parameters must be provided as keyword arguments."
-        )
+        raise ValueError(f"Glitchling '{name}' parameters must be provided as keyword arguments.")
 
     kwargs: dict[str, Any] = {}
     for keyword in call_expr.keywords:
@@ -141,7 +137,6 @@ def parse_glitchling_spec(specification: str) -> Glitchling:
 
 def get_glitchling_class(name: str) -> type[Glitchling]:
     """Look up the glitchling class registered under ``name``."""
-
     key = name.strip().lower()
     if not key:
         raise ValueError("Glitchling name cannot be empty.")
@@ -155,7 +150,6 @@ def get_glitchling_class(name: str) -> type[Glitchling]:
 
 def summon(glitchlings: list[str | Glitchling], seed: int = 151) -> Gaggle:
     """Summon glitchlings by name (using defaults) or instance (to change parameters)."""
-
     summoned: list[Glitchling] = []
     for entry in glitchlings:
         if isinstance(entry, Glitchling):

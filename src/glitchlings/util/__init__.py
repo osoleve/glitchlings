@@ -10,12 +10,18 @@ __all__ = [
     "KEYNEIGHBORS",
 ]
 
-SAMPLE_TEXT = "One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked."
+SAMPLE_TEXT = (
+    "One morning, when Gregor Samsa woke from troubled dreams, he found himself "
+    "transformed in his bed into a horrible vermin. He lay on his armour-like back, and "
+    "if he lifted his head a little he could see his brown belly, slightly domed and "
+    "divided by arches into stiff sections. The bedding was hardly able to cover it and "
+    "seemed ready to slide off any moment. His many legs, pitifully thin compared with "
+    "the size of the rest of him, waved about helplessly as he looked."
+)
 
 
 def string_diffs(a: str, b: str) -> list[list[tuple[str, str, str]]]:
-    """
-    Compare two strings using SequenceMatcher and return
+    """Compare two strings using SequenceMatcher and return
     grouped adjacent opcodes (excluding 'equal' tags).
 
     Each element is a tuple: (tag, a_text, b_text).
@@ -48,7 +54,6 @@ KeyboardLayouts = dict[str, KeyNeighborMap]
 
 def _build_neighbor_map(rows: Iterable[str]) -> KeyNeighborMap:
     """Derive 8-neighbour adjacency lists from keyboard layout rows."""
-
     grid: dict[tuple[int, int], str] = {}
     for y, row in enumerate(rows):
         for x, char in enumerate(row):

@@ -9,9 +9,11 @@ from glitchlings.lexicon import Lexicon, get_default_lexicon
 try:  # pragma: no cover - optional WordNet dependency
     from glitchlings.lexicon.wordnet import (
         WordNetLexicon,
-        dependencies_available as _lexicon_dependencies_available,
-        ensure_wordnet as _lexicon_ensure_wordnet,
     )
+    from glitchlings.lexicon.wordnet import (
+        dependencies_available as _lexicon_dependencies_available,
+    )
+    from glitchlings.lexicon.wordnet import ensure_wordnet as _lexicon_ensure_wordnet
 except Exception:  # pragma: no cover - triggered when nltk unavailable
     WordNetLexicon = None  # type: ignore[assignment]
 
@@ -33,7 +35,6 @@ ensure_wordnet = _lexicon_ensure_wordnet
 
 def dependencies_available() -> bool:
     """Return ``True`` when a synonym backend is accessible."""
-
     if _lexicon_dependencies_available():
         return True
 
@@ -58,7 +59,6 @@ _VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
 
 def _split_token(token: str) -> tuple[str, str, str]:
     """Split a token into leading punctuation, core word, and trailing punctuation."""
-
     match = re.match(r"^(\W*)(.*?)(\W*)$", token)
     if not match:
         return "", token, ""
@@ -70,23 +70,18 @@ def _normalize_parts_of_speech(
     part_of_speech: PartOfSpeechInput,
 ) -> NormalizedPartsOfSpeech:
     """Coerce user input into a tuple of valid WordNet POS tags."""
-
     if isinstance(part_of_speech, str):
         lowered = part_of_speech.lower()
         if lowered == "any":
             return _VALID_POS
         if lowered not in _VALID_POS:
-            raise ValueError(
-                "part_of_speech must be one of 'n', 'v', 'a', 'r', or 'any'"
-            )
+            raise ValueError("part_of_speech must be one of 'n', 'v', 'a', 'r', or 'any'")
         return (cast(PartOfSpeech, lowered),)
 
     normalized: list[PartOfSpeech] = []
     for pos in part_of_speech:
         if pos not in _VALID_POS:
-            raise ValueError(
-                "part_of_speech entries must be one of 'n', 'v', 'a', or 'r'"
-            )
+            raise ValueError("part_of_speech entries must be one of 'n', 'v', 'a', or 'r'")
         if pos not in normalized:
             normalized.append(pos)
     if not normalized:
@@ -118,6 +113,7 @@ def substitute_random_synonyms(
     """Replace words with random lexicon-driven synonyms.
 
     Parameters
+    ----------
     - text: Input text.
     - rate: Max proportion of candidate words to replace (default 0.01).
     - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
@@ -134,6 +130,7 @@ def substitute_random_synonyms(
     - Replacement positions chosen via rng.sample.
     - Synonyms sourced through the lexicon; the default backend derives
       deterministic subsets per word and part-of-speech using the active seed.
+
     """
     effective_rate = resolve_rate(
         rate=rate,
@@ -168,7 +165,7 @@ def substitute_random_synonyms(
         # Split but keep whitespace separators so we can rebuild easily
         tokens = re.split(r"(\s+)", text)
 
-        # Collect indices of candidate tokens (even positions 0,2,.. are words given our split design)
+        # Collect candidate word indices (even positions are words because separators are kept)
         candidate_indices: list[int] = []
         candidate_metadata: dict[int, CandidateInfo] = {}
         for idx, tok in enumerate(tokens):
@@ -296,9 +293,7 @@ class Jargoyle(Glitchling):
                         current_lexicon.reseed(self.seed)
                     else:
                         if hasattr(self, "_external_lexicon_original_seed"):
-                            original_seed = getattr(
-                                self, "_external_lexicon_original_seed", None
-                            )
+                            original_seed = getattr(self, "_external_lexicon_original_seed", None)
                             current_lexicon.reseed(original_seed)
         elif canonical == "lexicon" and isinstance(value, Lexicon):
             if getattr(self, "_initializing", False):

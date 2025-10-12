@@ -1,0 +1,25 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        args: [src/glitchlings/dlc, src/glitchlings/util/adapters.py]
+        pass_filenames: false
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [src/glitchlings/dlc, src/glitchlings/util/adapters.py]
+        pass_filenames: false
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.7
+    hooks:
+      - id: ruff
+        args: [--fix, src/glitchlings/dlc, src/glitchlings/util/adapters.py]
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict DLC/util subset)
+        entry: python -m mypy --config-file pyproject.toml
+        language: system
+        pass_filenames: false

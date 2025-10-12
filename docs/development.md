@@ -28,6 +28,12 @@ This guide walks through preparing a local development environment, running the 
    Add the `prime` extra (`pip install -e .[dev,prime]`) when you need the Prime Intellect integration and its `verifiers` dependency.
    Enable the embedding-backed lexicon helpers with the `vectors` extra (`pip install -e .[dev,vectors]`) to pull in `numpy`, `spaCy`, and `gensim`.
 
+3. Install the git hooks so the shared formatting, linting, and type checks run automatically:
+
+   ```bash
+   pre-commit install
+   ```
+
 3. The package ships a compact vector-cache for Jargoyle so you can exercise synonym swaps without heavyweight models. Regenerate or extend that cache with the bundled CLI when you have larger embeddings available:
 
    ```bash
@@ -61,6 +67,18 @@ Key regression guardrails live in:
 - `tests/test_glitchling_core.py` for `Gaggle` orchestration and feature flags.
 - `tests/test_cli.py` for CLI argument wiring and diff output.
 - `tests/test_rust_backed_glitchlings.py` to ensure the acceleration layer mirrors the Python pipeline.
+
+## Automated checks
+
+Run the shared quality gates before opening a pull request:
+
+```bash
+ruff check .
+black --check .
+isort --check-only .
+python -m mypy --config-file pyproject.toml
+pytest --maxfail=1 --disable-warnings -q
+```
 
 ## Rust acceleration
 

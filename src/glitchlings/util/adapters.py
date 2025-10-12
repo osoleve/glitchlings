@@ -13,7 +13,6 @@ def coerce_gaggle(
     seed: int,
 ) -> Gaggle:
     """Return a :class:`Gaggle` built from any supported glitchling specifier."""
-
     if isinstance(glitchlings, Gaggle):
         return glitchlings
 

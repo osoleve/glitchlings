@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, cast
 
 from ..compat import datasets, get_datasets_dataset, require_datasets
 from ..util.adapters import coerce_gaggle
@@ -12,7 +12,6 @@ from ..zoo import Gaggle, Glitchling
 
 def _normalise_columns(column: str | Sequence[str]) -> list[str]:
     """Normalise a column specification to a list."""
-
     if isinstance(column, str):
         return [column]
 
@@ -29,8 +28,7 @@ def _glitch_dataset(
     *,
     seed: int = 151,
 ) -> Any:
-    """Internal helper implementing :meth:`Dataset.glitch`."""
-
+    """Apply glitchlings to the provided dataset columns."""
     columns = _normalise_columns(column)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
     return gaggle.corrupt_dataset(dataset, columns)
@@ -38,7 +36,6 @@ def _glitch_dataset(
 
 def _ensure_dataset_class() -> Any:
     """Return the Hugging Face :class:`~datasets.Dataset` patched with ``.glitch``."""
-
     dataset_cls = get_datasets_dataset()
     if dataset_cls is None:  # pragma: no cover - datasets is an install-time dependency
         require_datasets("datasets is not installed")
@@ -52,7 +49,7 @@ def _ensure_dataset_class() -> Any:
 
     if getattr(dataset_cls, "glitch", None) is None:
 
-        def glitch(  # type: ignore[override]
+        def glitch(
             self: Any,
             glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
             *,
@@ -61,25 +58,24 @@ def _ensure_dataset_class() -> Any:
             **_: Any,
         ) -> Any:
             """Return a lazily corrupted copy of the dataset."""
-
             return _glitch_dataset(self, glitchlings, column, seed=seed)
 
         setattr(dataset_cls, "glitch", glitch)
 
-    return dataset_cls
+    return cast(type[Any], dataset_cls)
 
 
 def install() -> None:
     """Monkeypatch the Hugging Face :class:`~datasets.Dataset` with ``.glitch``."""
-
     _ensure_dataset_class()
 
 
+Dataset: type[Any] | None
 _DatasetAlias = get_datasets_dataset()
 if _DatasetAlias is not None:
     Dataset = _ensure_dataset_class()
 else:  # pragma: no cover - datasets is an install-time dependency
-    Dataset = None  # type: ignore[assignment]
+    Dataset = None
 
 
 __all__ = ["Dataset", "install"]

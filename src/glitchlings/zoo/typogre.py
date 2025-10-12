@@ -4,9 +4,9 @@ import math
 import random
 from typing import Any, Optional
 
-from .core import Glitchling, AttackWave, AttackOrder
-from ._rate import resolve_rate
 from ..util import KEYNEIGHBORS
+from ._rate import resolve_rate
+from .core import AttackOrder, AttackWave, Glitchling
 
 try:
     from glitchlings._zoo_rust import fatfinger as _fatfinger_rust
@@ -64,9 +64,7 @@ def _python_eligible_idx(s: str, i: int) -> bool:
     return left_ok and right_ok
 
 
-def _python_draw_eligible_index(
-    rng: random.Random, s: str, max_tries: int = 16
-) -> Optional[int]:
+def _python_draw_eligible_index(rng: random.Random, s: str, max_tries: int = 16) -> Optional[int]:
     n = len(s)
     if n == 0:
         return None
@@ -151,7 +149,6 @@ def fatfinger(
     max_change_rate: float | None = None,
 ) -> str:
     """Introduce character-level "fat finger" edits with a Rust fast path."""
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=max_change_rate,
@@ -230,4 +227,3 @@ typogre = Typogre()
 
 
 __all__ = ["Typogre", "typogre"]
-

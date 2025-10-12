@@ -95,7 +95,6 @@ def _partial_helper(text: str, *, rng) -> str:
 
 def test_partial_corruption_receives_rng(sample_text):
     """Ensure RNG injection works for callables lacking a ``__code__`` attribute."""
-
     corruption = partial(_partial_helper)
     glitchling = Glitchling("partial", corruption, AttackWave.WORD)
 

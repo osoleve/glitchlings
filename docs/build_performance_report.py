@@ -85,7 +85,6 @@ def build_report_content(
     scenarios: Sequence[str] | None = None,
 ) -> str:
     """Render the Markdown performance report."""
-
     scenario_names = list(scenarios) if scenarios else list(SCENARIOS.keys())
     invalid = [name for name in scenario_names if name not in SCENARIOS]
     if invalid:
@@ -149,7 +148,6 @@ def build_report_content(
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     """Parse CLI arguments for the report builder."""
-
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--iterations",

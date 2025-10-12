@@ -21,7 +21,6 @@ def _python_delete_random_words(
     unweighted: bool = False,
 ) -> str:
     """Delete random words from the input text while preserving whitespace."""
-
     effective_rate = max(rate, 0.0)
     if effective_rate <= 0.0:
         return text
@@ -37,15 +36,11 @@ def _python_delete_random_words(
     if not weighted_tokens:
         return text
 
-    allowed_deletions = min(
-        len(weighted_tokens), math.floor(len(weighted_tokens) * effective_rate)
-    )
+    allowed_deletions = min(len(weighted_tokens), math.floor(len(weighted_tokens) * effective_rate))
     if allowed_deletions <= 0:
         return text
 
-    mean_weight = sum(weight for _, weight, _ in weighted_tokens) / len(
-        weighted_tokens
-    )
+    mean_weight = sum(weight for _, weight, _ in weighted_tokens) / len(weighted_tokens)
 
     deletions = 0
     for index, weight, token in weighted_tokens:
@@ -88,7 +83,6 @@ def delete_random_words(
 
     Uses the optional Rust implementation when available.
     """
-
     effective_rate = resolve_rate(
         rate=rate,
         legacy_value=max_deletion_rate,

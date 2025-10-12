@@ -6,7 +6,7 @@ import os
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
-from typing import Any, Mapping, Sequence, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping, Sequence
 
 try:  # Python 3.11+
     import tomllib
@@ -14,7 +14,6 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
     import tomli as tomllib  # type: ignore[no-redef]
 
 import yaml
-
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .zoo import Glitchling
@@ -48,21 +47,18 @@ _CONFIG: RuntimeConfig | None = None
 
 def reset_config() -> None:
     """Forget any cached runtime configuration."""
-
     global _CONFIG
     _CONFIG = None
 
 
 def reload_config() -> RuntimeConfig:
     """Reload the runtime configuration from disk."""
-
     reset_config()
     return get_config()
 
 
 def get_config() -> RuntimeConfig:
     """Return the cached runtime configuration, loading it if necessary."""
-
     global _CONFIG
     if _CONFIG is None:
         _CONFIG = _load_runtime_config()
@@ -137,7 +133,6 @@ def load_attack_config(
     encoding: str = "utf-8",
 ) -> AttackConfig:
     """Load and parse an attack configuration from YAML."""
-
     if isinstance(source, (str, Path)):
         path = Path(source)
         label = str(path)
@@ -157,7 +152,6 @@ def load_attack_config(
 
 def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
     """Convert arbitrary YAML data into a validated ``AttackConfig``."""
-
     if data is None:
         raise ValueError(f"Attack configuration '{source}' is empty.")
 
@@ -184,7 +178,6 @@ def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
 
 def build_gaggle(config: AttackConfig, *, seed_override: int | None = None):
     """Instantiate a ``Gaggle`` according to ``config``."""
-
     from .zoo import Gaggle  # Imported lazily to avoid circular dependencies
 
     seed = seed_override if seed_override is not None else config.seed
@@ -218,7 +211,9 @@ def _build_glitchling(entry: Any, source: str, index: int):
         parameters = entry.get("parameters")
         if parameters is not None:
             if not isinstance(parameters, Mapping):
-                raise ValueError(f"{source}: glitchling '{name_value}' parameters must be a mapping.")
+                raise ValueError(
+                    f"{source}: glitchling '{name_value}' parameters must be a mapping."
+                )
             kwargs = dict(parameters)
         else:
             kwargs = {

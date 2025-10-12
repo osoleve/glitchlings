@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+import random
 from abc import ABC, abstractmethod
 from hashlib import blake2s
 from pathlib import Path
-import random
 from typing import Callable, Iterable
 
 from glitchlings.config import get_config
+
 from ._cache import CacheEntries, CacheSnapshot
 
 
@@ -21,6 +22,7 @@ class Lexicon(ABC):
         Optional integer used to derive deterministic random number generators
         for synonym sampling. Identical seeds guarantee reproducible results for
         the same word/part-of-speech queries.
+
     """
 
     def __init__(self, *, seed: int | None = None) -> None:
@@ -29,17 +31,14 @@ class Lexicon(ABC):
     @property
     def seed(self) -> int | None:
         """Return the current base seed used for deterministic sampling."""
-
         return self._seed
 
     def reseed(self, seed: int | None) -> None:
         """Update the base seed driving deterministic synonym sampling."""
-
         self._seed = seed
 
     def _derive_rng(self, word: str, pos: str | None) -> random.Random:
         """Return an RNG derived from the base seed, word, and POS tag."""
-
         seed_material = blake2s(digest_size=8)
         seed_material.update(word.lower().encode("utf8"))
         if pos is not None:
@@ -53,7 +52,6 @@ class Lexicon(ABC):
         self, values: Iterable[str], *, limit: int, word: str, pos: str | None
     ) -> list[str]:
         """Return up to ``limit`` values sampled deterministically."""
-
         if limit <= 0:
             return []
 
@@ -67,14 +65,11 @@ class Lexicon(ABC):
         return [items[index] for index in indices]
 
     @abstractmethod
-    def get_synonyms(
-        self, word: str, pos: str | None = None, n: int = 5
-    ) -> list[str]:
+    def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
         """Return up to ``n`` synonyms for ``word`` constrained by ``pos``."""
 
     def supports_pos(self, pos: str | None) -> bool:
         """Return ``True`` when the backend can service ``pos`` queries."""
-
         return True
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation
@@ -96,14 +91,14 @@ class LexiconBackend(Lexicon):
         """Persist the backend cache to ``path`` and return the destination."""
 
 
-from .graph import GraphLexicon
-from .metrics import (
+from .graph import GraphLexicon  # noqa: E402
+from .metrics import (  # noqa: E402
     compare_lexicons,
     coverage_ratio,
     mean_cosine_similarity,
     synonym_diversity,
 )
-from .vector import VectorLexicon, build_vector_cache
+from .vector import VectorLexicon, build_vector_cache  # noqa: E402
 
 try:  # pragma: no cover - optional dependency
     from .wordnet import WordNetLexicon
@@ -114,24 +109,19 @@ except Exception:  # pragma: no cover - triggered when nltk unavailable
 _BACKEND_FACTORIES: dict[str, Callable[[int | None], Lexicon | None]] = {}
 
 
-def register_backend(
-    name: str, factory: Callable[[int | None], Lexicon | None]
-) -> None:
+def register_backend(name: str, factory: Callable[[int | None], Lexicon | None]) -> None:
     """Register ``factory`` for ``name`` so it can be selected via config."""
-
     normalized = name.lower()
     _BACKEND_FACTORIES[normalized] = factory
 
 
 def unregister_backend(name: str) -> None:
     """Remove a previously registered backend."""
-
     _BACKEND_FACTORIES.pop(name.lower(), None)
 
 
 def available_backends() -> list[str]:
     """Return the names of registered lexicon factories."""
-
     return sorted(_BACKEND_FACTORIES)
 
 
@@ -172,7 +162,6 @@ register_backend("wordnet", _wordnet_backend)
 
 def get_default_lexicon(seed: int | None = None) -> Lexicon:
     """Return the first available lexicon according to configuration priority."""
-
     config = get_config()
     attempts: list[str] = []
     for name in config.lexicon.priority:
