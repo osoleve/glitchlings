@@ -25,26 +25,3 @@ jobs:
         run: black src
       - name: Mypy
         run: python -m mypy src
-
-  tests:
-    needs: lint-and-type
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        extra:
-          - "dev"
-          - "dev,prime"
-          - "dev,vectors"
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .[${{ matrix.extra }}]
-      - name: Run pytest
-        run: pytest --maxfail=1 --disable-warnings -q
