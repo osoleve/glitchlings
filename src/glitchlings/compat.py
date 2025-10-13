@@ -126,6 +126,23 @@ def require_torch(message: str = "torch is not installed") -> ModuleType:
     return torch.require(message)
 
 
+def get_torch_dataloader() -> Any | None:
+    """Return PyTorch ``DataLoader`` when the dependency is installed."""
+    torch_module = torch.get()
+    if torch_module is None:
+        return None
+
+    utils_module = getattr(torch_module, "utils", None)
+    if utils_module is None:
+        return None
+
+    data_module = getattr(utils_module, "data", None)
+    if data_module is None:
+        return None
+
+    return getattr(data_module, "DataLoader", None)
+
+
 def get_installed_extras(
     extras: Iterable[str] | None = None,
     *,

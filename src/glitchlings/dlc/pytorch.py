@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping, MutableMapping, Sequence
 from typing import Any, cast
 
-from ..compat import require_torch
+from ..compat import get_torch_dataloader, require_torch
 from ..compat import torch as _torch_dependency
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
@@ -163,12 +163,16 @@ _UNINITIALISED = _Sentinel()
 
 def _ensure_dataloader_class() -> type[Any]:
     """Return :class:`torch.utils.data.DataLoader` patched with ``.glitch``."""
-    torch_module = require_torch("torch is not installed; install glitchlings[torch]")
-    utils_module = getattr(torch_module, "utils", None)
-    data_module = getattr(utils_module, "data", None) if utils_module is not None else None
-    dataloader_cls = getattr(data_module, "DataLoader", None)
-    if dataloader_cls is None:  # pragma: no cover - defensive
-        raise ModuleNotFoundError("torch.utils.data.DataLoader is not available")
+    dataloader_cls = get_torch_dataloader()
+    if dataloader_cls is None:
+        require_torch("torch is not installed; install glitchlings[torch]")
+        dataloader_cls = get_torch_dataloader()
+        if dataloader_cls is None:  # pragma: no cover - defensive
+            message = "torch.utils.data.DataLoader is not available"
+            error = _torch_dependency.error
+            if error is not None:
+                raise ModuleNotFoundError(message) from error
+            raise ModuleNotFoundError(message)
 
     if getattr(dataloader_cls, "glitch", None) is None:
 
@@ -191,13 +195,7 @@ def _ensure_dataloader_class() -> type[Any]:
 
 def _optional_dataloader_class() -> type[Any] | None:
     """Return the PyTorch :class:`~torch.utils.data.DataLoader` when importable."""
-    torch_module = _torch_dependency.get()
-    if torch_module is None:
-        return None
-
-    utils_module = getattr(torch_module, "utils", None)
-    data_module = getattr(utils_module, "data", None) if utils_module is not None else None
-    dataloader_cls = getattr(data_module, "DataLoader", None)
+    dataloader_cls = get_torch_dataloader()
     if dataloader_cls is None:
         return None
     return cast(type[Any], dataloader_cls)
