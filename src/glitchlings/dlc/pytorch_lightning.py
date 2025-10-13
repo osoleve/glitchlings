@@ -39,7 +39,7 @@ def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
         return batch
 
     if hasattr(batch, "copy"):
-        mutated = batch.copy()
+        mutated = batch.copy()  # type: ignore[assignment]
     else:
         mutated = dict(batch)
 
