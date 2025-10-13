@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
-from typing import Any
+from typing import Any, cast
 
 from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
@@ -39,7 +39,7 @@ def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
         return batch
 
     if hasattr(batch, "copy"):
-        mutated = batch.copy()  # type: ignore[assignment]
+        mutated = batch.copy()
     else:
         mutated = dict(batch)
 
@@ -60,7 +60,8 @@ def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any
         return None
 
     if isinstance(dataloader, Mapping):
-        return dataloader.__class__(
+        mapping_type = cast(type[Any], dataloader.__class__)
+        return mapping_type(
             {
                 key: _wrap_dataloader(value, columns, gaggle)
                 for key, value in dataloader.items()
@@ -74,7 +75,8 @@ def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any
         return tuple(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
 
     if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
-        return dataloader.__class__(
+        sequence_type = cast(type[Any], dataloader.__class__)
+        return sequence_type(
             _wrap_dataloader(value, columns, gaggle) for value in dataloader
         )
 
@@ -151,7 +153,8 @@ class _GlitchedLightningDataModule:
         return self._glitch_base.teardown(*args, **kwargs)
 
     def state_dict(self) -> Mapping[str, Any]:
-        return self._glitch_base.state_dict()
+        state = self._glitch_base.state_dict()
+        return cast(Mapping[str, Any], state)
 
     def load_state_dict(self, state_dict: Mapping[str, Any]) -> None:
         self._glitch_base.load_state_dict(state_dict)
