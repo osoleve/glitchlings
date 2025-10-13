@@ -92,11 +92,12 @@ verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")
 jsonschema = OptionalDependency("jsonschema")
 nltk = OptionalDependency("nltk")
+torch = OptionalDependency("torch")
 
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-    for dependency in (datasets, verifiers, jellyfish, jsonschema, nltk):
+    for dependency in (datasets, verifiers, jellyfish, jsonschema, nltk, torch):
         dependency.reset()
 
 
@@ -118,6 +119,11 @@ def require_verifiers(message: str = "verifiers is not installed") -> ModuleType
 def require_jellyfish(message: str = "jellyfish is not installed") -> ModuleType:
     """Ensure the jellyfish dependency is present."""
     return jellyfish.require(message)
+
+
+def require_torch(message: str = "torch is not installed") -> ModuleType:
+    """Ensure the PyTorch dependency is present."""
+    return torch.require(message)
 
 
 def get_installed_extras(
