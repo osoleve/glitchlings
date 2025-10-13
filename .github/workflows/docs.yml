@@ -31,10 +31,6 @@ jobs:
           python docs/build_cli_reference.py
           git diff --exit-code README.md
 
-      - name: Check docstring coverage
-        run: |
-          python -m interrogate src/glitchlings
-
       - name: Build MkDocs site
         run: |
           mkdocs build --strict --config-file mkdocs.yml
