@@ -87,6 +87,7 @@ class OptionalDependency:
         return self._error
 
 
+pytorch_lightning = OptionalDependency("pytorch_lightning")
 datasets = OptionalDependency("datasets")
 verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")
@@ -97,7 +98,7 @@ torch = OptionalDependency("torch")
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-    for dependency in (datasets, verifiers, jellyfish, jsonschema, nltk, torch):
+    for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, nltk, torch):
         dependency.reset()
 
 
@@ -109,6 +110,16 @@ def get_datasets_dataset() -> Any | None:
 def require_datasets(message: str = "datasets is not installed") -> ModuleType:
     """Ensure the Hugging Face datasets dependency is present."""
     return datasets.require(message)
+
+
+def get_pytorch_lightning_datamodule() -> Any | None:
+    """Return the PyTorch Lightning ``LightningDataModule`` when available."""
+    return pytorch_lightning.attr("LightningDataModule")
+
+
+def require_pytorch_lightning(message: str = "pytorch_lightning is not installed") -> ModuleType:
+    """Ensure the PyTorch Lightning dependency is present."""
+    return pytorch_lightning.require(message)
 
 
 def require_verifiers(message: str = "verifiers is not installed") -> ModuleType:
