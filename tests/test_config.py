@@ -127,6 +127,51 @@ def test_get_config_rejects_non_sequence_priority(monkeypatch, tmp_path):
         monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
 
 
+def test_get_config_rejects_unknown_sections(monkeypatch, tmp_path):
+    config_path = tmp_path / "unexpected.toml"
+    config_path.write_text(
+        "[lexicon]\npriority = [\"vector\"]\n[extra]\nvalue = 1\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
+    reset_config()
+    try:
+        with pytest.raises(ValueError, match="unsupported sections"):
+            get_config()
+    finally:
+        reset_config()
+        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+
+def test_get_config_requires_lexicon_table(monkeypatch, tmp_path):
+    config_path = tmp_path / "bad_lexicon.toml"
+    config_path.write_text("lexicon = \"invalid\"\n", encoding="utf-8")
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
+    reset_config()
+    try:
+        with pytest.raises(ValueError, match="lexicon' section must be a table"):
+            get_config()
+    finally:
+        reset_config()
+        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+
+def test_get_config_requires_path_strings(monkeypatch, tmp_path):
+    config_path = tmp_path / "bad_paths.toml"
+    config_path.write_text(
+        "[lexicon]\nvector_cache = 123\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
+    reset_config()
+    try:
+        with pytest.raises(ValueError, match="must be a path or string"):
+            get_config()
+    finally:
+        reset_config()
+        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
+
+
 def test_load_attack_config_errors_for_missing_file(tmp_path):
     missing = tmp_path / "nope.yaml"
     with pytest.raises(ValueError, match="was not found"):

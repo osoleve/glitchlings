@@ -96,7 +96,7 @@ nltk = OptionalDependency("nltk")
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-    for dependency in (datasets, verifiers, jellyfish, nltk):
+    for dependency in (datasets, verifiers, jellyfish, jsonschema, nltk):
         dependency.reset()
 
 

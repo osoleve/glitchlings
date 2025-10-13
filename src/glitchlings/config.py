@@ -109,12 +109,19 @@ def get_config() -> RuntimeConfig:
 def _load_runtime_config() -> RuntimeConfig:
     path = _resolve_config_path()
     data = _read_toml(path)
-    lexicon_section = data.get("lexicon", {})
+    mapping = _validate_runtime_config_data(data, source=path)
+
+    lexicon_section = mapping.get("lexicon", {})
 
     priority = lexicon_section.get("priority", DEFAULT_LEXICON_PRIORITY)
     if not isinstance(priority, Sequence) or isinstance(priority, (str, bytes)):
         raise ValueError("lexicon.priority must be a sequence of strings.")
-    normalized_priority = [str(item) for item in priority]
+    normalized_priority = []
+    for item in priority:
+        string_value = str(item)
+        if not string_value:
+            raise ValueError("lexicon.priority entries must be non-empty strings.")
+        normalized_priority.append(string_value)
 
     vector_cache = _resolve_optional_path(
         lexicon_section.get("vector_cache"),
@@ -148,6 +155,36 @@ def _read_toml(path: Path) -> dict[str, Any]:
         raise FileNotFoundError(f"Configuration file '{path}' not found.")
     with path.open("rb") as handle:
         return tomllib.load(handle)
+
+
+def _validate_runtime_config_data(data: Any, *, source: Path) -> Mapping[str, Any]:
+    if data is None:
+        return {}
+    if not isinstance(data, Mapping):
+        raise ValueError(f"Configuration file '{source}' must contain a top-level mapping.")
+
+    allowed_sections = {"lexicon"}
+    unexpected_sections = [str(key) for key in data if key not in allowed_sections]
+    if unexpected_sections:
+        extras = ", ".join(sorted(unexpected_sections))
+        raise ValueError(f"Configuration file '{source}' has unsupported sections: {extras}.")
+
+    lexicon_section = data.get("lexicon", {})
+    if not isinstance(lexicon_section, Mapping):
+        raise ValueError("Configuration 'lexicon' section must be a table.")
+
+    allowed_lexicon_keys = {"priority", "vector_cache", "graph_cache"}
+    unexpected_keys = [str(key) for key in lexicon_section if key not in allowed_lexicon_keys]
+    if unexpected_keys:
+        extras = ", ".join(sorted(unexpected_keys))
+        raise ValueError(f"Unknown lexicon settings: {extras}.")
+
+    for key in ("vector_cache", "graph_cache"):
+        value = lexicon_section.get(key)
+        if value is not None and not isinstance(value, (str, os.PathLike)):
+            raise ValueError(f"lexicon.{key} must be a path or string when provided.")
+
+    return data
 
 
 def _resolve_optional_path(value: Any, *, base: Path) -> Path | None:
