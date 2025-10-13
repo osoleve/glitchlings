@@ -93,11 +93,12 @@ verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")
 jsonschema = OptionalDependency("jsonschema")
 nltk = OptionalDependency("nltk")
+torch = OptionalDependency("torch")
 
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-    for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, nltk):
+    for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, nltk, torch):
         dependency.reset()
 
 
@@ -129,6 +130,28 @@ def require_verifiers(message: str = "verifiers is not installed") -> ModuleType
 def require_jellyfish(message: str = "jellyfish is not installed") -> ModuleType:
     """Ensure the jellyfish dependency is present."""
     return jellyfish.require(message)
+
+
+def require_torch(message: str = "torch is not installed") -> ModuleType:
+    """Ensure the PyTorch dependency is present."""
+    return torch.require(message)
+
+
+def get_torch_dataloader() -> Any | None:
+    """Return PyTorch ``DataLoader`` when the dependency is installed."""
+    torch_module = torch.get()
+    if torch_module is None:
+        return None
+
+    utils_module = getattr(torch_module, "utils", None)
+    if utils_module is None:
+        return None
+
+    data_module = getattr(utils_module, "data", None)
+    if data_module is None:
+        return None
+
+    return getattr(data_module, "DataLoader", None)
 
 
 def get_installed_extras(
