@@ -121,6 +121,7 @@ Glitchlings slot neatly into existing pipelines:
 
 - **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to reproduce every run.
 - **Dataset corruption** – After ``import glitchlings.dlc.huggingface`` registers the extension, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
+- **PyTorch data loaders** – Import ``glitchlings.dlc.pytorch`` to patch ``torch.utils.data.DataLoader.glitch(...)``. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
 
 ### Command line interface
 
