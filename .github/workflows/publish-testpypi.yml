@@ -6,6 +6,9 @@ on:
       - test
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   publish:
     uses: ./.github/workflows/publish-package.yml
