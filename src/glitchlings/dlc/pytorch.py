@@ -68,10 +68,7 @@ def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle)
         return _corrupt_text(batch, gaggle)
 
     if isinstance(batch, Mapping):
-        if isinstance(batch, MutableMapping):
-            mutated = cast(MutableMapping[str, Any], batch.copy())
-        else:
-            mutated = cast(MutableMapping[str, Any], dict(batch))
+        mutated = cast(MutableMapping[str, Any], dict(batch))
         for key in targets:
             if not isinstance(key, str):
                 raise TypeError("Mapping batches require string column names")
@@ -105,7 +102,9 @@ def _infer_targets(batch: Any) -> list[str | int] | None:
         raise ValueError("Unable to infer which mapping columns contain text")
 
     if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
-        inferred_indices = [idx for idx, value in enumerate(batch) if _is_textual_candidate(value)]
+        inferred_indices: list[str | int] = [
+            idx for idx, value in enumerate(batch) if _is_textual_candidate(value)
+        ]
         if inferred_indices:
             return inferred_indices
         raise ValueError("Unable to infer which sequence indices contain text")
