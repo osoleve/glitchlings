@@ -54,7 +54,7 @@ print(gaggle(SAMPLE_TEXT))
 > Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
-for end-to-end instructions spanning the Python API, CLI, HuggingFace and Prime Intellect
+for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
 integrations, and the autodetected Rust pipeline (enabled whenever the extension is present).
 
 ## Motivation
