@@ -172,10 +172,7 @@ impl TextBuffer {
     }
 
     /// Replace multiple words in a single pass, avoiding repeated reindexing.
-    pub fn replace_words_bulk<I>(
-        &mut self,
-        replacements: I,
-    ) -> Result<(), TextBufferError>
+    pub fn replace_words_bulk<I>(&mut self, replacements: I) -> Result<(), TextBufferError>
     where
         I: IntoIterator<Item = (usize, String)>,
     {
@@ -435,10 +432,7 @@ mod tests {
     fn bulk_replace_words_updates_multiple_entries() {
         let mut buffer = TextBuffer::from_str("alpha beta gamma delta");
         buffer
-            .replace_words_bulk(vec![
-                (0, "delta".to_string()),
-                (3, "alpha".to_string()),
-            ])
+            .replace_words_bulk(vec![(0, "delta".to_string()), (3, "alpha".to_string())])
             .expect("bulk replace succeeds");
         assert_eq!(buffer.to_string(), "delta beta gamma alpha");
         let spans = buffer.spans();
