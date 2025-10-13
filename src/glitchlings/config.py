@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import warnings
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
@@ -15,6 +16,8 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
 
 import yaml
 
+from .compat import jsonschema
+
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .zoo import Glitchling
 
@@ -23,6 +26,44 @@ CONFIG_ENV_VAR = "GLITCHLINGS_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
 DEFAULT_LEXICON_PRIORITY = ["vector", "graph", "wordnet"]
 DEFAULT_ATTACK_SEED = 151
+
+ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "required": ["glitchlings"],
+    "properties": {
+        "glitchlings": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+                "anyOf": [
+                    {"type": "string", "minLength": 1},
+                    {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                            "name": {"type": "string", "minLength": 1},
+                            "type": {"type": "string", "minLength": 1},
+                            "parameters": {"type": "object"},
+                        },
+                        "additionalProperties": True,
+                    },
+                    {
+                        "type": "object",
+                        "required": ["type"],
+                        "properties": {
+                            "name": {"type": "string", "minLength": 1},
+                            "type": {"type": "string", "minLength": 1},
+                            "parameters": {"type": "object"},
+                        },
+                        "additionalProperties": True,
+                    },
+                ]
+            },
+        },
+        "seed": {"type": "integer"},
+    },
+    "additionalProperties": False,
+}
 
 
 @dataclass(slots=True)
@@ -150,28 +191,61 @@ def load_attack_config(
     return parse_attack_config(data, source=label)
 
 
-def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
-    """Convert arbitrary YAML data into a validated ``AttackConfig``."""
+def _validate_attack_config_schema(data: Any, *, source: str) -> Mapping[str, Any]:
     if data is None:
         raise ValueError(f"Attack configuration '{source}' is empty.")
-
     if not isinstance(data, Mapping):
         raise ValueError(f"Attack configuration '{source}' must be a mapping.")
 
-    raw_glitchlings = data.get("glitchlings")
-    if raw_glitchlings is None:
+    unexpected = [key for key in data if key not in {"glitchlings", "seed"}]
+    if unexpected:
+        extras = ", ".join(sorted(unexpected))
+        raise ValueError(f"Attack configuration '{source}' has unsupported fields: {extras}.")
+
+    if "glitchlings" not in data:
         raise ValueError(f"Attack configuration '{source}' must define 'glitchlings'.")
 
+    raw_glitchlings = data["glitchlings"]
     if not isinstance(raw_glitchlings, Sequence) or isinstance(raw_glitchlings, (str, bytes)):
         raise ValueError(f"'glitchlings' in '{source}' must be a sequence.")
+
+    seed = data.get("seed")
+    if seed is not None and not isinstance(seed, int):
+        raise ValueError(f"Seed in '{source}' must be an integer if provided.")
+
+    for index, entry in enumerate(raw_glitchlings, start=1):
+        if isinstance(entry, Mapping):
+            name_candidate = entry.get("name") or entry.get("type")
+            if not isinstance(name_candidate, str) or not name_candidate.strip():
+                raise ValueError(f"{source}: glitchling #{index} is missing a 'name'.")
+            parameters = entry.get("parameters")
+            if parameters is not None and not isinstance(parameters, Mapping):
+                raise ValueError(
+                    f"{source}: glitchling '{name_candidate}' parameters must be a mapping."
+                )
+
+    schema_module = jsonschema.get()
+    if schema_module is not None:
+        try:
+            schema_module.validate(instance=data, schema=ATTACK_CONFIG_SCHEMA)
+        except schema_module.exceptions.ValidationError as exc:  # pragma: no cover - optional dep
+            message = exc.message
+            raise ValueError(f"Attack configuration '{source}' is invalid: {message}") from exc
+
+    return data
+
+
+def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
+    """Convert arbitrary YAML data into a validated ``AttackConfig``."""
+    mapping = _validate_attack_config_schema(data, source=source)
+
+    raw_glitchlings = mapping["glitchlings"]
 
     glitchlings: list["Glitchling"] = []
     for index, entry in enumerate(raw_glitchlings, start=1):
         glitchlings.append(_build_glitchling(entry, source, index))
 
-    seed = data.get("seed")
-    if seed is not None and not isinstance(seed, int):
-        raise ValueError(f"Seed in '{source}' must be an integer if provided.")
+    seed = mapping.get("seed")
 
     return AttackConfig(glitchlings=glitchlings, seed=seed)
 
@@ -204,7 +278,18 @@ def _build_glitchling(entry: Any, source: str, index: int):
             raise ValueError(f"{source}: glitchling #{index}: {exc}") from exc
 
     if isinstance(entry, Mapping):
-        name_value = entry.get("name", entry.get("type"))
+        name_value = entry.get("name")
+        legacy_type = entry.get("type")
+        if name_value is None and legacy_type is not None:
+            warnings.warn(
+                f"{source}: glitchling #{index} uses 'type'; prefer 'name'.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            name_value = legacy_type
+        elif name_value is None:
+            name_value = legacy_type
+
         if not isinstance(name_value, str) or not name_value.strip():
             raise ValueError(f"{source}: glitchling #{index} is missing a 'name'.")
 

@@ -528,6 +528,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.normalizer == "lower":
         normalizer: Callable[[str], str] | None = None if args.case_sensitive else str.lower
     else:
+
         def _identity(value: str) -> str:
             return value
 

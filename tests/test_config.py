@@ -167,7 +167,8 @@ def test_load_attack_config_supports_parameters_section() -> None:
             """
         )
     )
-    config = load_attack_config(yaml_stream)
+    with pytest.warns(DeprecationWarning, match="uses 'type'"):
+        config = load_attack_config(yaml_stream)
 
     assert config.seed == 11
     assert len(config.glitchlings) == 2
@@ -194,3 +195,8 @@ def test_load_attack_config_parameters_must_be_mapping() -> None:
     )
     with pytest.raises(ValueError, match="parameters must be a mapping"):
         load_attack_config(yaml_stream)
+
+
+def test_parse_attack_config_rejects_unknown_fields() -> None:
+    with pytest.raises(ValueError, match="unsupported fields"):
+        parse_attack_config({"glitchlings": ["Typogre"], "extra": 1}, source="test")

@@ -90,6 +90,7 @@ class OptionalDependency:
 datasets = OptionalDependency("datasets")
 verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")
+jsonschema = OptionalDependency("jsonschema")
 nltk = OptionalDependency("nltk")
 
 
@@ -203,6 +204,7 @@ __all__ = [
     "datasets",
     "verifiers",
     "jellyfish",
+    "jsonschema",
     "nltk",
     "get_datasets_dataset",
     "require_datasets",

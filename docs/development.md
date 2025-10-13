@@ -106,3 +106,4 @@ export GLITCHLINGS_RUST_PIPELINE=0
 - Use `python -m glitchlings --help` to smoke-test CLI changes quickly.
 - Check `docs/index.md` for end-user guidance - keep it in sync with behaviour changes when you ship new glitchlings or orchestration features.
 - When a TestPyPI publish fails, re-trigger the "Build & Publish (TestPyPI)" GitHub Actions workflow or fast-forward `dev` to rerun the pipeline - see `docs/release-process.md` for the manual steps.
+- Validate YAML attack rosters with `glitchlings.config.ATTACK_CONFIG_SCHEMA` (or `load_attack_config`) so CI catches unsupported fields before they reach users. Configs that still rely on the legacy `type:` alias trigger a `DeprecationWarning`; swap to `name:` when updating fixtures.
