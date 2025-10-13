@@ -6,16 +6,50 @@ import re
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable, Protocol, cast
+
+
+class _MissingSentinel:
+    __slots__ = ()
+
+
+_MISSING = _MissingSentinel()
+
+
+class _MarkerProtocol(Protocol):
+    def evaluate(self, environment: dict[str, str]) -> bool:
+        ...
+
+
+class _RequirementProtocol(Protocol):
+    marker: _MarkerProtocol | None
+    name: str
+
+    def __init__(self, requirement: str) -> None:
+        ...
+
 
 try:  # pragma: no cover - packaging is bundled with modern Python environments
-    from packaging.markers import default_environment
-    from packaging.requirements import Requirement
+    from packaging.markers import default_environment as _default_environment
 except ModuleNotFoundError:  # pragma: no cover - fallback when packaging missing
-    Requirement = None  # type: ignore[assignment]
-    default_environment = None  # type: ignore[assignment]
+    _default_environment = None
 
-_MISSING = object()
+try:  # pragma: no cover - packaging is bundled with modern Python environments
+    from packaging.requirements import Requirement as _RequirementClass
+except ModuleNotFoundError:  # pragma: no cover - fallback when packaging missing
+    _RequirementClass = None
+
+default_environment: Callable[[], dict[str, str]] | None
+if _default_environment is None:
+    default_environment = None
+else:
+    default_environment = cast(Callable[[], dict[str, str]], _default_environment)
+
+Requirement: type[_RequirementProtocol] | None
+if _RequirementClass is None:
+    Requirement = None
+else:
+    Requirement = cast(type[_RequirementProtocol], _RequirementClass)
 
 
 @dataclass
@@ -23,7 +57,7 @@ class OptionalDependency:
     """Lazily import an optional dependency and retain the import error."""
 
     module_name: str
-    _cached: ModuleType | object = _MISSING
+    _cached: ModuleType | None | _MissingSentinel = _MISSING
     _error: ModuleNotFoundError | None = None
 
     def _attempt_import(self) -> ModuleType | None:
@@ -40,11 +74,12 @@ class OptionalDependency:
 
     def get(self) -> ModuleType | None:
         """Return the imported module or ``None`` when unavailable."""
-        if self._cached is _MISSING:
+        cached = self._cached
+        if isinstance(cached, _MissingSentinel):
             return self._attempt_import()
-        if self._cached is None:
+        if cached is None:
             return None
-        return self._cached
+        return cached
 
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""

@@ -6,7 +6,7 @@ import random
 from abc import ABC, abstractmethod
 from hashlib import blake2s
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable, cast
 
 from glitchlings.config import get_config
 
@@ -100,10 +100,16 @@ from .metrics import (  # noqa: E402
 )
 from .vector import VectorLexicon, build_vector_cache  # noqa: E402
 
+if TYPE_CHECKING:  # pragma: no cover - typing aid only
+    from .wordnet import WordNetLexicon as WordNetLexiconType
+
+_WordNetLexicon: type[LexiconBackend] | None
 try:  # pragma: no cover - optional dependency
-    from .wordnet import WordNetLexicon
+    from .wordnet import WordNetLexicon as _WordNetLexicon
 except Exception:  # pragma: no cover - triggered when nltk unavailable
-    WordNetLexicon = None  # type: ignore[assignment]
+    _WordNetLexicon = None
+
+WordNetLexicon: type[LexiconBackend] | None = _WordNetLexicon
 
 
 _BACKEND_FACTORIES: dict[str, Callable[[int | None], Lexicon | None]] = {}

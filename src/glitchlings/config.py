@@ -2,24 +2,41 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import warnings
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping, Sequence
+from typing import TYPE_CHECKING, IO, Any, Mapping, Sequence, Protocol, cast
 
 try:  # Python 3.11+
-    import tomllib
+    import tomllib as _tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
-    import tomli as tomllib  # type: ignore[no-redef]
+    _tomllib = importlib.import_module("tomli")
 
-import yaml
+
+class _TomllibModule(Protocol):
+    def load(self, fp: IO[bytes]) -> Any:
+        ...
+
+
+tomllib = cast(_TomllibModule, _tomllib)
+
+
+class _YamlModule(Protocol):
+    YAMLError: type[Exception]
+
+    def safe_load(self, stream: str) -> Any:
+        ...
+
+
+yaml = cast(_YamlModule, importlib.import_module("yaml"))
 
 from .compat import jsonschema
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .zoo import Glitchling
+    from .zoo import Gaggle, Glitchling
 
 
 CONFIG_ENV_VAR = "GLITCHLINGS_CONFIG"
@@ -154,7 +171,10 @@ def _read_toml(path: Path) -> dict[str, Any]:
             return {}
         raise FileNotFoundError(f"Configuration file '{path}' not found.")
     with path.open("rb") as handle:
-        return tomllib.load(handle)
+        loaded = tomllib.load(handle)
+    if isinstance(loaded, Mapping):
+        return dict(loaded)
+    raise ValueError(f"Configuration file '{path}' must contain a top-level mapping.")
 
 
 def _validate_runtime_config_data(data: Any, *, source: Path) -> Mapping[str, Any]:
@@ -287,7 +307,7 @@ def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
     return AttackConfig(glitchlings=glitchlings, seed=seed)
 
 
-def build_gaggle(config: AttackConfig, *, seed_override: int | None = None):
+def build_gaggle(config: AttackConfig, *, seed_override: int | None = None) -> "Gaggle":
     """Instantiate a ``Gaggle`` according to ``config``."""
     from .zoo import Gaggle  # Imported lazily to avoid circular dependencies
 
@@ -305,7 +325,7 @@ def _load_yaml(text: str, label: str) -> Any:
         raise ValueError(f"Failed to parse attack configuration '{label}': {exc}") from exc
 
 
-def _build_glitchling(entry: Any, source: str, index: int):
+def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
     from .zoo import get_glitchling_class, parse_glitchling_spec
 
     if isinstance(entry, str):
