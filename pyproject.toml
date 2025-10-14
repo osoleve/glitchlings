@@ -166,19 +166,19 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = [
-    "glitchlings.zoo",
-    "glitchlings.zoo.*",
-    "glitchlings.main",
-    "glitchlings.__main__",
-    "glitchlings.__init__",
-]
-ignore_errors = true
-
-[[tool.mypy.overrides]]
-module = [
     "glitchlings.compat",
     "glitchlings.config",
     "glitchlings.lexicon",
     "glitchlings.lexicon.*",
+]
+strict = true
+
+[[tool.mypy.overrides]]
+module = [
+    "glitchlings.main",
+    "glitchlings.__main__",
+    "glitchlings.__init__",
+    "glitchlings.zoo",
+    "glitchlings.zoo.*",
 ]
 strict = true
