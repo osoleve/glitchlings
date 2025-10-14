@@ -185,26 +185,26 @@ def substitute_random_synonyms(
                 chosen_pos: str | None = None
                 synonyms: list[str] = []
 
-        for tag in target_pos:
-            if not active_lexicon.supports_pos(tag):
-                continue
-            synonyms = active_lexicon.get_synonyms(core_word, pos=tag)
-            if synonyms:
-                chosen_pos = tag
-                break
-
-                if not synonyms and active_lexicon.supports_pos(None):
-                    synonyms = active_lexicon.get_synonyms(core_word, pos=None)
-
+            for tag in target_pos:
+                if not active_lexicon.supports_pos(tag):
+                    continue
+                synonyms = active_lexicon.get_synonyms(core_word, pos=tag)
                 if synonyms:
-                    candidate_indices.append(idx)
-                    candidate_metadata[idx] = CandidateInfo(
-                        prefix=prefix,
-                        core_word=core_word,
-                        suffix=suffix,
-                        part_of_speech=chosen_pos,
-                        synonyms=synonyms,
-                    )
+                    chosen_pos = tag
+                    break
+    
+                    if not synonyms and active_lexicon.supports_pos(None):
+                        synonyms = active_lexicon.get_synonyms(core_word, pos=None)
+    
+                    if synonyms:
+                        candidate_indices.append(idx)
+                        candidate_metadata[idx] = CandidateInfo(
+                            prefix=prefix,
+                            core_word=core_word,
+                            suffix=suffix,
+                            part_of_speech=chosen_pos,
+                            synonyms=synonyms,
+                        )
 
         if not candidate_indices:
             return text
