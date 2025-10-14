@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from ..util import KEYNEIGHBORS
 from ._rate import resolve_rate
@@ -168,7 +168,10 @@ def fatfinger(
     layout = getattr(KEYNEIGHBORS, keyboard)
 
     if _fatfinger_rust is not None:
-        return _fatfinger_rust(text, max_change_rate=clamped_rate, layout=layout, rng=rng)
+        return cast(
+            str,
+            _fatfinger_rust(text, max_change_rate=clamped_rate, layout=layout, rng=rng),
+        )
 
     return _fatfinger_python(text, rate=clamped_rate, layout=layout, rng=rng)
 

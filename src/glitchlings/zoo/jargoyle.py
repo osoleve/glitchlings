@@ -2,20 +2,22 @@ import random
 import re
 from collections.abc import Iterable
 from dataclasses import dataclass
+from types import ModuleType
 from typing import Any, Literal, cast
 
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
+_wordnet_module: ModuleType | None
+
 try:  # pragma: no cover - optional WordNet dependency
-    from glitchlings.lexicon.wordnet import (
-        WordNetLexicon,
-    )
-    from glitchlings.lexicon.wordnet import (
-        dependencies_available as _lexicon_dependencies_available,
-    )
-    from glitchlings.lexicon.wordnet import ensure_wordnet as _lexicon_ensure_wordnet
+    import glitchlings.lexicon.wordnet as _wordnet_module
 except Exception:  # pragma: no cover - triggered when nltk unavailable
-    WordNetLexicon = None  # type: ignore[assignment]
+    _wordnet_module = None
+
+_wordnet_runtime: ModuleType | None = _wordnet_module
+
+WordNetLexicon: type[Lexicon] | None
+if _wordnet_runtime is None:
 
     def _lexicon_dependencies_available() -> bool:
         return False
@@ -25,6 +27,12 @@ except Exception:  # pragma: no cover - triggered when nltk unavailable
             "The WordNet backend is no longer bundled by default. Install NLTK "
             "and download its WordNet corpus manually if you need legacy synonyms."
         )
+
+    WordNetLexicon = None
+else:
+    WordNetLexicon = cast(type[Lexicon], _wordnet_runtime.WordNetLexicon)
+    _lexicon_dependencies_available = _wordnet_runtime.dependencies_available
+    _lexicon_ensure_wordnet = _wordnet_runtime.ensure_wordnet
 
 
 from ._rate import resolve_rate
@@ -177,13 +185,13 @@ def substitute_random_synonyms(
                 chosen_pos: str | None = None
                 synonyms: list[str] = []
 
-                for pos in target_pos:
-                    if not active_lexicon.supports_pos(pos):
-                        continue
-                    synonyms = active_lexicon.get_synonyms(core_word, pos=pos)
-                    if synonyms:
-                        chosen_pos = pos
-                        break
+        for tag in target_pos:
+            if not active_lexicon.supports_pos(tag):
+                continue
+            synonyms = active_lexicon.get_synonyms(core_word, pos=tag)
+            if synonyms:
+                chosen_pos = tag
+                break
 
                 if not synonyms and active_lexicon.supports_pos(None):
                     synonyms = active_lexicon.get_synonyms(core_word, pos=None)

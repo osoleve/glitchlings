@@ -1,5 +1,5 @@
 import random
-from typing import Any
+from typing import Any, cast
 
 from ._rate import resolve_rate
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
@@ -94,7 +94,7 @@ def reduplicate_words(
     unweighted_flag = bool(unweighted)
 
     if _reduplicate_words_rust is not None:
-        return _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng)
+        return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
 
     return _python_reduplicate_words(
         text,
