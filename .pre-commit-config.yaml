@@ -3,10 +3,6 @@ repos:
     rev: 24.8.0
     hooks:
       - id: black
-  - repo: https://github.com/pycqa/isort
-    rev: 5.13.2
-    hooks:
-      - id: isort
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.6.7
     hooks:
