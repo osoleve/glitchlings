@@ -6,7 +6,7 @@ import random
 from abc import ABC, abstractmethod
 from hashlib import blake2s
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Iterable, cast
+from typing import Callable, Iterable
 
 from glitchlings.config import get_config
 
@@ -99,9 +99,6 @@ from .metrics import (  # noqa: E402
     synonym_diversity,
 )
 from .vector import VectorLexicon, build_vector_cache  # noqa: E402
-
-if TYPE_CHECKING:  # pragma: no cover - typing aid only
-    from .wordnet import WordNetLexicon as WordNetLexiconType
 
 _WordNetLexicon: type[LexiconBackend] | None
 try:  # pragma: no cover - optional dependency

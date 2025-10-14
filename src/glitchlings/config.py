@@ -8,7 +8,9 @@ import warnings
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
-from typing import TYPE_CHECKING, IO, Any, Mapping, Sequence, Protocol, cast
+from typing import IO, TYPE_CHECKING, Any, Mapping, Protocol, Sequence, cast
+
+from glitchlings.compat import jsonschema
 
 try:  # Python 3.11+
     import tomllib as _tomllib
@@ -32,8 +34,6 @@ class _YamlModule(Protocol):
 
 
 yaml = cast(_YamlModule, importlib.import_module("yaml"))
-
-from .compat import jsonschema
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from .zoo import Gaggle, Glitchling

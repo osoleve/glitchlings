@@ -9,10 +9,10 @@ from pathlib import Path
 import pytest
 
 from glitchlings.lexicon.vector import (
-    _SpaCyAdapter,
+    VectorLexicon,
     _load_gensim_vectors,
     _load_spacy_language,
-    VectorLexicon,
+    _SpaCyAdapter,
     build_vector_cache,
     load_vector_source,
     main,
@@ -93,7 +93,9 @@ def test_vector_cache_cli(tmp_path: Path, toy_embeddings: dict[str, list[float]]
     assert sorted(payload) == ["alpha", "delta"]
 
 
-def test_vector_cache_cli_refuses_to_overwrite(tmp_path: Path, toy_embeddings: dict[str, list[float]]) -> None:
+def test_vector_cache_cli_refuses_to_overwrite(
+    tmp_path: Path, toy_embeddings: dict[str, list[float]]
+) -> None:
     vectors_path = tmp_path / "vectors.json"
     output_path = tmp_path / "output.json"
     tokens_path = tmp_path / "tokens.txt"

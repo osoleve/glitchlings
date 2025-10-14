@@ -31,5 +31,7 @@ def test_string_diffs_groups_consecutive_edits_and_skips_equals():
         ),
     ],
 )
-def test_string_diffs_handles_multiple_edit_groups(a: str, b: str, expected: list[list[tuple[str, str, str]]]):
+def test_string_diffs_handles_multiple_edit_groups(
+    a: str, b: str, expected: list[list[tuple[str, str, str]]]
+) -> None:
     assert string_diffs(a, b) == expected
