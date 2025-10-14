@@ -7,6 +7,9 @@ from typing import Any, Literal, cast
 
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
+from ._rate import resolve_rate
+from .core import AttackWave, Glitchling
+
 _wordnet_module: ModuleType | None
 
 try:  # pragma: no cover - optional WordNet dependency
@@ -34,9 +37,6 @@ else:
     _lexicon_dependencies_available = _wordnet_runtime.dependencies_available
     _lexicon_ensure_wordnet = _wordnet_runtime.ensure_wordnet
 
-
-from ._rate import resolve_rate
-from .core import AttackWave, Glitchling
 
 ensure_wordnet = _lexicon_ensure_wordnet
 
