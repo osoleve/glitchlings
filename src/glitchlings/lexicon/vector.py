@@ -188,6 +188,58 @@ def _load_spacy_language(model_name: str) -> Any:
     return spacy_module.load(model_name)
 
 
+def _load_sentence_transformer(model_name: str) -> Any:
+    """Return a ``SentenceTransformer`` instance for ``model_name``."""
+
+    if importlib.util.find_spec("sentence_transformers") is None:
+        raise RuntimeError(
+            "sentence-transformers is required for this source; install the 'st' extra."
+        )
+
+    module = importlib.import_module("sentence_transformers")
+    try:
+        model_cls = getattr(module, "SentenceTransformer")
+    except AttributeError as exc:  # pragma: no cover - defensive
+        raise RuntimeError("sentence-transformers does not expose SentenceTransformer") from exc
+
+    return model_cls(model_name)
+
+
+def _build_sentence_transformer_embeddings(
+    model_name: str, tokens: Sequence[str]
+) -> Mapping[str, Sequence[float]]:
+    """Return embeddings for ``tokens`` using ``model_name``."""
+
+    if not tokens:
+        return {}
+
+    model = _load_sentence_transformer(model_name)
+
+    unique_tokens: list[str] = []
+    seen: set[str] = set()
+    for token in tokens:
+        normalized = token.strip()
+        if not normalized or normalized in seen:
+            continue
+        unique_tokens.append(normalized)
+        seen.add(normalized)
+
+    if not unique_tokens:
+        return {}
+
+    embeddings = model.encode(
+        unique_tokens,
+        batch_size=64,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+    )
+
+    return {
+        token: [float(value) for value in vector]
+        for token, vector in zip(unique_tokens, embeddings, strict=True)
+    }
+
+
 def _resolve_source(source: Any | None) -> _Adapter | None:
     """Return an adapter instance for ``source`` if possible."""
     if source is None:
@@ -452,7 +504,8 @@ def _parse_cli(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--source",
         required=True,
         help=(
-            "Vector source specification. Use 'spacy:<model>' for spaCy pipelines "
+            "Vector source specification. Use 'spacy:<model>' for spaCy pipelines, "
+            "'sentence-transformers:<model>' for HuggingFace checkpoints (requires --tokens), "
             "or provide a path to a gensim KeyedVectors/word2vec file."
         ),
     )
@@ -534,22 +587,44 @@ def main(argv: Sequence[str] | None = None) -> int:
 
         normalizer = _identity
 
-    source = load_vector_source(args.source)
+    tokens_from_file: list[str] | None = None
     if args.tokens is not None:
-        token_iter: Iterable[str] = _iter_tokens_from_file(args.tokens)
-    else:
-        lexicon = VectorLexicon(
-            source=source,
-            max_neighbors=args.max_neighbors,
-            min_similarity=args.min_similarity,
-            case_sensitive=args.case_sensitive,
-            normalizer=normalizer,
-            seed=args.seed,
-        )
-        token_iter = lexicon.iter_vocabulary()
+        tokens_from_file = list(_iter_tokens_from_file(args.tokens))
+        if args.limit is not None:
+            tokens_from_file = tokens_from_file[: args.limit]
 
-    if args.limit is not None:
-        token_iter = (token for index, token in enumerate(token_iter) if index < args.limit)
+    source_spec = args.source
+    token_iter: Iterable[str]
+    if source_spec.startswith("sentence-transformers:"):
+        model_name = source_spec.split(":", 1)[1].strip()
+        if not model_name:
+            model_name = "sentence-transformers/all-mpnet-base-v2"
+        if tokens_from_file is None:
+            raise SystemExit(
+                "Sentence-transformers sources require --tokens to supply a vocabulary."
+            )
+        source = _build_sentence_transformer_embeddings(model_name, tokens_from_file)
+        token_iter = tokens_from_file
+    else:
+        source = load_vector_source(source_spec)
+        if tokens_from_file is not None:
+            token_iter = tokens_from_file
+        else:
+            lexicon = VectorLexicon(
+                source=source,
+                max_neighbors=args.max_neighbors,
+                min_similarity=args.min_similarity,
+                case_sensitive=args.case_sensitive,
+                normalizer=normalizer,
+                seed=args.seed,
+            )
+            iterator = lexicon.iter_vocabulary()
+            if args.limit is not None:
+                token_iter = (
+                    token for index, token in enumerate(iterator) if index < args.limit
+                )
+            else:
+                token_iter = iterator
 
     build_vector_cache(
         source=source,

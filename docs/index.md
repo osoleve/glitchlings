@@ -44,6 +44,9 @@ pip install -U 'glitchlings[prime]'
 # Embedding-based lexicon helpers (spaCy/gensim + NumPy)
 pip install -U 'glitchlings[vectors]'
 
+# SentenceTransformer-backed cache builder
+pip install -U 'glitchlings[st]'
+
 # Optional: NLTK WordNet corpora if you want the legacy synonym backend
 python -m nltk.downloader wordnet
 ```
@@ -59,7 +62,7 @@ glitchlings build-lexicon \
     --overwrite
 ```
 
-Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
+Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. SentenceTransformer checkpoints are supported via `--source sentence-transformers:<model>` (pair them with `--tokens` to define the vocabulary). The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) derived from the `sentence-transformers/all-mpnet-base-v2` model so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
 
 ### ConceptNet graph lexicon
 

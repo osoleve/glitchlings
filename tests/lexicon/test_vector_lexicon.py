@@ -5,10 +5,12 @@ import json
 import sys
 import types
 from pathlib import Path
+from typing import Sequence
 
 import pytest
 
 from glitchlings.lexicon.vector import (
+    _build_sentence_transformer_embeddings,
     _SpaCyAdapter,
     _load_gensim_vectors,
     _load_spacy_language,
@@ -351,6 +353,63 @@ def test_load_gensim_vectors_requires_dependency(monkeypatch, tmp_path: Path) ->
 
     with pytest.raises(RuntimeError, match="gensim package is required"):
         _load_gensim_vectors(tmp_path / "missing.bin")
+
+
+def test_build_sentence_transformer_embeddings_generates_vectors(monkeypatch) -> None:
+    monkeypatch.delitem(sys.modules, "sentence_transformers", raising=False)
+    stub_module = types.ModuleType("sentence_transformers")
+
+    class FakeModel:
+        def __init__(self, name: str) -> None:
+            self.name = name
+            stub_module.last_instance = self  # type: ignore[attr-defined]
+
+        def encode(
+            self,
+            tokens: Sequence[str],
+            *,
+            batch_size: int,
+            normalize_embeddings: bool,
+            convert_to_numpy: bool,
+        ) -> list[list[float]]:
+            stub_module.encode_call = {  # type: ignore[attr-defined]
+                "tokens": list(tokens),
+                "batch_size": batch_size,
+                "normalize": normalize_embeddings,
+                "convert": convert_to_numpy,
+            }
+            return [[1.0, 0.0], [0.0, 1.0]]
+
+    stub_module.SentenceTransformer = FakeModel  # type: ignore[attr-defined]
+    _fake_find_spec(monkeypatch, "sentence_transformers")
+    _fake_import_module(monkeypatch, "sentence_transformers", stub_module)
+
+    embeddings = _build_sentence_transformer_embeddings(
+        "sentence-transformers/all-mpnet-base-v2",
+        ["alpha", "beta", "alpha", ""],
+    )
+
+    assert embeddings == {"alpha": [1.0, 0.0], "beta": [0.0, 1.0]}
+    assert stub_module.last_instance.name == "sentence-transformers/all-mpnet-base-v2"  # type: ignore[attr-defined]
+    assert stub_module.encode_call["tokens"] == ["alpha", "beta"]  # type: ignore[index]
+    assert stub_module.encode_call["batch_size"] == 64  # type: ignore[index]
+    assert stub_module.encode_call["normalize"] is True  # type: ignore[index]
+    assert stub_module.encode_call["convert"] is True  # type: ignore[index]
+
+
+def test_build_sentence_transformer_embeddings_requires_dependency(monkeypatch) -> None:
+    monkeypatch.delitem(sys.modules, "sentence_transformers", raising=False)
+    original = importlib.util.find_spec
+
+    def _patched(name: str, package: str | None = None):
+        if name == "sentence_transformers":
+            return None
+        return original(name, package)
+
+    monkeypatch.setattr(importlib.util, "find_spec", _patched)
+
+    with pytest.raises(RuntimeError, match="sentence-transformers is required"):
+        _build_sentence_transformer_embeddings("model", ["alpha"])
 
 
 def _make_fake_spacy_language():
