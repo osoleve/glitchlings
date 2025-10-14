@@ -177,13 +177,15 @@ def substitute_random_synonyms(
         candidate_indices: list[int] = []
         candidate_metadata: dict[int, CandidateInfo] = {}
         for idx, tok in enumerate(tokens):
-            if idx % 2 == 0 and tok and not tok.isspace():
-                prefix, core_word, suffix = _split_token(tok)
-                if not core_word:
-                    continue
+            if idx % 2 != 0 or not tok or tok.isspace():
+                continue
 
-                chosen_pos: str | None = None
-                synonyms: list[str] = []
+            prefix, core_word, suffix = _split_token(tok)
+            if not core_word:
+                continue
+
+            chosen_pos: str | None = None
+            synonyms: list[str] = []
 
             for tag in target_pos:
                 if not active_lexicon.supports_pos(tag):
@@ -192,19 +194,19 @@ def substitute_random_synonyms(
                 if synonyms:
                     chosen_pos = tag
                     break
-    
-                    if not synonyms and active_lexicon.supports_pos(None):
-                        synonyms = active_lexicon.get_synonyms(core_word, pos=None)
-    
-                    if synonyms:
-                        candidate_indices.append(idx)
-                        candidate_metadata[idx] = CandidateInfo(
-                            prefix=prefix,
-                            core_word=core_word,
-                            suffix=suffix,
-                            part_of_speech=chosen_pos,
-                            synonyms=synonyms,
-                        )
+
+            if not synonyms and active_lexicon.supports_pos(None):
+                synonyms = active_lexicon.get_synonyms(core_word, pos=None)
+
+            if synonyms:
+                candidate_indices.append(idx)
+                candidate_metadata[idx] = CandidateInfo(
+                    prefix=prefix,
+                    core_word=core_word,
+                    suffix=suffix,
+                    part_of_speech=chosen_pos,
+                    synonyms=synonyms,
+                )
 
         if not candidate_indices:
             return text
