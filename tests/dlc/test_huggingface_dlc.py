@@ -1,14 +1,16 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from random import Random
 
 import pytest
 
-datasets = pytest.importorskip("datasets")
-Dataset = datasets.Dataset
-
 from glitchlings.dlc import huggingface as hf_dlc
 from glitchlings.dlc.huggingface import _normalise_columns
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
+
+datasets = pytest.importorskip("datasets")
+Dataset = datasets.Dataset
 
 
 def append_rng_token(text: str, *, rng: Random) -> str:
@@ -61,7 +63,11 @@ def test_dataset_glitch_accepts_multiple_columns() -> None:
 
     corrupted = list(dataset.glitch(gaggle, column=("text", "notes")))
 
-    comparison = list(Gaggle([glitchling.clone()], seed=21).corrupt_dataset(dataset, ["text", "notes"]))
+    comparison = list(
+        Gaggle([glitchling.clone()], seed=21).corrupt_dataset(
+            dataset, ["text", "notes"]
+        )
+    )
     assert corrupted == comparison
     original_rows = list(dataset)
     assert original_rows[0]["text"] == "alpha"

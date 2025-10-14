@@ -166,10 +166,6 @@ strict = true
 
 [[tool.mypy.overrides]]
 module = [
-    "glitchlings.compat",
-    "glitchlings.config",
-    "glitchlings.lexicon",
-    "glitchlings.lexicon.*",
     "glitchlings.zoo",
     "glitchlings.zoo.*",
     "glitchlings.main",
@@ -177,3 +173,12 @@ module = [
     "glitchlings.__init__",
 ]
 ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = [
+    "glitchlings.compat",
+    "glitchlings.config",
+    "glitchlings.lexicon",
+    "glitchlings.lexicon.*",
+]
+strict = true

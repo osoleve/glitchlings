@@ -6,12 +6,15 @@ import builtins
 import importlib
 import random
 import sys
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
+if TYPE_CHECKING:
+    from datasets import Dataset
 
-def _materialize(dataset: "Dataset") -> list[dict[str, Any]]:
+
+def _materialize(dataset: Dataset) -> list[dict[str, Any]]:
     """Eagerly load a dataset to regular dictionaries for comparison."""
     return [
         {column: row[column] for column in dataset.column_names}

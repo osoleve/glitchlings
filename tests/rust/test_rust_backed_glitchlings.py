@@ -108,7 +108,7 @@ def _ensure_rust_extension_importable() -> None:
     if not artifacts:
         return
 
-    import glitchlings  # Ensure parent package exists before loading extension
+    importlib.import_module("glitchlings")
 
     for artifact in artifacts:
         spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
@@ -507,9 +507,26 @@ def test_compose_glitchlings_matches_python_pipeline():
     if not hasattr(zoo_rust, "swap_adjacent_words"):
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5, "unweighted": False}},
-        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.6}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.5,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Adjax",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.6},
+        },
         {
             "name": "Redactyl",
             "operation": {
@@ -538,9 +555,21 @@ def test_compose_glitchlings_supports_typo_and_zwj():
     raw_descriptors = [
         {
             "name": "Typogre",
-            "operation": {"type": "typo", "rate": 0.02, "keyboard": "CURATOR_QWERTY", "layout": layout},
+            "operation": {
+                "type": "typo",
+                "rate": 0.02,
+                "keyboard": "CURATOR_QWERTY",
+                "layout": layout,
+            },
         },
-        {"name": "Zeedub", "operation": {"type": "zwj", "rate": 0.015, "characters": ["\u200b", "\u2060"]}},
+        {
+            "name": "Zeedub",
+            "operation": {
+                "type": "zwj",
+                "rate": 0.015,
+                "characters": ["\u200b", "\u2060"],
+            },
+        },
     ]
     master_seed = 515
     descriptors = _with_descriptor_seeds(raw_descriptors, master_seed)
@@ -554,9 +583,26 @@ def test_compose_glitchlings_is_deterministic():
     if not hasattr(zoo_rust, "swap_adjacent_words"):
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
-        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.4}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.3,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Adjax",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.4},
+        },
         {
             "name": "Redactyl",
             "operation": {
@@ -665,8 +711,22 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     text = "Hold the door"
     result = gaggle(text)
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.3,
+                "unweighted": False,
+            },
+        },
     ]
     descriptors = _with_descriptor_seeds(raw_descriptors, 2024)
     expected = _run_python_sequence(text, descriptors, 2024)
@@ -740,7 +800,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
 
 
 def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
-    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 1777
     text = "Verify resonance before launch"
 

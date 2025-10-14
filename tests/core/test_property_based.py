@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import importlib
 import math
 import string
 
-import importlib
-
 import pytest
 
-pytest.importorskip("hypothesis")
-
-from hypothesis import HealthCheck, assume, given, settings, strategies as st
+try:  # pragma: no cover - optional dependency guard
+    from hypothesis import HealthCheck, assume, given, settings
+    from hypothesis import strategies as st
+except ModuleNotFoundError:  # pragma: no cover - triggered when hypothesis absent
+    pytest.skip(
+        "hypothesis is required for property-based tests", allow_module_level=True
+    )
 
 from glitchlings.zoo.core import AttackOrder, AttackWave, Gaggle, Glitchling
 

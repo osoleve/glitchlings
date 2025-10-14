@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from hashlib import blake2s
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Mapping, Sequence, cast
 
 CacheEntries = dict[str, list[str]]
 
@@ -19,7 +19,7 @@ class CacheSnapshot:
     checksum: str | None = None
 
 
-def _normalise_entries(payload: Mapping[str, Sequence[str]]) -> CacheEntries:
+def _normalise_entries(payload: Mapping[str, object]) -> CacheEntries:
     """Convert raw cache payloads into canonical mapping form."""
     entries: CacheEntries = {}
     for key, values in payload.items():
@@ -49,27 +49,31 @@ def load_cache(path: Path) -> CacheSnapshot:
         return CacheSnapshot(entries={}, checksum=None)
 
     with path.open("r", encoding="utf8") as handle:
-        payload = json.load(handle)
+        payload_obj = json.load(handle)
 
     checksum: str | None = None
-    entries_payload: Mapping[str, Sequence[str]]
+    entries_payload: Mapping[str, object]
 
-    if isinstance(payload, Mapping) and "__meta__" in payload and "entries" in payload:
-        meta = payload["__meta__"]
-        entries_payload = payload["entries"]  # type: ignore[assignment]
-        if not isinstance(entries_payload, Mapping):
+    if not isinstance(payload_obj, Mapping):
+        raise RuntimeError("Synonym cache payload must be a mapping of strings to lists.")
+
+    payload = cast(Mapping[str, object], payload_obj)
+
+    if "__meta__" in payload and "entries" in payload:
+        meta_obj = payload["__meta__"]
+        entries_obj = payload["entries"]
+        if not isinstance(entries_obj, Mapping):
             raise RuntimeError("Synonym cache entries must be stored as a mapping.")
-        if isinstance(meta, Mapping):
-            raw_checksum = meta.get("checksum")
+        entries_payload = cast(Mapping[str, object], entries_obj)
+        if isinstance(meta_obj, Mapping):
+            raw_checksum = meta_obj.get("checksum")
             if raw_checksum is not None and not isinstance(raw_checksum, str):
                 raise RuntimeError("Synonym cache checksum must be a string when provided.")
-            checksum = raw_checksum
+            checksum = raw_checksum if isinstance(raw_checksum, str) else None
         else:
             raise RuntimeError("Synonym cache metadata must be a mapping.")
-    elif isinstance(payload, Mapping):
-        entries_payload = payload  # legacy format without metadata
     else:
-        raise RuntimeError("Synonym cache payload must be a mapping of strings to lists.")
+        entries_payload = payload  # legacy format without metadata
 
     entries = _normalise_entries(entries_payload)
     if checksum is not None:
@@ -84,7 +88,9 @@ def load_cache(path: Path) -> CacheSnapshot:
 
 def write_cache(path: Path, entries: Mapping[str, Sequence[str]]) -> CacheSnapshot:
     """Persist ``entries`` to ``path`` with checksum metadata."""
-    serialisable = {key: list(values) for key, values in sorted(entries.items())}
+    serialisable: CacheEntries = {
+        key: list(values) for key, values in sorted(entries.items())
+    }
     checksum = compute_checksum(serialisable)
     payload = {
         "__meta__": {

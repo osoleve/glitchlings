@@ -1,16 +1,18 @@
+from __future__ import annotations
+
 from functools import partial
 from typing import cast
 
 from glitchlings import (
-    typogre,
-    mim1c,
+    adjax,
     jargoyle,
+    mim1c,
+    redactyl,
     reduple,
     rushmore,
-    redactyl,
     scannequin,
+    typogre,
     zeedub,
-    adjax,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling
 

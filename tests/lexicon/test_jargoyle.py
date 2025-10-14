@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import importlib
-import pytest
 
+import pytest
 
 from glitchlings.lexicon import Lexicon
 from glitchlings.lexicon.vector import VectorLexicon
