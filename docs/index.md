@@ -44,6 +44,9 @@ pip install -U 'glitchlings[prime]'
 # Embedding-based lexicon helpers (spaCy/gensim + NumPy)
 pip install -U 'glitchlings[vectors]'
 
+# SentenceTransformer-backed cache builder
+pip install -U 'glitchlings[st]'
+
 # Optional: NLTK WordNet corpora if you want the legacy synonym backend
 python -m nltk.downloader wordnet
 ```
@@ -59,28 +62,7 @@ glitchlings build-lexicon \
     --overwrite
 ```
 
-Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
-
-### ConceptNet graph lexicon
-
-Prefer ConceptNet-style knowledge graphs? The `GraphLexicon` backend consumes [Numberbatch embeddings](https://github.com/commonsense/conceptnet-numberbatch) and automatically normalises queries by case, punctuation, and lightweight lemmatisation.
-
-Download the English slice of Numberbatch, then wire it up directly:
-
-```python
-from glitchlings.lexicon import GraphLexicon
-
-lexicon = GraphLexicon(
-    source="data/numberbatch-en.txt.gz",
-    max_neighbors=32,
-    min_similarity=0.15,
-)
-
-lexicon.get_synonyms("muttering")
-# ['mutter', 'whisper', 'complain', ...]
-```
-
-When the embeddings are unavailable, the graph backend gracefully falls back to any cached synonyms you've precomputed with `GraphLexicon.save_cache(...)` so deterministic runs stay reproducible.
+Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. SentenceTransformer checkpoints are supported via `--source sentence-transformers:<model>` (pair them with `--tokens` to define the vocabulary). The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) derived from the `sentence-transformers/all-mpnet-base-v2` model so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
 
 ### Lexicon evaluation metrics
 

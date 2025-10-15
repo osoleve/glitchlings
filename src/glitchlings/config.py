@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 CONFIG_ENV_VAR = "GLITCHLINGS_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
-DEFAULT_LEXICON_PRIORITY = ["vector", "graph", "wordnet"]
+DEFAULT_LEXICON_PRIORITY = ["vector", "wordnet"]
 DEFAULT_ATTACK_SEED = 151
 
 ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
@@ -72,7 +72,6 @@ class LexiconConfig:
 
     priority: list[str] = field(default_factory=lambda: list(DEFAULT_LEXICON_PRIORITY))
     vector_cache: Path | None = None
-    graph_cache: Path | None = None
 
 
 @dataclass(slots=True)
@@ -127,15 +126,9 @@ def _load_runtime_config() -> RuntimeConfig:
         lexicon_section.get("vector_cache"),
         base=path.parent,
     )
-    graph_cache = _resolve_optional_path(
-        lexicon_section.get("graph_cache"),
-        base=path.parent,
-    )
-
     lexicon_config = LexiconConfig(
         priority=normalized_priority,
         vector_cache=vector_cache,
-        graph_cache=graph_cache,
     )
 
     return RuntimeConfig(lexicon=lexicon_config, path=path)
@@ -173,13 +166,13 @@ def _validate_runtime_config_data(data: Any, *, source: Path) -> Mapping[str, An
     if not isinstance(lexicon_section, Mapping):
         raise ValueError("Configuration 'lexicon' section must be a table.")
 
-    allowed_lexicon_keys = {"priority", "vector_cache", "graph_cache"}
+    allowed_lexicon_keys = {"priority", "vector_cache"}
     unexpected_keys = [str(key) for key in lexicon_section if key not in allowed_lexicon_keys]
     if unexpected_keys:
         extras = ", ".join(sorted(unexpected_keys))
         raise ValueError(f"Unknown lexicon settings: {extras}.")
 
-    for key in ("vector_cache", "graph_cache"):
+    for key in ("vector_cache",):
         value = lexicon_section.get(key)
         if value is not None and not isinstance(value, (str, os.PathLike)):
             raise ValueError(f"lexicon.{key} must be a path or string when provided.")

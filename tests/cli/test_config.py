@@ -94,8 +94,7 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
 def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch, tmp_path):
     config_path = tmp_path / "custom.toml"
     config_path.write_text(
-        "[lexicon]\npriority = [\"vector\"]\nvector_cache = \"vector.json\"\n"
-        "graph_cache = \"graph.json\"\n",
+        "[lexicon]\npriority = [\"vector\"]\nvector_cache = \"vector.json\"\n",
         encoding="utf-8",
     )
     monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
@@ -108,7 +107,6 @@ def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch
 
     assert config.path == config_path
     assert config.lexicon.vector_cache == (config_path.parent / "vector.json").resolve()
-    assert config.lexicon.graph_cache == (config_path.parent / "graph.json").resolve()
 
 
 def test_get_config_rejects_non_sequence_priority(monkeypatch, tmp_path):
