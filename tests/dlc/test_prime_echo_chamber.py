@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import sys
 import types
 
@@ -33,16 +34,25 @@ verifiers_stub.SingleTurnEnv = _SingleTurnEnv
 verifiers_stub.load_environment = _load_environment
 sys.modules["verifiers"] = verifiers_stub
 
-import glitchlings.zoo.core as zoo_core
-from glitchlings import compat as glitchlings_compat
-from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
-from glitchlings.dlc import prime
+zoo_core = importlib.import_module("glitchlings.zoo.core")
+prime = importlib.import_module("glitchlings.dlc.prime")
+glitchlings_compat = importlib.import_module("glitchlings.compat")
+
+AttackWave = zoo_core.AttackWave
+Gaggle = zoo_core.Gaggle
+Glitchling = zoo_core.Glitchling
 
 
 
 
 class FakeDataset:
-    def __init__(self, rows: list[dict[str, object]], column_names: list[str] | None = None, *, streaming: bool = False):
+    def __init__(
+        self,
+        rows: list[dict[str, object]],
+        column_names: list[str] | None = None,
+        *,
+        streaming: bool = False,
+    ) -> None:
         self._rows = [dict(row) for row in rows]
         if column_names is None:
             if rows:
@@ -53,11 +63,16 @@ class FakeDataset:
         self._streaming = streaming
 
     @classmethod
-    def from_dict(cls, columns: dict[str, list[object]], *, streaming: bool = False) -> "FakeDataset":
+    def from_dict(
+        cls, columns: dict[str, list[object]], *, streaming: bool = False
+    ) -> "FakeDataset":
         keys = list(columns.keys())
         lengths = [len(col) for col in columns.values()]
-        if lengths and any(l != lengths[0] for l in lengths):
-            raise ValueError(f"All columns must have the same length, but got lengths: {dict(zip(keys, lengths))}")
+        if lengths and any(length != lengths[0] for length in lengths):
+            raise ValueError(
+                "All columns must have the same length, but got lengths: "
+                f"{dict(zip(keys, lengths))}"
+            )
         length = lengths[0] if lengths else 0
         rows = [
             {key: columns[key][index] for key in keys}
@@ -212,10 +227,14 @@ def test_load_environment_respects_explicit_columns(monkeypatch):
     dataset = Dataset.from_dict({"prompt": ["alpha"], "extra": ["beta"]})
     stub = _RecordingGaggle()
 
-    monkeypatch.setattr(prime, "_resolve_environment", lambda _env: _FakeEnvironment(dataset))
+    monkeypatch.setattr(
+        prime, "_resolve_environment", lambda _env: _FakeEnvironment(dataset)
+    )
     monkeypatch.setattr(prime, "coerce_gaggle", lambda specs, seed: stub)
 
-    env = prime.load_environment("ignored", glitchlings=[prime.Typogre()], seed=7, columns=["extra"])
+    env = prime.load_environment(
+        "ignored", glitchlings=[prime.Typogre()], seed=7, columns=["extra"]
+    )
 
     assert env.dataset is dataset
     assert stub.columns_seen == [["extra"]]

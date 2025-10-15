@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from ._rate import resolve_rate
 from .core import AttackOrder, AttackWave, Glitchling
@@ -115,7 +115,10 @@ def insert_zero_widths(
             if hasattr(rng, "getstate"):
                 python_state = rng.getstate()
             rng.setstate(state)
-        rust_result = _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
+        rust_result = cast(
+            str,
+            _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng),
+        )
         if rust_result == python_result:
             return rust_result
         if python_state is not None and hasattr(rng, "setstate"):

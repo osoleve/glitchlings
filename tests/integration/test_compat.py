@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import builtins
 import sys
 from importlib import import_module, metadata
 from types import SimpleNamespace
@@ -61,7 +60,9 @@ def test_optional_nltk_handles_absence(monkeypatch: pytest.MonkeyPatch) -> None:
     compat.reset_optional_dependencies()
 
 
-def test_get_installed_extras_reflects_available_dependencies(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_installed_extras_reflects_available_dependencies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     extras = {"prime", "vectors", "dev"}
     requires = [
         'verifiers>=0.1.3.post0; extra == "prime"',
@@ -78,7 +79,9 @@ def test_get_installed_extras_reflects_available_dependencies(monkeypatch: pytes
     class _FakeDist:
         def __init__(self, requires: list[str], extras: set[str]) -> None:
             self.requires = requires
-            self.metadata = SimpleNamespace(get_all=lambda key: list(extras) if key == "Provides-Extra" else [])
+            self.metadata = SimpleNamespace(
+                get_all=lambda key: list(extras) if key == "Provides-Extra" else []
+            )
 
     def fake_distribution(name: str):
         if name == "glitchlings":

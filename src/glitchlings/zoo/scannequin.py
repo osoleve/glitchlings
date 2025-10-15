@@ -1,6 +1,6 @@
 import random
 import re
-from typing import Any
+from typing import Any, cast
 
 from ._ocr_confusions import load_confusion_table
 from ._rate import resolve_rate
@@ -126,7 +126,7 @@ def ocr_artifacts(
     clamped_rate = max(0.0, effective_rate)
 
     if _ocr_artifacts_rust is not None:
-        return _ocr_artifacts_rust(text, clamped_rate, rng)
+        return cast(str, _ocr_artifacts_rust(text, clamped_rate, rng))
 
     return _python_ocr_artifacts(text, rate=clamped_rate, rng=rng)
 

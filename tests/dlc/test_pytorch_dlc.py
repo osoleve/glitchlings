@@ -22,7 +22,10 @@ def append_rng_token(text: str, *, rng: Random) -> str:
 @pytest.fixture(autouse=True)
 def torch_stub() -> Iterable[type[Any]]:
     """Install a lightweight torch stub that exposes ``DataLoader``."""
-    preserved = {name: sys.modules.get(name) for name in ("torch", "torch.utils", "torch.utils.data")}
+    preserved = {
+        name: sys.modules.get(name)
+        for name in ("torch", "torch.utils", "torch.utils.data")
+    }
     for name in preserved:
         sys.modules.pop(name, None)
 
