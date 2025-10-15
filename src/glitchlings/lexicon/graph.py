@@ -150,6 +150,7 @@ class GraphLexicon(LexiconBackend):
         min_similarity: float = 0.0,
         seed: int | None = None,
     ) -> None:
+        """Initialise the ConceptNet wrapper and optionally prime it with cached data."""
         super().__init__(seed=seed)
         self._languages = {language.lower() for language in languages}
         if not self._languages:
@@ -195,6 +196,7 @@ class GraphLexicon(LexiconBackend):
         return embeddings
 
     def reseed(self, seed: int | None) -> None:
+        """Update the deterministic seed on both the wrapper and the vector backend."""
         super().reseed(seed)
         self._backend.reseed(seed)
 
@@ -237,6 +239,7 @@ class GraphLexicon(LexiconBackend):
         return synonyms
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+        """Return up to ``n`` ConceptNet-derived synonyms for ``word``."""
         normalized = _normalize_phrase(word)
         if not normalized:
             return []
@@ -244,12 +247,14 @@ class GraphLexicon(LexiconBackend):
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
 
     def precompute(self, word: str) -> list[str]:
+        """Populate the ConceptNet cache for ``word`` and return the stored synonyms."""
         normalized = _normalize_phrase(word)
         if not normalized:
             return []
         return list(self._ensure_cached(normalized))
 
     def export_cache(self) -> dict[str, list[str]]:
+        """Return a serialisable copy of the ConceptNet synonym cache."""
         return {key: list(values) for key, values in self._cache.items()}
 
     @classmethod
@@ -258,6 +263,7 @@ class GraphLexicon(LexiconBackend):
         return _load_cache_file(Path(path))
 
     def save_cache(self, path: str | Path | None = None) -> Path:
+        """Persist the ConceptNet synonym cache and update bookkeeping metadata."""
         if path is None:
             if self._cache_path is None:
                 raise RuntimeError("No cache path supplied to GraphLexicon.")
@@ -271,6 +277,7 @@ class GraphLexicon(LexiconBackend):
         return target
 
     def supports_pos(self, pos: str | None) -> bool:
+        """Always return ``True`` because ConceptNet does not expose POS tagging."""
         return True
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper

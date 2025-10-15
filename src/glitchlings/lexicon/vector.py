@@ -300,6 +300,7 @@ class VectorLexicon(LexiconBackend):
         case_sensitive: bool = False,
         seed: int | None = None,
     ) -> None:
+        """Initialise the lexicon with an embedding ``source`` and optional cache."""
         super().__init__(seed=seed)
         self._adapter = _resolve_source(source)
         self._max_neighbors = max(1, max_neighbors)
@@ -402,6 +403,7 @@ class VectorLexicon(LexiconBackend):
         return synonyms
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+        """Return up to ``n`` deterministic synonyms drawn from the embedding cache."""
         normalized = self._normalize_for_lookup(word)
         synonyms = self._ensure_cached(original=word, normalized=normalized)
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
@@ -442,6 +444,7 @@ class VectorLexicon(LexiconBackend):
         return target
 
     def supports_pos(self, pos: str | None) -> bool:
+        """Always return ``True`` because vector sources do not encode POS metadata."""
         return True
 
     def __repr__(self) -> str:  # pragma: no cover - debug helper
