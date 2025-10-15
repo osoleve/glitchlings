@@ -1,7 +1,8 @@
 import random
 import re
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import RedactWordsFn
 from ._rate import resolve_rate
 from ._sampling import weighted_sample_without_replacement
 from ._text_utils import (
@@ -15,9 +16,11 @@ FULL_BLOCK = "█"
 
 
 try:
-    from glitchlings._zoo_rust import redact_words as _redact_words_rust
+    from glitchlings._zoo_rust import redact_words as _redact_words_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _redact_words_rust = None
+    _redact_words_rust: RedactWordsFn | None = None
+else:
+    _redact_words_rust = _redact_words_rust_impl
 
 
 def _python_redact_words(
@@ -116,19 +119,17 @@ def redact_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
-    use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
+    rust_impl = _redact_words_rust
+    use_rust = rust_impl is not None and isinstance(merge_adjacent, bool)
 
-    if use_rust:
-        return cast(
-            str,
-            _redact_words_rust(
-                text,
-                replacement_char,
-                clamped_rate,
-                merge_adjacent,
-                unweighted_flag,
-                rng,
-            ),
+    if use_rust and rust_impl is not None:
+        return rust_impl(
+            text,
+            replacement_char,
+            clamped_rate,
+            merge_adjacent,
+            unweighted_flag,
+            rng,
         )
 
     return _python_redact_words(

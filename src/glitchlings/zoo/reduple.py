@@ -1,14 +1,17 @@
 import random
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import ReduplicateWordsFn
 from ._rate import resolve_rate
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust
+    from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _reduplicate_words_rust = None
+    _reduplicate_words_rust: ReduplicateWordsFn | None = None
+else:
+    _reduplicate_words_rust = _reduplicate_words_rust_impl
 
 
 def _python_reduplicate_words(
@@ -94,7 +97,7 @@ def reduplicate_words(
     unweighted_flag = bool(unweighted)
 
     if _reduplicate_words_rust is not None:
-        return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
+        return _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng)
 
     return _python_reduplicate_words(
         text,

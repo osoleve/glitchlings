@@ -19,11 +19,18 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[all]
+      - name: Build Rust extension and validate stubs
+        run: |
+          python -m pip install maturin
+          maturin develop --bindings pyo3 --manifest-path rust/zoo/Cargo.toml
+          python scripts/verify_rust_stubs.py
       - name: Ruff
         run: ruff check src
       - name: Black
         run: black src
       - name: Mypy
         run: python -m mypy src
+      - name: Mypy (strict boundary)
+        run: python -m mypy --strict src/glitchlings/types_rust.py
       - name: Pytest
         run: pytest

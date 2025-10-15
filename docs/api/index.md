@@ -23,6 +23,15 @@ up to date to ensure the published documentation stays accurate.
         - summon
       show_root_toc_entry: false
 
+## Utility helpers
+
+::: glitchlings.util.cache.CacheManager
+    options:
+      members:
+        - make_key
+        - cache_dir
+        - clear
+
 ## Core Orchestration
 
 ::: glitchlings.zoo.core.Glitchling

@@ -3,15 +3,18 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import InjectZeroWidthsFn
 from ._rate import resolve_rate
 from .core import AttackOrder, AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import inject_zero_widths as _inject_zero_widths_rust
+    from glitchlings._zoo_rust import inject_zero_widths as _inject_zero_widths_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _inject_zero_widths_rust = None
+    _inject_zero_widths_rust: InjectZeroWidthsFn | None = None
+else:
+    _inject_zero_widths_rust = _inject_zero_widths_rust_impl
 
 _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE
@@ -115,10 +118,7 @@ def insert_zero_widths(
             if hasattr(rng, "getstate"):
                 python_state = rng.getstate()
             rng.setstate(state)
-        rust_result = cast(
-            str,
-            _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng),
-        )
+        rust_result = _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
         if rust_result == python_result:
             return rust_result
         if python_state is not None and hasattr(rng, "setstate"):

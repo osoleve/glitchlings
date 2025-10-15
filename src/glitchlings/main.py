@@ -11,6 +11,7 @@ from typing import cast
 
 from . import SAMPLE_TEXT
 from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
+from .util import CacheManager
 from .zoo import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
@@ -85,6 +86,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--config",
         type=Path,
         help="Load glitchlings from a YAML configuration file.",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Execute without reading or writing the glitch cache.",
+    )
+    parser.add_argument(
+        "--clear-cache",
+        action="store_true",
+        help="Clear the glitch cache before running.",
     )
     return parser
 
@@ -285,6 +296,9 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         return 0
 
     text = read_text(args, parser)
+    cache_manager: CacheManager[str] = CacheManager()
+    if args.clear_cache:
+        cache_manager.clear()
     gaggle = summon_glitchlings(
         args.glitchlings,
         parser,
@@ -292,7 +306,7 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         config_path=args.config,
     )
 
-    corrupted = gaggle.corrupt(text)
+    corrupted = gaggle.corrupt_with_cache(text, cache_manager, use_cache=not args.no_cache)
     if not isinstance(corrupted, str):
         message = "Gaggle returned non-string output for string input"
         raise TypeError(message)

@@ -7,18 +7,30 @@ import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Protocol, TypeGuard, Union, cast
 
 from ..compat import get_datasets_dataset, require_datasets
+from ..types_rust import (
+    ComposeGlitchlingsFn,
+    GlitchDescriptor,
+    Operation,
+    PlanGlitchlingsFn,
+    PlanInputDict,
+    PlanInputLike,
+)
+from ..util import CacheManager
 
 _DatasetsDataset = get_datasets_dataset()
 
 try:  # pragma: no cover - optional dependency
-    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
-    from glitchlings._zoo_rust import plan_glitchlings as _plan_glitchlings_rust
+    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust_impl
+    from glitchlings._zoo_rust import plan_glitchlings as _plan_glitchlings_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _compose_glitchlings_rust = None
-    _plan_glitchlings_rust = None
+    _compose_glitchlings_rust: ComposeGlitchlingsFn | None = None
+    _plan_glitchlings_rust: PlanGlitchlingsFn | None = None
+else:
+    _compose_glitchlings_rust = cast(ComposeGlitchlingsFn, _compose_glitchlings_rust_impl)
+    _plan_glitchlings_rust = cast(PlanGlitchlingsFn, _plan_glitchlings_rust_impl)
 
 
 log = logging.getLogger(__name__)
@@ -29,10 +41,7 @@ _PIPELINE_ENABLE_VALUES = {"1", "true", "yes", "on"}
 _PIPELINE_DISABLE_VALUES = {"0", "false", "no", "off"}
 
 
-class PlanSpecification(TypedDict):
-    name: str
-    scope: int
-    order: int
+PlanSpecification = PlanInputDict
 
 
 TranscriptTurn = dict[str, Any]
@@ -126,7 +135,7 @@ def _plan_glitchlings_python(
 
 
 def _plan_glitchlings_with_rust(
-    specs: Sequence[Mapping[str, Any]],
+    specs: Sequence[PlanInputLike],
     master_seed: int,
 ) -> list[tuple[int, int]] | None:
     """Attempt to obtain the orchestration plan from the compiled Rust module."""
@@ -148,12 +157,13 @@ def _resolve_orchestration_plan(
     prefer_rust: bool,
 ) -> list[tuple[int, int]]:
     """Dispatch to the Rust planner when available, otherwise fall back to Python."""
+    normalized = list(specs)
     if prefer_rust:
-        plan = _plan_glitchlings_with_rust(list(specs), master_seed)
+        plan = _plan_glitchlings_with_rust(cast("Sequence[PlanInputLike]", normalized), master_seed)
         if plan is not None:
             return plan
 
-    return _plan_glitchlings_python(list(specs), master_seed)
+    return _plan_glitchlings_python(cast("Sequence[Mapping[str, Any]]", normalized), master_seed)
 
 
 def plan_glitchling_specs(
@@ -495,6 +505,63 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
+    def cache_descriptor(self) -> dict[str, Any]:
+        """Return a JSON-friendly descriptor representing this gaggle's configuration."""
+
+        glitchling_descriptors: list[dict[str, Any]] = []
+        for glitchling in self.apply_order:
+            module_name = glitchling.__class__.__module__
+            class_name = glitchling.__class__.__qualname__
+            kwargs = {
+                key: value
+                for key, value in sorted(glitchling.kwargs.items(), key=lambda item: item[0])
+            }
+            glitchling_descriptors.append(
+                {
+                    "name": glitchling.name,
+                    "qualname": f"{module_name}.{class_name}",
+                    "seed": glitchling.seed,
+                    "level": int(glitchling.level),
+                    "order": int(glitchling.order),
+                    "kwargs": kwargs,
+                }
+            )
+
+        return {
+            "seed": self.seed,
+            "pipeline_enabled": self.rust_pipeline_enabled(),
+            "glitchlings": glitchling_descriptors,
+        }
+
+    def corrupt_with_cache(
+        self,
+        text: str,
+        cache: CacheManager[str],
+        *,
+        use_cache: bool = True,
+    ) -> str:
+        """Corrupt ``text`` while reusing cached results when available."""
+
+        descriptor = self.cache_descriptor()
+        cache_key = cache.make_key(text=text, configuration=descriptor)
+        cache_logger = logging.getLogger("glitchlings.cache")
+        roster = ", ".join(entry["name"] for entry in descriptor["glitchlings"])
+        context = f"seed={descriptor['seed']} roster=[{roster}]"
+
+        if not use_cache:
+            cache_logger.info("Cache bypassed for %s", context)
+            return self._corrupt_text(text)
+
+        cached = cache.get(cache_key)
+        if cached is not None:
+            cache_logger.info("Cache hit for %s", context)
+            return cached
+
+        cache_logger.info("Cache miss for %s", context)
+        result = self._corrupt_text(text)
+        cache.set(cache_key, result)
+        return result
+
     @staticmethod
     def rust_pipeline_supported() -> bool:
         """Return ``True`` when the compiled Rust pipeline is importable."""
@@ -505,11 +572,11 @@ class Gaggle(Glitchling):
         """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
         return is_rust_pipeline_enabled()
 
-    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
+    def _pipeline_descriptors(self) -> list[GlitchDescriptor] | None:
         if not self.rust_pipeline_enabled():
             return None
 
-        descriptors: list[dict[str, Any]] = []
+        descriptors: list[GlitchDescriptor] = []
         for glitchling in self.apply_order:
             operation = glitchling.pipeline_operation()
             if operation is None:
@@ -523,13 +590,12 @@ class Gaggle(Glitchling):
                     return None
                 seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
 
-            descriptors.append(
-                {
-                    "name": glitchling.name,
-                    "operation": operation,
-                    "seed": int(seed),
-                }
-            )
+            descriptor: GlitchDescriptor = {
+                "name": glitchling.name,
+                "operation": cast(Operation, operation),
+                "seed": int(seed),
+            }
+            descriptors.append(descriptor)
 
         return descriptors
 
@@ -537,9 +603,13 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if master_seed is not None and descriptors is not None:
+        if (
+            master_seed is not None
+            and descriptors is not None
+            and _compose_glitchlings_rust is not None
+        ):
             try:
-                return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
+                return _compose_glitchlings_rust(text, descriptors, master_seed)
             except Exception:  # pragma: no cover - fall back to Python execution
                 log.debug("Rust pipeline failed; falling back", exc_info=True)
 

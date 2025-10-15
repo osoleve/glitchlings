@@ -2,16 +2,19 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
+from ..types_rust import FatfingerFn
 from ..util import KEYNEIGHBORS
 from ._rate import resolve_rate
 from .core import AttackOrder, AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import fatfinger as _fatfinger_rust
+    from glitchlings._zoo_rust import fatfinger as _fatfinger_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _fatfinger_rust = None
+    _fatfinger_rust: FatfingerFn | None = None
+else:
+    _fatfinger_rust = _fatfinger_rust_impl
 
 
 def _python_unichar(text: str, rng: random.Random) -> str:
@@ -168,10 +171,7 @@ def fatfinger(
     layout = getattr(KEYNEIGHBORS, keyboard)
 
     if _fatfinger_rust is not None:
-        return cast(
-            str,
-            _fatfinger_rust(text, max_change_rate=clamped_rate, layout=layout, rng=rng),
-        )
+        return _fatfinger_rust(text, clamped_rate, layout, rng)
 
     return _fatfinger_python(text, rate=clamped_rate, layout=layout, rng=rng)
 

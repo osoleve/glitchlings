@@ -1,15 +1,18 @@
 import random
 import re
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import OcrArtifactsFn
 from ._ocr_confusions import load_confusion_table
 from ._rate import resolve_rate
 from .core import AttackOrder, AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust
+    from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _ocr_artifacts_rust = None
+    _ocr_artifacts_rust: OcrArtifactsFn | None = None
+else:
+    _ocr_artifacts_rust = _ocr_artifacts_rust_impl
 
 
 def _python_ocr_artifacts(
@@ -126,7 +129,7 @@ def ocr_artifacts(
     clamped_rate = max(0.0, effective_rate)
 
     if _ocr_artifacts_rust is not None:
-        return cast(str, _ocr_artifacts_rust(text, clamped_rate, rng))
+        return _ocr_artifacts_rust(text, clamped_rate, rng)
 
     return _python_ocr_artifacts(text, rate=clamped_rate, rng=rng)
 

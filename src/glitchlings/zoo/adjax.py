@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import random
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import SwapAdjacentWordsFn
 from ._rate import resolve_rate
 from ._text_utils import split_preserving_whitespace, split_token_edges
 from .core import AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import swap_adjacent_words as _swap_adjacent_words_rust
+    from glitchlings._zoo_rust import swap_adjacent_words as _swap_adjacent_words_rust_impl
 except ImportError:  # pragma: no cover - optional acceleration
-    _swap_adjacent_words_rust = None
+    _swap_adjacent_words_rust: SwapAdjacentWordsFn | None = None
+else:
+    _swap_adjacent_words_rust = _swap_adjacent_words_rust_impl
 
 
 def _python_swap_adjacent_words(
@@ -83,7 +86,7 @@ def swap_adjacent_words(
         rng = random.Random(seed)
 
     if _swap_adjacent_words_rust is not None:
-        return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
+        return _swap_adjacent_words_rust(text, clamped_rate, rng)
 
     return _python_swap_adjacent_words(text, rate=clamped_rate, rng=rng)
 

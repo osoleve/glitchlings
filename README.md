@@ -119,34 +119,28 @@ glitchlings --help
 ```
 
 ```text
-usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG]
+usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff] [--list] [-c CONFIG] [--no-cache] [--clear-cache]
                    [text]
 
-Summon glitchlings to corrupt text. Provide input text as an argument, via
---file, or pipe it on stdin.
+Summon glitchlings to corrupt text. Provide input text as an argument, via --file, or pipe it on stdin.
 
 positional arguments:
-  text                  Text to corrupt. If omitted, stdin is used or --sample
-                        provides fallback text.
+  text                  Text to corrupt. If omitted, stdin is used or --sample provides fallback text.
 
 options:
   -h, --help            show this help message and exit
   -g SPEC, --glitchling SPEC
-                        Glitchling to apply, optionally with parameters like
-                        Typogre(rate=0.05). Repeat for multiples; defaults to
-                        all built-ins.
-  -s SEED, --seed SEED  Seed controlling deterministic corruption order
-                        (default: 151).
-  -f FILE, --file FILE  Read input text from a file instead of the command
-                        line argument.
-  --sample              Use the included SAMPLE_TEXT when no other input is
-                        provided.
-  --diff                Show a unified diff between the original and corrupted
-                        text.
+                        Glitchling to apply, optionally with parameters like Typogre(rate=0.05). Repeat for multiples;
+                        defaults to all built-ins.
+  -s SEED, --seed SEED  Seed controlling deterministic corruption order (default: 151).
+  -f FILE, --file FILE  Read input text from a file instead of the command line argument.
+  --sample              Use the included SAMPLE_TEXT when no other input is provided.
+  --diff                Show a unified diff between the original and corrupted text.
   --list                List available glitchlings and exit.
   -c CONFIG, --config CONFIG
                         Load glitchlings from a YAML configuration file.
+  --no-cache            Execute without reading or writing the glitch cache.
+  --clear-cache         Clear the glitch cache before running.
 ```
 <!-- END: CLI_USAGE -->
 
@@ -184,6 +178,32 @@ glitchlings:
 ```
 
 Pass the file to `glitchlings --config` or load it from Python with `glitchlings.load_attack_config` and `glitchlings.build_gaggle`.
+
+## Cache & Reproducibility
+
+Repeated multi-glitch runs can be expensive on long documents. The CLI now keeps a
+deterministic cache keyed by the input text and glitch configuration. Cached
+results are reused automatically on subsequent invocations unless you pass
+`--no-cache`. Pair it with `--clear-cache` to drop persisted results before
+running a new batch.
+
+Programmatic callers can use the [`CacheManager`](src/glitchlings/util/cache.py)
+helper directly:
+
+```python
+from glitchlings import summon
+from glitchlings.util import CacheManager
+
+cache = CacheManager()
+gaggle = summon(["Typogre(rate=0.03)", "Rushmore(rate=0.02)"])
+text = "Let slips the glitchlings of war"
+
+print(gaggle.corrupt_with_cache(text, cache))
+```
+
+Under the hood `CacheManager` derives a stable `blake2b` digest for each
+run, stores results on disk (defaulting to `~/.cache/glitchlings`), and logs
+cache hits/misses via the `glitchlings.cache` logger.
 
 ## Development
 

@@ -1,5 +1,5 @@
 from .config import AttackConfig, build_gaggle, load_attack_config
-from .util import SAMPLE_TEXT
+from .util import SAMPLE_TEXT, CacheManager
 from .zoo import (
     Adjax,
     Gaggle,
@@ -57,6 +57,7 @@ __all__ = [
     "is_rust_pipeline_supported",
     "pipeline_feature_flag_enabled",
     "SAMPLE_TEXT",
+    "CacheManager",
     "AttackConfig",
     "build_gaggle",
     "load_attack_config",

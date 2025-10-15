@@ -1,6 +1,8 @@
 import difflib
 from collections.abc import Iterable
 
+from .cache import CacheManager
+
 __all__ = [
     "SAMPLE_TEXT",
     "string_diffs",
@@ -8,6 +10,7 @@ __all__ = [
     "KeyboardLayouts",
     "KeyNeighbors",
     "KEYNEIGHBORS",
+    "CacheManager",
 ]
 
 SAMPLE_TEXT = (

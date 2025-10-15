@@ -125,6 +125,20 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly. Pass glitchling parameters with `-g "Name(arg=value, ...)"` to mirror the Python API without writing code.
 
+### Caching glitch runs
+
+The CLI and orchestration layer cache multi-glitch runs so repeated experiments
+with the same roster return instantly. Cache keys are derived from a `blake2b`
+hash of the input text plus each glitchling's parameters. The CLI honours the
+following flags:
+
+- `--no-cache` – bypass the cache entirely for the current invocation.
+- `--clear-cache` – purge the on-disk cache before running the requested roster.
+
+Programmatic users can manage caching manually via
+`glitchlings.util.CacheManager`. Pair it with `Gaggle.corrupt_with_cache(...)`
+to reuse results across sessions while keeping deterministic seeds intact.
+
 ## Rust pipeline acceleration
 
 The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.

@@ -1,16 +1,19 @@
 import math
 import random
 import re
-from typing import Any, cast
+from typing import Any
 
+from ..types_rust import DeleteRandomWordsFn
 from ._rate import resolve_rate
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
 try:
-    from glitchlings._zoo_rust import delete_random_words as _delete_random_words_rust
+    from glitchlings._zoo_rust import delete_random_words as _delete_random_words_rust_impl
 except ImportError:  # pragma: no cover - compiled extension not present
-    _delete_random_words_rust = None
+    _delete_random_words_rust: DeleteRandomWordsFn | None = None
+else:
+    _delete_random_words_rust = _delete_random_words_rust_impl
 
 
 def _python_delete_random_words(
@@ -97,7 +100,7 @@ def delete_random_words(
     unweighted_flag = bool(unweighted)
 
     if _delete_random_words_rust is not None:
-        return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng))
+        return _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng)
 
     return _python_delete_random_words(
         text,
