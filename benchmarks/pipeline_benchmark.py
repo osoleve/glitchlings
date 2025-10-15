@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import importlib
+import random
 import statistics
 import sys
 import time
@@ -18,9 +20,9 @@ from benchmarks.constants import (
     MASTER_SEED,
     OPERATION_MODULES,
     Descriptor,
-    zero_width_characters,
     module_for_operation,
     redactyl_full_block,
+    zero_width_characters,
 )
 
 
@@ -35,10 +37,6 @@ def _ensure_datasets_stub() -> None:
 
 
 _ensure_datasets_stub()
-
-import random
-
-import importlib
 
 core_module = importlib.import_module("glitchlings.zoo.core")
 
@@ -305,9 +303,17 @@ def _print_results(scenario: str, results: Sequence[BenchmarkResult]) -> None:
                 else float("inf")
             )
             speedup_cell = f"{speedup_value:5.2f}x"
-        print(
-            f"| {result.label:<9} | {result.char_count:10d} | {python_cell:<21} | {rust_cell:<21} | {speedup_cell:>6} |"
+        row = (
+            "| {label:<9} | {char_count:10d} | {python:<21} | "
+            "{rust:<21} | {speedup:>6} |"
+        ).format(
+            label=result.label,
+            char_count=result.char_count,
+            python=python_cell,
+            rust=rust_cell,
+            speedup=speedup_cell,
         )
+        print(row)
 
 
 def collect_benchmark_results(
@@ -323,19 +329,23 @@ def collect_benchmark_results(
 
     results: list[BenchmarkResult] = []
     for label, text in samples:
-        python_subject = lambda text=text: _python_pipeline(
-            text,
-            _clone_descriptors(descriptor_template),
-            MASTER_SEED,
-        )
+        def python_subject(text: str = text) -> str:
+            return _python_pipeline(
+                text,
+                _clone_descriptors(descriptor_template),
+                MASTER_SEED,
+            )
+
         python_stats = _time_subject(python_subject, iterations)
         rust_stats: BenchmarkStatistics | None = None
         if zoo_rust is not None:
-            rust_subject = lambda text=text: zoo_rust.compose_glitchlings(
-                text,
-                _seeded_descriptors(MASTER_SEED, descriptor_template),
-                MASTER_SEED,
-            )
+            def rust_subject(text: str = text) -> str:
+                return zoo_rust.compose_glitchlings(
+                    text,
+                    _seeded_descriptors(MASTER_SEED, descriptor_template),
+                    MASTER_SEED,
+                )
+
             rust_stats = _time_subject(rust_subject, iterations)
         results.append(
             BenchmarkResult(
@@ -366,7 +376,10 @@ def main(argv: list[str] | None = None) -> int:
         "--iterations",
         type=int,
         default=DEFAULT_ITERATIONS,
-        help=f"Number of timing samples to collect for each text size (default: {DEFAULT_ITERATIONS})",
+        help=(
+            "Number of timing samples to collect for each text size "
+            f"(default: {DEFAULT_ITERATIONS})"
+        ),
     )
     parser.add_argument(
         "--scenario",

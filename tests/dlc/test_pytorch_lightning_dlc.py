@@ -1,13 +1,15 @@
+from __future__ import annotations
+
 from collections.abc import Iterable
 from random import Random
 from typing import Any
 
 import pytest
 
-pl = pytest.importorskip("pytorch_lightning")
-
 from glitchlings.dlc import pytorch_lightning as pl_dlc
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
+
+pl = pytest.importorskip("pytorch_lightning")
 
 
 def append_rng_token(text: str, *, rng: Random) -> str:

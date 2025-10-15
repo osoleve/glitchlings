@@ -8,7 +8,6 @@ from glitchlings.lexicon import (
     Lexicon,
     compare_lexicons,
     coverage_ratio,
-    mean_cosine_similarity,
     synonym_diversity,
 )
 

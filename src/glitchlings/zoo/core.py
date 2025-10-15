@@ -7,7 +7,7 @@ import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
 
 from ..compat import get_datasets_dataset, require_datasets
 
@@ -34,6 +34,9 @@ class PlanSpecification(TypedDict):
     scope: int
     order: int
 
+
+TranscriptTurn = dict[str, Any]
+Transcript = list[TranscriptTurn]
 
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
@@ -186,7 +189,7 @@ def plan_glitchlings(
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from datasets import Dataset  # type: ignore
+    from datasets import Dataset
 elif _DatasetsDataset is not None:
     Dataset = _DatasetsDataset
 else:
@@ -202,8 +205,8 @@ def _is_transcript(
     *,
     allow_empty: bool = True,
     require_all_content: bool = False,
-) -> bool:
-    """Return `True` when `value` appears to be a chat transcript."""
+) -> TypeGuard[Transcript]:
+    """Return ``True`` when ``value`` appears to be a chat transcript."""
     if not isinstance(value, list):
         return False
 
@@ -351,15 +354,17 @@ class Glitchling:
             corrupted = self.corruption_function(text, *args, **kwargs)
         return corrupted
 
-    def corrupt(self, text: str | list[dict[str, Any]]) -> str | list[dict[str, Any]]:
+    def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply the corruption function to text or conversational transcripts."""
         if _is_transcript(text):
-            transcript = [dict(turn) for turn in text]
+            transcript: Transcript = [dict(turn) for turn in text]
             if transcript:
-                transcript[-1]["content"] = self.__corrupt(transcript[-1]["content"], **self.kwargs)
+                content = transcript[-1].get("content")
+                if isinstance(content, str):
+                    transcript[-1]["content"] = self.__corrupt(content, **self.kwargs)
             return transcript
 
-        return self.__corrupt(text, **self.kwargs)
+        return self.__corrupt(cast(str, text), **self.kwargs)
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
@@ -383,7 +388,7 @@ class Glitchling:
 
         return dataset.with_transform(__corrupt_row)
 
-    def __call__(self, text: str, *args: Any, **kwds: Any) -> str | list[dict[str, Any]]:
+    def __call__(self, text: str, *args: Any, **kwds: Any) -> str | Transcript:
         """Allow a glitchling to be invoked directly like a callable."""
         return self.corrupt(text, *args, **kwds)
 
@@ -426,7 +431,7 @@ class Gaggle(Glitchling):
             seed: Master seed used to derive per-glitchling seeds.
 
         """
-        super().__init__("Gaggle", self.corrupt, AttackWave.DOCUMENT, seed=seed)
+        super().__init__("Gaggle", self._corrupt_text, AttackWave.DOCUMENT, seed=seed)
         self._clones_by_index: list[Glitchling] = []
         for idx, glitchling in enumerate(glitchlings):
             clone = glitchling.clone()
@@ -528,17 +533,38 @@ class Gaggle(Glitchling):
 
         return descriptors
 
-    def corrupt(self, text: str) -> str:
-        """Apply each glitchling to the provided text sequentially."""
+    def _corrupt_text(self, text: str) -> str:
+        """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
         if master_seed is not None and descriptors is not None:
             try:
-                return _compose_glitchlings_rust(text, descriptors, master_seed)
+                return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
             except Exception:  # pragma: no cover - fall back to Python execution
                 log.debug("Rust pipeline failed; falling back", exc_info=True)
 
         corrupted = text
         for glitchling in self.apply_order:
-            corrupted = glitchling(corrupted)
+            next_value = glitchling.corrupt(corrupted)
+            if not isinstance(next_value, str):
+                message = "Glitchling pipeline produced non-string output for string input"
+                raise TypeError(message)
+            corrupted = next_value
+
         return corrupted
+
+    def corrupt(self, text: str | Transcript) -> str | Transcript:
+        """Apply each glitchling to the provided text sequentially."""
+        if isinstance(text, str):
+            return self._corrupt_text(text)
+
+        if _is_transcript(text):
+            transcript: Transcript = [dict(turn) for turn in text]
+            if transcript and "content" in transcript[-1]:
+                content = transcript[-1]["content"]
+                if isinstance(content, str):
+                    transcript[-1]["content"] = self._corrupt_text(content)
+            return transcript
+
+        message = f"Unsupported text type for Gaggle corruption: {type(text)!r}"
+        raise TypeError(message)

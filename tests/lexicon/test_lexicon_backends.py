@@ -43,7 +43,9 @@ def test_backend_cache_roundtrip(
     assert restored.get_synonyms(word, n=2) == lexicon.get_synonyms(word, n=2)
 
 
-def test_cache_checksum_verification(tmp_path: Path, vector_embeddings: dict[str, list[float]]) -> None:
+def test_cache_checksum_verification(
+    tmp_path: Path, vector_embeddings: dict[str, list[float]]
+) -> None:
     cache_path = tmp_path / "vector_cache.json"
     lexicon = VectorLexicon(source=vector_embeddings, max_neighbors=2, min_similarity=0.05)
     lexicon.precompute("alpha")
