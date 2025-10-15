@@ -90,6 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def build_lexicon_parser() -> argparse.ArgumentParser:
+    """Create the ``build-lexicon`` subcommand parser with vector cache options."""
     builder = argparse.ArgumentParser(
         prog="glitchlings build-lexicon",
         description=(

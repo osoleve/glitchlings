@@ -196,6 +196,7 @@ class WordNetLexicon(LexiconBackend):
     """Lexicon that retrieves synonyms from the NLTK WordNet corpus."""
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+        """Return up to ``n`` WordNet lemmas for ``word`` filtered by ``pos`` if provided."""
         ensure_wordnet()
 
         if pos is None:
@@ -210,15 +211,18 @@ class WordNetLexicon(LexiconBackend):
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
 
     def supports_pos(self, pos: str | None) -> bool:
+        """Return ``True`` when ``pos`` is unset or recognised by the WordNet corpus."""
         if pos is None:
             return True
         return pos.lower() in _VALID_POS
 
     @classmethod
     def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        """WordNet lexicons do not persist caches; raising keeps the contract explicit."""
         raise RuntimeError("WordNetLexicon does not persist or load caches.")
 
     def save_cache(self, path: str | Path | None = None) -> Path | None:
+        """WordNet lexicons do not persist caches; raising keeps the contract explicit."""
         raise RuntimeError("WordNetLexicon does not persist or load caches.")
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation

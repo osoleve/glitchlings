@@ -91,7 +91,6 @@ class LexiconBackend(Lexicon):
         """Persist the backend cache to ``path`` and return the destination."""
 
 
-from .graph import GraphLexicon  # noqa: E402
 from .metrics import (  # noqa: E402
     compare_lexicons,
     coverage_ratio,
@@ -138,16 +137,6 @@ def _vector_backend(seed: int | None) -> Lexicon | None:
     return VectorLexicon(cache_path=cache_path, seed=seed)
 
 
-def _graph_backend(seed: int | None) -> Lexicon | None:
-    config = get_config()
-    cache_path = config.lexicon.graph_cache
-    if cache_path is None:
-        return None
-    if not cache_path.exists():
-        return None
-    return GraphLexicon(cache_path=cache_path, seed=seed)
-
-
 def _wordnet_backend(seed: int | None) -> Lexicon | None:  # pragma: no cover - optional
     if WordNetLexicon is None:
         return None
@@ -159,7 +148,6 @@ def _wordnet_backend(seed: int | None) -> Lexicon | None:  # pragma: no cover - 
 
 
 register_backend("vector", _vector_backend)
-register_backend("graph", _graph_backend)
 register_backend("wordnet", _wordnet_backend)
 
 
@@ -187,7 +175,6 @@ __all__ = [
     "Lexicon",
     "LexiconBackend",
     "VectorLexicon",
-    "GraphLexicon",
     "WordNetLexicon",
     "build_vector_cache",
     "compare_lexicons",
