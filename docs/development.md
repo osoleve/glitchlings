@@ -46,8 +46,6 @@ This guide walks through preparing a local development environment, running the 
 
    The command accepts gensim-compatible KeyedVectors or Word2Vec formats via `--source /path/to/vectors.kv`. Pass `--tokens words.txt` to restrict caching to a curated vocabulary, tweak `--min-similarity`/`--max-neighbors` to trade breadth for precision, and bake in deterministic seeds with `--seed`. HuggingFace SentenceTransformer checkpoints work too: install the `st` extra and call `--source sentence-transformers:sentence-transformers/all-mpnet-base-v2 --tokens words.txt` to mirror the bundled cache.
 
-   Still relying on ConceptNet Numberbatch? Point the `GraphLexicon` at the gzipped embedding dump and let it derive synonyms directly. Persist the results with `graph.save_cache("data/graph_lexicon.json")` so repeated runs avoid reloading the full matrix when the embeddings are unavailable.
-
    Need to sanity-check new lexical sources? Import `glitchlings.lexicon.metrics` and call `compare_lexicons(...)` to benchmark synonym diversity, ≥3-substitute coverage, and mean cosine similarity against previously captured baselines.
 
    Prefer the legacy WordNet behaviour? Install `nltk`, download its WordNet corpus (`python -m nltk.downloader wordnet`), and update `config.toml` so the `lexicon.priority` includes `"wordnet"` ahead of the vector cache.
