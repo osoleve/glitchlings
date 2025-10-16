@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import difflib
 import importlib
-import importlib.util
 from pathlib import Path
 import sys
 
@@ -15,17 +14,23 @@ STUB_PATH = REPO_ROOT / "src" / "glitchlings" / "_zoo_rust.pyi"
 
 
 def _load_generated_stub() -> tuple[Path, str]:
-    module_spec = importlib.util.find_spec("glitchlings._zoo_rust")
-    if module_spec is None:
+    try:
+        module = importlib.import_module("glitchlings._zoo_rust")
+    except ModuleNotFoundError:
         # Fallback for environments where the package is not installed but the
-        # repository is available (e.g., CI before editable install).
-        sys.path.insert(0, str(REPO_ROOT / "src"))
-        module_spec = importlib.util.find_spec("glitchlings._zoo_rust")
+        # repository is available (e.g., CI before editable install). We defer
+        # importing until after we have patched `sys.path` so that a missing
+        # parent package does not abort the search.
+        repo_src = str(REPO_ROOT / "src")
+        if repo_src not in sys.path:
+            sys.path.insert(0, repo_src)
+        try:
+            module = importlib.import_module("glitchlings._zoo_rust")
+        except ModuleNotFoundError as exc:
+            raise RuntimeError(
+                "glitchlings._zoo_rust is not importable; run maturin develop first"
+            ) from exc
 
-    if module_spec is None:
-        raise RuntimeError("glitchlings._zoo_rust is not importable; run maturin develop first")
-
-    module = importlib.import_module("glitchlings._zoo_rust")
     module_path = Path(module.__file__)
     stub_path = module_path.with_suffix(".pyi")
     if not stub_path.exists():
