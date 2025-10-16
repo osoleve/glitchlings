@@ -17,6 +17,12 @@ STUB_PATH = REPO_ROOT / "src" / "glitchlings" / "_zoo_rust.pyi"
 def _load_generated_stub() -> tuple[Path, str]:
     module_spec = importlib.util.find_spec("glitchlings._zoo_rust")
     if module_spec is None:
+        # Fallback for environments where the package is not installed but the
+        # repository is available (e.g., CI before editable install).
+        sys.path.insert(0, str(REPO_ROOT / "src"))
+        module_spec = importlib.util.find_spec("glitchlings._zoo_rust")
+
+    if module_spec is None:
         raise RuntimeError("glitchlings._zoo_rust is not importable; run maturin develop first")
 
     module = importlib.import_module("glitchlings._zoo_rust")
