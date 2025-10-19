@@ -1,5 +1,8 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::collections::HashMap;
+
+const RAW_APOSTROFAE_PAIRS: &str = include_str!(concat!(env!("OUT_DIR"), "/apostrofae_pairs.json"));
 
 const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(env!("OUT_DIR"), "/ocr_confusions.tsv"));
 
@@ -10,6 +13,23 @@ pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
 /// Precompiled regex collapsing stretches of whitespace into a single space.
 pub static MULTIPLE_WHITESPACE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s{2,}").expect("valid multi-whitespace regex"));
+
+/// Replacement pairs used by the Apostrofae glitchling.
+pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = Lazy::new(|| {
+    let raw: HashMap<String, Vec<[String; 2]>> = serde_json::from_str(RAW_APOSTROFAE_PAIRS)
+        .expect("apostrofae pair table should be valid JSON");
+    let mut table: HashMap<char, Vec<(String, String)>> = HashMap::new();
+    for (key, pairs) in raw {
+        if let Some(ch) = key.chars().next() {
+            let entries: Vec<(String, String)> = pairs
+                .into_iter()
+                .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+                .collect();
+            table.insert(ch, entries);
+        }
+    }
+    table
+});
 
 /// Sorted confusion pairs reused by glitchling implementations.
 pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])>> =
@@ -48,6 +68,11 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
 #[inline]
 pub fn confusion_table() -> &'static [(&'static str, &'static [&'static str])] {
     OCR_CONFUSION_TABLE.as_slice()
+}
+
+/// Returns the Apostrofae replacement pairs keyed by the straight glyph.
+pub fn apostrofae_pairs() -> &'static HashMap<char, Vec<(String, String)>> {
+    &APOSTROFAE_PAIR_TABLE
 }
 
 #[inline]
@@ -126,7 +151,7 @@ pub fn split_affixes(word: &str) -> (String, String, String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{confusion_table, split_affixes, split_with_separators};
+    use super::{apostrofae_pairs, confusion_table, split_affixes, split_with_separators};
 
     #[test]
     fn split_with_separators_matches_expected_boundaries() {
@@ -161,5 +186,14 @@ mod tests {
             let (b_src, _) = pair[1];
             a_src.len() >= b_src.len()
         }));
+    }
+
+    #[test]
+    fn apostrofae_pairs_loaded_from_asset() {
+        let table = apostrofae_pairs();
+        assert!(table.contains_key(&'"'));
+        assert!(table.contains_key(&'\''));
+        assert!(table.contains_key(&'`'));
+        assert!(table.values().all(|entries| !entries.is_empty()));
     }
 }

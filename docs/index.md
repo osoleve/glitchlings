@@ -11,6 +11,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 5. [Declarative attack configurations](#declarative-attack-configurations)
 6. [Glitchling reference](#glitchling-reference)
    - [Typogre](glitchlings/typogre.md)
+   - [Apostrofae](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Reduple](glitchlings/reduple.md)
    - [Adjax](glitchlings/adjax.md)
@@ -159,7 +160,7 @@ Glitchlings that do not expose a pipeline descriptor (including custom subclasse
 The `Gaggle` class coordinates multiple glitchlings with deterministic sequencing and shared seeding:
 
 - **Seed derivation** - pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
-- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Mim1c, Scannequin) happen after word-level operations (Reduple, Adjax, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
+- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Apostrofae, Mim1c, Scannequin) happen after word-level operations (Reduple, Adjax, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
 - **Dataset utilities** - after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
 - **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
@@ -197,6 +198,7 @@ Configuration files are now validated against a JSON Schema before any glitchlin
 Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. Dive into the dedicated pages below for signatures, behaviours, and usage tips:
 
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
+- [Apostrofae](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
 - [Reduple](glitchlings/reduple.md) - word-level reduplication for hesitant transcripts.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions that erode context without shredding structure.

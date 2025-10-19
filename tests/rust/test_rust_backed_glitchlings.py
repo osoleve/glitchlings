@@ -131,6 +131,10 @@ redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
 adjax_module = importlib.import_module("glitchlings.zoo.adjax")
+try:
+    apostrofae_module = importlib.import_module("glitchlings.zoo.apostrofae")
+except ModuleNotFoundError:
+    apostrofae_module = None
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
@@ -149,6 +153,12 @@ def _with_descriptor_seeds(
             }
         )
     return seeded
+
+
+def _require_apostrofae_module():
+    if apostrofae_module is None:
+        pytest.skip("Apostrofae glitchling not implemented yet")
+    return apostrofae_module
 
 
 def test_orchestration_plan_matches_python_reference():
@@ -641,6 +651,39 @@ def test_compose_glitchlings_propagates_glitch_errors():
     )
     with pytest.raises(ValueError, match="contains no redactable words"):
         zoo_rust.compose_glitchlings("   \t", descriptors, master_seed)
+
+
+def test_apostrofae_rust_pipeline_matches_python(monkeypatch):
+    module = _require_apostrofae_module()
+    if not hasattr(module, "Apostrofae"):
+        pytest.skip("Apostrofae class not exposed yet")
+
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+
+    apostrofae_cls = getattr(module, "Apostrofae")
+    master_seed = 4242
+    text = 'He said "hello", muttered \"hmm\", and typed `print("ok")`.'
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    glitch = apostrofae_cls(seed=master_seed)
+    glitch.reset_rng(master_seed)
+    python_expected = glitch(text)
+
+    descriptor = glitch.pipeline_operation()
+    if descriptor is None:
+        pytest.skip("Apostrofae does not publish a pipeline descriptor yet")
+    assert descriptor["type"] == "apostrofae"
+
+    entry = {
+        "name": glitch.name,
+        "operation": descriptor,
+        "seed": core_module.Gaggle.derive_seed(master_seed, glitch.name, 0),
+    }
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    rust_result = zoo_rust.compose_glitchlings(text, [entry], master_seed)
+
+    assert rust_result == python_expected
 
 
 def test_gaggle_prefers_rust_pipeline(monkeypatch):

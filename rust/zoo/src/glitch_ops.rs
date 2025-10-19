@@ -6,8 +6,8 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use crate::resources::{
-    affix_bounds, confusion_table, is_whitespace_only, split_affixes, MULTIPLE_WHITESPACE,
-    SPACE_BEFORE_PUNCTUATION,
+    affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
+    MULTIPLE_WHITESPACE, SPACE_BEFORE_PUNCTUATION,
 };
 use crate::rng::{PyRng, PyRngError};
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
@@ -988,6 +988,156 @@ impl GlitchOp for TypoOp {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum QuoteKind {
+    Double,
+    Single,
+    Backtick,
+}
+
+impl QuoteKind {
+    fn from_char(ch: char) -> Option<Self> {
+        match ch {
+            '"' => Some(Self::Double),
+            '\'' => Some(Self::Single),
+            '`' => Some(Self::Backtick),
+            _ => None,
+        }
+    }
+
+    fn as_char(self) -> char {
+        match self {
+            Self::Double => '"',
+            Self::Single => '\'',
+            Self::Backtick => '`',
+        }
+    }
+
+    fn index(self) -> usize {
+        match self {
+            Self::Double => 0,
+            Self::Single => 1,
+            Self::Backtick => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct QuotePair {
+    start: usize,
+    end: usize,
+    kind: QuoteKind,
+}
+
+#[derive(Debug)]
+struct Replacement {
+    start: usize,
+    end: usize,
+    value: String,
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct QuotePairsOp;
+
+impl QuotePairsOp {
+    fn collect_pairs(text: &str) -> Vec<QuotePair> {
+        let mut pairs: Vec<QuotePair> = Vec::new();
+        let mut stack: [Option<usize>; 3] = [None, None, None];
+
+        for (idx, ch) in text.char_indices() {
+            if let Some(kind) = QuoteKind::from_char(ch) {
+                let slot = kind.index();
+                if let Some(start) = stack[slot] {
+                    pairs.push(QuotePair {
+                        start,
+                        end: idx,
+                        kind,
+                    });
+                    stack[slot] = None;
+                } else {
+                    stack[slot] = Some(idx);
+                }
+            }
+        }
+
+        pairs
+    }
+}
+
+impl GlitchOp for QuotePairsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        let text = buffer.to_string();
+        if text.is_empty() {
+            return Ok(());
+        }
+
+        let pairs = Self::collect_pairs(&text);
+        if pairs.is_empty() {
+            return Ok(());
+        }
+
+        let table = apostrofae_pairs();
+        if table.is_empty() {
+            return Ok(());
+        }
+
+        let mut replacements: Vec<Replacement> = Vec::with_capacity(pairs.len() * 2);
+
+        for pair in pairs {
+            let key = pair.kind.as_char();
+            let Some(options) = table.get(&key) else {
+                continue;
+            };
+            if options.is_empty() {
+                continue;
+            }
+            let choice = rng.rand_index(options.len())?;
+            let (left, right) = &options[choice];
+            let glyph_len = pair.kind.as_char().len_utf8();
+            replacements.push(Replacement {
+                start: pair.start,
+                end: pair.start + glyph_len,
+                value: left.clone(),
+            });
+            replacements.push(Replacement {
+                start: pair.end,
+                end: pair.end + glyph_len,
+                value: right.clone(),
+            });
+        }
+
+        if replacements.is_empty() {
+            return Ok(());
+        }
+
+        replacements.sort_by_key(|replacement| replacement.start);
+        let mut extra_capacity = 0usize;
+        for replacement in &replacements {
+            let span = replacement.end - replacement.start;
+            if replacement.value.len() > span {
+                extra_capacity += replacement.value.len() - span;
+            }
+        }
+
+        let mut result = String::with_capacity(text.len() + extra_capacity);
+        let mut cursor = 0usize;
+
+        for replacement in replacements {
+            if cursor < replacement.start {
+                result.push_str(&text[cursor..replacement.start]);
+            }
+            result.push_str(&replacement.value);
+            cursor = replacement.end;
+        }
+        if cursor < text.len() {
+            result.push_str(&text[cursor..]);
+        }
+
+        *buffer = TextBuffer::from_owned(result);
+        Ok(())
+    }
+}
+
 /// Type-erased glitchling operation for pipeline sequencing.
 #[derive(Debug, Clone)]
 pub enum GlitchOperation {
@@ -998,6 +1148,7 @@ pub enum GlitchOperation {
     Ocr(OcrArtifactsOp),
     Typo(TypoOp),
     ZeroWidth(ZeroWidthOp),
+    QuotePairs(QuotePairsOp),
 }
 
 impl GlitchOp for GlitchOperation {
@@ -1010,6 +1161,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Ocr(op) => op.apply(buffer, rng),
             GlitchOperation::Typo(op) => op.apply(buffer, rng),
             GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
+            GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
         }
     }
 }

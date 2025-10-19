@@ -9,17 +9,15 @@ from typing import Sequence
 
 import pytest
 
-from glitchlings.lexicon import vector as vector_module
-
-VectorLexicon = vector_module.VectorLexicon
-build_vector_cache = vector_module.build_vector_cache
-load_vector_source = vector_module.load_vector_source
-main = vector_module.main
-_SpaCyAdapter = vector_module._SpaCyAdapter
-_load_gensim_vectors = vector_module._load_gensim_vectors
-_load_spacy_language = vector_module._load_spacy_language
-_build_sentence_transformer_embeddings = (
-    vector_module._build_sentence_transformer_embeddings
+from glitchlings.lexicon.vector import (
+    VectorLexicon,
+    _SpaCyAdapter,
+    _build_sentence_transformer_embeddings,
+    _load_gensim_vectors,
+    _load_spacy_language,
+    build_vector_cache,
+    load_vector_source,
+    main,
 )
 
 
