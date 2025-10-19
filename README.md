@@ -103,6 +103,7 @@ glitchlings --list
 
 ```text
    Typogre — scope: Character, order: early
+Apostrofae — scope: Character, order: normal
      Mim1c — scope: Character, order: last
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
@@ -204,6 +205,16 @@ _What a nice word, would be a shame if something happened to it._
 > - `rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
 > - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "QWERTY", "DVORAK", "COLEMAK", and "AZERTY").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
+
+### Apostrofae
+
+_It looks like you're trying to paste some text. Can I help?_
+
+> _**Paperclip Manager.**_ Apostrofae scans for balanced runs of straight quotes, apostrophes, and backticks before replacing them with randomly sampled smart-quote pairs from a curated lookup table. The swap happens in-place so contractions and unpaired glyphs remain untouched.
+>
+> Args
+>
+> - `seed (int)`: Optional seed controlling the deterministic smart-quote sampling (default: 151).
 
 ### Mim1c
 

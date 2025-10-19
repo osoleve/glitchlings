@@ -2,6 +2,7 @@ from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
     Adjax,
+    Apostrofae,
     Gaggle,
     Glitchling,
     Jargoyle,
@@ -13,6 +14,7 @@ from .zoo import (
     Typogre,
     Zeedub,
     adjax,
+    apostrofae,
     is_rust_pipeline_enabled,
     is_rust_pipeline_supported,
     jargoyle,
@@ -38,6 +40,8 @@ __all__ = [
     "jargoyle",
     "Adjax",
     "adjax",
+    "Apostrofae",
+    "apostrofae",
     "Redactyl",
     "redactyl",
     "Reduple",

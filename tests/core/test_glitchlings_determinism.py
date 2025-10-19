@@ -3,8 +3,11 @@ from __future__ import annotations
 from functools import partial
 from typing import cast
 
+import pytest
+
 from glitchlings import (
     adjax,
+    apostrofae,
     jargoyle,
     mim1c,
     redactyl,
@@ -86,6 +89,12 @@ def test_zeedub_determinism(sample_text):
     zeedub.set_param("seed", 42)
     zeedub.set_param("rate", 0.03)
     a, b = _twice(zeedub, sample_text)
+    assert a == b
+
+
+def test_apostrofae_determinism(sample_text):
+    apostrofae.set_param("seed", 42)
+    a, b = _twice(apostrofae, sample_text)
     assert a == b
 
 

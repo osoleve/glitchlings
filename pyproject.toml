@@ -100,6 +100,7 @@ include-package-data = true
 "glitchlings" = ["config.toml"]
 "glitchlings.lexicon" = ["data/*.json"]
 "glitchlings.zoo" = ["ocr_confusions.tsv"]
+"glitchlings.zoo.assets" = ["apostrofae_pairs.json"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
