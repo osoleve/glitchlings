@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import difflib
 import importlib
@@ -16,6 +18,8 @@ from glitchlings.main import (
     read_text,
     run_build_lexicon,
     run_cli,
+)
+from glitchlings.main import (
     main as cli_main,
 )
 
@@ -88,7 +92,9 @@ def test_cli_build_lexicon_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
-def test_run_build_lexicon_passes_optional_arguments(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_run_build_lexicon_passes_optional_arguments(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
     captured: dict[str, list[str]] = {}
 
     def fake_main(argv: list[str]) -> int:

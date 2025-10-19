@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import importlib
 import math
 import random
 from typing import cast
-from glitchlings import adjax, typogre, mim1c, reduple, rushmore, redactyl, scannequin, zeedub
+
+from glitchlings import adjax, mim1c, redactyl, reduple, rushmore, scannequin, typogre, zeedub
+from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 adjax_module = importlib.import_module("glitchlings.zoo.adjax")
 reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
-from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 def _count_blocks(s: str, block_char: str = "\u2588") -> int:
     return s.count(block_char)

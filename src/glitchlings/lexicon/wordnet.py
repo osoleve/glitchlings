@@ -4,49 +4,74 @@ from __future__ import annotations
 
 from importlib import import_module
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from types import ModuleType
+from typing import Any, Callable, Protocol, Sequence, cast
 
 from ..compat import nltk as _nltk_dependency
 from . import LexiconBackend
 from ._cache import CacheSnapshot
 
-nltk = _nltk_dependency.get()  # type: ignore[assignment]
-_NLTK_IMPORT_ERROR = _nltk_dependency.error
 
-if TYPE_CHECKING:  # pragma: no cover - typing aid only
-    from nltk.corpus.reader import WordNetCorpusReader  # type: ignore[import]
-else:  # pragma: no cover - runtime fallback to avoid hard dependency
-    WordNetCorpusReader = Any
+class _LemmaProtocol(Protocol):
+    def name(self) -> str:
+        ...
 
-find: Any | None = None
-_WORDNET_MODULE: Any | None = None
+
+class _SynsetProtocol(Protocol):
+    def lemmas(self) -> Sequence[_LemmaProtocol]:
+        ...
+
+
+class _WordNetResource(Protocol):
+    def synsets(self, word: str, pos: str | None = None) -> Sequence[_SynsetProtocol]:
+        ...
+
+    def ensure_loaded(self) -> None:
+        ...
+
+
+WordNetCorpusReaderFactory = Callable[[Any, Any], _WordNetResource]
+
+nltk: ModuleType | None = _nltk_dependency.get()
+_NLTK_IMPORT_ERROR: ModuleNotFoundError | None = _nltk_dependency.error
+
+WordNetCorpusReader: WordNetCorpusReaderFactory | None = None
+find: Callable[[str], Any] | None = None
+_WORDNET_MODULE: _WordNetResource | None = None
 
 if nltk is not None:  # pragma: no cover - guarded by import success
     try:
         corpus_reader_module = import_module("nltk.corpus.reader")
-        WordNetCorpusReader = corpus_reader_module.WordNetCorpusReader  # type: ignore[assignment]
     except ModuleNotFoundError as exc:  # pragma: no cover - triggered when corpus missing
         if _NLTK_IMPORT_ERROR is None:
-            _NLTK_IMPORT_ERROR = exc  # type: ignore[assignment]
+            _NLTK_IMPORT_ERROR = exc
     else:
+        reader_candidate = getattr(corpus_reader_module, "WordNetCorpusReader", None)
+        if reader_candidate is not None:
+            WordNetCorpusReader = cast(WordNetCorpusReaderFactory, reader_candidate)
+
         try:
             data_module = import_module("nltk.data")
         except ModuleNotFoundError as exc:  # pragma: no cover - triggered when data missing
             if _NLTK_IMPORT_ERROR is None:
-                _NLTK_IMPORT_ERROR = exc  # type: ignore[assignment]
+                _NLTK_IMPORT_ERROR = exc
         else:
-            find = getattr(data_module, "find", None)
+            locator = getattr(data_module, "find", None)
+            if callable(locator):
+                find = cast(Callable[[str], Any], locator)
 
     try:
-        _WORDNET_MODULE = import_module("nltk.corpus.wordnet")
+        module_candidate = import_module("nltk.corpus.wordnet")
     except ModuleNotFoundError:  # pragma: no cover - only hit on namespace packages
         _WORDNET_MODULE = None
+    else:
+        _WORDNET_MODULE = cast(_WordNetResource, module_candidate)
 else:
-    nltk = None  # type: ignore[assignment]
+    nltk = None
     find = None
     _WORDNET_MODULE = None
 
-_WORDNET_HANDLE: WordNetCorpusReader | Any | None = _WORDNET_MODULE
+_WORDNET_HANDLE: _WordNetResource | None = _WORDNET_MODULE
 _wordnet_ready = False
 
 _VALID_POS: tuple[str, ...] = ("n", "v", "a", "r")
@@ -69,15 +94,22 @@ def dependencies_available() -> bool:
     return nltk is not None and find is not None
 
 
-def _load_wordnet_reader() -> WordNetCorpusReader:
+def _load_wordnet_reader() -> _WordNetResource:
     """Return a WordNet corpus reader from the downloaded corpus files."""
     _require_nltk()
 
+    if WordNetCorpusReader is None:
+        raise RuntimeError("The NLTK WordNet corpus reader is unavailable.")
+
+    locator = find
+    if locator is None:
+        raise RuntimeError("The NLTK data locator is unavailable.")
+
     try:
-        root = find("corpora/wordnet")
+        root = locator("corpora/wordnet")
     except LookupError:
         try:
-            zip_root = find("corpora/wordnet.zip")
+            zip_root = locator("corpora/wordnet.zip")
         except LookupError as exc:
             raise RuntimeError(
                 "The NLTK WordNet corpus is not installed; run `nltk.download('wordnet')`."
@@ -87,18 +119,20 @@ def _load_wordnet_reader() -> WordNetCorpusReader:
     return WordNetCorpusReader(root, None)
 
 
-def _wordnet(force_refresh: bool = False) -> WordNetCorpusReader | Any:
+def _wordnet(force_refresh: bool = False) -> _WordNetResource:
     """Retrieve the active WordNet handle, rebuilding it on demand."""
     global _WORDNET_HANDLE
 
     if force_refresh:
         _WORDNET_HANDLE = _WORDNET_MODULE
 
-    if _WORDNET_HANDLE is not None:
-        return _WORDNET_HANDLE
+    cached = _WORDNET_HANDLE
+    if cached is not None:
+        return cached
 
-    _WORDNET_HANDLE = _load_wordnet_reader()
-    return _WORDNET_HANDLE
+    resource = _load_wordnet_reader()
+    _WORDNET_HANDLE = resource
+    return resource
 
 
 def ensure_wordnet() -> None:
@@ -110,11 +144,14 @@ def ensure_wordnet() -> None:
     _require_nltk()
 
     resource = _wordnet()
+    nltk_module = nltk
+    if nltk_module is None:
+        raise RuntimeError("The NLTK dependency is unexpectedly unavailable.")
 
     try:
         resource.ensure_loaded()
     except LookupError:
-        nltk.download("wordnet", quiet=True)
+        nltk_module.download("wordnet", quiet=True)
         try:
             resource = _wordnet(force_refresh=True)
             resource.ensure_loaded()
@@ -159,6 +196,7 @@ class WordNetLexicon(LexiconBackend):
     """Lexicon that retrieves synonyms from the NLTK WordNet corpus."""
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
+        """Return up to ``n`` WordNet lemmas for ``word`` filtered by ``pos`` if provided."""
         ensure_wordnet()
 
         if pos is None:
@@ -173,15 +211,18 @@ class WordNetLexicon(LexiconBackend):
         return self._deterministic_sample(synonyms, limit=n, word=word, pos=pos)
 
     def supports_pos(self, pos: str | None) -> bool:
+        """Return ``True`` when ``pos`` is unset or recognised by the WordNet corpus."""
         if pos is None:
             return True
         return pos.lower() in _VALID_POS
 
     @classmethod
     def load_cache(cls, path: str | Path) -> CacheSnapshot:
+        """WordNet lexicons do not persist caches; raising keeps the contract explicit."""
         raise RuntimeError("WordNetLexicon does not persist or load caches.")
 
     def save_cache(self, path: str | Path | None = None) -> Path | None:
+        """WordNet lexicons do not persist caches; raising keeps the contract explicit."""
         raise RuntimeError("WordNetLexicon does not persist or load caches.")
 
     def __repr__(self) -> str:  # pragma: no cover - trivial representation

@@ -1,6 +1,6 @@
 import random
 import re
-from typing import Any
+from typing import Any, cast
 
 from ._rate import resolve_rate
 from ._sampling import weighted_sample_without_replacement
@@ -119,13 +119,16 @@ def redact_words(
     use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
 
     if use_rust:
-        return _redact_words_rust(
-            text,
-            replacement_char,
-            clamped_rate,
-            merge_adjacent,
-            unweighted_flag,
-            rng,
+        return cast(
+            str,
+            _redact_words_rust(
+                text,
+                replacement_char,
+                clamped_rate,
+                merge_adjacent,
+                unweighted_flag,
+                rng,
+            ),
         )
 
     return _python_redact_words(

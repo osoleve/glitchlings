@@ -8,7 +8,22 @@ on:
 
 jobs:
   publish:
-    uses: ./.github/workflows/publish-package.yml
-    with:
-      environment: testpypi
-      repository-url: https://test.pypi.org/legacy/
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux, build-macos]
+    environment:
+      name: testpypi
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist
+          user: __token__
+          # password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          skip-existing: true

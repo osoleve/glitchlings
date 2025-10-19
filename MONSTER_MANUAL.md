@@ -92,6 +92,49 @@ _What a nice word, would be a shame if something happened to it._
 >
 > ---
 
+## Apostrofae
+
+_It looks like you're trying to paste some text. Can I help?_
+
+> Tiny Construct (overhelpful), Lawful Neutral
+>
+> ---
+>
+> _**Smart Quotes.**_ Apostrofae replaces balanced straight quotation marks, apostrophes, and backticks with curated Unicode pairs, nudging text toward typeset polish while revealing formatting inconsistencies.
+>
+> ### Apostrofae Args
+>
+> - `seed (int)`: Optional random seed for deterministic quote-pair sampling (default: 151).
+>
+> ```python
+> >>> from glitchlings import apostrofae
+> >>> print(apostrofae('"Mind the quotes," she said. `Okay,` he replied.'))
+> ```
+>
+> > “Mind the quotes,” she said. “Okay,” he replied.
+>
+> ---
+>
+> - **Armor Class** 11 (stationery)
+> - **Hit Points** 5 (2d4)
+> - **Speed** 20 ft., 60 wpm
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |5 |12 |8 |13 |10 |9 |
+>
+> ---
+>
+> - **Skills** Persuasion +1, Insight +2
+> - **Damage Resistances** paper cuts
+> - **Condition Immunities** frightened (of WordArt)
+> - **Languages** Common, ClipArt
+> - **Challenge** 1/4 (50 XP)
+>
+> ---
+
 ## Mim1c
 
 _Wait, was that...?_
