@@ -6,7 +6,7 @@ import json
 import random
 from functools import cache
 from importlib import resources
-from typing import Any, Callable, Sequence, cast
+from typing import Any, Sequence, cast
 
 from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 
