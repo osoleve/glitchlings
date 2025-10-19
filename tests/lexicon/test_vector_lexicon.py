@@ -10,11 +10,11 @@ from typing import Sequence
 import pytest
 
 from glitchlings.lexicon.vector import (
-    _build_sentence_transformer_embeddings,
+    VectorLexicon,
     _SpaCyAdapter,
+    _build_sentence_transformer_embeddings,
     _load_gensim_vectors,
     _load_spacy_language,
-    _SpaCyAdapter,
     build_vector_cache,
     load_vector_source,
     main,

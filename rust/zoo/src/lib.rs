@@ -309,7 +309,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
-            "apostrofae" => Ok(PyGlitchOperation::QuotePairs),
+            "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             other => Err(PyValueError::new_err(format!(
                 "unsupported operation type: {other}"
             ))),
