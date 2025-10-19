@@ -15,8 +15,8 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 pub use glitch_ops::{
-    DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, RedactWordsOp,
-    ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
+    DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
+    RedactWordsOp, ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -193,6 +193,7 @@ enum PyGlitchOperation {
         rate: f64,
         characters: Vec<String>,
     },
+    QuotePairs,
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
@@ -308,6 +309,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
+            "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             other => Err(PyValueError::new_err(format!(
                 "unsupported operation type: {other}"
             ))),
@@ -360,6 +362,12 @@ fn delete_random_words(
 #[pyfunction]
 fn swap_adjacent_words(text: &str, swap_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
     let op = SwapAdjacentWordsOp { swap_rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+}
+
+#[pyfunction]
+fn apostrofae(text: &str, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+    let op = QuotePairsOp::default();
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -463,6 +471,9 @@ fn compose_glitchlings(
                 PyGlitchOperation::ZeroWidth { rate, characters } => {
                     GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
                 }
+                PyGlitchOperation::QuotePairs => {
+                    GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
+                }
             };
             Ok(GlitchDescriptor {
                 name: descriptor.name,
@@ -481,6 +492,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
+    m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
