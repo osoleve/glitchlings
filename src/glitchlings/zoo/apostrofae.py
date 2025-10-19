@@ -13,7 +13,7 @@ from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 try:  # pragma: no cover - compiled extension not present in pure-Python envs
     from glitchlings._zoo_rust import apostrofae as _apostrofae_rust
 except ImportError:  # pragma: no cover - compiled extension not present
-    _apostrofae_rust: Callable[[str, random.Random], str] | None = None
+    _apostrofae_rust = None
 
 
 @cache
