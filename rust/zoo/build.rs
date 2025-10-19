@@ -115,11 +115,11 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
     println!("cargo:rerun-if-changed={}", packaged_path.display());
 
     let mut source_path: Option<PathBuf> = None;
-    for candidate in repo_candidates {
+    for candidate in &repo_candidates {
         if candidate.exists() {
             println!("cargo:rerun-if-changed={}", candidate.display());
             if packaged_path.exists() {
-                let repo_bytes = fs::read(&candidate)?;
+                let repo_bytes = fs::read(candidate)?;
                 let packaged_bytes = fs::read(&packaged_path)?;
                 if repo_bytes != packaged_bytes {
                     return Err(io::Error::new(
@@ -132,7 +132,7 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
                     ));
                 }
             }
-            source_path = Some(candidate);
+            source_path = Some(candidate.clone());
             break;
         }
     }
