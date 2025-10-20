@@ -133,7 +133,12 @@ def _plan_glitchlings_with_rust(
 
     try:
         plan = _plan_glitchlings_rust(specs, int(master_seed))
-    except (TypeError, ValueError, RuntimeError, AttributeError):  # pragma: no cover - defer to Python fallback on failure
+    except (
+        TypeError,
+        ValueError,
+        RuntimeError,
+        AttributeError,
+    ):  # pragma: no cover - defer to Python fallback on failure
         log.debug("Rust orchestration planning failed; falling back to Python plan", exc_info=True)
         return None
 
@@ -538,7 +543,12 @@ class Gaggle(Glitchling):
         if master_seed is not None and descriptors is not None:
             try:
                 return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
-            except (TypeError, ValueError, RuntimeError, AttributeError):  # pragma: no cover - fall back to Python execution
+            except (
+                TypeError,
+                ValueError,
+                RuntimeError,
+                AttributeError,
+            ):  # pragma: no cover - fall back to Python execution
                 log.debug("Rust pipeline failed; falling back", exc_info=True)
 
         corrupted = text

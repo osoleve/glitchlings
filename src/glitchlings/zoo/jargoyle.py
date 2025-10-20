@@ -14,7 +14,11 @@ _wordnet_module: ModuleType | None
 
 try:  # pragma: no cover - optional WordNet dependency
     import glitchlings.lexicon.wordnet as _wordnet_module
-except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - triggered when nltk unavailable
+except (
+    ImportError,
+    ModuleNotFoundError,
+    AttributeError,
+):  # pragma: no cover - triggered when nltk unavailable
     _wordnet_module = None
 
 _wordnet_runtime: ModuleType | None = _wordnet_module
