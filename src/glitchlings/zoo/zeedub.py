@@ -6,12 +6,11 @@ from collections.abc import Sequence
 from typing import Any, cast
 
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import inject_zero_widths as _inject_zero_widths_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _inject_zero_widths_rust = None
+# Load Rust-accelerated operation if available
+_inject_zero_widths_rust = get_rust_operation("inject_zero_widths")
 
 _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE

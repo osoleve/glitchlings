@@ -2,13 +2,12 @@ import random
 from typing import Any, cast
 
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import reduplicate_words as _reduplicate_words_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _reduplicate_words_rust = None
+# Load Rust-accelerated operation if available
+_reduplicate_words_rust = get_rust_operation("reduplicate_words")
 
 
 def _python_reduplicate_words(

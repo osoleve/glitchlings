@@ -8,12 +8,11 @@ from functools import cache
 from importlib import resources
 from typing import Any, Sequence, cast
 
+from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 
-try:  # pragma: no cover - compiled extension not present in pure-Python envs
-    from glitchlings._zoo_rust import apostrofae as _apostrofae_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _apostrofae_rust = None
+# Load Rust-accelerated operation if available
+_apostrofae_rust = get_rust_operation("apostrofae")
 
 
 @cache
