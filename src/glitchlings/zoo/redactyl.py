@@ -117,6 +117,7 @@ def redact_words(
     use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
 
     if use_rust:
+        assert _redact_words_rust is not None  # Type narrowing for mypy
         return cast(
             str,
             _redact_words_rust(

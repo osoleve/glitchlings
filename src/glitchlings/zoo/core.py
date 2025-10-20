@@ -540,7 +540,7 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if master_seed is not None and descriptors is not None:
+        if master_seed is not None and descriptors is not None and _compose_glitchlings_rust is not None:
             try:
                 return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
             except (
