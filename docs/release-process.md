@@ -14,7 +14,8 @@ The TestPyPI workflow can be triggered manually from the GitHub Actions tab:
 2. Click on "Build & Publish (TestPyPI)" workflow
 3. Click "Run workflow" button
 4. Select the branch to build from (usually `trunk`)
-5. Click "Run workflow"
+5. Leave "Skip existing files" enabled unless you need to re-upload an existing version (set it to `false` to retry a failed TestPyPI publish)
+6. Click "Run workflow"
 
 This will build and publish the current version specified in `pyproject.toml` to TestPyPI.
 
@@ -86,19 +87,19 @@ If the TestPyPI or PyPI workflow fails:
 2. Common issues:
    - Rust compilation errors: Ensure Rust toolchain is properly configured
    - Test failures: Run tests locally first with `pytest`
-   - Version conflicts: TestPyPI allows skipping existing versions with `skip-existing: true`
+   - Version conflicts: The TestPyPI workflow exposes a `skip-existing` toggle (enabled by default) so reruns can re-upload artifacts when required
    - Linux manylinux build issues: The workflow uses manylinux_2_28 containers with Rust installed at build time
 
 ### Platform Support
 
 The build workflow now creates wheels for multiple platforms:
 
-- **Windows**: Built on Windows Server with Python 3.12
-- **Linux (manylinux)**: Built in manylinux_2_28 containers for Python 3.10, 3.11, and 3.12
+- **Windows**: Built on Windows Server with Python 3.12 and 3.13
+- **Linux (manylinux)**: Built in manylinux_2_28 containers for Python 3.10, 3.11, 3.12, and 3.13
   - Uses official PyPA manylinux images
   - Rust toolchain installed during build
   - Wheels repaired with `auditwheel` for maximum compatibility
-- **macOS**: Built on macOS with Python 3.10, 3.11, and 3.12
+- **macOS**: Built on macOS with Python 3.10, 3.11, 3.12, and 3.13
   - Uses native macOS GitHub Actions runners
   - Rust toolchain installed during build
 

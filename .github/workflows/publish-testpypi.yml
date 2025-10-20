@@ -5,6 +5,12 @@ on:
     branches:
       - test
   workflow_dispatch:
+    inputs:
+      skip-existing:
+        description: Skip uploading artifacts that already exist on TestPyPI
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   publish:
@@ -12,3 +18,4 @@ jobs:
     with:
       environment: testpypi
       repository-url: https://test.pypi.org/legacy/
+      skip-existing: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip-existing == 'false' ? false : true }}
