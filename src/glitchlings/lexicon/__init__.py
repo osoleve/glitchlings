@@ -102,7 +102,7 @@ from .vector import VectorLexicon, build_vector_cache  # noqa: E402
 _WordNetLexicon: type[LexiconBackend] | None
 try:  # pragma: no cover - optional dependency
     from .wordnet import WordNetLexicon as _WordNetLexicon
-except Exception:  # pragma: no cover - triggered when nltk unavailable
+except (ImportError, ModuleNotFoundError, AttributeError):  # pragma: no cover - triggered when nltk unavailable
     _WordNetLexicon = None
 
 WordNetLexicon: type[LexiconBackend] | None = _WordNetLexicon

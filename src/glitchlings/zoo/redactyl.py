@@ -3,6 +3,7 @@ import re
 from typing import Any, cast
 
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from ._sampling import weighted_sample_without_replacement
 from ._text_utils import (
     WordToken,
@@ -13,11 +14,8 @@ from .core import AttackWave, Glitchling
 
 FULL_BLOCK = "█"
 
-
-try:
-    from glitchlings._zoo_rust import redact_words as _redact_words_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _redact_words_rust = None
+# Load Rust-accelerated operation if available
+_redact_words_rust = get_rust_operation("redact_words")
 
 
 def _python_redact_words(

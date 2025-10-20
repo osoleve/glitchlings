@@ -4,13 +4,12 @@ import random
 from typing import Any, cast
 
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from ._text_utils import split_preserving_whitespace, split_token_edges
 from .core import AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import swap_adjacent_words as _swap_adjacent_words_rust
-except ImportError:  # pragma: no cover - optional acceleration
-    _swap_adjacent_words_rust = None
+# Load Rust-accelerated operation if available
+_swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
 
 
 def _python_swap_adjacent_words(
