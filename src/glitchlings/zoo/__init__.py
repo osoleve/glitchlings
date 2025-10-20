@@ -4,6 +4,7 @@ import ast
 from typing import Any
 
 from .adjax import Adjax, adjax
+from .apostrofae import Apostrofae, apostrofae
 from .core import (
     Gaggle,
     Glitchling,
@@ -30,6 +31,8 @@ __all__ = [
     "mim1c",
     "Jargoyle",
     "jargoyle",
+    "Apostrofae",
+    "apostrofae",
     "Adjax",
     "adjax",
     "Reduple",
@@ -58,7 +61,7 @@ __all__ = [
 
 _HAS_JARGOYLE = _jargoyle_available()
 
-_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, mim1c]
+_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, mim1c]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
 _BUILTIN_GLITCHLING_LIST.extend([adjax, reduple, rushmore, redactyl, scannequin, zeedub])
@@ -69,6 +72,7 @@ BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
 
 _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     typogre.name.lower(): Typogre,
+    apostrofae.name.lower(): Apostrofae,
     mim1c.name.lower(): Mim1c,
     adjax.name.lower(): Adjax,
     reduple.name.lower(): Reduple,

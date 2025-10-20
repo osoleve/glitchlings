@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, cast
 
 from ._rate import resolve_rate
 from ._text_utils import split_preserving_whitespace, split_token_edges
@@ -83,7 +83,7 @@ def swap_adjacent_words(
         rng = random.Random(seed)
 
     if _swap_adjacent_words_rust is not None:
-        return _swap_adjacent_words_rust(text, clamped_rate, rng)
+        return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
 
     return _python_swap_adjacent_words(text, rate=clamped_rate, rng=rng)
 

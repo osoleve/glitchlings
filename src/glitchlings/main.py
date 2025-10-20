@@ -5,7 +5,9 @@ from __future__ import annotations
 import argparse
 import difflib
 import sys
+from collections.abc import Sequence
 from pathlib import Path
+from typing import cast
 
 from . import SAMPLE_TEXT
 from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
@@ -88,6 +90,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def build_lexicon_parser() -> argparse.ArgumentParser:
+    """Create the ``build-lexicon`` subcommand parser with vector cache options."""
     builder = argparse.ArgumentParser(
         prog="glitchlings build-lexicon",
         description=(
@@ -179,21 +182,23 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
         SystemExit: Raised indirectly via ``parser.error`` on failure.
 
     """
-    if args.file is not None:
+    file_path = cast(Path | None, getattr(args, "file", None))
+    if file_path is not None:
         try:
-            return args.file.read_text(encoding="utf-8")
+            return file_path.read_text(encoding="utf-8")
         except OSError as exc:
-            filename = getattr(exc, "filename", None) or args.file
+            filename = getattr(exc, "filename", None) or file_path
             reason = exc.strerror or str(exc)
             parser.error(f"Failed to read file {filename}: {reason}")
 
-    if args.text:
-        return args.text
+    text_argument = cast(str | None, getattr(args, "text", None))
+    if text_argument:
+        return text_argument
 
     if not sys.stdin.isatty():
         return sys.stdin.read()
 
-    if args.sample:
+    if bool(getattr(args, "sample", False)):
         return SAMPLE_TEXT
 
     parser.error(
@@ -224,21 +229,23 @@ def summon_glitchlings(
 
         return build_gaggle(config, seed_override=seed)
 
+    normalized: Sequence[str | Glitchling]
     if names:
-        normalized: list[str | Glitchling] = []
+        parsed: list[str | Glitchling] = []
         for specification in names:
             try:
-                normalized.append(parse_glitchling_spec(specification))
+                parsed.append(parse_glitchling_spec(specification))
             except ValueError as exc:
                 parser.error(str(exc))
                 raise AssertionError("parser.error should exit")
+        normalized = parsed
     else:
-        normalized = DEFAULT_GLITCHLING_NAMES
+        normalized = list(DEFAULT_GLITCHLING_NAMES)
 
     effective_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
 
     try:
-        return summon(normalized, seed=effective_seed)
+        return summon(list(normalized), seed=effective_seed)
     except ValueError as exc:
         parser.error(str(exc))
         raise AssertionError("parser.error should exit")
@@ -285,7 +292,10 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         config_path=args.config,
     )
 
-    corrupted = gaggle(text)
+    corrupted = gaggle.corrupt(text)
+    if not isinstance(corrupted, str):
+        message = "Gaggle returned non-string output for string input"
+        raise TypeError(message)
 
     if args.diff:
         show_diff(text, corrupted)

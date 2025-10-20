@@ -108,7 +108,7 @@ def _ensure_rust_extension_importable() -> None:
     if not artifacts:
         return
 
-    import glitchlings  # Ensure parent package exists before loading extension
+    importlib.import_module("glitchlings")
 
     for artifact in artifacts:
         spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
@@ -131,6 +131,10 @@ redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
 adjax_module = importlib.import_module("glitchlings.zoo.adjax")
+try:
+    apostrofae_module = importlib.import_module("glitchlings.zoo.apostrofae")
+except ModuleNotFoundError:
+    apostrofae_module = None
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
@@ -149,6 +153,12 @@ def _with_descriptor_seeds(
             }
         )
     return seeded
+
+
+def _require_apostrofae_module():
+    if apostrofae_module is None:
+        pytest.skip("Apostrofae glitchling not implemented yet")
+    return apostrofae_module
 
 
 def test_orchestration_plan_matches_python_reference():
@@ -507,9 +517,26 @@ def test_compose_glitchlings_matches_python_pipeline():
     if not hasattr(zoo_rust, "swap_adjacent_words"):
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.5, "unweighted": False}},
-        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.6}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.5,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Adjax",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.6},
+        },
         {
             "name": "Redactyl",
             "operation": {
@@ -538,9 +565,21 @@ def test_compose_glitchlings_supports_typo_and_zwj():
     raw_descriptors = [
         {
             "name": "Typogre",
-            "operation": {"type": "typo", "rate": 0.02, "keyboard": "CURATOR_QWERTY", "layout": layout},
+            "operation": {
+                "type": "typo",
+                "rate": 0.02,
+                "keyboard": "CURATOR_QWERTY",
+                "layout": layout,
+            },
         },
-        {"name": "Zeedub", "operation": {"type": "zwj", "rate": 0.015, "characters": ["\u200b", "\u2060"]}},
+        {
+            "name": "Zeedub",
+            "operation": {
+                "type": "zwj",
+                "rate": 0.015,
+                "characters": ["\u200b", "\u2060"],
+            },
+        },
     ]
     master_seed = 515
     descriptors = _with_descriptor_seeds(raw_descriptors, master_seed)
@@ -554,9 +593,26 @@ def test_compose_glitchlings_is_deterministic():
     if not hasattr(zoo_rust, "swap_adjacent_words"):
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
-        {"name": "Adjax", "operation": {"type": "swap_adjacent", "swap_rate": 0.4}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.3,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Adjax",
+            "operation": {"type": "swap_adjacent", "swap_rate": 0.4},
+        },
         {
             "name": "Redactyl",
             "operation": {
@@ -595,6 +651,39 @@ def test_compose_glitchlings_propagates_glitch_errors():
     )
     with pytest.raises(ValueError, match="contains no redactable words"):
         zoo_rust.compose_glitchlings("   \t", descriptors, master_seed)
+
+
+def test_apostrofae_rust_pipeline_matches_python(monkeypatch):
+    module = _require_apostrofae_module()
+    if not hasattr(module, "Apostrofae"):
+        pytest.skip("Apostrofae class not exposed yet")
+
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+
+    apostrofae_cls = getattr(module, "Apostrofae")
+    master_seed = 4242
+    text = 'He said "hello", muttered \"hmm\", and typed `print("ok")`.'
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
+    glitch = apostrofae_cls(seed=master_seed)
+    glitch.reset_rng(master_seed)
+    python_expected = glitch(text)
+
+    descriptor = glitch.pipeline_operation()
+    if descriptor is None:
+        pytest.skip("Apostrofae does not publish a pipeline descriptor yet")
+    assert descriptor["type"] == "apostrofae"
+
+    entry = {
+        "name": glitch.name,
+        "operation": descriptor,
+        "seed": core_module.Gaggle.derive_seed(master_seed, glitch.name, 0),
+    }
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    rust_result = zoo_rust.compose_glitchlings(text, [entry], master_seed)
+
+    assert rust_result == python_expected
 
 
 def test_gaggle_prefers_rust_pipeline(monkeypatch):
@@ -665,8 +754,22 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     text = "Hold the door"
     result = gaggle(text)
     raw_descriptors = [
-        {"name": "Reduple", "operation": {"type": "reduplicate", "reduplication_rate": 0.4, "unweighted": False}},
-        {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.3, "unweighted": False}},
+        {
+            "name": "Reduple",
+            "operation": {
+                "type": "reduplicate",
+                "reduplication_rate": 0.4,
+                "unweighted": False,
+            },
+        },
+        {
+            "name": "Rushmore",
+            "operation": {
+                "type": "delete",
+                "max_deletion_rate": 0.3,
+                "unweighted": False,
+            },
+        },
     ]
     descriptors = _with_descriptor_seeds(raw_descriptors, 2024)
     expected = _run_python_sequence(text, descriptors, 2024)
@@ -740,7 +843,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
 
 
 def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
-    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 1777
     text = "Verify resonance before launch"
 

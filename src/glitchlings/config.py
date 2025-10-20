@@ -2,29 +2,46 @@
 
 from __future__ import annotations
 
+import importlib
 import os
 import warnings
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Mapping, Sequence
+from typing import IO, TYPE_CHECKING, Any, Mapping, Protocol, Sequence, cast
+
+from glitchlings.compat import jsonschema
 
 try:  # Python 3.11+
-    import tomllib
+    import tomllib as _tomllib
 except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
-    import tomli as tomllib  # type: ignore[no-redef]
+    _tomllib = importlib.import_module("tomli")
 
-import yaml
 
-from .compat import jsonschema
+class _TomllibModule(Protocol):
+    def load(self, fp: IO[bytes]) -> Any:
+        ...
+
+
+tomllib = cast(_TomllibModule, _tomllib)
+
+
+class _YamlModule(Protocol):
+    YAMLError: type[Exception]
+
+    def safe_load(self, stream: str) -> Any:
+        ...
+
+
+yaml = cast(_YamlModule, importlib.import_module("yaml"))
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from .zoo import Glitchling
+    from .zoo import Gaggle, Glitchling
 
 
 CONFIG_ENV_VAR = "GLITCHLINGS_CONFIG"
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
-DEFAULT_LEXICON_PRIORITY = ["vector", "graph", "wordnet"]
+DEFAULT_LEXICON_PRIORITY = ["vector", "wordnet"]
 DEFAULT_ATTACK_SEED = 151
 
 ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
@@ -72,7 +89,6 @@ class LexiconConfig:
 
     priority: list[str] = field(default_factory=lambda: list(DEFAULT_LEXICON_PRIORITY))
     vector_cache: Path | None = None
-    graph_cache: Path | None = None
 
 
 @dataclass(slots=True)
@@ -127,15 +143,9 @@ def _load_runtime_config() -> RuntimeConfig:
         lexicon_section.get("vector_cache"),
         base=path.parent,
     )
-    graph_cache = _resolve_optional_path(
-        lexicon_section.get("graph_cache"),
-        base=path.parent,
-    )
-
     lexicon_config = LexiconConfig(
         priority=normalized_priority,
         vector_cache=vector_cache,
-        graph_cache=graph_cache,
     )
 
     return RuntimeConfig(lexicon=lexicon_config, path=path)
@@ -154,7 +164,10 @@ def _read_toml(path: Path) -> dict[str, Any]:
             return {}
         raise FileNotFoundError(f"Configuration file '{path}' not found.")
     with path.open("rb") as handle:
-        return tomllib.load(handle)
+        loaded = tomllib.load(handle)
+    if isinstance(loaded, Mapping):
+        return dict(loaded)
+    raise ValueError(f"Configuration file '{path}' must contain a top-level mapping.")
 
 
 def _validate_runtime_config_data(data: Any, *, source: Path) -> Mapping[str, Any]:
@@ -173,13 +186,13 @@ def _validate_runtime_config_data(data: Any, *, source: Path) -> Mapping[str, An
     if not isinstance(lexicon_section, Mapping):
         raise ValueError("Configuration 'lexicon' section must be a table.")
 
-    allowed_lexicon_keys = {"priority", "vector_cache", "graph_cache"}
+    allowed_lexicon_keys = {"priority", "vector_cache"}
     unexpected_keys = [str(key) for key in lexicon_section if key not in allowed_lexicon_keys]
     if unexpected_keys:
         extras = ", ".join(sorted(unexpected_keys))
         raise ValueError(f"Unknown lexicon settings: {extras}.")
 
-    for key in ("vector_cache", "graph_cache"):
+    for key in ("vector_cache",):
         value = lexicon_section.get(key)
         if value is not None and not isinstance(value, (str, os.PathLike)):
             raise ValueError(f"lexicon.{key} must be a path or string when provided.")
@@ -287,7 +300,7 @@ def parse_attack_config(data: Any, *, source: str = "<config>") -> AttackConfig:
     return AttackConfig(glitchlings=glitchlings, seed=seed)
 
 
-def build_gaggle(config: AttackConfig, *, seed_override: int | None = None):
+def build_gaggle(config: AttackConfig, *, seed_override: int | None = None) -> "Gaggle":
     """Instantiate a ``Gaggle`` according to ``config``."""
     from .zoo import Gaggle  # Imported lazily to avoid circular dependencies
 
@@ -305,7 +318,7 @@ def _load_yaml(text: str, label: str) -> Any:
         raise ValueError(f"Failed to parse attack configuration '{label}': {exc}") from exc
 
 
-def _build_glitchling(entry: Any, source: str, index: int):
+def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
     from .zoo import get_glitchling_class, parse_glitchling_spec
 
     if isinstance(entry, str):
