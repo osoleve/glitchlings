@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, TypeVar
+
+from ..zoo.core import Gaggle, _is_transcript
+
+T = TypeVar("T", str, int)
 
 
 def resolve_environment(
@@ -65,4 +69,87 @@ def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     raise ValueError("Unable to determine which dataset columns to corrupt.")
 
 
-__all__ = ["resolve_columns", "resolve_environment"]
+def normalise_column_spec(
+    columns: T | Sequence[T] | None,
+) -> list[T] | None:
+    """Normalise a column specification into a list of keys or indices.
+
+    Args:
+        columns: Column specification as a single value, sequence of values, or None.
+
+    Returns:
+        A list of column identifiers, or None if input was None.
+
+    Raises:
+        ValueError: If an empty sequence is provided.
+    """
+    if columns is None:
+        return None
+
+    if isinstance(columns, (str, int)):
+        return [columns]  # type: ignore[list-item]
+
+    normalised = list(columns)
+    if not normalised:
+        raise ValueError("At least one column must be specified")
+    return normalised
+
+
+def is_textual_candidate(value: Any) -> bool:
+    """Return ``True`` when ``value`` looks like text that glitchlings can corrupt.
+
+    Args:
+        value: The value to check for textual content.
+
+    Returns:
+        True if the value appears to be textual content.
+    """
+    if isinstance(value, str):
+        return True
+
+    if _is_transcript(value, allow_empty=False, require_all_content=True):
+        return True
+
+    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
+        if not value:
+            return False
+        if all(isinstance(item, str) for item in value):
+            return True
+        if _is_transcript(list(value), allow_empty=False, require_all_content=True):
+            return True
+
+    return False
+
+
+def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
+    """Return ``value`` with glitchlings applied when possible.
+
+    Args:
+        value: The value to corrupt (string, transcript, or sequence of strings).
+        gaggle: The gaggle of glitchlings to apply.
+
+    Returns:
+        The corrupted value, preserving the original type where possible.
+    """
+    if isinstance(value, str):
+        return gaggle.corrupt(value)
+
+    if _is_transcript(value, allow_empty=True):
+        return gaggle.corrupt(value)
+
+    if isinstance(value, list) and value and all(isinstance(item, str) for item in value):
+        return [gaggle.corrupt(item) for item in value]
+
+    if isinstance(value, tuple) and value and all(isinstance(item, str) for item in value):
+        return tuple(gaggle.corrupt(item) for item in value)
+
+    return value
+
+
+__all__ = [
+    "corrupt_text_value",
+    "is_textual_candidate",
+    "normalise_column_spec",
+    "resolve_columns",
+    "resolve_environment",
+]

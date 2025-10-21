@@ -24,3 +24,8 @@ RELEASE.md
 PLAN.md
 mypyerrors.txt
 rufferrors.txt
+
+# Coverage reports
+.coverage
+.coverage.*
+htmlcov/
