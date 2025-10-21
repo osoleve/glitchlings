@@ -31,6 +31,8 @@ fn configured_python() -> Option<OsString> {
 
 fn detect_python() -> Option<OsString> {
     const CANDIDATES: &[&str] = &[
+        "python3.14",
+        "python3.13",
         "python3.12",
         "python3.11",
         "python3.10",

@@ -5,8 +5,6 @@ from __future__ import annotations
 import importlib
 import random
 
-import pytest
-
 hokey_module = importlib.import_module("glitchlings.zoo.hokey")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
