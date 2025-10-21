@@ -355,6 +355,10 @@ def main(argv: list[str] | None = None) -> int:
         args = builder.parse_args(raw_args[1:])
         return run_build_lexicon(args)
 
+    if raw_args and raw_args[0] == "prime-eval":
+        from glitchlings.dlc.prime_inference import main as prime_eval_main
+        return prime_eval_main(raw_args[1:])
+
     parser = build_parser()
     args = parser.parse_args(raw_args)
     return run_cli(args, parser)
