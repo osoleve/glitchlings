@@ -1,25 +1,10 @@
-name: Build and publish package
+name: Build wheels
 
 on:
   workflow_call:
-    inputs:
-      environment:
-        description: Target deployment environment name
-        required: true
-        type: string
-      repository-url:
-        description: Package index repository URL
-        required: true
-        type: string
-      skip-existing:
-        description: Skip uploading artifacts that already exist
-        required: false
-        default: true
-        type: boolean
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
   build-windows:
@@ -133,23 +118,3 @@ jobs:
         with:
           name: dist-macos-${{ matrix.python-version }}
           path: dist/
-
-  publish:
-    runs-on: ubuntu-latest
-    needs: [build-windows, build-linux, build-macos]
-    environment:
-      name: ${{ inputs.environment }}
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: dist-*
-          path: dist
-          merge-multiple: true
-
-      - name: Publish to package index
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: ${{ inputs.repository-url }}
-          packages-dir: dist
-          user: __token__
-          skip-existing: ${{ inputs.skip-existing }}

@@ -11,12 +11,30 @@ permissions:
   id-token: write
 
 jobs:
-  publish:
+  build:
     uses: ./.github/workflows/publish-package.yml
     permissions:
       contents: read
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: pypi
+    permissions:
+      contents: read
       id-token: write
-    with:
-      environment: pypi
-      repository-url: https://upload.pypi.org/legacy/
-      skip-existing: true
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://upload.pypi.org/legacy/
+          packages-dir: dist
+          user: __token__
+          skip-existing: true
