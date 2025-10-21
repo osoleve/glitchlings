@@ -9,63 +9,13 @@ from ..compat import get_torch_dataloader, require_torch
 from ..compat import torch as _torch_dependency
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ..zoo.core import _is_transcript
-
-
-def _normalise_columns(columns: str | int | Sequence[str | int] | None) -> list[str | int] | None:
-    """Normalise a column specification into a list of keys or indices."""
-    if columns is None:
-        return None
-
-    if isinstance(columns, (str, int)):
-        return [columns]
-
-    normalised = list(columns)
-    if not normalised:
-        raise ValueError("At least one column must be specified")
-    return normalised
-
-
-def _is_textual_candidate(value: Any) -> bool:
-    """Return ``True`` when ``value`` looks like text that glitchlings can corrupt."""
-    if isinstance(value, str):
-        return True
-
-    if _is_transcript(value, allow_empty=False, require_all_content=True):
-        return True
-
-    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
-        if not value:
-            return False
-        if all(isinstance(item, str) for item in value):
-            return True
-        if _is_transcript(list(value), allow_empty=False, require_all_content=True):
-            return True
-
-    return False
-
-
-def _corrupt_text(value: Any, gaggle: Gaggle) -> Any:
-    """Return ``value`` with glitchlings applied when possible."""
-    if isinstance(value, str):
-        return gaggle.corrupt(value)
-
-    if _is_transcript(value, allow_empty=True):
-        return gaggle.corrupt(value)
-
-    if isinstance(value, list) and value and all(isinstance(item, str) for item in value):
-        return [gaggle.corrupt(item) for item in value]
-
-    if isinstance(value, tuple) and value and all(isinstance(item, str) for item in value):
-        return tuple(gaggle.corrupt(item) for item in value)
-
-    return value
+from ._shared import corrupt_text_value, is_textual_candidate, normalise_column_spec
 
 
 def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
     """Return ``batch`` with glitchlings applied to the specified ``targets``."""
     if targets is None:
-        return _corrupt_text(batch, gaggle)
+        return corrupt_text_value(batch, gaggle)
 
     if isinstance(batch, Mapping):
         mutated = cast(MutableMapping[str, Any], dict(batch))
@@ -74,7 +24,7 @@ def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle)
                 raise TypeError("Mapping batches require string column names")
             if key not in mutated:
                 raise ValueError(f"Column '{key}' not found in DataLoader batch")
-            mutated[key] = _corrupt_text(mutated[key], gaggle)
+            mutated[key] = corrupt_text_value(mutated[key], gaggle)
         return mutated
 
     if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
@@ -83,7 +33,7 @@ def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle)
             if not isinstance(index, int):
                 raise TypeError("Sequence batches require integer column indices")
             try:
-                mutated_sequence[index] = _corrupt_text(mutated_sequence[index], gaggle)
+                mutated_sequence[index] = corrupt_text_value(mutated_sequence[index], gaggle)
             except IndexError as exc:  # pragma: no cover - defensive
                 raise IndexError("Column index out of range for DataLoader batch") from exc
         if isinstance(batch, tuple):
@@ -96,20 +46,20 @@ def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle)
 def _infer_targets(batch: Any) -> list[str | int] | None:
     """Infer which fields should be glitched from a representative ``batch``."""
     if isinstance(batch, Mapping):
-        inferred = [key for key, value in batch.items() if _is_textual_candidate(value)]
+        inferred = [key for key, value in batch.items() if is_textual_candidate(value)]
         if inferred:
             return inferred
         raise ValueError("Unable to infer which mapping columns contain text")
 
     if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
         inferred_indices: list[str | int] = [
-            idx for idx, value in enumerate(batch) if _is_textual_candidate(value)
+            idx for idx, value in enumerate(batch) if is_textual_candidate(value)
         ]
         if inferred_indices:
             return inferred_indices
         raise ValueError("Unable to infer which sequence indices contain text")
 
-    if _is_textual_candidate(batch):
+    if is_textual_candidate(batch):
         return None
 
     raise TypeError("Unsupported DataLoader batch type for glitching")
@@ -184,7 +134,7 @@ def _ensure_dataloader_class() -> type[Any]:
         ) -> _GlitchedDataLoader:
             """Return a lazily glitched view of the loader's batches."""
             gaggle = coerce_gaggle(glitchlings, seed=seed)
-            normalised = _normalise_columns(columns)
+            normalised = normalise_column_spec(columns)
             return _GlitchedDataLoader(self, gaggle, columns=normalised)
 
         setattr(dataloader_cls, "glitch", glitch)

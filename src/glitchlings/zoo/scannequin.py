@@ -4,12 +4,11 @@ from typing import Any, cast
 
 from ._ocr_confusions import load_confusion_table
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import ocr_artifacts as _ocr_artifacts_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _ocr_artifacts_rust = None
+# Load Rust-accelerated operation if available
+_ocr_artifacts_rust = get_rust_operation("ocr_artifacts")
 
 
 def _python_ocr_artifacts(

@@ -4,13 +4,12 @@ import re
 from typing import Any, cast
 
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import delete_random_words as _delete_random_words_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _delete_random_words_rust = None
+# Load Rust-accelerated operation if available
+_delete_random_words_rust = get_rust_operation("delete_random_words")
 
 
 def _python_delete_random_words(
