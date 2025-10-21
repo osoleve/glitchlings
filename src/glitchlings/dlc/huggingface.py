@@ -10,15 +10,15 @@ from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
 
 
-def _normalise_columns(column: str | Sequence[str]) -> list[str]:
-    """Normalise a column specification to a list."""
+def _normalize_columns(column: str | Sequence[str]) -> list[str]:
+    """Normalize a column specification to a list."""
     if isinstance(column, str):
         return [column]
 
-    normalised = list(column)
-    if not normalised:
+    normalized = list(column)
+    if not normalized:
         raise ValueError("At least one column must be specified")
-    return normalised
+    return normalized
 
 
 def _glitch_dataset(
@@ -29,7 +29,7 @@ def _glitch_dataset(
     seed: int = 151,
 ) -> Any:
     """Apply glitchlings to the provided dataset columns."""
-    columns = _normalise_columns(column)
+    columns = _normalize_columns(column)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
     return gaggle.corrupt_dataset(dataset, columns)
 

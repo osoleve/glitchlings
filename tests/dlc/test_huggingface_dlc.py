@@ -6,7 +6,7 @@ from random import Random
 import pytest
 
 from glitchlings.dlc import huggingface as hf_dlc
-from glitchlings.dlc.huggingface import _normalise_columns
+from glitchlings.dlc.huggingface import _normalize_columns
 from glitchlings.zoo.core import AttackWave, Gaggle, Glitchling
 
 datasets = pytest.importorskip("datasets")
@@ -24,9 +24,9 @@ def ensure_glitch_installed() -> Iterable[None]:
     yield
 
 
-def test_normalise_columns_rejects_empty_sequence() -> None:
+def test_normalize_columns_rejects_empty_sequence() -> None:
     with pytest.raises(ValueError, match="At least one column"):
-        _normalise_columns([])
+        _normalize_columns([])
 
 
 def test_install_is_idempotent() -> None:

@@ -19,7 +19,7 @@ class CacheSnapshot:
     checksum: str | None = None
 
 
-def _normalise_entries(payload: Mapping[str, object]) -> CacheEntries:
+def _normalize_entries(payload: Mapping[str, object]) -> CacheEntries:
     """Convert raw cache payloads into canonical mapping form."""
     entries: CacheEntries = {}
     for key, values in payload.items():
@@ -75,7 +75,7 @@ def load_cache(path: Path) -> CacheSnapshot:
     else:
         entries_payload = payload  # legacy format without metadata
 
-    entries = _normalise_entries(entries_payload)
+    entries = _normalize_entries(entries_payload)
     if checksum is not None:
         expected = compute_checksum(entries)
         if checksum != expected:

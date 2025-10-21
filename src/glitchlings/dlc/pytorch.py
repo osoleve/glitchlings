@@ -9,7 +9,7 @@ from ..compat import get_torch_dataloader, require_torch
 from ..compat import torch as _torch_dependency
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, is_textual_candidate, normalise_column_spec
+from ._shared import corrupt_text_value, is_textual_candidate, normalize_column_spec
 
 
 def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
@@ -134,8 +134,8 @@ def _ensure_dataloader_class() -> type[Any]:
         ) -> _GlitchedDataLoader:
             """Return a lazily glitched view of the loader's batches."""
             gaggle = coerce_gaggle(glitchlings, seed=seed)
-            normalised = normalise_column_spec(columns)
-            return _GlitchedDataLoader(self, gaggle, columns=normalised)
+            normalized = normalize_column_spec(columns)
+            return _GlitchedDataLoader(self, gaggle, columns=normalized)
 
         setattr(dataloader_cls, "glitch", glitch)
 

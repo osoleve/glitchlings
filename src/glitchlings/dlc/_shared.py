@@ -67,10 +67,10 @@ def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     raise ValueError("Unable to determine which dataset columns to corrupt.")
 
 
-def normalise_column_spec(
+def normalize_column_spec(
     columns: str | int | Sequence[str | int] | None,
 ) -> list[str | int] | None:
-    """Normalise a column specification into a list of keys or indices.
+    """Normalize a column specification into a list of keys or indices.
 
     Args:
         columns: Column specification as a single value, sequence of values, or None.
@@ -87,10 +87,10 @@ def normalise_column_spec(
     if isinstance(columns, (str, int)):
         return [columns]
 
-    normalised = list(columns)
-    if not normalised:
+    normalized = list(columns)
+    if not normalized:
         raise ValueError("At least one column must be specified")
-    return normalised
+    return normalized
 
 
 def is_textual_candidate(value: Any) -> bool:
@@ -147,7 +147,7 @@ def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
 __all__ = [
     "corrupt_text_value",
     "is_textual_candidate",
-    "normalise_column_spec",
+    "normalize_column_spec",
     "resolve_columns",
     "resolve_environment",
 ]
