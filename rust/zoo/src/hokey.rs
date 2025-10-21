@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 use pyo3::types::PyAny;
 use pyo3::Bound;
 use regex::Regex;
+use std::collections::HashSet;
 use std::sync::OnceLock;
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
@@ -86,7 +87,7 @@ impl GlitchOp for HokeyOp {
         }
 
         // Select positions to extend
-        let positions_to_extend: std::collections::HashSet<usize> =
+        let positions_to_extend: HashSet<usize> =
             eligible_positions.into_iter().take(num_to_affect).collect();
 
         // Second pass: apply extensions
@@ -113,15 +114,15 @@ impl GlitchOp for HokeyOp {
                     };
 
                     // Build the extended word
-                    let mut chars: Vec<char> = token.chars().collect();
+                    let chars: Vec<char> = token.chars().collect();
                     let extension: String = std::iter::repeat(vowel_char)
                         .take(num_extra as usize)
                         .collect();
 
                     // Insert the extension after the vowel
                     let mut extended = String::new();
-                    for (idx, ch) in chars.iter().enumerate() {
-                        extended.push(*ch);
+                    for (idx, &ch) in chars.iter().enumerate() {
+                        extended.push(ch);
                         if idx == vowel_idx {
                             extended.push_str(&extension);
                         }
