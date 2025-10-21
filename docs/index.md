@@ -45,6 +45,8 @@ pip install -U 'glitchlings[prime]'
 # Embedding-based lexicon helpers (spaCy/gensim + NumPy)
 pip install -U 'glitchlings[vectors]'
 
+> **Python 3.14:** spaCy and its binary dependencies have not published compatible wheels yet. On that interpreter `pip install 'glitchlings[vectors]'` only pulls in NumPy and gensim; spaCy-backed lexicon sources remain unavailable until upstream support lands.
+
 # SentenceTransformer-backed cache builder
 pip install -U 'glitchlings[st]'
 

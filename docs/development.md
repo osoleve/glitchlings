@@ -26,7 +26,7 @@ This guide walks through preparing a local development environment, running the 
    ```
 
    Add the `prime` extra (`pip install -e .[dev,prime]`) when you need the Prime Intellect integration and its `verifiers` dependency.
-   Enable the embedding-backed lexicon helpers with the `vectors` extra (`pip install -e .[dev,vectors]`) to pull in `numpy`, `spaCy`, and `gensim`.
+   Enable the embedding-backed lexicon helpers with the `vectors` extra (`pip install -e .[dev,vectors]`) to pull in `numpy`, `spaCy`, and `gensim`. On Python 3.14 the dependency resolver skips spaCy because compatible wheels are not yet published, leaving only the pure-Python pieces available.
 
 3. Install the git hooks so the shared formatting, linting, and type checks run automatically:
 

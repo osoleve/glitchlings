@@ -68,7 +68,7 @@ def test_get_installed_extras_reflects_available_dependencies(
         'verifiers>=0.1.3.post0; extra == "prime"',
         'jellyfish>=1.2.0; extra == "prime"',
         'numpy>=1.24,<=2.0; extra == "vectors"',
-        'spacy>=3.7.2; extra == "vectors"',
+        'spacy>=3.7.2; python_version < "3.14" and extra == "vectors"',
         'gensim>=4.3.2; extra == "vectors"',
         'pytest>=8.0.0; extra == "dev"',
         'hypothesis>=6.140.0; extra == "dev"',
