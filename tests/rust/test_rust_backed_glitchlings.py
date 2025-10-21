@@ -1095,7 +1095,7 @@ def test_hokey_respects_explicit_rng():
 
 
 def test_hokey_in_gaggle_rust_pipeline():
-    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 9999
     text = "this is so cool and fun"
 

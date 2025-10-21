@@ -45,6 +45,13 @@ pip install -U 'glitchlings[prime]'
 # Embedding-based lexicon helpers (spaCy/gensim + NumPy)
 pip install -U 'glitchlings[vectors]'
 
+> **Python 3.14:** spaCy and its binary dependencies have not published compatible wheels yet. On that interpreter `pip install 'glitchlings[vectors]'` only pulls in NumPy and gensim; spaCy-backed lexicon sources remain unavailable until upstream support lands.
+
+# Hugging Face dataset helpers
+pip install -U 'glitchlings[hf]'
+
+> **Python 3.14:** Hugging Face's `datasets` package depends on `pyarrow`, which has not shipped wheels for 3.14 yet. The `hf` and `all` extras therefore omit `datasets` until upstream releases catch up, leaving the dataset integrations disabled on that interpreter.
+
 # SentenceTransformer-backed cache builder
 pip install -U 'glitchlings[st]'
 
@@ -207,6 +214,8 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 ## Dataset workflows
+
+> **Python 3.14:** Until `datasets` ships wheels compatible with CPython 3.14 (and the accompanying `pyarrow` dependency follows suit), the Hugging Face integration remains inactive. Install on Python 3.13 or earlier to enable these workflows.
 
 Leverage the Hugging Face integration to perturb large corpora reproducibly:
 

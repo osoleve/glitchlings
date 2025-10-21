@@ -63,12 +63,13 @@ def test_optional_nltk_handles_absence(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_get_installed_extras_reflects_available_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    extras = {"prime", "vectors", "dev"}
+    extras = {"prime", "vectors", "dev", "hf"}
     requires = [
         'verifiers>=0.1.3.post0; extra == "prime"',
         'jellyfish>=1.2.0; extra == "prime"',
         'numpy>=1.24,<=2.0; extra == "vectors"',
-        'spacy>=3.7.2; extra == "vectors"',
+        'spacy>=3.7.2; python_version < "3.14" and extra == "vectors"',
+        'datasets>=4.0.0; python_version < "3.14" and extra == "hf"',
         'gensim>=4.3.2; extra == "vectors"',
         'pytest>=8.0.0; extra == "dev"',
         'hypothesis>=6.140.0; extra == "dev"',
@@ -92,6 +93,6 @@ def test_get_installed_extras_reflects_available_dependencies(
 
     monkeypatch.setattr(metadata, "distribution", fake_distribution)
 
-    result = compat.get_installed_extras(["prime", "vectors", "dev"])
-    assert result == {"prime": True, "vectors": False, "dev": False}
+    result = compat.get_installed_extras(["prime", "vectors", "dev", "hf"])
+    assert result == {"prime": True, "vectors": False, "dev": False, "hf": False}
     compat.reset_optional_dependencies()
