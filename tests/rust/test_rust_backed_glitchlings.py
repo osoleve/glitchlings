@@ -1114,3 +1114,37 @@ def test_hokey_in_gaggle_rust_pipeline():
     rust_result = rust_gaggle(text)
 
     assert rust_result == python_expected
+
+
+def test_hokey_utf8_parity():
+    """Test that Rust and Python implementations handle UTF-8 correctly."""
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    # Test with various UTF-8 characters
+    text = "café naïve résumé"
+    rate = 1.0
+    seed = 777
+
+    expected = hokey_module._python_extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=4,
+        word_length_threshold=6,
+        rng=random.Random(seed),
+    )
+
+    result = hokey_module.extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=4,
+        word_length_threshold=6,
+        seed=seed,
+    )
+
+    # Both should modify the text
+    assert result != text
+    assert expected != text
+    # And they should match each other
+    assert result == expected

@@ -177,3 +177,36 @@ def test_hokey_glitchling_can_be_called_directly():
     assert isinstance(result, str)
     # Should potentially modify the text (though with low rate might not)
     assert len(result) >= len(text)
+
+
+def test_hokey_handles_utf8_characters_correctly():
+    """Verify that Hokey counts UTF-8 characters correctly, not bytes."""
+    # "café" has 4 characters but 5 bytes (é is 2 bytes)
+    text = "café cool"
+
+    # With threshold of 6, both "café" (4 chars) and "cool" (4 chars) should be eligible
+    result = hokey_module.extend_vowels(
+        text,
+        rate=1.0,
+        word_length_threshold=6,
+        extension_min=2,
+        extension_max=3,
+        seed=42
+    )
+
+    # Both words should be affected
+    assert result != text
+    assert len(result) > len(text)
+
+    # Test that Python implementation handles it correctly
+    python_result = hokey_module._python_extend_vowels(
+        text,
+        rate=1.0,
+        word_length_threshold=6,
+        extension_min=2,
+        extension_max=3,
+        rng=random.Random(42)
+    )
+
+    assert python_result != text
+    assert len(python_result) > len(text)

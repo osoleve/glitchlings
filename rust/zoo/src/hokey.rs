@@ -29,7 +29,8 @@ impl HokeyOp {
     }
 
     fn find_vowel_positions(word: &str) -> Vec<usize> {
-        word.char_indices()
+        word.chars()
+            .enumerate()
             .filter(|(_, c)| Self::is_vowel(*c))
             .map(|(i, _)| i)
             .collect()
@@ -57,7 +58,8 @@ impl GlitchOp for HokeyOp {
         let mut eligible_positions = Vec::new();
         for (i, token) in tokens.iter().enumerate() {
             if Self::is_word_token(token) {
-                if token.len() <= self.word_length_threshold {
+                // Count characters, not bytes, for UTF-8 compatibility
+                if token.chars().count() <= self.word_length_threshold {
                     // Check if word has any vowels
                     if token.chars().any(Self::is_vowel) {
                         eligible_positions.push(i);
