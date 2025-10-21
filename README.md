@@ -230,6 +230,22 @@ _Wait, was that...?_
 > - `banned_characters (Collection[str])`: Characters that must never appear as replacements (default: none).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
+### Hokey
+
+_She's soooooo coooool!_
+
+> _**Passion Forward.**_ Hokey gets a bit excited at times, streeeeeetching short words out as if holding down a vowel key for emphasis.
+> 
+> Args
+>
+> - `rate (float)`: The proportion of eligible words to affect (default: 0.03, 3%).
+> - `extension_min (int)`: Minimum extra vowel repetitions (default: 2).
+> - `extension_max (int)`: Minimum extra vowel repetitions (default: 5).
+> - `word_length_threshold (int)`: Maximum word length to consider "short" (default: 6).
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+
+*Apocryphal Glitchling contributed by Chloé Nunes*
+
 ### Scannequin
 
 _How can a computer need reading glasses?_
