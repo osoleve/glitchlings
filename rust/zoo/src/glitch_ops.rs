@@ -1149,6 +1149,7 @@ pub enum GlitchOperation {
     Typo(TypoOp),
     ZeroWidth(ZeroWidthOp),
     QuotePairs(QuotePairsOp),
+    Hokey(crate::hokey::HokeyOp),
 }
 
 impl GlitchOp for GlitchOperation {
@@ -1162,6 +1163,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Typo(op) => op.apply(buffer, rng),
             GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
             GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
+            GlitchOperation::Hokey(op) => op.apply(buffer, rng),
         }
     }
 }

@@ -1,4 +1,5 @@
 mod glitch_ops;
+mod hokey;
 mod pipeline;
 mod resources;
 mod rng;
@@ -18,6 +19,7 @@ pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
     RedactWordsOp, ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
+pub use hokey::HokeyOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
@@ -196,6 +198,12 @@ enum PyGlitchOperation {
         characters: Vec<String>,
     },
     QuotePairs,
+    Hokey {
+        rate: f64,
+        extension_min: i32,
+        extension_max: i32,
+        word_length_threshold: usize,
+    },
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
@@ -312,6 +320,32 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
             "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
+            "hokey" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'rate'"))?
+                    .extract()?;
+                let extension_min = dict
+                    .get_item("extension_min")?
+                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'extension_min'"))?
+                    .extract()?;
+                let extension_max = dict
+                    .get_item("extension_max")?
+                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'extension_max'"))?
+                    .extract()?;
+                let word_length_threshold = dict
+                    .get_item("word_length_threshold")?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("hokey operation missing 'word_length_threshold'")
+                    })?
+                    .extract()?;
+                Ok(PyGlitchOperation::Hokey {
+                    rate,
+                    extension_min,
+                    extension_max,
+                    word_length_threshold,
+                })
+            }
             other => Err(PyValueError::new_err(format!(
                 "unsupported operation type: {other}"
             ))),
@@ -476,6 +510,17 @@ fn compose_glitchlings(
                 PyGlitchOperation::QuotePairs => {
                     GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
                 }
+                PyGlitchOperation::Hokey {
+                    rate,
+                    extension_min,
+                    extension_max,
+                    word_length_threshold,
+                } => GlitchOperation::Hokey(HokeyOp {
+                    rate,
+                    extension_min,
+                    extension_max,
+                    word_length_threshold,
+                }),
             };
             Ok(GlitchDescriptor {
                 name: descriptor.name,
@@ -501,5 +546,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
+    m.add_function(wrap_pyfunction!(hokey::hokey, m)?)?;
     Ok(())
 }
