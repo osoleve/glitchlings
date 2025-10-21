@@ -54,7 +54,9 @@ impl<'py> GlitchRng for PythonRngAdapter<'py> {
         k: usize,
     ) -> Result<Vec<usize>, glitch_ops::GlitchOpError> {
         let py = self.rng.py();
-        let population_list = PyList::new(py, 0..population).unbind();
+        let population_list = PyList::new(py, 0..population)
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
+            .unbind();
         self.rng
             .call_method1("sample", (population_list, k))
             .map_err(glitch_ops::GlitchOpError::from_pyerr)?
