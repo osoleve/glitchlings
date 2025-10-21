@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
-from typing import Any, TypeVar
+from typing import Any
 
 from ..zoo.core import Gaggle, _is_transcript
-
-T = TypeVar("T", str, int)
 
 
 def resolve_environment(
@@ -70,8 +68,8 @@ def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
 
 
 def normalise_column_spec(
-    columns: T | Sequence[T] | None,
-) -> list[T] | None:
+    columns: str | int | Sequence[str | int] | None,
+) -> list[str | int] | None:
     """Normalise a column specification into a list of keys or indices.
 
     Args:
@@ -87,7 +85,7 @@ def normalise_column_spec(
         return None
 
     if isinstance(columns, (str, int)):
-        return [columns]  # type: ignore[list-item]
+        return [columns]
 
     normalised = list(columns)
     if not normalised:

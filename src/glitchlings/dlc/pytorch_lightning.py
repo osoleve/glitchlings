@@ -92,8 +92,10 @@ def _glitch_datamodule(
     columns = normalise_column_spec(column)
     if columns is None:  # pragma: no cover - defensive
         raise ValueError("At least one column must be specified")
+    # Lightning datamodules only support string column names (mapping keys)
+    columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
-    return _GlitchedLightningDataModule(datamodule, columns, gaggle)
+    return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
 class _GlitchedLightningDataModule:
