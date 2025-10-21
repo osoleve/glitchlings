@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
-from ._shared import corrupt_text_value, normalise_column_spec
 from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
+from ._shared import corrupt_text_value, normalise_column_spec
 
 
 _GLITCHED_DATAMODULE_CACHE: dict[type[Any], type[Any]] = {}
