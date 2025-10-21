@@ -8,29 +8,7 @@ from typing import Any, cast
 from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ..zoo.core import _is_transcript
-
-
-def _normalise_columns(column: str | Sequence[str]) -> list[str]:
-    """Normalise a column specification to a list."""
-    if isinstance(column, str):
-        return [column]
-
-    normalised = list(column)
-    if not normalised:
-        raise ValueError("At least one column must be specified")
-    return normalised
-
-
-def _glitch_value(value: Any, gaggle: Gaggle) -> Any:
-    """Apply glitchlings to a value when it contains textual content."""
-    if isinstance(value, str) or _is_transcript(value, allow_empty=False, require_all_content=True):
-        return gaggle.corrupt(value)
-
-    if isinstance(value, Sequence) and value and all(isinstance(item, str) for item in value):
-        return [gaggle.corrupt(item) for item in value]
-
-    return value
+from ._shared import corrupt_text_value, normalise_column_spec
 
 
 def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
@@ -49,7 +27,7 @@ def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
         raise ValueError(f"Columns not found in batch: {missing_str}")
 
     for column in columns:
-        mutated[column] = _glitch_value(mutated[column], gaggle)
+        mutated[column] = corrupt_text_value(mutated[column], gaggle)
 
     return mutated
 
@@ -111,9 +89,13 @@ def _glitch_datamodule(
 ) -> Any:
     """Return a proxy that applies glitchlings to batches from the datamodule."""
 
-    columns = _normalise_columns(column)
+    columns = normalise_column_spec(column)
+    if columns is None:  # pragma: no cover - defensive
+        raise ValueError("At least one column must be specified")
+    # Lightning datamodules only support string column names (mapping keys)
+    columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
-    return _GlitchedLightningDataModule(datamodule, columns, gaggle)
+    return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
 class _GlitchedLightningDataModule:

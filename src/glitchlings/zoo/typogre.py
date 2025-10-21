@@ -6,12 +6,11 @@ from typing import Any, Optional, cast
 
 from ..util import KEYNEIGHBORS
 from ._rate import resolve_rate
+from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-try:
-    from glitchlings._zoo_rust import fatfinger as _fatfinger_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _fatfinger_rust = None
+# Load Rust-accelerated operation if available
+_fatfinger_rust = get_rust_operation("fatfinger")
 
 
 def _python_unichar(text: str, rng: random.Random) -> str:

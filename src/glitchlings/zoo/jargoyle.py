@@ -14,7 +14,11 @@ _wordnet_module: ModuleType | None
 
 try:  # pragma: no cover - optional WordNet dependency
     import glitchlings.lexicon.wordnet as _wordnet_module
-except Exception:  # pragma: no cover - triggered when nltk unavailable
+except (
+    ImportError,
+    ModuleNotFoundError,
+    AttributeError,
+):  # pragma: no cover - triggered when nltk unavailable
     _wordnet_module = None
 
 _wordnet_runtime: ModuleType | None = _wordnet_module
@@ -49,7 +53,7 @@ def dependencies_available() -> bool:
     try:
         # Fall back to the configured default lexicon (typically the bundled vector cache).
         get_default_lexicon(seed=None)
-    except Exception:
+    except (RuntimeError, ImportError, ModuleNotFoundError, AttributeError):
         return False
     return True
 

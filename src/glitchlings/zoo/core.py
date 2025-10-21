@@ -10,15 +10,13 @@ from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
 
 from ..compat import get_datasets_dataset, require_datasets
+from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
 
-try:  # pragma: no cover - optional dependency
-    from glitchlings._zoo_rust import compose_glitchlings as _compose_glitchlings_rust
-    from glitchlings._zoo_rust import plan_glitchlings as _plan_glitchlings_rust
-except ImportError:  # pragma: no cover - compiled extension not present
-    _compose_glitchlings_rust = None
-    _plan_glitchlings_rust = None
+# Load Rust-accelerated orchestration operations if available
+_compose_glitchlings_rust = get_rust_operation("compose_glitchlings")
+_plan_glitchlings_rust = get_rust_operation("plan_glitchlings")
 
 
 log = logging.getLogger(__name__)
@@ -135,7 +133,12 @@ def _plan_glitchlings_with_rust(
 
     try:
         plan = _plan_glitchlings_rust(specs, int(master_seed))
-    except Exception:  # pragma: no cover - defer to Python fallback on failure
+    except (
+        TypeError,
+        ValueError,
+        RuntimeError,
+        AttributeError,
+    ):  # pragma: no cover - defer to Python fallback on failure
         log.debug("Rust orchestration planning failed; falling back to Python plan", exc_info=True)
         return None
 
@@ -537,10 +540,19 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if master_seed is not None and descriptors is not None:
+        if (
+            master_seed is not None
+            and descriptors is not None
+            and _compose_glitchlings_rust is not None
+        ):
             try:
                 return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
-            except Exception:  # pragma: no cover - fall back to Python execution
+            except (
+                TypeError,
+                ValueError,
+                RuntimeError,
+                AttributeError,
+            ):  # pragma: no cover - fall back to Python execution
                 log.debug("Rust pipeline failed; falling back", exc_info=True)
 
         corrupted = text
