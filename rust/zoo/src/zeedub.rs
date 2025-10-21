@@ -65,7 +65,7 @@ pub(crate) fn inject_zero_widths(
     }
 
     let py = rng.py();
-    let positions_list = PyList::new_bound(py, &positions);
+    let positions_list = PyList::new(py, &positions)?;
     let sample_obj = rng.call_method1("sample", (&positions_list, count))?;
     let mut chosen: Vec<usize> = sample_obj.extract()?;
     chosen.sort_unstable();

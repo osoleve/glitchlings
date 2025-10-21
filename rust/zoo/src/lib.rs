@@ -54,7 +54,9 @@ impl<'py> GlitchRng for PythonRngAdapter<'py> {
         k: usize,
     ) -> Result<Vec<usize>, glitch_ops::GlitchOpError> {
         let py = self.rng.py();
-        let population_list = PyList::new_bound(py, 0..population).unbind();
+        let population_list = PyList::new(py, 0..population)
+            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
+            .unbind();
         self.rng
             .call_method1("sample", (population_list, k))
             .map_err(glitch_ops::GlitchOpError::from_pyerr)?
@@ -71,8 +73,8 @@ struct PyGlitchDescriptor {
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
-    fn extract(obj: &'py PyAny) -> PyResult<Self> {
-        let dict: &PyDict = obj.downcast()?;
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        let dict = obj.downcast::<PyDict>()?;
         let name = dict
             .get_item("name")?
             .ok_or_else(|| PyValueError::new_err("descriptor missing 'name' field"))?
@@ -100,7 +102,7 @@ fn layout_vec_cache() -> &'static RwLock<LayoutVecCache> {
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
-fn cached_layout_vec(layout_dict: &PyDict) -> PyResult<Arc<Vec<(String, Vec<String>)>>> {
+fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Vec<(String, Vec<String>)>>> {
     let key = layout_dict.as_ptr() as usize;
     if let Some(cached) = layout_vec_cache()
         .read()
@@ -130,7 +132,7 @@ struct PyGagglePlanInput {
 }
 
 impl<'py> FromPyObject<'py> for PyGagglePlanInput {
-    fn extract(obj: &'py PyAny) -> PyResult<Self> {
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         if let Ok(dict) = obj.downcast::<PyDict>() {
             let name: String = dict
                 .get_item("name")?
@@ -197,8 +199,8 @@ enum PyGlitchOperation {
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
-    fn extract(obj: &'py PyAny) -> PyResult<Self> {
-        let dict: &PyDict = obj.downcast()?;
+    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+        let dict = obj.downcast::<PyDict>()?;
         let op_type: String = dict
             .get_item("type")?
             .ok_or_else(|| PyValueError::new_err("operation missing 'type' field"))?
@@ -293,7 +295,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 let layout_obj = dict.get_item("layout")?.ok_or_else(|| {
                     PyValueError::new_err("typo operation missing \'layout\' field")
                 })?;
-                let layout_dict: &PyDict = layout_obj.downcast()?;
+                let layout_dict = layout_obj.downcast::<PyDict>()?;
                 let layout = cached_layout_vec(layout_dict)?;
                 Ok(PyGlitchOperation::Typo { rate, layout })
             }
