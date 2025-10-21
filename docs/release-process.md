@@ -93,12 +93,12 @@ If the TestPyPI or PyPI workflow fails:
 
 The build workflow now creates wheels for multiple platforms:
 
-- **Windows**: Built on Windows Server with Python 3.12
-- **Linux (manylinux)**: Built in manylinux_2_28 containers for Python 3.10, 3.11, and 3.12
+- **Windows**: Built on Windows Server with Python 3.10 through 3.14
+- **Linux (manylinux)**: Built in manylinux_2_28 containers for Python 3.10, 3.11, 3.12, 3.13, and 3.14
   - Uses official PyPA manylinux images
   - Rust toolchain installed during build
   - Wheels repaired with `auditwheel` for maximum compatibility
-- **macOS**: Built on macOS with Python 3.10, 3.11, and 3.12
+- **macOS**: Built on macOS with Python 3.10, 3.11, 3.12, 3.13, and 3.14
   - Uses native macOS GitHub Actions runners
   - Rust toolchain installed during build
 

@@ -11,6 +11,9 @@ from ..zoo import Gaggle, Glitchling
 from ._shared import corrupt_text_value, normalise_column_spec
 
 
+_GLITCHED_DATAMODULE_CACHE: dict[type[Any], type[Any]] = {}
+
+
 def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
     """Apply glitchlings to the configured batch columns."""
     if not isinstance(batch, Mapping):
@@ -95,10 +98,12 @@ def _glitch_datamodule(
     # Lightning datamodules only support string column names (mapping keys)
     columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
-    return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
+    base_cls = _ensure_datamodule_class()
+    proxy_cls = _glitched_datamodule_class(base_cls)
+    return proxy_cls(datamodule, columns_str, gaggle)
 
 
-class _GlitchedLightningDataModule:
+class _GlitchedLightningDataModuleMixin:
     """Proxy wrapper around a LightningDataModule applying glitchlings to batches."""
 
     def __init__(self, base: Any, columns: list[str], gaggle: Gaggle) -> None:
@@ -122,7 +127,7 @@ class _GlitchedLightningDataModule:
             delattr(self._glitch_base, attribute)
 
     def __dir__(self) -> list[str]:
-        return sorted(set(dir(self.__class__)) | set(dir(self._glitch_base)))
+        return sorted(set(dir(type(self))) | set(dir(self._glitch_base)))
 
     # LightningDataModule API -------------------------------------------------
     def prepare_data(self, *args: Any, **kwargs: Any) -> Any:
@@ -191,9 +196,6 @@ def _ensure_datamodule_class() -> Any:
 
         setattr(datamodule_cls, "glitch", glitch)
 
-    if not issubclass(_GlitchedLightningDataModule, datamodule_cls):
-        _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
-
     return datamodule_cls
 
 
@@ -212,4 +214,18 @@ else:  # pragma: no cover - optional dependency
 
 
 __all__ = ["LightningDataModule", "install"]
+
+
+def _glitched_datamodule_class(base_cls: type[Any]) -> type[Any]:
+    """Return (and cache) the proxy subclass for the provided base class."""
+
+    cached = _GLITCHED_DATAMODULE_CACHE.get(base_cls)
+    if cached is not None:
+        return cached
+
+    class _GlitchedLightningDataModule(_GlitchedLightningDataModuleMixin, base_cls):  # type: ignore[misc]
+        __slots__ = ()
+
+    _GLITCHED_DATAMODULE_CACHE[base_cls] = _GlitchedLightningDataModule
+    return _GlitchedLightningDataModule
 
