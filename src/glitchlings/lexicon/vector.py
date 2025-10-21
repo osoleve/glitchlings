@@ -16,6 +16,9 @@ from ._cache import CacheSnapshot
 from ._cache import load_cache as _load_cache_file
 from ._cache import write_cache as _write_cache_file
 
+# Minimum number of neighbors to consider for similarity queries
+MIN_NEIGHBORS = 1
+
 
 def _cosine_similarity(vector_a: Sequence[float], vector_b: Sequence[float]) -> float:
     """Return the cosine similarity between two dense vectors."""
@@ -304,7 +307,7 @@ class VectorLexicon(LexiconBackend):
         """Initialise the lexicon with an embedding ``source`` and optional cache."""
         super().__init__(seed=seed)
         self._adapter = _resolve_source(source)
-        self._max_neighbors = max(1, max_neighbors)
+        self._max_neighbors = max(MIN_NEIGHBORS, max_neighbors)
         self._min_similarity = min_similarity
         self._cache: MutableMapping[str, list[str]] = {}
         self._cache_path: Path | None
@@ -371,7 +374,7 @@ class VectorLexicon(LexiconBackend):
         if cache_key in self._cache:
             return self._cache[cache_key]
 
-        neighbor_limit = self._max_neighbors if limit is None else max(1, limit)
+        neighbor_limit = self._max_neighbors if limit is None else max(MIN_NEIGHBORS, limit)
         neighbors = self._fetch_neighbors(
             original=original, normalized=normalized, limit=neighbor_limit
         )

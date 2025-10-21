@@ -117,7 +117,7 @@ def _as_gaggle(
 
 
 def _extract_completion_text(completion: Any) -> str:
-    """Normalise a completion payload into a plain string."""
+    """Normalize a completion payload into a plain string."""
     if isinstance(completion, str):
         return completion
 

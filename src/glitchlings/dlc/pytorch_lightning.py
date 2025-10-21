@@ -8,7 +8,7 @@ from typing import Any, cast
 from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, normalise_column_spec
+from ._shared import corrupt_text_value, normalize_column_spec
 
 
 def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
@@ -89,7 +89,7 @@ def _glitch_datamodule(
 ) -> Any:
     """Return a proxy that applies glitchlings to batches from the datamodule."""
 
-    columns = normalise_column_spec(column)
+    columns = normalize_column_spec(column)
     if columns is None:  # pragma: no cover - defensive
         raise ValueError("At least one column must be specified")
     # Lightning datamodules only support string column names (mapping keys)
