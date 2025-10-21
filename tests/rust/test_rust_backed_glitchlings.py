@@ -1037,3 +1037,114 @@ def test_zeedub_respects_explicit_rng():
     rng_actual = random.Random(99)
     result = zeedub_module.insert_zero_widths(text, rate=rate, rng=rng_actual)
     assert result == expected
+
+
+hokey_module = importlib.import_module("glitchlings.zoo.hokey")
+
+
+def test_hokey_matches_python_fallback():
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    text = "cool code is so fun and neat"
+    rate = 0.5
+    seed = 42
+
+    expected = hokey_module._python_extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=5,
+        word_length_threshold=6,
+        rng=random.Random(seed),
+    )
+
+    result = hokey_module.extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=5,
+        word_length_threshold=6,
+        seed=seed,
+    )
+    assert result == expected
+
+
+def test_hokey_respects_explicit_rng():
+    text = "wow this is cool"
+    rate = 0.8
+    rng_expected = random.Random(555)
+    expected = hokey_module._python_extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=5,
+        word_length_threshold=6,
+        rng=rng_expected,
+    )
+
+    rng_actual = random.Random(555)
+    result = hokey_module.extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=5,
+        word_length_threshold=6,
+        rng=rng_actual,
+    )
+    assert result == expected
+
+
+def test_hokey_in_gaggle_rust_pipeline():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 9999
+    text = "this is so cool and fun"
+
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        hokey = hokey_module.Hokey(rate=0.6, extension_min=3, extension_max=6, seed=42)
+        redup = reduple_module.Reduple(rate=0.2, seed=7)
+        return [hokey, redup]
+
+    import os
+    os.environ["GLITCHLINGS_RUST_PIPELINE"] = "0"
+    python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    python_expected = python_gaggle(text)
+
+    os.environ["GLITCHLINGS_RUST_PIPELINE"] = "1"
+    rust_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+    rust_result = rust_gaggle(text)
+
+    assert rust_result == python_expected
+
+
+def test_hokey_utf8_parity():
+    """Test that Rust and Python implementations handle UTF-8 correctly."""
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    # Test with various UTF-8 characters
+    text = "café naïve résumé"
+    rate = 1.0
+    seed = 777
+
+    expected = hokey_module._python_extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=4,
+        word_length_threshold=6,
+        rng=random.Random(seed),
+    )
+
+    result = hokey_module.extend_vowels(
+        text,
+        rate=rate,
+        extension_min=2,
+        extension_max=4,
+        word_length_threshold=6,
+        seed=seed,
+    )
+
+    # Both should modify the text
+    assert result != text
+    assert expected != text
+    # And they should match each other
+    assert result == expected

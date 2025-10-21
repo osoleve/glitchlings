@@ -104,6 +104,7 @@ glitchlings --list
 ```text
    Typogre — scope: Character, order: early
 Apostrofae — scope: Character, order: normal
+     Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
