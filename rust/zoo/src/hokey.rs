@@ -133,10 +133,9 @@ impl GlitchOp for HokeyOp {
             }
         }
 
-        // Reconstruct the text
+        // Reconstruct the text and replace buffer contents
         let result = tokens.join("");
-        buffer.clear();
-        buffer.push_str(&result)?;
+        *buffer = TextBuffer::from_owned(result);
 
         Ok(())
     }
