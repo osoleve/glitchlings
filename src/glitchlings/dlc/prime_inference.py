@@ -76,7 +76,7 @@ def _require_lm_eval(message: str | None = None) -> _LMEvalModule:
             "Install with: pip install lm-eval"
         )
         raise ModuleNotFoundError(message or default_msg) from exc
-    return lm_eval  # type: ignore[return-value]
+    return lm_eval  # type: ignore[no-any-return]
 
 
 class GlitchedTaskWrapper:
@@ -110,7 +110,12 @@ class GlitchedTaskWrapper:
     def doc_to_text(self, doc: Any) -> str:
         """Process document text with glitchling corruption."""
         original = self._task.doc_to_text(doc)
-        return self._gaggle.corrupt(original)
+        # Ensure we have a string before corrupting
+        if not isinstance(original, str):
+            original = str(original)
+        corrupted = self._gaggle.corrupt(original)
+        # Gaggle.corrupt returns str for string input
+        return str(corrupted) if not isinstance(corrupted, str) else corrupted
 
     def construct_requests(self, doc: Any, ctx: Any, **kwargs: Any) -> Any:
         """Construct requests with corrupted context."""
@@ -289,8 +294,17 @@ def _parse_glitchconf(
         if path.exists() and path.suffix in {".yaml", ".yml"}:
             attack_config = load_attack_config(path)
             return build_gaggle(attack_config, seed_override=seed)
+        # If it's a string but not a YAML file, treat as glitchling spec
+        if isinstance(glitchconf, str):
+            return coerce_gaggle(glitchconf, seed=seed)
+        # Path objects that aren't YAML files are invalid
+        raise ValueError(
+            f"Path '{path}' is not a YAML file. "
+            "Use a .yaml/.yml file or pass a glitchling specification."
+        )
 
-    # Otherwise, coerce to Gaggle
+    # Otherwise, coerce to Gaggle (list or single glitchling)
+    # At this point, glitchconf is list[Glitchling] | Glitchling
     return coerce_gaggle(glitchconf, seed=seed)
 
 
@@ -401,7 +415,7 @@ Examples:
 
     # Convert batch_size if needed
     batch_size: int | str | None = args.batch_size
-    if batch_size is not None and batch_size.isdigit():
+    if batch_size is not None and isinstance(batch_size, str) and batch_size.isdigit():
         batch_size = int(batch_size)
 
     try:
