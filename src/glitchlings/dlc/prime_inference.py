@@ -31,9 +31,8 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
-from ..compat import require_datasets
 from ..config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from ..zoo import Gaggle, Glitchling
 
@@ -90,7 +89,8 @@ class GlitchedTaskWrapper:
     Args:
         task: The original lm_eval task instance
         gaggle: Gaggle of glitchlings to apply
-        corruption_fields: List of field names to corrupt (default: ["query", "context", "question"])
+        corruption_fields: List of field names to corrupt
+            (default: ["query", "context", "question"])
     """
 
     def __init__(
