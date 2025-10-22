@@ -22,7 +22,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Zeedub](glitchlings/zeedub.md)
 7. [Dataset workflows](#dataset-workflows)
 8. [Prime Intellect integration](#prime-intellect-integration)
-   - [Prime Inference & Evaluation](integrations/prime-inference.md)
+   - [LM-Eval Integration with Glitchconf](integrations/prime-inference.md)
 9. [Ensuring determinism](#ensuring-determinism)
 10. [Testing checklist](#testing-checklist)
 11. [Additional resources](#additional-resources)
@@ -237,7 +237,7 @@ Integration coverage for Hugging Face datasets lives in `tests/test_dataset_corr
 
 Glitchlings provides two main integrations with Prime Intellect:
 
-1. **Prime Inference & Evaluation** ([complete guide](integrations/prime-inference.md)) - Run lm-eval evaluations with glitched inputs using `glitchlings prime-eval`. Supports YAML configs, deterministic seeded evaluations, and seamless CLI shadowing of lm-evaluation-harness.
+1. **LM-Eval Integration** ([complete guide](integrations/prime-inference.md)) - Run lm-evaluation-harness evaluations with glitched inputs using `glitchlings prime-eval`. Particularly useful for evaluating models trained with Prime Intellect. Supports YAML configs, deterministic seeded evaluations, and seamless CLI shadowing.
 
    ```bash
    # Run evaluations with glitched prompts

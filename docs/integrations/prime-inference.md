@@ -1,6 +1,6 @@
-# Prime Intellect Inference Integration
+# LM-Eval Integration with Glitchconf Support
 
-The Prime Intellect inference integration provides seamless integration with the [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) to run model evaluations with deterministic text corruption. This enables comprehensive testing of model robustness to realistic text perturbations.
+This integration provides seamless glitchling corruption for [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) evaluations. This is particularly useful for evaluating models trained with [Prime Intellect](https://github.com/PrimeIntellect-ai/prime) or any other training framework.
 
 ## Overview
 
@@ -374,18 +374,18 @@ results = eval_with_glitchconf(
 
 ### Integration with Prime Training
 
-Combine with Prime's distributed training for end-to-end robust model development:
+Prime is a distributed training framework. After training, you evaluate models using lm-eval (which Prime recommends). Here's the full workflow:
 
 ```bash
 # 1. Train with Prime (https://github.com/PrimeIntellect-ai/prime)
 uv run torchrun --nproc_per_node=2 src/zeroband/train.py @configs/10B/H100.toml
 
-# 2. Export checkpoint
+# 2. Export checkpoint to HuggingFace format
 uv run python scripts/export_dcp.py @configs/10B/H100.toml \
     --ckpt.path /path/to/model \
     --ckpt.resume /path/to/checkpoint
 
-# 3. Evaluate with glitchconf
+# 3. Evaluate with lm-eval + glitchconf
 glitchlings prime-eval \
     --model hf \
     --model_args pretrained=/path/to/model \
@@ -393,6 +393,8 @@ glitchlings prime-eval \
     --glitchconf experiments/chaos.yaml \
     --seed 42
 ```
+
+**Note**: Prime itself is a training framework and doesn't have built-in evaluation. It uses lm-eval for evaluations, which is what this integration extends with glitchconf support.
 
 ### Batch Evaluation
 
@@ -539,7 +541,7 @@ Ensure you're using the same seed and the same version of:
 
 ## See Also
 
-- [Prime Intellect Training](https://github.com/PrimeIntellect-ai/prime) - Distributed training framework
-- [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) - Language model evaluation
+- [lm-evaluation-harness](https://github.com/EleutherAI/lm-evaluation-harness) - The evaluation framework this integration extends
+- [Prime Intellect](https://github.com/PrimeIntellect-ai/prime) - Distributed training framework that uses lm-eval for evaluations
 - [Glitchling Reference](../glitchling-gallery.md) - Available corruption types
 - [Declarative Attack Configurations](../index.md#declarative-attack-configurations) - YAML config format
