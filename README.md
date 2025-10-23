@@ -152,10 +152,6 @@ options:
 ```
 <!-- END: CLI_USAGE -->
 
-Run `python docs/build_cli_reference.py` whenever you tweak the CLI so the README stays in sync with the actual output. The script executes the commands above and replaces the block between the markers automatically.
-
-Prefer inline tweaks? You can still configure glitchlings directly in the shell:
-
 ```bash
 # Run Typogre against the contents of a file and inspect the diff.
 glitchlings -g typogre --file documents/report.txt --diff
