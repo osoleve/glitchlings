@@ -92,6 +92,53 @@ _What a nice word, would be a shame if something happened to it._
 >
 > ---
 
+## Hokey
+
+_She's soooooo coooool!_
+
+> Tiny Fey (fanatic), Chaotic Good
+>
+> ---
+>
+> _**Passion Forward.**_ Hokey gets a bit excited at times, streeeeeetching short words out as if holding down a vowel key for emphasis.
+>
+> ### Hokey Args
+>
+> - `rate (float)`: Proportion of eligible short words to affect (default: 0.3, 30%).
+> - `extension_min (int)`: Minimum extra vowel repetitions (default: 2).
+> - `extension_max (int)`: Maximum extra vowel repetitions (default: 5).
+> - `word_length_threshold (int)`: Maximum word length to be considered "short" (default: 6).
+> - `seed (int | None)`: Optional random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import hokey
+> >>> print(hokey("She's so cool and fun!"))
+> ```
+>
+> > She's sooooo coooool and fuuun!
+>
+> ---
+>
+> - **Armor Class** 13 (denim jacket)
+> - **Hit Points** 18 (4d6 + 2)
+> - **Speed** 35 ft., 120 bpm (dance break)
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |8 |16 |12 |10 |11 |18 |
+>
+> ---
+>
+> - **Skills** Performance +6, Persuasion +8
+> - **Damage Resistances** thunder (concert earplugs), psychic (relentless optimism)
+> - **Condition Immunities** frightened (as long as the crowd is cheering)
+> - **Languages** Common, Emoji
+> - **Challenge** 1/2 (100 XP)
+>
+> ---
+
 ## Apostrofae
 
 _It looks like you're trying to paste some text. Can I help?_
