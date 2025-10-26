@@ -16,6 +16,12 @@
                         Every language game breeds monsters.
 ```
 
+[![Quality Gates](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
+[![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
+[![Publish to PyPI](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
+[![Website status](https://img.shields.io/website-up-down-green-red/https/osoleve.github.io/glitchlings/)](https://osoleve.github.io/glitchlings/)
+[![License](https://img.shields.io/github/license/osoleve/glitchlings.svg)](https://github.com/osoleve/glitchlings/blob/main/LICENSE)
+
 `Glitchlings` are **utilities for corrupting the text inputs to your language models in deterministic, _linguistically principled_** ways.  
 Each embodies a different way that documents can be compromised in the wild.
 
