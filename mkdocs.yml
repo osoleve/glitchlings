@@ -17,6 +17,7 @@ theme:
 nav:
   - Overview: index.md
   - Development: development.md
+  - Hokey Design Spec: hokey_design_spec.md
   - Performance:
       - Summary: performance-comparison.md
       - Gallery Builder: glitchling-gallery.md

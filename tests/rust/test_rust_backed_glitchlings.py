@@ -1055,6 +1055,7 @@ def test_hokey_matches_python_fallback():
         extension_min=2,
         extension_max=5,
         word_length_threshold=6,
+        base_p=0.45,
         rng=random.Random(seed),
     )
 
@@ -1079,6 +1080,7 @@ def test_hokey_respects_explicit_rng():
         extension_min=2,
         extension_max=5,
         word_length_threshold=6,
+        base_p=0.45,
         rng=rng_expected,
     )
 
@@ -1131,6 +1133,7 @@ def test_hokey_utf8_parity():
         extension_min=2,
         extension_max=4,
         word_length_threshold=6,
+        base_p=0.45,
         rng=random.Random(seed),
     )
 

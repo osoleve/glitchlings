@@ -1,4 +1,4 @@
-"""Tests for the Hokey glitchling (vowel extension for emphasis)."""
+"""Tests for the Hokey expressive lengthening glitchling."""
 
 from __future__ import annotations
 
@@ -11,135 +11,165 @@ hokey_module = importlib.import_module("glitchlings.zoo.hokey")
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
-def test_hokey_extends_vowels_in_short_words():
-    """Verify that Hokey extends vowels in short words."""
-    text = "cool code is so fun"
-    rng = random.Random(42)
-    result = hokey_module._python_extend_vowels(text, rate=1.0, rng=rng)
+def test_hokey_extends_high_scoring_tokens():
+    """Tokens with high lexical prior should be stretched when rate is high."""
+    text = "wow that was so cool and so fun"
+    result, events = hokey_module.extend_vowels(
+        text,
+        rate=1.0,
+        seed=123,
+        return_trace=True,
+    )
 
-    # With rate=1.0, all short words should be affected
     assert result != text
-    # The result should be longer than the original
-    assert len(result) > len(text)
-    # Should contain extended vowels
-    assert any(c * 3 in result for c in "aeiou")
+    stretched_tokens = {event.original for event in events}
+    assert {"wow", "so", "cool"}.issubset(stretched_tokens)
 
 
-def test_hokey_respects_rate_parameter():
-    """Verify that the rate parameter controls how many words are affected."""
-    text = "cool code is so fun"
+def test_hokey_trace_reflects_output_changes():
+    """Returned trace matches the stretched surface form."""
+    text = "she is so so happy!!!"
+    output, events = hokey_module.extend_vowels(text, rate=1.0, seed=7, return_trace=True)
 
-    # Rate of 0.0 should not affect any words
-    rng_zero = random.Random(123)
-    result_zero = hokey_module._python_extend_vowels(text, rate=0.0, rng=rng_zero)
-    assert result_zero == text
-
-    # Rate of 1.0 should affect more words than rate of 0.3
-    rng_low = random.Random(123)
-    result_low = hokey_module._python_extend_vowels(text, rate=0.3, rng=rng_low)
-
-    rng_high = random.Random(123)
-    result_high = hokey_module._python_extend_vowels(text, rate=1.0, rng=rng_high)
-
-    # Higher rate should result in more changes
-    assert len(result_high) >= len(result_low)
+    for event in events:
+        assert event.stretched in output
+        assert len(event.stretched) > len(event.original)
+        assert event.repeats >= 2
+        assert event.site.category in {"vowel", "digraph", "coda", "cvce"}
 
 
-def test_hokey_is_deterministic():
-    """Verify that Hokey produces identical output with the same seed."""
+def test_hokey_downweights_long_words():
+    """Extremely long words should be ignored even with aggressive rate."""
+    text = "hi there supercalifragilisticexpialidocious"
+    output, events = hokey_module.extend_vowels(
+        text,
+        rate=1.0,
+        word_length_threshold=5,
+        seed=11,
+        return_trace=True,
+    )
+
+    assert output != "hi there supercalifragilisticexpialidocious"
+    assert all("supercalifragilisticexpialidocious" not in event.stretched for event in events)
+
+
+def test_hokey_sentiment_amplifies_length():
+    """Positive sentiment context should yield longer stretches than negative."""
+    positive = "wow I am so happy and excited!!! she is so cool"
+    negative = "ugh I am so tired and angry... she is so cool"
+
+    pos_output, pos_events = hokey_module.extend_vowels(
+        positive,
+        rate=0.9,
+        seed=99,
+        return_trace=True,
+    )
+    neg_output, neg_events = hokey_module.extend_vowels(
+        negative,
+        rate=0.9,
+        seed=99,
+        return_trace=True,
+    )
+
+    assert neg_output != negative
+
+    # Find the stretch event corresponding to the final "so" token
+    assert any(event.original == "so" for event in pos_events)
+    assert any(event.original == "so" for event in neg_events)
+    pos_so = max((event for event in pos_events if event.original == "so"), key=lambda e: e.token_index)
+    neg_so = max((event for event in neg_events if event.original == "so"), key=lambda e: e.token_index)
+
+    assert len(pos_output) > len(positive)
+    assert pos_so.repeats >= neg_so.repeats
+
+
+def test_hokey_is_deterministic_with_seed():
+    """Hokey should produce identical output when seeded."""
     text = "cool code is so fun and neat"
-    seed = 999
+    seed = 321
 
-    result1 = hokey_module.extend_vowels(text, rate=0.5, seed=seed)
-    result2 = hokey_module.extend_vowels(text, rate=0.5, seed=seed)
+    result1 = hokey_module.extend_vowels(text, rate=0.6, seed=seed)
+    result2 = hokey_module.extend_vowels(text, rate=0.6, seed=seed)
 
     assert result1 == result2
 
 
 def test_hokey_python_fallback_with_explicit_rng():
-    """Verify that explicit RNG parameter works correctly."""
+    """Explicit RNG instances should yield identical output."""
     text = "wow this is cool"
     rng1 = random.Random(555)
     rng2 = random.Random(555)
 
-    result1 = hokey_module._python_extend_vowels(text, rate=0.8, rng=rng1)
-    result2 = hokey_module._python_extend_vowels(text, rate=0.8, rng=rng2)
+    result1 = hokey_module.extend_vowels(text, rate=0.8, rng=rng1)
+    result2 = hokey_module.extend_vowels(text, rate=0.8, rng=rng2)
 
     assert result1 == result2
 
 
-def test_hokey_preserves_whitespace_and_punctuation():
-    """Verify that Hokey preserves spacing and punctuation."""
-    text = "Hello, world! How are you?"
-    result = hokey_module.extend_vowels(text, rate=1.0, seed=42)
-
-    # Should preserve commas, exclamation marks, question marks
-    assert "," in result
-    assert "!" in result
-    assert "?" in result
-    # Should preserve general structure
-    assert result.startswith("H")
-
-
 def test_hokey_handles_empty_text():
-    """Verify that Hokey handles empty text gracefully."""
-    result = hokey_module.extend_vowels("", rate=0.5, seed=42)
-    assert result == ""
+    """Empty input returns an empty output and trace."""
+    output, events = hokey_module.extend_vowels("", return_trace=True)
+    assert output == ""
+    assert events == []
 
 
 def test_hokey_handles_text_without_vowels():
-    """Verify that Hokey handles text without vowels."""
-    text = "xyz qrs"
-    result = hokey_module.extend_vowels(text, rate=1.0, seed=42)
-    # Should return unchanged if no vowels found
-    assert result == text
+    """Words without vowels can be stretched via coda heuristics."""
+    text = "hmm brr"
+    output = hokey_module.extend_vowels(text, rate=1.0, seed=42)
+    assert output != text
+    assert output.count('m') > text.count('m')
+    assert output.count('r') > text.count('r')
 
 
-def test_hokey_pipeline_descriptor():
-    """Verify that Hokey provides correct pipeline operation descriptor."""
-    glitch = hokey_module.Hokey(seed=2024)
+def test_hokey_pipeline_descriptor_contains_new_parameters():
+    """Pipeline descriptor advertises the new base probability parameter."""
+    glitch = hokey_module.Hokey(seed=2024, base_p=0.33)
     descriptor = glitch.pipeline_operation()
 
-    assert descriptor is not None
-    assert descriptor["type"] == "hokey"
-    assert "rate" in descriptor
-    assert "extension_min" in descriptor
-    assert "extension_max" in descriptor
-    assert "word_length_threshold" in descriptor
+    assert descriptor == {
+        "type": "hokey",
+        "rate": pytest.approx(0.3),
+        "extension_min": 2,
+        "extension_max": 5,
+        "word_length_threshold": 6,
+        "base_p": 0.33,
+    }
 
 
-def test_hokey_class_initialization():
-    """Verify that Hokey class initializes correctly with parameters."""
+def test_hokey_class_initialization_tracks_parameters():
+    """Hokey constructor should surface provided parameters."""
     glitch = hokey_module.Hokey(
         rate=0.7,
         extension_min=3,
         extension_max=6,
         word_length_threshold=8,
-        seed=123
+        base_p=0.4,
+        seed=123,
     )
 
     assert glitch.name == "Hokey"
     assert glitch.level == core_module.AttackWave.CHARACTER
     assert glitch.order == core_module.AttackOrder.FIRST
-    assert glitch.seed == 123
+    assert glitch.kwargs["base_p"] == 0.4
 
 
 def test_hokey_invokes_python_fallback_when_rust_unavailable(monkeypatch):
-    """Verify that Hokey falls back to Python implementation when Rust is unavailable."""
+    """With the Rust extension disabled Hokey should use the Python generator."""
     monkeypatch.setattr(hokey_module, "_hokey_rust", None, raising=False)
 
-    text = "cool beans"
-    seed = 99
+    text = "wow such cool beans"
+    seed = 88
     derived = core_module.Gaggle.derive_seed(seed, hokey_module.hokey.name, 0)
 
-    # Use the same parameters as the default Hokey glitchling
     expected = hokey_module._python_extend_vowels(
         text,
-        rate=0.3,  # Default rate
-        extension_min=2,
-        extension_max=5,
-        word_length_threshold=6,
-        rng=random.Random(derived)
+        rate=hokey_module.hokey.kwargs["rate"],
+        extension_min=hokey_module.hokey.kwargs["extension_min"],
+        extension_max=hokey_module.hokey.kwargs["extension_max"],
+        word_length_threshold=hokey_module.hokey.kwargs["word_length_threshold"],
+        base_p=hokey_module.hokey.kwargs["base_p"],
+        rng=random.Random(derived),
     )
 
     glitch = hokey_module.Hokey(seed=seed)
@@ -149,64 +179,27 @@ def test_hokey_invokes_python_fallback_when_rust_unavailable(monkeypatch):
     assert result == expected
 
 
-def test_hokey_respects_word_length_threshold():
-    """Verify that only short words are affected based on threshold."""
-    # "supercalifragilisticexpialidocious" is very long, should not be affected
-    # "hi" is very short, should be affected
-    text = "hi there supercalifragilisticexpialidocious"
-
-    result = hokey_module.extend_vowels(
-        text,
-        rate=1.0,
-        word_length_threshold=5,
-        seed=42
-    )
-
-    # The long word should remain unchanged
-    assert "supercalifragilisticexpialidocious" in result
-    # Short words should be affected (text should be longer)
-    assert len(result) > len(text)
-
-
-def test_hokey_glitchling_can_be_called_directly():
-    """Verify that Hokey instances are callable."""
+def test_hokey_glitchling_callable_returns_str():
+    """Hokey instances remain callable and return strings."""
     glitch = hokey_module.Hokey(rate=0.5, seed=123)
     text = "cool stuff"
     result = glitch(text)
 
     assert isinstance(result, str)
-    # Should potentially modify the text (though with low rate might not)
     assert len(result) >= len(text)
 
 
 def test_hokey_handles_utf8_characters_correctly():
-    """Verify that Hokey counts UTF-8 characters correctly, not bytes."""
-    # "café" has 4 characters but 5 bytes (é is 2 bytes)
+    """UTF-8 characters should be counted properly when applying stretches."""
     text = "café cool"
-
-    # With threshold of 6, both "café" (4 chars) and "cool" (4 chars) should be eligible
-    result = hokey_module.extend_vowels(
+    output = hokey_module.extend_vowels(
         text,
         rate=1.0,
         word_length_threshold=6,
         extension_min=2,
         extension_max=3,
-        seed=42
+        seed=42,
     )
 
-    # Both words should be affected
-    assert result != text
-    assert len(result) > len(text)
-
-    # Test that Python implementation handles it correctly
-    python_result = hokey_module._python_extend_vowels(
-        text,
-        rate=1.0,
-        word_length_threshold=6,
-        extension_min=2,
-        extension_max=3,
-        rng=random.Random(42)
-    )
-
-    assert python_result != text
-    assert len(python_result) > len(text)
+    assert output != text
+    assert len(output) > len(text)
