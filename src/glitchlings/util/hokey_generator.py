@@ -39,7 +39,7 @@ class NegativeBinomialSampler:
 
     def sample(
         self,
-        rng,
+        rng: RandomLike,
         *,
         intensity: float,
         minimum: int,
@@ -60,7 +60,7 @@ class NegativeBinomialSampler:
         return max(minimum, min(maximum, extra))
 
     @staticmethod
-    def _geometric_sample(rng, p: float) -> int:
+    def _geometric_sample(rng: RandomLike, p: float) -> int:
         count = 0
         while rng.random() > p:
             count += 1
@@ -82,7 +82,7 @@ class HokeyGenerator:
         self,
         text: str,
         *,
-        rng,
+        rng: RandomLike,
         config: HokeyConfig,
     ) -> tuple[str, list[StretchEvent]]:
         if not text:

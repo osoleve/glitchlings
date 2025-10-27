@@ -14,12 +14,30 @@ ALPHA_REGEX = re.compile(r"[A-Za-z]")
 EMOJI_REGEX = re.compile(r"[\U0001F300-\U0001FAFF]")
 CLAUSE_PUNCTUATION = {".", "?", "!", ";"}
 
+
+class HokeyAssets(TypedDict):
+    lexical_prior: dict[str, float]
+    interjections: list[str]
+    intensifiers: list[str]
+    evaluatives: list[str]
+    positive_lexicon: list[str]
+    negative_lexicon: list[str]
+
+
+class RandomLike(Protocol):
+    """Interface for RNGs that expose ``random()``."""
+
+    def random(self) -> float:
+        ...
+
+
 # Lexical prior probabilities and pragmatic lexica shared with the Rust fast path.
-def _load_assets() -> dict[str, object]:
+def _load_assets() -> HokeyAssets:
     with resources.files("glitchlings.data").joinpath("hokey_assets.json").open(
         "r", encoding="utf-8"
     ) as payload:
-        return json.load(payload)
+        data: Any = json.load(payload)
+    return cast(HokeyAssets, data)
 
 
 _ASSETS = _load_assets()
@@ -142,7 +160,7 @@ class StretchabilityAnalyzer:
         candidates: Sequence[StretchCandidate],
         *,
         rate: float,
-        rng,
+        rng: RandomLike,
     ) -> list[StretchCandidate]:
         if not candidates or rate <= 0:
             return []
@@ -358,4 +376,5 @@ __all__ = [
     "StretchCandidate",
     "StretchabilityFeatures",
     "TokenInfo",
+    "RandomLike",
 ]

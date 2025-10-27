@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import random
-from typing import Any, cast
+from typing import Any, TYPE_CHECKING, cast
 
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle, Glitchling
+from .core import AttackOrder, AttackWave, Gaggle
+if TYPE_CHECKING:
+    from .core import Glitchling as GlitchlingBase
+else:
+    from .core import Glitchling as GlitchlingBase
+from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
+from ..util.stretchability import StretchabilityAnalyzer
 
 _hokey_rust = get_rust_operation("hokey")
 _ANALYZER = StretchabilityAnalyzer()
@@ -25,7 +31,7 @@ def _python_extend_vowels(
     base_p: float,
     rng: random.Random,
     return_trace: bool = False,
-):
+) -> str | tuple[str, list[StretchEvent]]:
     config = HokeyConfig(
         rate=rate,
         extension_min=extension_min,
@@ -48,7 +54,7 @@ def extend_vowels(
     *,
     return_trace: bool = False,
     base_p: float | None = None,
-):
+) -> str | tuple[str, list[StretchEvent]]:
     """Extend expressive segments of words for emphasis.
 
     Parameters
@@ -75,7 +81,8 @@ def extend_vowels(
         values). Defaults to ``0.45``.
     """
     if not text:
-        return (text, []) if return_trace else text
+        empty_trace: list[StretchEvent] = []
+        return (text, empty_trace) if return_trace else text
 
     if rng is None:
         rng = random.Random(seed)
@@ -107,8 +114,10 @@ def extend_vowels(
     )
 
 
-class Hokey(Glitchling):
+class Hokey(GlitchlingBase):  # type: ignore[misc]
     """Glitchling that stretches words using linguistic heuristics."""
+
+    seed: int | None
 
     def __init__(
         self,
