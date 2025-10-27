@@ -5,10 +5,10 @@ from __future__ import annotations
 import random
 from typing import Any, cast
 
-from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator
 from ..util.stretchability import StretchabilityAnalyzer
+from ._rust_extensions import get_rust_operation
+from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 
 _hokey_rust = get_rust_operation("hokey")
 _ANALYZER = StretchabilityAnalyzer()

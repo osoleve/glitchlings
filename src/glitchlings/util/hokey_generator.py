@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .stretch_locator import StretchSite, apply_stretch, find_stretch_site
 from .stretchability import (
     StretchabilityAnalyzer,
     StretchabilityFeatures,
 )
-from .stretch_locator import StretchSite, apply_stretch, find_stretch_site
 
 
 @dataclass(slots=True)
