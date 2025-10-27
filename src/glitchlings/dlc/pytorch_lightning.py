@@ -40,10 +40,7 @@ def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any
     if isinstance(dataloader, Mapping):
         mapping_type = cast(type[Any], dataloader.__class__)
         return mapping_type(
-            {
-                key: _wrap_dataloader(value, columns, gaggle)
-                for key, value in dataloader.items()
-            }
+            {key: _wrap_dataloader(value, columns, gaggle) for key, value in dataloader.items()}
         )
 
     if isinstance(dataloader, list):
@@ -54,9 +51,7 @@ def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any
 
     if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
         sequence_type = cast(type[Any], dataloader.__class__)
-        return sequence_type(
-            _wrap_dataloader(value, columns, gaggle) for value in dataloader
-        )
+        return sequence_type(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
 
     return _GlitchedDataLoader(dataloader, columns, gaggle)
 
@@ -212,4 +207,3 @@ else:  # pragma: no cover - optional dependency
 
 
 __all__ = ["LightningDataModule", "install"]
-

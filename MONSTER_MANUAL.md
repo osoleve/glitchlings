@@ -100,14 +100,14 @@ _She's soooooo coooool!_
 >
 > ---
 >
-> _**Passion Forward.**_ Hokey gets a bit excited at times, streeeeeetching short words out as if holding down a vowel key for emphasis.
+> _**Passionista.**_ Hokey sometimes gets a little excited and elongates words for emphasis.
 >
 > ### Hokey Args
 >
-> - `rate (float)`: Proportion of eligible short words to affect (default: 0.3, 30%).
-> - `extension_min (int)`: Minimum extra vowel repetitions (default: 2).
-> - `extension_max (int)`: Maximum extra vowel repetitions (default: 5).
-> - `word_length_threshold (int)`: Maximum word length to be considered "short" (default: 6).
+> - `rate (float)`: Share of high-scoring tokens to stretch (default: 0.3).
+> - `extension_min` / `extension_max (int)`: Bounds for extra repetitions (defaults: 2 / 5).
+> - `word_length_threshold (int)`: Preferred maximum alphabetic length; longer words are damped instead of excluded (default: 6).
+> - `base_p (float)`: Base probability for the heavy-tailed sampler (default: 0.45).
 > - `seed (int | None)`: Optional random seed for reproducibility (default: 151).
 >
 > ```python
@@ -275,7 +275,6 @@ _A whispering glyph parasite that lives in the interstices of codepoints, markin
 > - **Challenge** 1/4 (50 XP)
 >
 > ---
-
 
 ## Jargoyle
 
@@ -455,7 +454,6 @@ _I accidentally an entire word._
 > - **Challenge** 1 (200 XP)
 >
 > ---
-
 
 ## Redactyl
 

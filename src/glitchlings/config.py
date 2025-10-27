@@ -19,8 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
 
 
 class _TomllibModule(Protocol):
-    def load(self, fp: IO[bytes]) -> Any:
-        ...
+    def load(self, fp: IO[bytes]) -> Any: ...
 
 
 tomllib = cast(_TomllibModule, _tomllib)
@@ -29,8 +28,7 @@ tomllib = cast(_TomllibModule, _tomllib)
 class _YamlModule(Protocol):
     YAMLError: type[Exception]
 
-    def safe_load(self, stream: str) -> Any:
-        ...
+    def safe_load(self, stream: str) -> Any: ...
 
 
 yaml = cast(_YamlModule, importlib.import_module("yaml"))

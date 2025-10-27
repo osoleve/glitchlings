@@ -627,9 +627,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             iterator = lexicon.iter_vocabulary()
             if args.limit is not None:
-                token_iter = (
-                    token for index, token in enumerate(iterator) if index < args.limit
-                )
+                token_iter = (token for index, token in enumerate(iterator) if index < args.limit)
             else:
                 token_iter = iterator
 

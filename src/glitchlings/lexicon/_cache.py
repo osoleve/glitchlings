@@ -88,9 +88,7 @@ def load_cache(path: Path) -> CacheSnapshot:
 
 def write_cache(path: Path, entries: Mapping[str, Sequence[str]]) -> CacheSnapshot:
     """Persist ``entries`` to ``path`` with checksum metadata."""
-    serialisable: CacheEntries = {
-        key: list(values) for key, values in sorted(entries.items())
-    }
+    serialisable: CacheEntries = {key: list(values) for key, values in sorted(entries.items())}
     checksum = compute_checksum(serialisable)
     payload = {
         "__meta__": {

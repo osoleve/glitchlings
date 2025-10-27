@@ -16,9 +16,9 @@
                         Every language game breeds monsters.
 ```
 
-[![Quality Gates](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
-[![Publish to PyPI](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
+[![PyPI Status](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
+[![Lint and Type](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
 [![Website status](https://img.shields.io/website-up-down-green-red/https/osoleve.github.io/glitchlings)](https://osoleve.github.io/glitchlings/)
 [![License](https://img.shields.io/github/license/osoleve/glitchlings.svg)](https://github.com/osoleve/glitchlings/blob/main/LICENSE)
 
@@ -236,17 +236,17 @@ _Wait, was that...?_
 
 _She's soooooo coooool!_
 
-> _**Passion Forward.**_ Hokey gets a bit excited at times, streeeeeetching short words out as if holding down a vowel key for emphasis.
-> 
+> _**Passionista.**_ Hokey sometimes gets a little excited and elongates words for emphasis.
+>
 > Args
 >
-> - `rate (float)`: The proportion of eligible words to affect (default: 0.03, 3%).
-> - `extension_min (int)`: Minimum extra vowel repetitions (default: 2).
-> - `extension_max (int)`: Minimum extra vowel repetitions (default: 5).
-> - `word_length_threshold (int)`: Maximum word length to consider "short" (default: 6).
+> - `rate (float)`: Share of high-scoring tokens to stretch (default: 0.3).
+> - `extension_min` / `extension_max (int)`: Bounds for extra repetitions (defaults: 2 / 5).
+> - `word_length_threshold (int)`: Preferred maximum alphabetic length; longer words are damped instead of excluded (default: 6).
+> - `base_p (float)`: Base probability for the heavy-tailed sampler (default: 0.45).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
-*Apocryphal Glitchling contributed by Chloé Nunes*
+_Apocryphal Glitchling contributed by Chloé Nunes_
 
 ### Scannequin
 
@@ -280,7 +280,9 @@ _Uh oh. The worst person you know just bought a thesaurus._
 > Args
 >
 > - `rate (float)`: The maximum proportion of words to replace (default: 0.01, 1%).
+>
 - `part_of_speech`: The WordNet-style part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all. Vector/graph backends ignore this filter while still honouring deterministic sampling.
+>
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Reduple
