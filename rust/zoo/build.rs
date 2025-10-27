@@ -9,6 +9,7 @@ fn main() {
     stage_asset("ocr_confusions.tsv").expect("failed to stage OCR confusion table for compilation");
     stage_asset("apostrofae_pairs.json")
         .expect("failed to stage Apostrofae replacement table for compilation");
+    stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
     // Only perform custom Python linking on non-Linux platforms.
@@ -103,42 +104,32 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
 
-    let repo_candidates = [
-        manifest_dir
-            .join("../../src/glitchlings/zoo/assets")
-            .join(asset_name),
-        manifest_dir
-            .join("../../src/glitchlings/zoo")
-            .join(asset_name),
-    ];
+    let canonical_repo_asset = manifest_dir
+        .join("../../src/glitchlings/zoo/assets")
+        .join(asset_name);
     let packaged_path = manifest_dir.join("assets").join(asset_name);
     println!("cargo:rerun-if-changed={}", packaged_path.display());
 
-    let mut source_path: Option<PathBuf> = None;
-    for candidate in &repo_candidates {
-        if candidate.exists() {
-            println!("cargo:rerun-if-changed={}", candidate.display());
-            if packaged_path.exists() {
-                let repo_bytes = fs::read(candidate)?;
-                let packaged_bytes = fs::read(&packaged_path)?;
-                if repo_bytes != packaged_bytes {
-                    return Err(io::Error::new(
-                        ErrorKind::Other,
-                        format!(
-                            "asset {} is out of sync with {}",
-                            packaged_path.display(),
-                            candidate.display()
-                        ),
-                    ));
-                }
+    let source_path = if canonical_repo_asset.exists() {
+        println!(
+            "cargo:rerun-if-changed={}",
+            canonical_repo_asset.display()
+        );
+        if packaged_path.exists() {
+            let repo_bytes = fs::read(&canonical_repo_asset)?;
+            let packaged_bytes = fs::read(&packaged_path)?;
+            if repo_bytes != packaged_bytes {
+                return Err(io::Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "asset {} is out of sync with {}",
+                        packaged_path.display(),
+                        canonical_repo_asset.display()
+                    ),
+                ));
             }
-            source_path = Some(candidate.clone());
-            break;
         }
-    }
-
-    let source_path = if let Some(path) = source_path {
-        path
+        canonical_repo_asset
     } else if packaged_path.exists() {
         packaged_path
     } else {
@@ -146,7 +137,7 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
             ErrorKind::NotFound,
             format!(
                 "missing asset {asset_name}; looked for {} and {}",
-                repo_candidates[0].display(),
+                canonical_repo_asset.display(),
                 packaged_path.display()
             ),
         ));

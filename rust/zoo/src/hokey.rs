@@ -18,7 +18,7 @@ fn token_regex() -> &'static Regex {
 
 const CLAUSE_PUNCT: [char; 4] = ['.', '?', '!', ';'];
 
-const HOKEY_ASSETS: &str = include_str!("../../../src/glitchlings/data/hokey_assets.json");
+const HOKEY_ASSETS: &str = include_str!(concat!(env!("OUT_DIR"), "/hokey_assets.json"));
 
 #[derive(Deserialize)]
 struct RawHokeyAssets {

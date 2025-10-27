@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 import random
 from functools import cache
-from importlib import resources
 from typing import Any, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
+from .assets import open_text
 from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 
 # Load Rust-accelerated operation if available
@@ -19,8 +19,7 @@ _apostrofae_rust = get_rust_operation("apostrofae")
 def _load_replacement_pairs() -> dict[str, list[tuple[str, str]]]:
     """Load the curated mapping of straight quotes to fancy pairs."""
 
-    resource = resources.files(f"{__package__}.assets").joinpath("apostrofae_pairs.json")
-    with resource.open("r", encoding="utf-8") as handle:
+    with open_text("apostrofae_pairs.json") as handle:
         data: dict[str, list[Sequence[str]]] = json.load(handle)
 
     parsed: dict[str, list[tuple[str, str]]] = {}
