@@ -16,9 +16,9 @@
                         Every language game breeds monsters.
 ```
 
-[![Quality Gates](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
 [![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
-[![Publish to PyPI](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
+[![PyPI Status](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
+[![Lint and Type](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
 [![Website status](https://img.shields.io/website-up-down-green-red/https/osoleve.github.io/glitchlings)](https://osoleve.github.io/glitchlings/)
 [![License](https://img.shields.io/github/license/osoleve/glitchlings.svg)](https://github.com/osoleve/glitchlings/blob/main/LICENSE)
 
@@ -236,8 +236,8 @@ _Wait, was that...?_
 
 _She's soooooo coooool!_
 
-> _**Passion Forward.**_ Hokey now weighs lexical priors, sentiment spikes, and punctuation hype before stretching a word.
-> 
+> _**Passionista.**_ Hokey sometimes gets a little excited and elongates words for emphasis.
+>
 > Args
 >
 > - `rate (float)`: Share of high-scoring tokens to stretch (default: 0.3).
@@ -246,7 +246,7 @@ _She's soooooo coooool!_
 > - `base_p (float)`: Base probability for the heavy-tailed sampler (default: 0.45).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
-*Apocryphal Glitchling contributed by Chloé Nunes*
+_Apocryphal Glitchling contributed by Chloé Nunes_
 
 ### Scannequin
 
@@ -280,7 +280,9 @@ _Uh oh. The worst person you know just bought a thesaurus._
 > Args
 >
 > - `rate (float)`: The maximum proportion of words to replace (default: 0.01, 1%).
+>
 - `part_of_speech`: The WordNet-style part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all. Vector/graph backends ignore this filter while still honouring deterministic sampling.
+>
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Reduple

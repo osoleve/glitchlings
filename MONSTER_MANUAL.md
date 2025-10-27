@@ -100,7 +100,7 @@ _She's soooooo coooool!_
 >
 > ---
 >
-> _**Passion Forward.**_ Hokey now scores words for stretchability using lexica, phonotactics, and punctuation hype before unleashing those vowel riffs.
+> _**Passionista.**_ Hokey sometimes gets a little excited and elongates words for emphasis.
 >
 > ### Hokey Args
 >
@@ -275,7 +275,6 @@ _A whispering glyph parasite that lives in the interstices of codepoints, markin
 > - **Challenge** 1/4 (50 XP)
 >
 > ---
-
 
 ## Jargoyle
 
@@ -455,7 +454,6 @@ _I accidentally an entire word._
 > - **Challenge** 1 (200 XP)
 >
 > ---
-
 
 ## Redactyl
 
