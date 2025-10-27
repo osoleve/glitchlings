@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
-from ..util.hokey_generator import HokeyConfig, HokeyGenerator
+from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Gaggle
-
-if TYPE_CHECKING:
-    from .core import Glitchling as GlitchlingBase
-else:
-    from .core import Glitchling as GlitchlingBase
-from ..util.hokey_generator import StretchEvent
+from .core import Glitchling as GlitchlingBase
 
 _hokey_rust = get_rust_operation("hokey")
 _ANALYZER = StretchabilityAnalyzer()
@@ -114,7 +109,7 @@ def extend_vowels(
     )
 
 
-class Hokey(GlitchlingBase):  # type: ignore[misc]
+class Hokey(GlitchlingBase):
     """Glitchling that stretches words using linguistic heuristics."""
 
     seed: int | None
@@ -130,9 +125,14 @@ class Hokey(GlitchlingBase):  # type: ignore[misc]
         seed: int | None = None,
     ) -> None:
         self._master_seed: int | None = seed
+
+        def _corruption_wrapper(text: str, **kwargs: Any) -> str:
+            result = extend_vowels(text, **kwargs)
+            return result if isinstance(result, str) else result[0]
+
         super().__init__(
             name="Hokey",
-            corruption_function=extend_vowels,
+            corruption_function=_corruption_wrapper,
             scope=AttackWave.CHARACTER,
             order=AttackOrder.FIRST,
             seed=seed,
