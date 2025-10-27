@@ -89,8 +89,7 @@ def find_stretch_site(token: str) -> StretchSite | None:
     else:
         prev_char = ""
     has_multi_vowel = any(
-        (end - start >= 2) and not (lower[start] == 'y' and start == 0)
-        for start, end in clusters
+        (end - start >= 2) and not (lower[start] == "y" and start == 0) for start, end in clusters
     )
     if last_char in {"s", "z"} and prev_char in VOWELS and not has_multi_vowel:
         candidates.append((5, StretchSite(last_idx, last_idx + 1, "coda")))

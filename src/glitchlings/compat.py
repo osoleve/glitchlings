@@ -17,16 +17,14 @@ _MISSING = _MissingSentinel()
 
 
 class _MarkerProtocol(Protocol):
-    def evaluate(self, environment: dict[str, str]) -> bool:
-        ...
+    def evaluate(self, environment: dict[str, str]) -> bool: ...
 
 
 class _RequirementProtocol(Protocol):
     marker: _MarkerProtocol | None
     name: str
 
-    def __init__(self, requirement: str) -> None:
-        ...
+    def __init__(self, requirement: str) -> None: ...
 
 
 try:  # pragma: no cover - packaging is bundled with modern Python environments

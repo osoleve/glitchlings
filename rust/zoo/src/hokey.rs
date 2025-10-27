@@ -496,7 +496,22 @@ impl HokeyOp {
         let lower_chars: Vec<char> = lower.chars().collect();
         let clusters = vowel_clusters(&lower_chars, &alpha_indices);
 
-        if let Some(site) = coda_site(&lower_chars, &alpha_indices) {
+        // Check if there's a multi-vowel cluster (for coda site logic)
+        let has_multi_vowel = clusters.iter().any(|(start, end)| {
+            let length = end - start;
+            // Don't count leading 'y' as multi-vowel
+            if length >= 2 {
+                if *start == 0 && lower_chars[*start] == 'y' {
+                    false
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
+        });
+
+        if let Some(site) = coda_site(&lower_chars, &alpha_indices, has_multi_vowel) {
             return Some(site);
         }
         if let Some(site) = cvce_site(&lower_chars, &alpha_indices) {
@@ -583,6 +598,13 @@ impl GlitchOp for HokeyOp {
             };
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);
             let alpha_len = original.chars().filter(|c| c.is_alphabetic()).count();
+            
+            // First check: skip if word is more than double the threshold
+            if self.word_length_threshold > 0 && alpha_len > self.word_length_threshold * 2 {
+                continue;
+            }
+            
+            // Second check: adjust intensity if word exceeds threshold
             if self.word_length_threshold > 0 && alpha_len > self.word_length_threshold {
                 let excess = (alpha_len - self.word_length_threshold) as f64;
                 intensity /= 1.0 + 0.35 * excess;
@@ -590,6 +612,7 @@ impl GlitchOp for HokeyOp {
                     continue;
                 }
             }
+            
             intensity = intensity.max(0.05);
             let repeats =
                 self.sample_length(rng, intensity, self.extension_min, self.extension_max)?;
@@ -638,7 +661,7 @@ fn vowel_clusters(lower_chars: &[char], alpha_indices: &[usize]) -> Vec<(usize, 
     clusters
 }
 
-fn coda_site(lower_chars: &[char], alpha_indices: &[usize]) -> Option<StretchSite> {
+fn coda_site(lower_chars: &[char], alpha_indices: &[usize], has_multi_vowel: bool) -> Option<StretchSite> {
     if alpha_indices.is_empty() {
         return None;
     }
@@ -650,18 +673,21 @@ fn coda_site(lower_chars: &[char], alpha_indices: &[usize]) -> Option<StretchSit
         None
     };
     if let Some(prev) = prev_char {
-        if (last_char == 's' || last_char == 'z') && is_vowel(prev) {
-            return Some(StretchSite {
-                start: last_idx,
-                end: last_idx + 1,
-            });
-        }
-        let sonorants = ['r', 'l', 'm', 'n', 'w', 'y', 'h'];
-        if sonorants.contains(&last_char) && is_vowel(prev) {
-            return Some(StretchSite {
-                start: last_idx,
-                end: last_idx + 1,
-            });
+        // Only add coda site if there's no multi-vowel cluster
+        if !has_multi_vowel {
+            if (last_char == 's' || last_char == 'z') && is_vowel(prev) {
+                return Some(StretchSite {
+                    start: last_idx,
+                    end: last_idx + 1,
+                });
+            }
+            let sonorants = ['r', 'l', 'm', 'n', 'w', 'y', 'h'];
+            if sonorants.contains(&last_char) && is_vowel(prev) {
+                return Some(StretchSite {
+                    start: last_idx,
+                    end: last_idx + 1,
+                });
+            }
         }
     } else if !contains_vowel(lower_chars) {
         return Some(StretchSite {
