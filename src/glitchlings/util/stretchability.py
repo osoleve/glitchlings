@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
 import re
+from dataclasses import dataclass
 from importlib import resources
-from typing import Any, Protocol, Sequence, TypedDict, cast
+from typing import Sequence
 
 # Regexes reused across the module
 TOKEN_REGEX = re.compile(r"\w+|\W+")
