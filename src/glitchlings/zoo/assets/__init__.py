@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from importlib import resources
 from importlib.resources.abc import Traversable
-from typing import BinaryIO, TextIO
+from typing import BinaryIO, TextIO, cast
 
 
 def _asset(name: str) -> Traversable:
@@ -15,19 +15,19 @@ def _asset(name: str) -> Traversable:
 def read_text(name: str, *, encoding: str = "utf-8") -> str:
     """Return the decoded contents of a bundled text asset."""
 
-    return _asset(name).read_text(encoding=encoding)
+    return cast(str, _asset(name).read_text(encoding=encoding))
 
 
 def open_text(name: str, *, encoding: str = "utf-8") -> TextIO:
     """Open a bundled text asset for reading."""
 
-    return _asset(name).open("r", encoding=encoding)
+    return cast(TextIO, _asset(name).open("r", encoding=encoding))
 
 
 def open_binary(name: str) -> BinaryIO:
     """Open a bundled binary asset for reading."""
 
-    return _asset(name).open("rb")
+    return cast(BinaryIO, _asset(name).open("rb"))
 
 
 __all__ = ["read_text", "open_text", "open_binary"]
