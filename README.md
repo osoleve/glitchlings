@@ -20,9 +20,10 @@
 [![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
 ![Wheel](https://img.shields.io/pypi/wheel/glitchlings.svg)
 ![Linting and Typing](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)  
-![Chaos](https://img.shields.io/badge/chaos-inspired-magenta.svg)
-![Utility](https://img.shields.io/badge/utility-niche-chartreuse.svg)
-![Charm](https://img.shields.io/badge/charm-undeniable-cyan.svg)
+![Entropy Budget](https://img.shields.io/badge/entropy-lifegiving-magenta.svg)
+![Chaos](https://img.shields.io/badge/chaos-friend--shaped-chartreuse.svg)
+![Charm](https://img.shields.io/badge/jouissance-indefatigable-cyan.svg)  
+![Lore Compliance](https://img.shields.io/badge/ISO--474--▓▓-Z--Compliant-blue.svg)
 
 `Glitchlings` are **utilities for corrupting the text inputs to your language models in deterministic, _linguistically principled_** ways.  
 Each embodies a different way that documents can be compromised in the wild.
