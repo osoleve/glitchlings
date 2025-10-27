@@ -5,10 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .stretch_locator import StretchSite, apply_stretch, find_stretch_site
-from .stretchability import (
-    StretchabilityAnalyzer,
-    StretchabilityFeatures,
-)
+from .stretchability import RandomLike, StretchabilityAnalyzer, StretchabilityFeatures
 
 
 @dataclass(slots=True)
@@ -109,10 +106,7 @@ class HokeyGenerator:
 
             intensity = min(1.5, candidate.features.intensity() + 0.35 * candidate.score)
             alpha_count = sum(1 for ch in original if ch.isalpha())
-            if (
-                config.word_length_threshold > 0
-                and alpha_count > config.word_length_threshold * 2
-            ):
+            if config.word_length_threshold > 0 and alpha_count > config.word_length_threshold * 2:
                 continue
             if config.word_length_threshold > 0 and alpha_count > config.word_length_threshold:
                 excess = alpha_count - config.word_length_threshold
