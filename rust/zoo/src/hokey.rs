@@ -89,7 +89,6 @@ fn negative_lexicon() -> &'static HashSet<String> {
 struct TokenInfo {
     text: String,
     start: usize,
-    end: usize,
     is_word: bool,
     clause_index: usize,
 }
@@ -139,14 +138,13 @@ impl HokeyOp {
         let regex = token_regex();
         let mut tokens = Vec::new();
         let mut clause_index = 0usize;
-        for (idx, mat) in regex.find_iter(text).enumerate() {
+        for mat in regex.find_iter(text) {
             let token_text = mat.as_str();
             let is_word = token_text.chars().any(|c| c.is_alphabetic())
                 && token_text.trim().chars().all(|c| c.is_alphanumeric());
             tokens.push(TokenInfo {
                 text: token_text.to_string(),
                 start: mat.start(),
-                end: mat.end(),
                 is_word,
                 clause_index,
             });
@@ -289,7 +287,7 @@ impl HokeyOp {
         {
             return 0.0;
         }
-        let mut score = 0.25;
+        let mut score: f64 = 0.25;
         let sonorant_codas = ["r", "l", "m", "n", "w", "y", "h"];
         if sonorant_codas
             .iter()
@@ -328,7 +326,7 @@ impl HokeyOp {
     }
 
     fn context_score(&self, tokens: &[TokenInfo], index: usize) -> f64 {
-        let mut score = 0.2;
+        let mut score: f64 = 0.2;
         let before = if index > 0 {
             tokens[index - 1].text.as_str()
         } else {
@@ -537,8 +535,8 @@ impl HokeyOp {
         minimum: i32,
         maximum: i32,
     ) -> Result<i32, GlitchOpError> {
-        let mut min_extra = minimum.max(0);
-        let mut max_extra = maximum.max(min_extra);
+        let min_extra = minimum.max(0);
+        let max_extra = maximum.max(min_extra);
         if max_extra == 0 {
             return Ok(0);
         }
