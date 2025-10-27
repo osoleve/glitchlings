@@ -14,6 +14,7 @@ regex = { workspace = true }
 once_cell = { workspace = true }
 blake2 = { workspace = true }
 smallvec = "1"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 [package.metadata.maturin]

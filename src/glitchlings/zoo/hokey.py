@@ -1,102 +1,44 @@
-"""Hokey glitchling that extends vowels in short words for emphasis.
-
-Flavor text: "She's so cooooooool"
-"""
+"""Hokey glitchling that performs expressive lengthening."""
 
 from __future__ import annotations
 
 import random
-import re
-from typing import Any, cast
+from typing import Any, TYPE_CHECKING, cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle, Glitchling
+from .core import AttackOrder, AttackWave, Gaggle
+if TYPE_CHECKING:
+    from .core import Glitchling as GlitchlingBase
+else:
+    from .core import Glitchling as GlitchlingBase
+from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
+from ..util.stretchability import StretchabilityAnalyzer
 
-# Load Rust-accelerated operation if available
 _hokey_rust = get_rust_operation("hokey")
+_ANALYZER = StretchabilityAnalyzer()
+_GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
 
 
 def _python_extend_vowels(
     text: str,
     *,
-    rate: float = 0.3,
-    extension_min: int = 2,
-    extension_max: int = 5,
-    word_length_threshold: int = 6,
+    rate: float,
+    extension_min: int,
+    extension_max: int,
+    word_length_threshold: int,
+    base_p: float,
     rng: random.Random,
-) -> str:
-    """Python implementation that extends vowels in short words.
-
-    Args:
-        text: Input text to corrupt.
-        rate: Proportion of eligible short words to affect (0.0 to 1.0).
-        extension_min: Minimum number of extra repetitions of the vowel.
-        extension_max: Maximum number of extra repetitions of the vowel.
-        word_length_threshold: Maximum word length to be considered "short".
-        rng: Random number generator for deterministic behavior.
-
-    Returns:
-        Text with extended vowels in some short words.
-    """
-    if not text:
-        return text
-
-    # Define vowels (both cases)
-    vowels = set("aeiouAEIOU")
-
-    # Split text into words while preserving whitespace and punctuation
-    # Use regex to split on word boundaries but keep delimiters
-    tokens = re.findall(r"\w+|\W+", text)
-
-    # First pass: identify eligible word positions
-    eligible_positions = []
-    for i, token in enumerate(tokens):
-        if re.match(r"\w+", token):
-            if len(token) <= word_length_threshold:
-                # Check if word has any vowels
-                if any(c in vowels for c in token):
-                    eligible_positions.append(i)
-
-    # Determine how many words to affect based on rate
-    num_to_affect = int(len(eligible_positions) * rate)
-
-    # Shuffle eligible positions to get random selection (deterministic with rng)
-    # Sort first to ensure determinism, then shuffle
-    shuffled_positions = sorted(eligible_positions)
-    rng.shuffle(shuffled_positions)
-    positions_to_extend = set(shuffled_positions[:num_to_affect])
-
-    # Second pass: apply extensions
-    result_tokens = []
-    for i, token in enumerate(tokens):
-        if i in positions_to_extend:
-            # This is a word position we should extend
-            # Find all vowel positions in the word
-            vowel_positions = [j for j, c in enumerate(token) if c in vowels]
-
-            if vowel_positions:
-                # Choose a vowel position to extend
-                # For consistency, we'll extend the last vowel (like "cool" -> "cooool")
-                vowel_idx = vowel_positions[-1]
-                vowel_char = token[vowel_idx]
-
-                # Determine how many times to repeat the vowel
-                num_extra = rng.randint(extension_min, extension_max)
-
-                # Build the extended word
-                extended_word = (
-                    token[:vowel_idx + 1] +
-                    vowel_char * num_extra +
-                    token[vowel_idx + 1:]
-                )
-
-                result_tokens.append(extended_word)
-            else:
-                result_tokens.append(token)
-        else:
-            result_tokens.append(token)
-
-    return "".join(result_tokens)
+    return_trace: bool = False,
+) -> str | tuple[str, list[StretchEvent]]:
+    config = HokeyConfig(
+        rate=rate,
+        extension_min=extension_min,
+        extension_max=extension_max,
+        word_length_threshold=word_length_threshold,
+        base_p=base_p,
+    )
+    result, events = _GENERATOR.generate(text, rng=rng, config=config)
+    return (result, events) if return_trace else result
 
 
 def extend_vowels(
@@ -107,74 +49,73 @@ def extend_vowels(
     word_length_threshold: int = 6,
     seed: int | None = None,
     rng: random.Random | None = None,
-) -> str:
-    """Extend vowels in short words for emphasis effect.
+    *,
+    return_trace: bool = False,
+    base_p: float | None = None,
+) -> str | tuple[str, list[StretchEvent]]:
+    """Extend expressive segments of words for emphasis.
 
     Parameters
     ----------
     text : str
-        Input text to corrupt.
+        Input text to transform.
     rate : float, optional
-        Proportion of eligible short words to affect (default 0.3).
+        Global selection rate for candidate words.
     extension_min : int, optional
-        Minimum number of extra vowel repetitions (default 2).
+        Minimum number of extra repetitions for the stretch unit.
     extension_max : int, optional
-        Maximum number of extra vowel repetitions (default 5).
+        Maximum number of extra repetitions for the stretch unit.
     word_length_threshold : int, optional
-        Maximum word length to be considered "short" (default 6).
+        Preferred maximum alphabetic length; longer words are de-emphasised but not
+        excluded.
     seed : int, optional
-        Random seed if rng not provided.
+        Deterministic seed when ``rng`` is not supplied.
     rng : random.Random, optional
-        Random number generator; overrides seed.
-
-    Returns
-    -------
-    str
-        Text with extended vowels in short words.
-
-    Examples
-    --------
-    >>> extend_vowels("cool code", rate=1.0, seed=42)
-    'coooool coooode'
+        Random number generator to drive sampling.
+    return_trace : bool, optional
+        When ``True`` also return the stretch events for introspection.
+    base_p : float, optional
+        Base probability for the negative-binomial sampler (heavier tails for smaller
+        values). Defaults to ``0.45``.
     """
     if not text:
-        return text
+        empty_trace: list[StretchEvent] = []
+        return (text, empty_trace) if return_trace else text
 
     if rng is None:
         rng = random.Random(seed)
+    base_probability = base_p if base_p is not None else 0.45
 
-    if _hokey_rust is not None:
-        return cast(
-            str,
-            _hokey_rust(
-                text,
-                rate,
-                extension_min,
-                extension_max,
-                word_length_threshold,
-                rng,
-            ),
+    if return_trace or _hokey_rust is None:
+        return _python_extend_vowels(
+            text,
+            rate=rate,
+            extension_min=extension_min,
+            extension_max=extension_max,
+            word_length_threshold=word_length_threshold,
+            base_p=base_probability,
+            rng=rng,
+            return_trace=return_trace,
         )
 
-    return _python_extend_vowels(
-        text,
-        rate=rate,
-        extension_min=extension_min,
-        extension_max=extension_max,
-        word_length_threshold=word_length_threshold,
-        rng=rng,
+    return cast(
+        str,
+        _hokey_rust(
+            text,
+            rate,
+            extension_min,
+            extension_max,
+            word_length_threshold,
+            base_probability,
+            rng,
+        ),
     )
 
 
-class Hokey(Glitchling):
-    """Glitchling that extends vowels in short words for emphasis.
+class Hokey(GlitchlingBase):  # type: ignore[misc]
+    """Glitchling that stretches words using linguistic heuristics."""
 
-    Flavor text: "She's so cooooooool"
-
-    Hokey makes short words more emphatic by extending their vowels,
-    like turning "cool" into "cooooool". Perfect for adding that
-    enthusiastic, drawn-out emphasis to your text.
-    """
+    seed: int | None
 
     def __init__(
         self,
@@ -183,17 +124,9 @@ class Hokey(Glitchling):
         extension_min: int = 2,
         extension_max: int = 5,
         word_length_threshold: int = 6,
+        base_p: float = 0.45,
         seed: int | None = None,
     ) -> None:
-        """Initialize Hokey with parameters.
-
-        Args:
-            rate: Proportion of eligible short words to affect (default 0.3).
-            extension_min: Minimum extra vowel repetitions (default 2).
-            extension_max: Maximum extra vowel repetitions (default 5).
-            word_length_threshold: Max word length to be "short" (default 6).
-            seed: Random seed for deterministic behavior.
-        """
         self._master_seed: int | None = seed
         super().__init__(
             name="Hokey",
@@ -205,20 +138,20 @@ class Hokey(Glitchling):
             extension_min=extension_min,
             extension_max=extension_max,
             word_length_threshold=word_length_threshold,
+            base_p=base_p,
         )
 
     def pipeline_operation(self) -> dict[str, Any] | None:
-        """Return the Rust pipeline operation descriptor."""
         return {
             "type": "hokey",
             "rate": self.kwargs.get("rate", 0.3),
             "extension_min": self.kwargs.get("extension_min", 2),
             "extension_max": self.kwargs.get("extension_max", 5),
             "word_length_threshold": self.kwargs.get("word_length_threshold", 6),
+            "base_p": self.kwargs.get("base_p", 0.45),
         }
 
     def reset_rng(self, seed: int | None = None) -> None:
-        """Reset the RNG with optional new seed."""
         if seed is not None:
             self._master_seed = seed
             super().reset_rng(seed)
@@ -232,7 +165,6 @@ class Hokey(Glitchling):
             super().reset_rng(None)
 
 
-# Create a default instance
 hokey = Hokey()
 
 
