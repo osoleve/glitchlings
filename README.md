@@ -16,11 +16,13 @@
                         Every language game breeds monsters.
 ```
 
+![Python Versions](https://img.shields.io/pypi/pyversions/glitchlings.svg)
 [![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
-[![PyPI Status](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/publish.yml)
-[![Lint and Type](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml)
-[![Website status](https://img.shields.io/website-up-down-green-red/https/osoleve.github.io/glitchlings)](https://osoleve.github.io/glitchlings/)
-[![License](https://img.shields.io/github/license/osoleve/glitchlings.svg)](https://github.com/osoleve/glitchlings/blob/main/LICENSE)
+![Wheel](https://img.shields.io/pypi/wheel/glitchlings.svg)
+![Linting and Typing](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)  
+![Chaos](https://img.shields.io/badge/chaos-inspired-magenta.svg)
+![Utility](https://img.shields.io/badge/utility-niche-chartreuse.svg)
+![Charm](https://img.shields.io/badge/charm-undeniable-cyan.svg)
 
 `Glitchlings` are **utilities for corrupting the text inputs to your language models in deterministic, _linguistically principled_** ways.  
 Each embodies a different way that documents can be compromised in the wild.
