@@ -2,38 +2,64 @@
 
 **"She's so cooooooool"**
 
-Hokey extends vowels in short words to create an emphatic, drawn-out effect, mimicking enthusiastic or exaggerated speech patterns.
+Hokey now performs linguistically informed expressive lengthening. Instead of merely
+stretching short words, it scores each token using lexical priors, sentiment windows,
+phonotactic cues, and nearby punctuation before sampling a heavy-tailed stretch length.
 
-- **Scope**: character level (first ordering - runs before other character-level glitchlings).
-- **Signature**: `Hokey(rate=0.3, extension_min=2, extension_max=5, word_length_threshold=6, seed=None)`.
-- **Behaviour**: identifies short words containing vowels, randomly selects a proportion based on `rate`, then extends the last vowel in each selected word by repeating it multiple times. The extension length is randomly chosen between `extension_min` and `extension_max` repetitions.
+- **Scope**: character level (first ordering – runs before other character-level glitchlings).
+- **Signature**: `Hokey(rate=0.3, extension_min=2, extension_max=5, word_length_threshold=6, base_p=0.45, seed=None)`.
+- **Behaviour**:
+  1. Tokenises the text while preserving punctuation.
+  2. Scores each alphabetic token with a composite *Stretchability Score* derived from
+     lexical priors (e.g., *so, wow, cool*), pragmatic cues, sentiment bursts, and
+     phonotactics.
+  3. Selects top candidates per clause according to `rate`, skipping URLs, code, and
+     proper nouns.
+  4. Locates the best stretch site (vowel nuclei, digraphs, or sibilant codas) and
+     samples a clipped negative-binomial length using `extension_min`, `extension_max`,
+     and `base_p`.
+
 - **Parameters**:
-  - `rate` (float, default 0.3): Proportion of eligible short words to affect (0.0 to 1.0).
-  - `extension_min` (int, default 2): Minimum number of extra vowel repetitions.
-  - `extension_max` (int, default 5): Maximum number of extra vowel repetitions.
-  - `word_length_threshold` (int, default 6): Maximum word length to be considered "short".
-  - `seed` (int, optional): Random seed for deterministic behavior.
+  - `rate` (float, default 0.3): Proportion of high-scoring tokens to stretch.
+  - `extension_min` / `extension_max` (ints, defaults 2 / 5): Bounds for the number of
+    additional repetitions.
+  - `word_length_threshold` (int, default 6): Preferred maximum alphabetic length.
+    Longer words receive intensity penalties but are not outright excluded.
+  - `base_p` (float, default 0.45): Base success probability for the negative-binomial
+    sampler. Lower values yield heavier tails (longer stretches).
+  - `seed` (int, optional): Seed for deterministic behaviour.
+
 - **Usage tips**:
-  - Chain Hokey early (it runs at "first" order) to apply emphasis before other character transformations.
-  - Adjust `rate` to control how much emphasis appears in your text - lower values (0.1-0.3) create subtle effects, while higher values (0.7-1.0) produce more dramatic results.
-  - Use `word_length_threshold` to target different word sizes - smaller values (3-4) affect only very short words like "so" and "fun", while larger values (8-10) include medium-length words.
-  - Combine with Typogre or other character-level glitchlings to create layered text corruption effects.
+  - Call `extend_vowels(..., return_trace=True)` to inspect the chosen stretch sites.
+  - Lower `base_p` to produce occasional dramatic stretches while keeping most
+    output moderate.
+  - When combining with other character glitchlings, run Hokey first so later agents
+    operate on the stretched text.
+  - Reduce `word_length_threshold` to focus on interjections ("so", "lol", "wow");
+    increase it when you want verbs and adjectives to join the fun.
+
 - **Examples**:
   ```python
   from glitchlings import Hokey
+  from glitchlings.zoo.hokey import extend_vowels
 
   # Default usage with moderate emphasis
   hokey = Hokey(seed=42)
-  result = hokey("This is so cool and fun!")
-  # Output: "This is soooo cooool and fuuuun!"
+  hokey("This is so cool and fun!")
+  # "This is sooo cooool and fuuun!"
 
-  # High emphasis with longer extensions
-  enthusiastic = Hokey(rate=0.8, extension_min=4, extension_max=8, seed=42)
-  result = enthusiastic("wow amazing")
-  # Output: "wooooow amaziiiiing"
+  # Inspect the trace
+  text, events = extend_vowels(
+      "wow that launch was so cool",
+      rate=0.9,
+      seed=7,
+      return_trace=True,
+  )
+  for event in events:
+      print(event.original, event.stretched, event.repeats, event.site.category)
 
-  # Target only very short words
-  subtle = Hokey(rate=0.5, word_length_threshold=3, seed=42)
-  result = subtle("I am so ready to go")
-  # Output: "I aaaam sooooo ready toooo goooo"
+  # Heavier tails by lowering base_p
+  dramatic = Hokey(rate=0.7, extension_min=3, extension_max=8, base_p=0.3, seed=99)
+  dramatic("no way this is real!!!")
+  # "noooo waaay this is reaaaal!!!"
   ```

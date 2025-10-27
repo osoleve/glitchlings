@@ -203,6 +203,7 @@ enum PyGlitchOperation {
         extension_min: i32,
         extension_max: i32,
         word_length_threshold: usize,
+        base_p: f64,
     },
 }
 
@@ -327,11 +328,15 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .extract()?;
                 let extension_min = dict
                     .get_item("extension_min")?
-                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'extension_min'"))?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("hokey operation missing 'extension_min'")
+                    })?
                     .extract()?;
                 let extension_max = dict
                     .get_item("extension_max")?
-                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'extension_max'"))?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("hokey operation missing 'extension_max'")
+                    })?
                     .extract()?;
                 let word_length_threshold = dict
                     .get_item("word_length_threshold")?
@@ -339,11 +344,17 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         PyValueError::new_err("hokey operation missing 'word_length_threshold'")
                     })?
                     .extract()?;
+                let base_p = dict
+                    .get_item("base_p")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or(0.45);
                 Ok(PyGlitchOperation::Hokey {
                     rate,
                     extension_min,
                     extension_max,
                     word_length_threshold,
+                    base_p,
                 })
             }
             other => Err(PyValueError::new_err(format!(
@@ -515,11 +526,13 @@ fn compose_glitchlings(
                     extension_min,
                     extension_max,
                     word_length_threshold,
+                    base_p,
                 } => GlitchOperation::Hokey(HokeyOp {
                     rate,
                     extension_min,
                     extension_max,
                     word_length_threshold,
+                    base_p,
                 }),
             };
             Ok(GlitchDescriptor {
