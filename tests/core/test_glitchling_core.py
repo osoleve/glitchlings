@@ -16,7 +16,6 @@ def test_typogre_clone_preserves_configuration_and_seed_behavior() -> None:
 
     assert isinstance(clone, Typogre)
     assert clone.rate == original.rate
-    assert clone.max_change_rate == original.rate
     assert clone.keyboard == original.keyboard
 
     sample_text = "The quick brown fox jumps over the lazy dog."

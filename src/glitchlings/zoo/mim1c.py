@@ -15,8 +15,6 @@ def swap_homoglyphs(
     banned_characters: Collection[str] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    replacement_rate: float | None = None,
 ) -> str:
     """Replace characters with visually confusable homoglyphs.
 
@@ -37,12 +35,7 @@ def swap_homoglyphs(
     - Maintains determinism by shuffling candidates and sampling via the provided RNG.
 
     """
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=replacement_rate,
-        default=0.02,
-        legacy_name="replacement_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.02)
 
     if rng is None:
         rng = random.Random(seed)
@@ -79,18 +72,11 @@ class Mim1c(Glitchling):
         self,
         *,
         rate: float | None = None,
-        replacement_rate: float | None = None,
         classes: list[str] | Literal["all"] | None = None,
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
-        self._param_aliases = {"replacement_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=replacement_rate,
-            default=0.02,
-            legacy_name="replacement_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.02)
         super().__init__(
             name="Mim1c",
             corruption_function=swap_homoglyphs,

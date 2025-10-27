@@ -102,8 +102,6 @@ def ocr_artifacts(
     rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    error_rate: float | None = None,
 ) -> str:
     """Introduce OCR-like artifacts into text.
 
@@ -112,12 +110,7 @@ def ocr_artifacts(
     if not text:
         return text
 
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=error_rate,
-        default=0.02,
-        legacy_name="error_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.02)
 
     if rng is None:
         rng = random.Random(seed)
@@ -137,16 +130,9 @@ class Scannequin(Glitchling):
         self,
         *,
         rate: float | None = None,
-        error_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        self._param_aliases = {"error_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=error_rate,
-            default=0.02,
-            legacy_name="error_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.02)
         super().__init__(
             name="Scannequin",
             corruption_function=ocr_artifacts,
@@ -158,8 +144,6 @@ class Scannequin(Glitchling):
 
     def pipeline_operation(self) -> dict[str, Any] | None:
         rate = self.kwargs.get("rate")
-        if rate is None:
-            rate = self.kwargs.get("error_rate")
         if rate is None:
             return None
         return {"type": "ocr", "error_rate": float(rate)}

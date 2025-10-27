@@ -97,16 +97,10 @@ def redact_words(
     seed: int = 151,
     rng: random.Random | None = None,
     *,
-    redaction_rate: float | None = None,
     unweighted: bool = False,
 ) -> str:
     """Redact random words by replacing their characters."""
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=redaction_rate,
-        default=0.025,
-        legacy_name="redaction_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.025)
 
     if rng is None:
         rng = random.Random(seed)
@@ -148,18 +142,11 @@ class Redactyl(Glitchling):
         *,
         replacement_char: str = FULL_BLOCK,
         rate: float | None = None,
-        redaction_rate: float | None = None,
         merge_adjacent: bool = False,
         seed: int = 151,
         unweighted: bool = False,
     ) -> None:
-        self._param_aliases = {"redaction_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=redaction_rate,
-            default=0.025,
-            legacy_name="redaction_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.025)
         super().__init__(
             name="Redactyl",
             corruption_function=redact_words,

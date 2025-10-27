@@ -66,16 +66,9 @@ def swap_adjacent_words(
     rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    swap_rate: float | None = None,
 ) -> str:
     """Swap adjacent word cores while preserving spacing and punctuation."""
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=swap_rate,
-        default=0.5,
-        legacy_name="swap_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.5)
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     if rng is None:
@@ -94,16 +87,9 @@ class Adjax(Glitchling):
         self,
         *,
         rate: float | None = None,
-        swap_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        self._param_aliases = {"swap_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=swap_rate,
-            default=0.5,
-            legacy_name="swap_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.5)
         super().__init__(
             name="Adjax",
             corruption_function=swap_adjacent_words,

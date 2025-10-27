@@ -71,7 +71,6 @@ def reduplicate_words(
     seed: int | None = None,
     rng: random.Random | None = None,
     *,
-    reduplication_rate: float | None = None,
     unweighted: bool = False,
 ) -> str:
     """Randomly reduplicate words in the text.
@@ -79,12 +78,7 @@ def reduplicate_words(
     Falls back to the Python implementation when the optional Rust
     extension is unavailable.
     """
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=reduplication_rate,
-        default=0.01,
-        legacy_name="reduplication_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.01)
 
     if rng is None:
         rng = random.Random(seed)
@@ -110,17 +104,10 @@ class Reduple(Glitchling):
         self,
         *,
         rate: float | None = None,
-        reduplication_rate: float | None = None,
         seed: int | None = None,
         unweighted: bool = False,
     ) -> None:
-        self._param_aliases = {"reduplication_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=reduplication_rate,
-            default=0.01,
-            legacy_name="reduplication_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.01)
         super().__init__(
             name="Reduple",
             corruption_function=reduplicate_words,
