@@ -6,7 +6,7 @@ import json
 import re
 from dataclasses import dataclass
 from importlib import resources
-from typing import Sequence
+from typing import Any, Protocol, Sequence, TypedDict, cast
 
 # Regexes reused across the module
 TOKEN_REGEX = re.compile(r"\w+|\W+")
@@ -27,15 +27,16 @@ class HokeyAssets(TypedDict):
 class RandomLike(Protocol):
     """Interface for RNGs that expose ``random()``."""
 
-    def random(self) -> float:
-        ...
+    def random(self) -> float: ...
 
 
 # Lexical prior probabilities and pragmatic lexica shared with the Rust fast path.
 def _load_assets() -> HokeyAssets:
-    with resources.files("glitchlings.data").joinpath("hokey_assets.json").open(
-        "r", encoding="utf-8"
-    ) as payload:
+    with (
+        resources.files("glitchlings.data")
+        .joinpath("hokey_assets.json")
+        .open("r", encoding="utf-8") as payload
+    ):
         data: Any = json.load(payload)
     return cast(HokeyAssets, data)
 
@@ -233,9 +234,7 @@ class StretchabilityAnalyzer:
                 clause_index += 1
         return tokens
 
-    def _excluded(
-        self, token: TokenInfo, tokens: Sequence[TokenInfo], index: int
-    ) -> bool:
+    def _excluded(self, token: TokenInfo, tokens: Sequence[TokenInfo], index: int) -> bool:
         text = token.text
         normalised = token.normalised
         if sum(ch.isalpha() for ch in text) < 2:
@@ -314,9 +313,7 @@ class StretchabilityAnalyzer:
             return 0.65
         return 0.3
 
-    def _sentiment(
-        self, tokens: Sequence[TokenInfo], index: int
-    ) -> tuple[float, float]:
+    def _sentiment(self, tokens: Sequence[TokenInfo], index: int) -> tuple[float, float]:
         window = [tok for tok in tokens[max(0, index - 2) : index + 3] if tok.is_word]
         if not window:
             return 0.5, 0.0
@@ -344,9 +341,7 @@ class StretchabilityAnalyzer:
             score += 0.08
         return max(0.0, min(1.0, score))
 
-    def _contextual(
-        self, token: TokenInfo, tokens: Sequence[TokenInfo], index: int
-    ) -> float:
+    def _contextual(self, token: TokenInfo, tokens: Sequence[TokenInfo], index: int) -> float:
         score = 0.2
         before = token.preceding_punct
         after = token.following_punct

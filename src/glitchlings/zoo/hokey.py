@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import random
-from typing import Any, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Gaggle
+
 if TYPE_CHECKING:
     from .core import Glitchling as GlitchlingBase
 else:
     from .core import Glitchling as GlitchlingBase
-from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
-from ..util.stretchability import StretchabilityAnalyzer
+from ..util.hokey_generator import StretchEvent
 
 _hokey_rust = get_rust_operation("hokey")
 _ANALYZER = StretchabilityAnalyzer()
