@@ -54,7 +54,11 @@ def sync_assets(
     canonical_dir = _canonical_asset_dir(root)
     rust_dir = _rust_asset_dir(root)
 
-    missing_sources = [name for name in RUST_VENDORED_ASSETS if not (canonical_dir / name).is_file()]
+    missing_sources = [
+        name
+        for name in RUST_VENDORED_ASSETS
+        if not (canonical_dir / name).is_file()
+    ]
     if missing_sources:
         missing_list = ", ".join(sorted(missing_sources))
         raise RuntimeError(f"missing canonical assets: {missing_list}")
@@ -82,7 +86,10 @@ def sync_assets(
                     )
                 for extra in extraneous:
                     print(
-                        f"unexpected vendored asset {extra.relative_to(root)}; run sync_assets to prune it",
+                        (
+                            "unexpected vendored asset "
+                            f"{extra.relative_to(root)}; run sync_assets to prune it"
+                        ),
                         file=sys.stderr,
                     )
             return False

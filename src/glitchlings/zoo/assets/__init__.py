@@ -6,7 +6,6 @@ from importlib import resources
 from importlib.resources.abc import Traversable
 from typing import Any, BinaryIO, TextIO, cast
 
-
 _DEFAULT_DIGEST_SIZE = 32
 
 
