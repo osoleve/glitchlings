@@ -144,16 +144,9 @@ def fatfinger(
     keyboard: str = "CURATOR_QWERTY",
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    max_change_rate: float | None = None,
 ) -> str:
     """Introduce character-level "fat finger" edits with a Rust fast path."""
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=max_change_rate,
-        default=0.02,
-        legacy_name="max_change_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.02)
 
     if rng is None:
         rng = random.Random(seed)
@@ -182,17 +175,10 @@ class Typogre(Glitchling):
         self,
         *,
         rate: float | None = None,
-        max_change_rate: float | None = None,
         keyboard: str = "CURATOR_QWERTY",
         seed: int | None = None,
     ) -> None:
-        self._param_aliases = {"max_change_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=max_change_rate,
-            default=0.02,
-            legacy_name="max_change_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.02)
         super().__init__(
             name="Typogre",
             corruption_function=fatfinger,
@@ -205,8 +191,6 @@ class Typogre(Glitchling):
 
     def pipeline_operation(self) -> dict[str, Any] | None:
         rate = self.kwargs.get("rate")
-        if rate is None:
-            rate = self.kwargs.get("max_change_rate")
         if rate is None:
             return None
 

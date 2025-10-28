@@ -191,7 +191,7 @@ glitchlings --config experiments/story-mode.yaml --diff "Here be dragons."
 
 Omit `--seed` to honour the configuration's `seed`; supply `--seed` to override it on the fly while keeping the same roster. In Python, load the same file with `glitchlings.load_attack_config(path)` and convert it into a callable `Gaggle` via `glitchlings.build_gaggle(...)`.
 
-Configuration files are now validated against a JSON Schema before any glitchlings are instantiated. Unknown top-level keys raise an error, and the legacy `type:` alias emits a `DeprecationWarning`—prefer the canonical `name:` attribute for future compatibility. The schema is exposed as `glitchlings.config.ATTACK_CONFIG_SCHEMA` if you want to reuse it in external tooling.
+Configuration files are now validated against a JSON Schema before any glitchlings are instantiated. Unknown top-level keys raise an error, and each mapping entry must define a `name`. The schema is exposed as `glitchlings.config.ATTACK_CONFIG_SCHEMA` if you want to reuse it in external tooling.
 
 ## Glitchling reference
 

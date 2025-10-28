@@ -77,12 +77,7 @@ def insert_zero_widths(
     characters: Sequence[str] | None = None,
 ) -> str:
     """Inject zero-width characters between non-space character pairs."""
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=None,
-        default=0.02,
-        legacy_name="rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.02)
 
     if rng is None:
         rng = random.Random(seed)
@@ -142,12 +137,7 @@ class Zeedub(Glitchling):
         seed: int | None = None,
         characters: Sequence[str] | None = None,
     ) -> None:
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=None,
-            default=0.02,
-            legacy_name="rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.02)
         super().__init__(
             name="Zeedub",
             corruption_function=insert_zero_widths,

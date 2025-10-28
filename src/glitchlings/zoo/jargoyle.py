@@ -119,7 +119,6 @@ def substitute_random_synonyms(
     seed: int | None = None,
     rng: random.Random | None = None,
     *,
-    replacement_rate: float | None = None,
     lexicon: Lexicon | None = None,
 ) -> str:
     """Replace words with random lexicon-driven synonyms.
@@ -144,12 +143,7 @@ def substitute_random_synonyms(
       deterministic subsets per word and part-of-speech using the active seed.
 
     """
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=replacement_rate,
-        default=0.1,
-        legacy_name="replacement_rate",
-    )
+    effective_rate = resolve_rate(rate=rate, default=0.1)
 
     active_rng: random.Random
     if rng is not None:
@@ -258,23 +252,16 @@ class Jargoyle(Glitchling):
         self,
         *,
         rate: float | None = None,
-        replacement_rate: float | None = None,
         part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
         lexicon: Lexicon | None = None,
     ) -> None:
-        self._param_aliases = {"replacement_rate": "rate"}
         self._owns_lexicon = lexicon is None
         self._external_lexicon_original_seed = (
             lexicon.seed if isinstance(lexicon, Lexicon) else None
         )
         self._initializing = True
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=replacement_rate,
-            default=0.01,
-            legacy_name="replacement_rate",
-        )
+        effective_rate = resolve_rate(rate=rate, default=0.01)
         prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
         if lexicon is not None and seed is not None:
             prepared_lexicon.reseed(seed)

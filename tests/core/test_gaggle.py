@@ -39,7 +39,6 @@ def test_summon_accepts_parameterized_specification():
     member = gaggle.apply_order[0]
     assert isinstance(member, Typogre)
     assert member.rate == 0.05
-    assert member.max_change_rate == 0.05
 
 
 def test_summon_rejects_positional_parameter_specifications():
