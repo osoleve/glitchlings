@@ -62,19 +62,19 @@ def module_for_operation(op_type: str) -> ModuleType:
 BASE_DESCRIPTORS: List[Descriptor] = [
     {
         "name": "Reduple",
-        "operation": {"type": "reduplicate", "reduplication_rate": 0.01},
+        "operation": {"type": "reduplicate", "rate": 0.01},
     },
-    {"name": "Rushmore", "operation": {"type": "delete", "max_deletion_rate": 0.01}},
+    {"name": "Rushmore", "operation": {"type": "delete", "rate": 0.01}},
     {
         "name": "Redactyl",
         "operation": {
             "type": "redact",
             "replacement_char": redactyl_full_block(),
-            "redaction_rate": 0.05,
+            "rate": 0.05,
             "merge_adjacent": True,
         },
     },
-    {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.02}},
+    {"name": "Scannequin", "operation": {"type": "ocr", "rate": 0.02}},
     {
         "name": "Zeedub",
         "operation": {

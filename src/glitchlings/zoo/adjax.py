@@ -3,7 +3,6 @@ from __future__ import annotations
 import random
 from typing import Any, cast
 
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from ._text_utils import split_preserving_whitespace, split_token_edges
 from .core import AttackWave, Glitchling
@@ -66,16 +65,9 @@ def swap_adjacent_words(
     rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    swap_rate: float | None = None,
 ) -> str:
     """Swap adjacent word cores while preserving spacing and punctuation."""
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=swap_rate,
-        default=0.5,
-        legacy_name="swap_rate",
-    )
+    effective_rate = 0.5 if rate is None else rate
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     if rng is None:
@@ -94,16 +86,9 @@ class Adjax(Glitchling):
         self,
         *,
         rate: float | None = None,
-        swap_rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        self._param_aliases = {"swap_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=swap_rate,
-            default=0.5,
-            legacy_name="swap_rate",
-        )
+        effective_rate = 0.5 if rate is None else rate
         super().__init__(
             name="Adjax",
             corruption_function=swap_adjacent_words,
@@ -118,7 +103,7 @@ class Adjax(Glitchling):
             return None
         return {
             "type": "swap_adjacent",
-            "swap_rate": float(rate),
+            "rate": float(rate),
         }
 
 

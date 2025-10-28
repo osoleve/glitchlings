@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from importlib import resources
+from .assets import read_text
 
 _CONFUSION_TABLE: list[tuple[str, list[str]]] | None = None
 
 
 def load_confusion_table() -> list[tuple[str, list[str]]]:
     """Load the OCR confusion table shared by Python and Rust implementations."""
+
     global _CONFUSION_TABLE
     if _CONFUSION_TABLE is not None:
         return _CONFUSION_TABLE
 
-    data = resources.files(__package__) / "ocr_confusions.tsv"
-    text = data.read_text(encoding="utf-8")
+    text = read_text("ocr_confusions.tsv")
     indexed_entries: list[tuple[int, tuple[str, list[str]]]] = []
     for line_number, line in enumerate(text.splitlines()):
         stripped = line.strip()

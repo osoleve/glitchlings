@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
-from importlib import resources
-from typing import Any, Protocol, Sequence, TypedDict, cast
+from typing import Protocol, Sequence, TypedDict, cast
+
+from glitchlings.zoo import assets
 
 # Regexes reused across the module
 TOKEN_REGEX = re.compile(r"\w+|\W+")
@@ -32,12 +32,7 @@ class RandomLike(Protocol):
 
 # Lexical prior probabilities and pragmatic lexica shared with the Rust fast path.
 def _load_assets() -> HokeyAssets:
-    with (
-        resources.files("glitchlings.data")
-        .joinpath("hokey_assets.json")
-        .open("r", encoding="utf-8") as payload
-    ):
-        data: Any = json.load(payload)
+    data = assets.load_json("hokey_assets.json")
     return cast(HokeyAssets, data)
 
 

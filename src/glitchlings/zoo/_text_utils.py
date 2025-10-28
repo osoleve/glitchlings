@@ -21,9 +21,9 @@ def split_token_edges(token: str) -> tuple[str, str, str]:
     return match.group(1), match.group(2), match.group(3)
 
 
-def token_core_length(token: str) -> int:
-    """Return the length of the main word characters for weighting heuristics."""
-    _, core, _ = split_token_edges(token)
+def _resolve_core_length(core: str, token: str) -> int:
+    """Return a stable core-length measurement used by weighting heuristics."""
+
     candidate = core if core else token
     length = len(candidate)
     if length <= 0:
@@ -32,6 +32,12 @@ def token_core_length(token: str) -> int:
     if length <= 0:
         length = 1
     return length
+
+
+def token_core_length(token: str) -> int:
+    """Return the length of the main word characters for weighting heuristics."""
+    _, core, _ = split_token_edges(token)
+    return _resolve_core_length(core, token)
 
 
 @dataclass(frozen=True)
@@ -71,12 +77,7 @@ def collect_word_tokens(
             continue
 
         prefix, core, suffix = split_token_edges(token)
-        core_length = len(core)
-        if core_length <= 0:
-            stripped = token.strip()
-            core_length = len(stripped) if stripped else len(token)
-        if core_length <= 0:
-            core_length = 1
+        core_length = _resolve_core_length(core, token)
 
         collected.append(
             WordToken(

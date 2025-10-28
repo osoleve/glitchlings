@@ -203,15 +203,14 @@ def test_load_attack_config_supports_parameters_section() -> None:
                 parameters:
                   rate: 0.05
                   keyboard: COLEMAK
-              - type: Rushmore
+              - name: Rushmore
                 parameters:
-                  max_deletion_rate: 0.15
+                  rate: 0.15
                   unweighted: true
             """
         )
     )
-    with pytest.warns(DeprecationWarning, match="uses 'type'"):
-        config = load_attack_config(yaml_stream)
+    config = load_attack_config(yaml_stream)
 
     assert config.seed == 11
     assert len(config.glitchlings) == 2
@@ -224,6 +223,20 @@ def test_load_attack_config_supports_parameters_section() -> None:
     assert second.name == "Rushmore"
     assert pytest.approx(second.kwargs["rate"], rel=1e-6) == 0.15
     assert second.kwargs["unweighted"] is True
+
+
+def test_load_attack_config_rejects_type_alias() -> None:
+    yaml_stream = io.StringIO(
+        textwrap.dedent(
+            """
+            glitchlings:
+              - type: Typogre
+            """
+        )
+    )
+
+    with pytest.raises(ValueError, match="uses unsupported 'type'"):
+        load_attack_config(yaml_stream)
 
 
 def test_load_attack_config_parameters_must_be_mapping() -> None:

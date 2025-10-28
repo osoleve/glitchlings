@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import os
-import warnings
 from dataclasses import dataclass, field
 from io import TextIOBase
 from pathlib import Path
@@ -57,17 +56,6 @@ ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
                         "required": ["name"],
                         "properties": {
                             "name": {"type": "string", "minLength": 1},
-                            "type": {"type": "string", "minLength": 1},
-                            "parameters": {"type": "object"},
-                        },
-                        "additionalProperties": True,
-                    },
-                    {
-                        "type": "object",
-                        "required": ["type"],
-                        "properties": {
-                            "name": {"type": "string", "minLength": 1},
-                            "type": {"type": "string", "minLength": 1},
                             "parameters": {"type": "object"},
                         },
                         "additionalProperties": True,
@@ -263,7 +251,12 @@ def _validate_attack_config_schema(data: Any, *, source: str) -> Mapping[str, An
 
     for index, entry in enumerate(raw_glitchlings, start=1):
         if isinstance(entry, Mapping):
-            name_candidate = entry.get("name") or entry.get("type")
+            if "type" in entry:
+                raise ValueError(
+                    f"{source}: glitchling #{index} uses unsupported 'type'; use 'name'."
+                )
+
+            name_candidate = entry.get("name")
             if not isinstance(name_candidate, str) or not name_candidate.strip():
                 raise ValueError(f"{source}: glitchling #{index} is missing a 'name'.")
             parameters = entry.get("parameters")
@@ -326,17 +319,12 @@ def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
             raise ValueError(f"{source}: glitchling #{index}: {exc}") from exc
 
     if isinstance(entry, Mapping):
-        name_value = entry.get("name")
-        legacy_type = entry.get("type")
-        if name_value is None and legacy_type is not None:
-            warnings.warn(
-                f"{source}: glitchling #{index} uses 'type'; prefer 'name'.",
-                DeprecationWarning,
-                stacklevel=2,
+        if "type" in entry:
+            raise ValueError(
+                f"{source}: glitchling #{index} uses unsupported 'type'; use 'name'."
             )
-            name_value = legacy_type
-        elif name_value is None:
-            name_value = legacy_type
+
+        name_value = entry.get("name")
 
         if not isinstance(name_value, str) or not name_value.strip():
             raise ValueError(f"{source}: glitchling #{index} is missing a 'name'.")
@@ -352,7 +340,7 @@ def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
             kwargs = {
                 key: value
                 for key, value in entry.items()
-                if key not in {"name", "type", "parameters"}
+                if key not in {"name", "parameters"}
             }
 
         try:

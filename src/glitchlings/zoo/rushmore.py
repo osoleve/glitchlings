@@ -3,7 +3,6 @@ import random
 import re
 from typing import Any, cast
 
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
@@ -74,20 +73,13 @@ def delete_random_words(
     rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    max_deletion_rate: float | None = None,
     unweighted: bool = False,
 ) -> str:
     """Delete random words from the input text.
 
     Uses the optional Rust implementation when available.
     """
-    effective_rate = resolve_rate(
-        rate=rate,
-        legacy_value=max_deletion_rate,
-        default=0.01,
-        legacy_name="max_deletion_rate",
-    )
+    effective_rate = 0.01 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -113,17 +105,10 @@ class Rushmore(Glitchling):
         self,
         *,
         rate: float | None = None,
-        max_deletion_rate: float | None = None,
         seed: int | None = None,
         unweighted: bool = False,
     ) -> None:
-        self._param_aliases = {"max_deletion_rate": "rate"}
-        effective_rate = resolve_rate(
-            rate=rate,
-            legacy_value=max_deletion_rate,
-            default=0.01,
-            legacy_name="max_deletion_rate",
-        )
+        effective_rate = 0.01 if rate is None else rate
         super().__init__(
             name="Rushmore",
             corruption_function=delete_random_words,
@@ -136,13 +121,11 @@ class Rushmore(Glitchling):
     def pipeline_operation(self) -> dict[str, Any] | None:
         rate = self.kwargs.get("rate")
         if rate is None:
-            rate = self.kwargs.get("max_deletion_rate")
-        if rate is None:
             return None
         unweighted = bool(self.kwargs.get("unweighted", False))
         return {
             "type": "delete",
-            "max_deletion_rate": float(rate),
+            "rate": float(rate),
             "unweighted": unweighted,
         }
 

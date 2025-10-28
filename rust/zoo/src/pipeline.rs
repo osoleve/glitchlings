@@ -182,7 +182,7 @@ mod tests {
                 name: "Reduple".to_string(),
                 seed: derive_seed(master_seed, "Reduple", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
-                    reduplication_rate: 1.0,
+                    rate: 1.0,
                     unweighted: false,
                 }),
             },
@@ -191,7 +191,7 @@ mod tests {
                 seed: derive_seed(master_seed, "Redactyl", 1),
                 operation: GlitchOperation::Redact(RedactWordsOp {
                     replacement_char: "█".to_string(),
-                    redaction_rate: 0.5,
+                    rate: 0.5,
                     merge_adjacent: false,
                     unweighted: false,
                 }),
@@ -209,7 +209,7 @@ mod tests {
             name: "Reduple".to_string(),
             seed: derive_seed(master_seed, "Reduple", 0),
             operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
-                reduplication_rate: 0.5,
+                rate: 0.5,
                 unweighted: false,
             }),
         }];
@@ -227,7 +227,7 @@ mod tests {
                 name: "Reduple".to_string(),
                 seed: derive_seed(master_seed, "Reduple", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
-                    reduplication_rate: 0.4,
+                    rate: 0.4,
                     unweighted: false,
                 }),
             },
@@ -235,7 +235,7 @@ mod tests {
                 name: "Rushmore".to_string(),
                 seed: derive_seed(master_seed, "Rushmore", 1),
                 operation: GlitchOperation::Delete(DeleteRandomWordsOp {
-                    max_deletion_rate: 0.3,
+                    rate: 0.3,
                     unweighted: false,
                 }),
             },
@@ -244,7 +244,7 @@ mod tests {
                 seed: derive_seed(master_seed, "Redactyl", 2),
                 operation: GlitchOperation::Redact(RedactWordsOp {
                     replacement_char: "█".to_string(),
-                    redaction_rate: 0.6,
+                    rate: 0.6,
                     merge_adjacent: true,
                     unweighted: false,
                 }),
@@ -252,7 +252,7 @@ mod tests {
             GlitchDescriptor {
                 name: "Scannequin".to_string(),
                 seed: derive_seed(master_seed, "Scannequin", 3),
-                operation: GlitchOperation::Ocr(OcrArtifactsOp { error_rate: 0.25 }),
+                operation: GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.25 }),
             },
         ];
         let pipeline = Pipeline::new(master_seed, descriptors);
@@ -267,7 +267,7 @@ mod tests {
         let descriptors = vec![GlitchDescriptor {
             name: "Adjax".to_string(),
             seed: derive_seed(master_seed, "Adjax", 0),
-            operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { swap_rate: 1.0 }),
+            operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 1.0 }),
         }];
         let pipeline = Pipeline::new(master_seed, descriptors);
         let output = pipeline

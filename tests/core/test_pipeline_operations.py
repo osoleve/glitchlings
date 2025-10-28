@@ -20,7 +20,7 @@ from glitchlings.zoo.scannequin import Scannequin
             {
                 "type": "redact",
                 "replacement_char": "#",
-                "redaction_rate": 0.5,
+                "rate": 0.5,
                 "merge_adjacent": True,
                 "unweighted": True,
             },
@@ -29,7 +29,7 @@ from glitchlings.zoo.scannequin import Scannequin
             lambda: Rushmore(rate=0.33, unweighted=True),
             {
                 "type": "delete",
-                "max_deletion_rate": 0.33,
+                "rate": 0.33,
                 "unweighted": True,
             },
         ),
@@ -37,7 +37,7 @@ from glitchlings.zoo.scannequin import Scannequin
             lambda: Reduple(rate=0.25),
             {
                 "type": "reduplicate",
-                "reduplication_rate": 0.25,
+                "rate": 0.25,
                 "unweighted": False,
             },
         ),
@@ -45,14 +45,14 @@ from glitchlings.zoo.scannequin import Scannequin
             lambda: Scannequin(rate=0.12),
             {
                 "type": "ocr",
-                "error_rate": 0.12,
+                "rate": 0.12,
             },
         ),
         (
             lambda: Adjax(rate=0.6),
             {
                 "type": "swap_adjacent",
-                "swap_rate": 0.6,
+                "rate": 0.6,
             },
         ),
     ],
