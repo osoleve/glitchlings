@@ -320,7 +320,6 @@ _Keep your hands and punctuation where I can see them._
 > Args
 >
 > - `rate (float)`: Probability that each adjacent pair swaps cores (default: 0.5, 50%).
-> - `swap_rate (float)`: Alias for `rate`, retained for backward compatibility.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Redactyl

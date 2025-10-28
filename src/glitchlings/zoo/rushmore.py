@@ -126,7 +126,7 @@ class Rushmore(Glitchling):
         unweighted = bool(self.kwargs.get("unweighted", False))
         return {
             "type": "delete",
-            "max_deletion_rate": float(rate),
+            "rate": float(rate),
             "unweighted": unweighted,
         }
 

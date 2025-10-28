@@ -124,7 +124,7 @@ class Reduple(Glitchling):
         unweighted = bool(self.kwargs.get("unweighted", False))
         return {
             "type": "reduplicate",
-            "reduplication_rate": float(rate),
+            "rate": float(rate),
             "unweighted": unweighted,
         }
 

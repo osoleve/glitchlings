@@ -146,7 +146,7 @@ class Scannequin(Glitchling):
         rate = self.kwargs.get("rate")
         if rate is None:
             return None
-        return {"type": "ocr", "error_rate": float(rate)}
+        return {"type": "ocr", "rate": float(rate)}
 
 
 scannequin = Scannequin()

@@ -89,7 +89,7 @@ from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
 gaggle = Gaggle([
     Typogre(rate=0.02),
     Mim1c(rate=0.01),
-    Reduple(reduplication_rate=0.005),
+    Reduple(rate=0.005),
     Rushmore(rate=0.005),
 ], seed=1234)
 

@@ -34,11 +34,3 @@ def resolve_rate(
         return rate
 
     return default
-
-
-def resolve_legacy_param(*, preferred_value: object | None, default: object) -> object:
-    """Return ``preferred_value`` when provided, otherwise ``default``."""
-    if preferred_value is not None:
-        return preferred_value
-
-    return default

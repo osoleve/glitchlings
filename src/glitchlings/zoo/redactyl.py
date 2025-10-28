@@ -168,7 +168,7 @@ class Redactyl(Glitchling):
         return {
             "type": "redact",
             "replacement_char": str(replacement_char),
-            "redaction_rate": float(rate),
+            "rate": float(rate),
             "merge_adjacent": bool(merge_adjacent),
             "unweighted": unweighted,
         }

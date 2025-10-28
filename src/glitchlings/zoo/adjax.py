@@ -104,7 +104,7 @@ class Adjax(Glitchling):
             return None
         return {
             "type": "swap_adjacent",
-            "swap_rate": float(rate),
+            "rate": float(rate),
         }
 
 

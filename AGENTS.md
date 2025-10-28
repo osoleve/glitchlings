@@ -9,7 +9,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
   - `main.py` implements the CLI: parser construction, text sourcing, glitchling summoning, and optional diff output.
 - **`src/glitchlings/zoo/`** - Core glitchling implementations.
   - `core.py` defines the `Glitchling` base class, `AttackWave`/`AttackOrder` enums, deterministic seed derivation, and the Rust pipeline bridge.
-  - `typogre.py`, `mim1c.py`, `reduple.py`, `rushmore.py`, `redactyl.py`, `jargoyle.py`, `scannequin.py`, and `zeedub.py` provide concrete glitchlings. Word-level agents use `_rate.resolve_rate` to support legacy parameter names and expose the new `unweighted` toggle.
+  - `typogre.py`, `mim1c.py`, `reduple.py`, `rushmore.py`, `redactyl.py`, `jargoyle.py`, `scannequin.py`, and `zeedub.py` provide concrete glitchlings. Word-level agents use `_rate.resolve_rate` for the canonical `rate` parameter and expose the `unweighted` toggle.
 - **`src/glitchlings/util/`** - Shared helpers including `SAMPLE_TEXT`, keyboard-neighbour layouts, diff utilities, and rate parsing helpers.
 - **`src/glitchlings/lexicon/`** - Bundled synonym backends. The default config (`src/glitchlings/config.toml`) prioritises the shipped vector cache (`lexicon/data/default_vector_cache.json`), then optional graph caches, and finally WordNet when installed.
 - **`src/glitchlings/dlc/prime/`** - Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).

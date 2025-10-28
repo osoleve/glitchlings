@@ -210,7 +210,7 @@ pub trait GlitchOp {
 /// Repeats words to simulate stuttered speech.
 #[derive(Debug, Clone, Copy)]
 pub struct ReduplicateWordsOp {
-    pub reduplication_rate: f64,
+    pub rate: f64,
     pub unweighted: bool,
 }
 
@@ -251,7 +251,7 @@ impl GlitchOp for ReduplicateWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.reduplication_rate.max(0.0);
+        let effective_rate = self.rate.max(0.0);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -291,7 +291,7 @@ impl GlitchOp for ReduplicateWordsOp {
 /// Deletes random words while preserving punctuation cleanup semantics.
 #[derive(Debug, Clone, Copy)]
 pub struct DeleteRandomWordsOp {
-    pub max_deletion_rate: f64,
+    pub rate: f64,
     pub unweighted: bool,
 }
 
@@ -329,7 +329,7 @@ impl GlitchOp for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.max_deletion_rate.max(0.0);
+        let effective_rate = self.rate.max(0.0);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -382,7 +382,7 @@ impl GlitchOp for DeleteRandomWordsOp {
 /// Swaps adjacent word cores while keeping punctuation and spacing intact.
 #[derive(Debug, Clone, Copy)]
 pub struct SwapAdjacentWordsOp {
-    pub swap_rate: f64,
+    pub rate: f64,
 }
 
 impl GlitchOp for SwapAdjacentWordsOp {
@@ -392,7 +392,7 @@ impl GlitchOp for SwapAdjacentWordsOp {
             return Ok(());
         }
 
-        let clamped = self.swap_rate.max(0.0).min(1.0);
+        let clamped = self.rate.max(0.0).min(1.0);
         if clamped <= 0.0 {
             return Ok(());
         }
@@ -443,7 +443,7 @@ impl GlitchOp for SwapAdjacentWordsOp {
 #[derive(Debug, Clone)]
 pub struct RedactWordsOp {
     pub replacement_char: String,
-    pub redaction_rate: f64,
+    pub rate: f64,
     pub merge_adjacent: bool,
     pub unweighted: bool,
 }
@@ -489,7 +489,7 @@ impl GlitchOp for RedactWordsOp {
             return Err(GlitchOpError::NoRedactableWords);
         }
 
-        let effective_rate = self.redaction_rate.max(0.0);
+        let effective_rate = self.rate.max(0.0);
         let mut num_to_redact = ((candidates.len() as f64) * effective_rate).floor() as usize;
         if num_to_redact < 1 {
             num_to_redact = 1;
@@ -563,7 +563,7 @@ impl GlitchOp for RedactWordsOp {
 /// Introduces OCR-style character confusions.
 #[derive(Debug, Clone, Copy)]
 pub struct OcrArtifactsOp {
-    pub error_rate: f64,
+    pub rate: f64,
 }
 
 impl GlitchOp for OcrArtifactsOp {
@@ -584,7 +584,7 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        let to_select = ((candidates.len() as f64) * self.error_rate).floor() as usize;
+        let to_select = ((candidates.len() as f64) * self.rate).floor() as usize;
         if to_select == 0 {
             return Ok(());
         }
@@ -1182,7 +1182,7 @@ mod tests {
         let mut buffer = TextBuffer::from_str("Hello world");
         let mut rng = PyRng::new(151);
         let op = ReduplicateWordsOp {
-            reduplication_rate: 1.0,
+            rate: 1.0,
             unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
@@ -1194,7 +1194,7 @@ mod tests {
     fn swap_adjacent_words_swaps_cores() {
         let mut buffer = TextBuffer::from_str("Alpha, beta! Gamma delta");
         let mut rng = PyRng::new(7);
-        let op = SwapAdjacentWordsOp { swap_rate: 1.0 };
+        let op = SwapAdjacentWordsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng)
             .expect("swap operation succeeds");
         assert_eq!(buffer.to_string(), "beta, Alpha! delta Gamma");
@@ -1205,7 +1205,7 @@ mod tests {
         let original = "Do not move these words";
         let mut buffer = TextBuffer::from_str(original);
         let mut rng = PyRng::new(42);
-        let op = SwapAdjacentWordsOp { swap_rate: 0.0 };
+        let op = SwapAdjacentWordsOp { rate: 0.0 };
         op.apply(&mut buffer, &mut rng)
             .expect("swap operation succeeds");
         assert_eq!(buffer.to_string(), original);
@@ -1216,7 +1216,7 @@ mod tests {
         let mut buffer = TextBuffer::from_str("One two three four five");
         let mut rng = PyRng::new(151);
         let op = DeleteRandomWordsOp {
-            max_deletion_rate: 0.75,
+            rate: 0.75,
             unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion works");
@@ -1229,7 +1229,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
-            redaction_rate: 0.8,
+            rate: 0.8,
             merge_adjacent: true,
             unweighted: false,
         };
@@ -1244,7 +1244,7 @@ mod tests {
         let mut rng = PyRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
-            redaction_rate: 0.5,
+            rate: 0.5,
             merge_adjacent: false,
             unweighted: false,
         };
@@ -1259,7 +1259,7 @@ mod tests {
     fn ocr_artifacts_replaces_expected_regions() {
         let mut buffer = TextBuffer::from_str("Hello rn world");
         let mut rng = PyRng::new(151);
-        let op = OcrArtifactsOp { error_rate: 1.0 };
+        let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr works");
         let text = buffer.to_string();
         assert_ne!(text, "Hello rn world");
@@ -1271,7 +1271,7 @@ mod tests {
         let mut buffer = TextBuffer::from_str("The quick brown fox");
         let mut rng = PyRng::new(123);
         let op = ReduplicateWordsOp {
-            reduplication_rate: 0.5,
+            rate: 0.5,
             unweighted: false,
         };
         op.apply(&mut buffer, &mut rng)
@@ -1284,7 +1284,7 @@ mod tests {
         let mut buffer = TextBuffer::from_str("The quick brown fox jumps over the lazy dog.");
         let mut rng = PyRng::new(123);
         let op = DeleteRandomWordsOp {
-            max_deletion_rate: 0.5,
+            rate: 0.5,
             unweighted: false,
         };
         op.apply(&mut buffer, &mut rng).expect("deletion succeeds");
@@ -1297,7 +1297,7 @@ mod tests {
         let mut rng = PyRng::new(42);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
-            redaction_rate: 0.5,
+            rate: 0.5,
             merge_adjacent: false,
             unweighted: false,
         };
@@ -1311,7 +1311,7 @@ mod tests {
         let mut rng = PyRng::new(7);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
-            redaction_rate: 1.0,
+            rate: 1.0,
             merge_adjacent: true,
             unweighted: false,
         };
@@ -1323,7 +1323,7 @@ mod tests {
     fn ocr_matches_python_reference_seed_1() {
         let mut buffer = TextBuffer::from_str("The m rn");
         let mut rng = PyRng::new(1);
-        let op = OcrArtifactsOp { error_rate: 1.0 };
+        let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr succeeds");
         assert_eq!(buffer.to_string(), "Tlie rn rri");
     }
