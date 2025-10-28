@@ -34,7 +34,7 @@ def _rust_asset_dir(project_root: Path) -> Path:
     return project_root / "rust" / "zoo" / "assets"
 
 
-def _iter_extraneous_assets(rust_dir: Path) -> Iterable[Path]:
+def _iter_extraneous_assets(rust_dir: Path):
     if not rust_dir.exists():
         return ()
     for path in rust_dir.iterdir():
