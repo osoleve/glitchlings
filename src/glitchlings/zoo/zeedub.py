@@ -5,7 +5,6 @@ import random
 from collections.abc import Sequence
 from typing import Any, cast
 
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
@@ -77,7 +76,7 @@ def insert_zero_widths(
     characters: Sequence[str] | None = None,
 ) -> str:
     """Inject zero-width characters between non-space character pairs."""
-    effective_rate = resolve_rate(rate=rate, default=0.02)
+    effective_rate = 0.02 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -137,7 +136,7 @@ class Zeedub(Glitchling):
         seed: int | None = None,
         characters: Sequence[str] | None = None,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.02)
+        effective_rate = 0.02 if rate is None else rate
         super().__init__(
             name="Zeedub",
             corruption_function=insert_zero_widths,

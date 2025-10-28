@@ -84,7 +84,7 @@ def _shuffle_mix_descriptors() -> list[Descriptor]:
         2,
         {
             "name": "Adjax",
-            "operation": {"type": "swap_adjacent", "swap_rate": 0.35},
+            "operation": {"type": "swap_adjacent", "rate": 0.35},
         },
     )
     return descriptors
@@ -92,21 +92,21 @@ def _shuffle_mix_descriptors() -> list[Descriptor]:
 
 def _aggressive_cleanup_descriptors() -> list[Descriptor]:
     return [
-        _make_descriptor("Rushmore", max_deletion_rate=0.03),
+        _make_descriptor("Rushmore", rate=0.03),
         {
             "name": "Adjax-Deep",
-            "operation": {"type": "swap_adjacent", "swap_rate": 0.6},
+            "operation": {"type": "swap_adjacent", "rate": 0.6},
         },
         {
             "name": "Redactyl-Deep",
             "operation": {
                 "type": "redact",
                 "replacement_char": redactyl_full_block(),
-                "redaction_rate": 0.12,
+                "rate": 0.12,
                 "merge_adjacent": True,
             },
         },
-        _make_descriptor("Scannequin", error_rate=0.03),
+        _make_descriptor("Scannequin", rate=0.03),
         _make_descriptor("Typogre", rate=0.03),
     ]
 
@@ -117,14 +117,14 @@ def _stealth_noise_descriptors() -> list[Descriptor]:
         _make_descriptor("Zeedub", rate=0.035),
         {
             "name": "Adjax-Lite",
-            "operation": {"type": "swap_adjacent", "swap_rate": 0.25},
+            "operation": {"type": "swap_adjacent", "rate": 0.25},
         },
         {
             "name": "Redactyl-Lite",
             "operation": {
                 "type": "redact",
                 "replacement_char": redactyl_full_block(),
-                "redaction_rate": 0.02,
+                "rate": 0.02,
                 "merge_adjacent": False,
             },
         },
@@ -171,14 +171,14 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             module = operation_modules["reduplicate"]
             current = module._python_reduplicate_words(
                 current,
-                rate=operation["reduplication_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "delete":
             module = operation_modules["delete"]
             current = module._python_delete_random_words(
                 current,
-                rate=operation["max_deletion_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "redact":
@@ -186,7 +186,7 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             current = module._python_redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
-                rate=operation["redaction_rate"],
+                rate=operation["rate"],
                 merge_adjacent=operation["merge_adjacent"],
                 rng=rng,
             )
@@ -194,7 +194,7 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             module = operation_modules["ocr"]
             current = module._python_ocr_artifacts(
                 current,
-                rate=operation["error_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "zwj":
@@ -225,11 +225,10 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 layout=layout,
             )
         elif op_type == "swap_adjacent":
-            swap_rate = operation.get("swap_rate", operation.get("rate", 0.5))
             module = operation_modules["swap_adjacent"]
             current = module._python_swap_adjacent_words(
                 current,
-                rate=float(swap_rate),
+                rate=float(operation.get("rate", 0.5)),
                 rng=rng,
             )
         else:  # pragma: no cover - defensive guard

@@ -4,7 +4,6 @@ from typing import Literal
 
 from confusable_homoglyphs import confusables
 
-from ._rate import resolve_rate
 from .core import AttackOrder, AttackWave, Glitchling
 
 
@@ -35,7 +34,7 @@ def swap_homoglyphs(
     - Maintains determinism by shuffling candidates and sampling via the provided RNG.
 
     """
-    effective_rate = resolve_rate(rate=rate, default=0.02)
+    effective_rate = 0.02 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -76,7 +75,7 @@ class Mim1c(Glitchling):
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.02)
+        effective_rate = 0.02 if rate is None else rate
         super().__init__(
             name="Mim1c",
             corruption_function=swap_homoglyphs,

@@ -451,33 +451,33 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
         if op_type == "reduplicate":
             current = reduple_module._python_reduplicate_words(
                 current,
-                rate=operation["reduplication_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "delete":
             current = rushmore_module._python_delete_random_words(
                 current,
-                rate=operation["max_deletion_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "swap_adjacent":
             current = adjax_module._python_swap_adjacent_words(
                 current,
-                rate=operation["swap_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "redact":
             current = redactyl_module._python_redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
-                rate=operation["redaction_rate"],
+                rate=operation["rate"],
                 merge_adjacent=operation["merge_adjacent"],
                 rng=rng,
             )
         elif op_type == "ocr":
             current = scannequin_module._python_ocr_artifacts(
                 current,
-                rate=operation["error_rate"],
+                rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "zwj":
@@ -521,7 +521,7 @@ def test_compose_glitchlings_matches_python_pipeline():
             "name": "Reduple",
             "operation": {
                 "type": "reduplicate",
-                "reduplication_rate": 0.4,
+                "rate": 0.4,
                 "unweighted": False,
             },
         },
@@ -529,25 +529,25 @@ def test_compose_glitchlings_matches_python_pipeline():
             "name": "Rushmore",
             "operation": {
                 "type": "delete",
-                "max_deletion_rate": 0.5,
+                "rate": 0.5,
                 "unweighted": False,
             },
         },
         {
             "name": "Adjax",
-            "operation": {"type": "swap_adjacent", "swap_rate": 0.6},
+            "operation": {"type": "swap_adjacent", "rate": 0.6},
         },
         {
             "name": "Redactyl",
             "operation": {
                 "type": "redact",
                 "replacement_char": redactyl_module.FULL_BLOCK,
-                "redaction_rate": 0.6,
+                "rate": 0.6,
                 "merge_adjacent": True,
                 "unweighted": False,
             },
         },
-        {"name": "Scannequin", "operation": {"type": "ocr", "error_rate": 0.25}},
+        {"name": "Scannequin", "operation": {"type": "ocr", "rate": 0.25}},
     ]
     text = "Guard the vault at midnight"
     master_seed = 404
@@ -597,7 +597,7 @@ def test_compose_glitchlings_is_deterministic():
             "name": "Reduple",
             "operation": {
                 "type": "reduplicate",
-                "reduplication_rate": 0.4,
+                "rate": 0.4,
                 "unweighted": False,
             },
         },
@@ -605,20 +605,20 @@ def test_compose_glitchlings_is_deterministic():
             "name": "Rushmore",
             "operation": {
                 "type": "delete",
-                "max_deletion_rate": 0.3,
+                "rate": 0.3,
                 "unweighted": False,
             },
         },
         {
             "name": "Adjax",
-            "operation": {"type": "swap_adjacent", "swap_rate": 0.4},
+            "operation": {"type": "swap_adjacent", "rate": 0.4},
         },
         {
             "name": "Redactyl",
             "operation": {
                 "type": "redact",
                 "replacement_char": redactyl_module.FULL_BLOCK,
-                "redaction_rate": 0.6,
+                "rate": 0.6,
                 "merge_adjacent": True,
                 "unweighted": False,
             },
@@ -641,7 +641,7 @@ def test_compose_glitchlings_propagates_glitch_errors():
                 "operation": {
                     "type": "redact",
                     "replacement_char": redactyl_module.FULL_BLOCK,
-                    "redaction_rate": 1.0,
+                    "rate": 1.0,
                     "merge_adjacent": False,
                     "unweighted": False,
                 },
@@ -758,7 +758,7 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
             "name": "Reduple",
             "operation": {
                 "type": "reduplicate",
-                "reduplication_rate": 0.4,
+                "rate": 0.4,
                 "unweighted": False,
             },
         },
@@ -766,7 +766,7 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
             "name": "Rushmore",
             "operation": {
                 "type": "delete",
-                "max_deletion_rate": 0.3,
+                "rate": 0.3,
                 "unweighted": False,
             },
         },
@@ -801,7 +801,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
             "name": "Reduple",
             "operation": {
                 "type": "reduplicate",
-                "reduplication_rate": 0.2,
+                "rate": 0.2,
                 "unweighted": False,
             },
             "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),
@@ -941,7 +941,7 @@ def test_pipeline_falls_back_when_compose_raises(monkeypatch):
             "name": "Reduple",
             "operation": {
                 "type": "reduplicate",
-                "reduplication_rate": 0.25,
+                "rate": 0.25,
                 "unweighted": False,
             },
             "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),

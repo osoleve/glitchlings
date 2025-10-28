@@ -170,24 +170,24 @@ impl<'py> FromPyObject<'py> for PyGagglePlanInput {
 #[derive(Debug)]
 enum PyGlitchOperation {
     Reduplicate {
-        reduplication_rate: f64,
+        rate: f64,
         unweighted: bool,
     },
     Delete {
-        max_deletion_rate: f64,
+        rate: f64,
         unweighted: bool,
     },
     SwapAdjacent {
-        swap_rate: f64,
+        rate: f64,
     },
     Redact {
         replacement_char: String,
-        redaction_rate: f64,
+        rate: f64,
         merge_adjacent: bool,
         unweighted: bool,
     },
     Ocr {
-        error_rate: f64,
+        rate: f64,
     },
     Typo {
         rate: f64,
@@ -217,9 +217,9 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
         match op_type.as_str() {
             "reduplicate" => {
                 let rate = dict
-                    .get_item("reduplication_rate")?
+                    .get_item("rate")?
                     .ok_or_else(|| {
-                        PyValueError::new_err("reduplicate operation missing 'reduplication_rate'")
+                        PyValueError::new_err("reduplicate operation missing 'rate'")
                     })?
                     .extract()?;
                 let unweighted = dict
@@ -227,16 +227,13 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .map(|value| value.extract())
                     .transpose()?
                     .unwrap_or(false);
-                Ok(PyGlitchOperation::Reduplicate {
-                    reduplication_rate: rate,
-                    unweighted,
-                })
+                Ok(PyGlitchOperation::Reduplicate { rate, unweighted })
             }
             "delete" => {
                 let rate = dict
-                    .get_item("max_deletion_rate")?
+                    .get_item("rate")?
                     .ok_or_else(|| {
-                        PyValueError::new_err("delete operation missing 'max_deletion_rate'")
+                        PyValueError::new_err("delete operation missing 'rate'")
                     })?
                     .extract()?;
                 let unweighted = dict
@@ -244,19 +241,16 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .map(|value| value.extract())
                     .transpose()?
                     .unwrap_or(false);
-                Ok(PyGlitchOperation::Delete {
-                    max_deletion_rate: rate,
-                    unweighted,
-                })
+                Ok(PyGlitchOperation::Delete { rate, unweighted })
             }
             "swap_adjacent" => {
                 let rate = dict
-                    .get_item("swap_rate")?
+                    .get_item("rate")?
                     .ok_or_else(|| {
-                        PyValueError::new_err("swap_adjacent operation missing 'swap_rate'")
+                        PyValueError::new_err("swap_adjacent operation missing 'rate'")
                     })?
                     .extract()?;
-                Ok(PyGlitchOperation::SwapAdjacent { swap_rate: rate })
+                Ok(PyGlitchOperation::SwapAdjacent { rate })
             }
             "redact" => {
                 let replacement_char = dict
@@ -265,10 +259,10 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         PyValueError::new_err("redact operation missing 'replacement_char'")
                     })?
                     .extract()?;
-                let redaction_rate = dict
-                    .get_item("redaction_rate")?
+                let rate = dict
+                    .get_item("rate")?
                     .ok_or_else(|| {
-                        PyValueError::new_err("redact operation missing 'redaction_rate'")
+                        PyValueError::new_err("redact operation missing 'rate'")
                     })?
                     .extract()?;
                 let merge_adjacent = dict
@@ -284,17 +278,17 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .unwrap_or(false);
                 Ok(PyGlitchOperation::Redact {
                     replacement_char,
-                    redaction_rate,
+                    rate,
                     merge_adjacent,
                     unweighted,
                 })
             }
             "ocr" => {
-                let error_rate = dict
-                    .get_item("error_rate")?
-                    .ok_or_else(|| PyValueError::new_err("ocr operation missing 'error_rate'"))?
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("ocr operation missing 'rate'"))?
                     .extract()?;
-                Ok(PyGlitchOperation::Ocr { error_rate })
+                Ok(PyGlitchOperation::Ocr { rate })
             }
             "typo" => {
                 let rate = dict
@@ -381,12 +375,12 @@ where
 #[pyfunction]
 fn reduplicate_words(
     text: &str,
-    reduplication_rate: f64,
+    rate: f64,
     unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
     let op = ReduplicateWordsOp {
-        reduplication_rate,
+        rate,
         unweighted,
     };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
@@ -395,20 +389,20 @@ fn reduplicate_words(
 #[pyfunction]
 fn delete_random_words(
     text: &str,
-    max_deletion_rate: f64,
+    rate: f64,
     unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
     let op = DeleteRandomWordsOp {
-        max_deletion_rate,
+        rate,
         unweighted,
     };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[pyfunction]
-fn swap_adjacent_words(text: &str, swap_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
-    let op = SwapAdjacentWordsOp { swap_rate };
+fn swap_adjacent_words(text: &str, rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+    let op = SwapAdjacentWordsOp { rate };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -419,8 +413,8 @@ fn apostrofae(text: &str, rng: &Bound<'_, PyAny>) -> PyResult<String> {
 }
 
 #[pyfunction]
-fn ocr_artifacts(text: &str, error_rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
-    let op = OcrArtifactsOp { error_rate };
+fn ocr_artifacts(text: &str, rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+    let op = OcrArtifactsOp { rate };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -428,14 +422,14 @@ fn ocr_artifacts(text: &str, error_rate: f64, rng: &Bound<'_, PyAny>) -> PyResul
 fn redact_words(
     text: &str,
     replacement_char: &str,
-    redaction_rate: f64,
+    rate: f64,
     merge_adjacent: bool,
     unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
     let op = RedactWordsOp {
         replacement_char: replacement_char.to_string(),
-        redaction_rate,
+        rate,
         merge_adjacent,
         unweighted,
     };
@@ -477,35 +471,35 @@ fn compose_glitchlings(
         .map(|descriptor| {
             let operation = match descriptor.operation {
                 PyGlitchOperation::Reduplicate {
-                    reduplication_rate,
+                    rate,
                     unweighted,
                 } => GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
-                    reduplication_rate,
+                    rate,
                     unweighted,
                 }),
                 PyGlitchOperation::Delete {
-                    max_deletion_rate,
+                    rate,
                     unweighted,
                 } => GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp {
-                    max_deletion_rate,
+                    rate,
                     unweighted,
                 }),
-                PyGlitchOperation::SwapAdjacent { swap_rate } => {
-                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { swap_rate })
+                PyGlitchOperation::SwapAdjacent { rate } => {
+                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
                 }
                 PyGlitchOperation::Redact {
                     replacement_char,
-                    redaction_rate,
+                    rate,
                     merge_adjacent,
                     unweighted,
                 } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
                     replacement_char,
-                    redaction_rate,
+                    rate,
                     merge_adjacent,
                     unweighted,
                 }),
-                PyGlitchOperation::Ocr { error_rate } => {
-                    GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { error_rate })
+                PyGlitchOperation::Ocr { rate } => {
+                    GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
                 }
                 PyGlitchOperation::Typo { rate, layout } => {
                     let layout_map: HashMap<String, Vec<String>> =

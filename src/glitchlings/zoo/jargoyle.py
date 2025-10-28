@@ -7,7 +7,6 @@ from typing import Any, Literal, cast
 
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
-from ._rate import resolve_rate
 from .core import AttackWave, Glitchling
 
 _wordnet_module: ModuleType | None
@@ -143,7 +142,7 @@ def substitute_random_synonyms(
       deterministic subsets per word and part-of-speech using the active seed.
 
     """
-    effective_rate = resolve_rate(rate=rate, default=0.1)
+    effective_rate = 0.1 if rate is None else rate
 
     active_rng: random.Random
     if rng is not None:
@@ -261,7 +260,7 @@ class Jargoyle(Glitchling):
             lexicon.seed if isinstance(lexicon, Lexicon) else None
         )
         self._initializing = True
-        effective_rate = resolve_rate(rate=rate, default=0.01)
+        effective_rate = 0.01 if rate is None else rate
         prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
         if lexicon is not None and seed is not None:
             prepared_lexicon.reseed(seed)

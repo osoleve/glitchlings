@@ -216,7 +216,7 @@ def test_redactyl_unweighted_matches_python_reference():
 
 
 
-def test_scannequin_error_rate_increases_changes(sample_text):
+def test_scannequin_rate_increases_changes(sample_text):
     # count character diffs vs original
     def diff_count(a: str, b: str) -> int:
         return sum(1 for x, y in zip(a, b) if x != y) + abs(len(a) - len(b))

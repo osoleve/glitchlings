@@ -2,7 +2,6 @@ import random
 import re
 from typing import Any, cast
 
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from ._sampling import weighted_sample_without_replacement
 from ._text_utils import (
@@ -100,7 +99,7 @@ def redact_words(
     unweighted: bool = False,
 ) -> str:
     """Redact random words by replacing their characters."""
-    effective_rate = resolve_rate(rate=rate, default=0.025)
+    effective_rate = 0.025 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -146,7 +145,7 @@ class Redactyl(Glitchling):
         seed: int = 151,
         unweighted: bool = False,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.025)
+        effective_rate = 0.025 if rate is None else rate
         super().__init__(
             name="Redactyl",
             corruption_function=redact_words,
@@ -168,7 +167,7 @@ class Redactyl(Glitchling):
         return {
             "type": "redact",
             "replacement_char": str(replacement_char),
-            "redaction_rate": float(rate),
+            "rate": float(rate),
             "merge_adjacent": bool(merge_adjacent),
             "unweighted": unweighted,
         }

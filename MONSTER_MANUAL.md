@@ -379,7 +379,6 @@ _Shuffle enough sentences and the truth trips over its own shoelaces._
 > ### Adjax Args
 >
 > - `rate (float)`: Probability that each adjacent pair swaps cores (default: 0.5, 50%).
-> - `swap_rate (float)`: Alias for `rate`, retained for backwards compatibility.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python
