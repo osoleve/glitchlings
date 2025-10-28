@@ -6,7 +6,7 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import Sequence
+from typing import Iterator, Sequence
 
 RUST_VENDORED_ASSETS: frozenset[str] = frozenset({
     "hokey_assets.json",
@@ -34,9 +34,9 @@ def _rust_asset_dir(project_root: Path) -> Path:
     return project_root / "rust" / "zoo" / "assets"
 
 
-def _iter_extraneous_assets(rust_dir: Path):
+def _iter_extraneous_assets(rust_dir: Path) -> Iterator[Path]:
     if not rust_dir.exists():
-        return ()
+        return
     for path in rust_dir.iterdir():
         if path.is_file() and path.name not in RUST_VENDORED_ASSETS:
             yield path
