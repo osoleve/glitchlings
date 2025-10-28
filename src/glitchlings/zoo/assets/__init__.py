@@ -12,7 +12,7 @@ _DEFAULT_DIGEST_SIZE = 32
 def _asset(name: str) -> Traversable:
     asset = resources.files(__name__).joinpath(name)
     if not asset.is_file():  # pragma: no cover - defensive guard for packaging issues
-        raise FileNotFoundError(f"Asset '{name}' not found in glitchlings.zoo.assets")
+        raise FileNotFoundError(f"Asset '{name}' not found at {asset}")
     return asset
 
 
