@@ -36,7 +36,6 @@ nav:
   - API:
       - Python Modules: api/index.md
   - Operations:
-      - Release Process: release-process.md
       - Keyboard Layouts: keyboard-layouts.md
 
 plugins:
