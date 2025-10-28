@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+
 def resolve_rate(
     *,
     rate: float | None,
