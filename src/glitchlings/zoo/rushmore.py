@@ -3,7 +3,6 @@ import random
 import re
 from typing import Any, cast
 
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .core import AttackWave, Glitchling
@@ -80,7 +79,7 @@ def delete_random_words(
 
     Uses the optional Rust implementation when available.
     """
-    effective_rate = resolve_rate(rate=rate, default=0.01)
+    effective_rate = 0.01 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -109,7 +108,7 @@ class Rushmore(Glitchling):
         seed: int | None = None,
         unweighted: bool = False,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.01)
+        effective_rate = 0.01 if rate is None else rate
         super().__init__(
             name="Rushmore",
             corruption_function=delete_random_words,

@@ -3,7 +3,6 @@ import re
 from typing import Any, cast
 
 from ._ocr_confusions import load_confusion_table
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
@@ -110,7 +109,7 @@ def ocr_artifacts(
     if not text:
         return text
 
-    effective_rate = resolve_rate(rate=rate, default=0.02)
+    effective_rate = 0.02 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -132,7 +131,7 @@ class Scannequin(Glitchling):
         rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.02)
+        effective_rate = 0.02 if rate is None else rate
         super().__init__(
             name="Scannequin",
             corruption_function=ocr_artifacts,

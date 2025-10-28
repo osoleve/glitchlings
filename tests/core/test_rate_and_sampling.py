@@ -2,20 +2,7 @@ import random
 
 import pytest
 
-from glitchlings.zoo._rate import resolve_rate
 from glitchlings.zoo._sampling import weighted_sample_without_replacement
-
-
-def test_resolve_rate_prefers_explicit_value() -> None:
-    assert resolve_rate(rate=0.1, default=0.05) == 0.1
-
-
-def test_resolve_rate_uses_default_when_none() -> None:
-    assert resolve_rate(rate=None, default=0.05) == 0.05
-
-
-def test_resolve_rate_allows_zero_rate() -> None:
-    assert resolve_rate(rate=0.0, default=0.05) == 0.0
 
 
 def test_weighted_sample_without_replacement_validates_arguments() -> None:

@@ -5,7 +5,6 @@ import random
 from typing import Any, Optional, cast
 
 from ..util import KEYNEIGHBORS
-from ._rate import resolve_rate
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
@@ -146,7 +145,7 @@ def fatfinger(
     rng: random.Random | None = None,
 ) -> str:
     """Introduce character-level "fat finger" edits with a Rust fast path."""
-    effective_rate = resolve_rate(rate=rate, default=0.02)
+    effective_rate = 0.02 if rate is None else rate
 
     if rng is None:
         rng = random.Random(seed)
@@ -178,7 +177,7 @@ class Typogre(Glitchling):
         keyboard: str = "CURATOR_QWERTY",
         seed: int | None = None,
     ) -> None:
-        effective_rate = resolve_rate(rate=rate, default=0.02)
+        effective_rate = 0.02 if rate is None else rate
         super().__init__(
             name="Typogre",
             corruption_function=fatfinger,
