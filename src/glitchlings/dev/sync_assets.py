@@ -6,7 +6,7 @@ import argparse
 import shutil
 import sys
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 RUST_VENDORED_ASSETS: frozenset[str] = frozenset({
     "hokey_assets.json",
