@@ -160,7 +160,7 @@ class OptionalDependency:
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
         module = self.get()
-        if module is None or self._used_fallback:
+        if self._used_fallback or module is None:
             self._raise_missing_error()
         return module
 
