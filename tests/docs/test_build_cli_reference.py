@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import runpy
 import subprocess
 import sys
@@ -16,7 +17,7 @@ def test_run_cli_falls_back_to_module_invocation(monkeypatch):
 
     calls: list[list[str]] = []
 
-    def fake_run(argv, *, stdout, stderr, text, check):  # type: ignore[no-untyped-def]
+    def fake_run(argv, *, stdout, stderr, text, check, env=None):  # type: ignore[no-untyped-def]
         calls.append(argv)
         if len(calls) == 1:
             raise FileNotFoundError
@@ -33,3 +34,29 @@ def test_run_cli_falls_back_to_module_invocation(monkeypatch):
         ["glitchlings", "--list"],
         [sys.executable, "-m", "glitchlings", "--list"],
     ]
+
+
+def test_run_cli_fallback_adds_src_to_pythonpath(monkeypatch):
+    module = load_module()
+    run_cli = module["run_cli"]
+
+    envs: list[dict[str, str] | None] = []
+
+    def fake_run(argv, *, stdout, stderr, text, check, env=None):  # type: ignore[no-untyped-def]
+        if argv[0] == "glitchlings":
+            raise FileNotFoundError
+        envs.append(env)
+        return SimpleNamespace(stdout="ok\n")
+
+    monkeypatch.setenv("PYTHONPATH", "/custom")
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    result = run_cli(["glitchlings", "--help"])
+
+    assert result == "ok"
+    assert envs and envs[0] is not None
+    fallback_env = envs[0]
+    src_path = str(module["ROOT"] / "src")
+    pieces = fallback_env["PYTHONPATH"].split(os.pathsep)
+    assert pieces[0] == src_path
+    assert "/custom" in pieces[1:]
