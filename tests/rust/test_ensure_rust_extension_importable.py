@@ -13,10 +13,21 @@ import pytest
 
 def test_ensure_rust_extension_handles_import_error():
     """Test that _ensure_rust_extension_importable catches ImportError."""
-    # Import the function from the test module
-    from tests.rust.test_rust_backed_glitchlings import (
-        _ensure_rust_extension_importable,
+    # Clean up any previous module state
+    if "glitchlings._zoo_rust" in sys.modules:
+        del sys.modules["glitchlings._zoo_rust"]
+    
+    # Import the function from the test module using importlib
+    test_module_path = Path(__file__).parent / "test_rust_backed_glitchlings.py"
+    spec = importlib.util.spec_from_file_location(
+        "test_rust_backed_glitchlings", test_module_path
     )
+    if spec is None or spec.loader is None:
+        pytest.skip("Could not load test module")
+
+    test_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(test_module)
+    _ensure_rust_extension_importable = test_module._ensure_rust_extension_importable
 
     # Create a mock loader that raises ImportError
     mock_loader = MagicMock()
@@ -46,14 +57,29 @@ def test_ensure_rust_extension_handles_import_error():
                             except ImportError as e:
                                 # Should catch ImportError
                                 pytest.fail(f"Function raised ImportError: {e}")
+    
+    # Clean up after test
+    if "glitchlings._zoo_rust" in sys.modules:
+        del sys.modules["glitchlings._zoo_rust"]
 
 
 def test_ensure_rust_extension_handles_module_not_found_error():
     """Test that _ensure_rust_extension_importable catches ModuleNotFoundError."""
-    # Import the function from the test module
-    from tests.rust.test_rust_backed_glitchlings import (
-        _ensure_rust_extension_importable,
+    # Clean up any previous module state
+    if "glitchlings._zoo_rust" in sys.modules:
+        del sys.modules["glitchlings._zoo_rust"]
+    
+    # Import the function from the test module using importlib
+    test_module_path = Path(__file__).parent / "test_rust_backed_glitchlings.py"
+    spec = importlib.util.spec_from_file_location(
+        "test_rust_backed_glitchlings", test_module_path
     )
+    if spec is None or spec.loader is None:
+        pytest.skip("Could not load test module")
+
+    test_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(test_module)
+    _ensure_rust_extension_importable = test_module._ensure_rust_extension_importable
 
     # Create a mock loader that raises ModuleNotFoundError
     mock_loader = MagicMock()
@@ -83,6 +109,10 @@ def test_ensure_rust_extension_handles_module_not_found_error():
                             except ModuleNotFoundError as e:
                                 # Should catch ModuleNotFoundError
                                 pytest.fail(f"Function raised ModuleNotFoundError: {e}")
+    
+    # Clean up after test
+    if "glitchlings._zoo_rust" in sys.modules:
+        del sys.modules["glitchlings._zoo_rust"]
 
 
 def test_glitchlings_importable_without_rust_extension():
