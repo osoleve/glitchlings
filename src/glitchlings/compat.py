@@ -140,6 +140,14 @@ class OptionalDependency:
             self._used_fallback = False
             return module
 
+    def _raise_missing_error(self) -> None:
+        """Raise ModuleNotFoundError for the missing dependency."""
+        error = self._error
+        if error is not None:
+            raise error
+        message = f"{self.module_name} is not installed"
+        raise ModuleNotFoundError(message)
+
     def get(self) -> ModuleType | None:
         """Return the imported module or ``None`` when unavailable."""
         cached = self._cached
@@ -152,18 +160,8 @@ class OptionalDependency:
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
         module = self.get()
-        if module is None:
-            error = self._error
-            if error is not None:
-                raise error
-            message = f"{self.module_name} is not installed"
-            raise ModuleNotFoundError(message)
-        if self._used_fallback:
-            error = self._error
-            if error is not None:
-                raise error
-            message = f"{self.module_name} is not installed"
-            raise ModuleNotFoundError(message)
+        if module is None or self._used_fallback:
+            self._raise_missing_error()
         return module
 
     def require(self, message: str) -> ModuleType:
@@ -187,6 +185,7 @@ class OptionalDependency:
         self._cached = _MISSING
         self._error = None
         self._used_fallback = False
+        self._fallback_instance = None
 
     def attr(self, attribute: str) -> Any | None:
         """Return ``attribute`` from the dependency when available."""
