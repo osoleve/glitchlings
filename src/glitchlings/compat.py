@@ -193,6 +193,8 @@ class OptionalDependency:
         module = self.get()
         if module is None:
             return None
+        if self._used_fallback:
+            return None
         return getattr(module, attribute, None)
 
     @property

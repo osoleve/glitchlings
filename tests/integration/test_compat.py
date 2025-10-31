@@ -152,15 +152,13 @@ def test_pytorch_lightning_available_false_with_fallback(monkeypatch: pytest.Mon
     compat.reset_optional_dependencies()
 
 
-def test_pytorch_lightning_attr_returns_stub_attribute(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify attr() can still access stub attributes for internal use."""
+def test_pytorch_lightning_attr_returns_none_with_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify attr() reports missing attributes when fallback is used."""
     compat.reset_optional_dependencies()
     _force_missing(monkeypatch, "pytorch_lightning")
 
-    # attr() should return the stub's LightningDataModule
-    # This allows internal code to use the stub for type checking
+    # attr() should return None so callers know the dependency is missing
     datamodule_cls = compat.pytorch_lightning.attr("LightningDataModule")
-    assert datamodule_cls is not None
-    assert callable(datamodule_cls)
+    assert datamodule_cls is None
 
     compat.reset_optional_dependencies()
