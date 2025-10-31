@@ -3,9 +3,9 @@ from .util import SAMPLE_TEXT
 from .zoo import (
     Adjax,
     Apostrofae,
+    Ekkokin,
     Gaggle,
     Glitchling,
-    Ekkokin,
     Hokey,
     Jargoyle,
     Mim1c,
