@@ -114,13 +114,18 @@ def _ensure_rust_extension_importable() -> None:
         spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
         if spec is None or spec.loader is None:
             continue
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["glitchlings._zoo_rust"] = module
-        spec.loader.exec_module(module)
-        package = sys.modules.get("glitchlings")
-        if package is not None and hasattr(package, "__path__"):
-            package.__path__.append(str(artifact.parent))
-        return
+        try:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["glitchlings._zoo_rust"] = module
+            spec.loader.exec_module(module)
+            package = sys.modules.get("glitchlings")
+            if package is not None and hasattr(package, "__path__"):
+                package.__path__.append(str(artifact.parent))
+            return
+        except (ImportError, ModuleNotFoundError):
+            # Extension exists but cannot be loaded (ABI mismatch, missing libraries, etc.)
+            # Continue to try other artifacts or fall back to Python implementation
+            continue
 
 _ensure_rust_extension_importable()
 
