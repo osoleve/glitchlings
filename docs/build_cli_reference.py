@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -14,14 +15,24 @@ MARKER_END = "<!-- END: CLI_USAGE -->"
 
 def run_cli(command: list[str]) -> str:
     """Execute a CLI command and return its stdout, stripped of trailing space."""
-    result = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=True,
-    )
-    return result.stdout.rstrip()
+
+    def execute(argv: list[str]) -> str:
+        result = subprocess.run(
+            argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True,
+        )
+        return result.stdout.rstrip()
+
+    try:
+        return execute(command)
+    except FileNotFoundError:
+        if command and command[0] == "glitchlings":
+            fallback = [sys.executable, "-m", "glitchlings", *command[1:]]
+            return execute(fallback)
+        raise
 
 
 def build_cli_usage_block() -> str:
