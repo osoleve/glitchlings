@@ -106,43 +106,20 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
 
-    let canonical_repo_asset = manifest_dir
-        .join("../../src/glitchlings/zoo/assets")
-        .join(asset_name);
-    let packaged_path = manifest_dir.join("assets").join(asset_name);
-    println!("cargo:rerun-if-changed={}", packaged_path.display());
-
-    let source_path = if canonical_repo_asset.exists() {
-        println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
-        if packaged_path.exists() {
-            let repo_bytes = fs::read(&canonical_repo_asset)?;
-            let packaged_bytes = fs::read(&packaged_path)?;
-            if repo_bytes != packaged_bytes {
-                return Err(io::Error::new(
-                    ErrorKind::Other,
-                    format!(
-                        "asset {} is out of sync with {}",
-                        packaged_path.display(),
-                        canonical_repo_asset.display()
-                    ),
-                ));
-            }
-        }
-        canonical_repo_asset
-    } else if packaged_path.exists() {
-        packaged_path
-    } else {
+    let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
+    if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
             format!(
-                "missing asset {asset_name}; looked for {} and {}",
-                canonical_repo_asset.display(),
-                packaged_path.display()
+                "missing asset {asset_name}; expected {}",
+                canonical_repo_asset.display()
             ),
         ));
-    };
+    }
+
+    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
 
     fs::create_dir_all(&out_dir)?;
-    fs::copy(&source_path, out_dir.join(asset_name))?;
+    fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
     Ok(())
 }

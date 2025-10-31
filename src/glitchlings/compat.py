@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Protocol, cast
+from typing import Any, Callable, Iterable, Mapping, Protocol, cast
 
 
 class _MissingSentinel:
@@ -50,25 +51,103 @@ else:
     Requirement = cast(type[_RequirementProtocol], _RequirementClass)
 
 
+def _build_lightning_stub() -> ModuleType:
+    """Return a minimal PyTorch Lightning stub when the dependency is absent."""
+
+    module = ModuleType("pytorch_lightning")
+
+    class LightningDataModule:  # pragma: no cover - simple compatibility shim
+        """Lightweight stand-in for PyTorch Lightning's ``LightningDataModule``."""
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - parity with real class
+            pass
+
+        def prepare_data(self, *args: Any, **kwargs: Any) -> None:  # noqa: D401 - parity with real class
+            return None
+
+        def setup(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def teardown(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def state_dict(self) -> dict[str, Any]:
+            return {}
+
+        def load_state_dict(self, state_dict: Mapping[str, Any]) -> None:
+            return None
+
+        def transfer_batch_to_device(self, batch: Any, device: Any, dataloader_idx: int) -> Any:
+            return batch
+
+        def on_before_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
+            return batch
+
+        def on_after_batch_transfer(self, batch: Any, dataloader_idx: int) -> Any:
+            return batch
+
+        def train_dataloader(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        def val_dataloader(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        def test_dataloader(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+        def predict_dataloader(self, *args: Any, **kwargs: Any) -> Any:
+            return []
+
+    module.LightningDataModule = LightningDataModule
+    module.__all__ = ["LightningDataModule"]
+    module.__doc__ = (
+        "Lightweight stub module that exposes a minimal LightningDataModule "
+        "when PyTorch Lightning is unavailable."
+    )
+    module.__version__ = "0.0.0-stub"
+    return module
+
+
 @dataclass
 class OptionalDependency:
     """Lazily import an optional dependency and retain the import error."""
 
     module_name: str
+    fallback_factory: Callable[[], ModuleType] | None = None
     _cached: ModuleType | None | _MissingSentinel = _MISSING
     _error: ModuleNotFoundError | None = None
+    _used_fallback: bool = False
+    _fallback_instance: ModuleType | None = None
 
     def _attempt_import(self) -> ModuleType | None:
         try:
             module = import_module(self.module_name)
         except ModuleNotFoundError as exc:
+            if self.fallback_factory is not None:
+                if self._fallback_instance is None:
+                    self._fallback_instance = self.fallback_factory()
+                module = self._fallback_instance
+                self._cached = module
+                # Preserve the original error so load()/require() can re-raise it
+                self._error = exc
+                self._used_fallback = True
+                return module
             self._cached = None
             self._error = exc
             return None
         else:
             self._cached = module
             self._error = None
+            self._used_fallback = False
             return module
+
+    def _raise_missing_error(self) -> None:
+        """Raise ModuleNotFoundError for the missing dependency."""
+        error = self._error
+        if error is not None:
+            raise error
+        message = f"{self.module_name} is not installed"
+        raise ModuleNotFoundError(message)
 
     def get(self) -> ModuleType | None:
         """Return the imported module or ``None`` when unavailable."""
@@ -82,12 +161,8 @@ class OptionalDependency:
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
         module = self.get()
-        if module is None:
-            error = self._error
-            if error is not None:
-                raise error
-            message = f"{self.module_name} is not installed"
-            raise ModuleNotFoundError(message)
+        if self._used_fallback or module is None:
+            self._raise_missing_error()
         return module
 
     def require(self, message: str) -> ModuleType:
@@ -99,17 +174,26 @@ class OptionalDependency:
 
     def available(self) -> bool:
         """Return ``True`` when the dependency can be imported."""
-        return self.get() is not None
+        module = self.get()
+        if module is None:
+            return False
+        if self._used_fallback:
+            return False
+        return True
 
     def reset(self) -> None:
         """Forget any cached import result."""
         self._cached = _MISSING
         self._error = None
+        self._used_fallback = False
+        self._fallback_instance = None
 
     def attr(self, attribute: str) -> Any | None:
         """Return ``attribute`` from the dependency when available."""
         module = self.get()
         if module is None:
+            return None
+        if self._used_fallback:
             return None
         return getattr(module, attribute, None)
 
@@ -120,7 +204,10 @@ class OptionalDependency:
         return self._error
 
 
-pytorch_lightning = OptionalDependency("pytorch_lightning")
+pytorch_lightning = OptionalDependency(
+    "pytorch_lightning",
+    fallback_factory=_build_lightning_stub,
+)
 datasets = OptionalDependency("datasets")
 verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")

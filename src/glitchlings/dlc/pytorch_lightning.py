@@ -187,7 +187,19 @@ def _ensure_datamodule_class() -> Any:
         setattr(datamodule_cls, "glitch", glitch)
 
     if not issubclass(_GlitchedLightningDataModule, datamodule_cls):
-        _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
+        try:
+            _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
+        except TypeError:
+            namespace = {
+                name: value
+                for name, value in vars(_GlitchedLightningDataModule).items()
+                if name not in {"__dict__", "__weakref__"}
+            }
+            replacement = cast(
+                type[Any],
+                type("_GlitchedLightningDataModule", (datamodule_cls,), namespace),
+            )
+            globals()["_GlitchedLightningDataModule"] = replacement
 
     return datamodule_cls
 

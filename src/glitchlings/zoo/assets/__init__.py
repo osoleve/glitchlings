@@ -5,16 +5,37 @@ from functools import cache
 from hashlib import blake2b
 from importlib import resources
 from importlib.resources.abc import Traversable
-from typing import Any, BinaryIO, TextIO, cast
+from pathlib import Path
+from typing import Any, BinaryIO, Iterable, TextIO, cast
 
 _DEFAULT_DIGEST_SIZE = 32
 
 
+def _iter_asset_roots() -> Iterable[Traversable]:
+    """Yield candidate locations for the shared glitchling asset bundle."""
+
+    try:
+        package_root = resources.files("glitchlings").joinpath("assets")
+    except ModuleNotFoundError:  # pragma: no cover - defensive guard for install issues
+        package_root = None
+    else:
+        if package_root.is_dir():
+            yield package_root
+
+    repo_root = Path(__file__).resolve().parents[4] / "assets"
+    if repo_root.is_dir():
+        yield cast(Traversable, repo_root)
+
+
 def _asset(name: str) -> Traversable:
-    asset = resources.files(__name__).joinpath(name)
-    if not asset.is_file():  # pragma: no cover - defensive guard for packaging issues
-        raise FileNotFoundError(f"Asset '{name}' not found at {asset}")
-    return asset
+    asset_roots = list(_iter_asset_roots())
+    for root in asset_roots:
+        candidate = root.joinpath(name)
+        if candidate.is_file():
+            return candidate
+
+    searched = ", ".join(str(root.joinpath(name)) for root in asset_roots) or "<unavailable>"
+    raise FileNotFoundError(f"Asset '{name}' not found in: {searched}")
 
 
 def read_text(name: str, *, encoding: str = "utf-8") -> str:
