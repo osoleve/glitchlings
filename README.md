@@ -115,6 +115,7 @@ glitchlings --list
 Apostrofae — scope: Character, order: normal
      Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
+   Ekkokin — scope: Word, order: early
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
    Reduple — scope: Word, order: normal
@@ -130,31 +131,22 @@ glitchlings --help
 ```
 
 ```text
-usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG]
-                   [text]
+usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff] [--list] [-c CONFIG] [text]
 
-Summon glitchlings to corrupt text. Provide input text as an argument, via
---file, or pipe it on stdin.
+Summon glitchlings to corrupt text. Provide input text as an argument, via --file, or pipe it on stdin.
 
 positional arguments:
-  text                  Text to corrupt. If omitted, stdin is used or --sample
-                        provides fallback text.
+  text                  Text to corrupt. If omitted, stdin is used or --sample provides fallback text.
 
 options:
   -h, --help            show this help message and exit
   -g SPEC, --glitchling SPEC
-                        Glitchling to apply, optionally with parameters like
-                        Typogre(rate=0.05). Repeat for multiples; defaults to
-                        all built-ins.
-  -s SEED, --seed SEED  Seed controlling deterministic corruption order
-                        (default: 151).
-  -f FILE, --file FILE  Read input text from a file instead of the command
-                        line argument.
-  --sample              Use the included SAMPLE_TEXT when no other input is
-                        provided.
-  --diff                Show a unified diff between the original and corrupted
-                        text.
+                        Glitchling to apply, optionally with parameters like Typogre(rate=0.05). Repeat for multiples;
+                        defaults to all built-ins.
+  -s SEED, --seed SEED  Seed controlling deterministic corruption order (default: 151).
+  -f FILE, --file FILE  Read input text from a file instead of the command line argument.
+  --sample              Use the included SAMPLE_TEXT when no other input is provided.
+  --diff                Show a unified diff between the original and corrupted text.
   --list                List available glitchlings and exit.
   -c CONFIG, --config CONFIG
                         Load glitchlings from a YAML configuration file.
