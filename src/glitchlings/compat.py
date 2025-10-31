@@ -127,9 +127,9 @@ class OptionalDependency:
                 if self._fallback_instance is None:
                     self._fallback_instance = self.fallback_factory()
                 module = self._fallback_instance
-                sys.modules.setdefault(self.module_name, module)
                 self._cached = module
-                self._error = None
+                # Preserve the original error so load()/require() can re-raise it
+                self._error = exc
                 self._used_fallback = True
                 return module
             self._cached = None
@@ -140,6 +140,14 @@ class OptionalDependency:
             self._error = None
             self._used_fallback = False
             return module
+
+    def _raise_missing_error(self) -> None:
+        """Raise ModuleNotFoundError for the missing dependency."""
+        error = self._error
+        if error is not None:
+            raise error
+        message = f"{self.module_name} is not installed"
+        raise ModuleNotFoundError(message)
 
     def get(self) -> ModuleType | None:
         """Return the imported module or ``None`` when unavailable."""
@@ -153,12 +161,8 @@ class OptionalDependency:
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
         module = self.get()
-        if module is None:
-            error = self._error
-            if error is not None:
-                raise error
-            message = f"{self.module_name} is not installed"
-            raise ModuleNotFoundError(message)
+        if self._used_fallback or module is None:
+            self._raise_missing_error()
         return module
 
     def require(self, message: str) -> ModuleType:
@@ -170,15 +174,19 @@ class OptionalDependency:
 
     def available(self) -> bool:
         """Return ``True`` when the dependency can be imported."""
-        return self.get() is not None
+        module = self.get()
+        if module is None:
+            return False
+        if self._used_fallback:
+            return False
+        return True
 
     def reset(self) -> None:
         """Forget any cached import result."""
-        if self._used_fallback and self.module_name in sys.modules:
-            del sys.modules[self.module_name]
         self._cached = _MISSING
         self._error = None
         self._used_fallback = False
+        self._fallback_instance = None
 
     def attr(self, attribute: str) -> Any | None:
         """Return ``attribute`` from the dependency when available."""
