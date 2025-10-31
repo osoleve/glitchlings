@@ -100,16 +100,8 @@ package-dir = {"" = "src"}
 include-package-data = true
 
 [tool.setuptools.package-data]
-"glitchlings" = ["config.toml"]
+"glitchlings" = ["config.toml", "assets/*.json", "assets/*.tsv"]
 "glitchlings.lexicon" = ["data/*.json"]
-
-[tool.setuptools.data-files]
-"glitchlings/assets" = [
-    "assets/apostrofae_pairs.json",
-    "assets/hokey_assets.json",
-    "assets/ocr_confusions.tsv",
-    "assets/ekkokin_homophones.json",
-]
 
 [tool.setuptools.packages.find]
 where = ["src"]
