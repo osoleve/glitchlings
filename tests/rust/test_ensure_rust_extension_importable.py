@@ -12,7 +12,7 @@ import pytest
 
 
 def test_ensure_rust_extension_handles_import_error():
-    """Test that _ensure_rust_extension_importable catches ImportError when loading fails."""
+    """Test that _ensure_rust_extension_importable catches ImportError."""
     # Import the test module to access the function
     test_module_path = Path(__file__).parent / "test_rust_backed_glitchlings.py"
     spec = importlib.util.spec_from_file_location("test_module", test_module_path)
@@ -36,21 +36,26 @@ def test_ensure_rust_extension_handles_import_error():
     with patch.object(importlib.util, "find_spec", return_value=None):
         with patch.object(Path, "exists", return_value=True):
             with patch.object(Path, "glob", return_value=[mock_artifact]):
-                with patch.object(importlib.util, "spec_from_file_location", return_value=mock_spec):
+                with patch.object(
+                    importlib.util, "spec_from_file_location", return_value=mock_spec
+                ):
                     with patch.object(importlib, "import_module"):
-                        with patch.object(importlib.util, "module_from_spec", return_value=MagicMock()):
+                        with patch.object(
+                            importlib.util, "module_from_spec", return_value=MagicMock()
+                        ):
                             # This should not raise an exception
                             try:
                                 spec.loader.exec_module(test_module)
                                 # Call the function
                                 test_module._ensure_rust_extension_importable()
                             except ImportError as e:
-                                # The function should catch the ImportError, so this shouldn't happen
-                                pytest.fail(f"_ensure_rust_extension_importable raised ImportError: {e}")
+                                # Should catch ImportError
+                                msg = f"_ensure_rust_extension_importable raised: {e}"
+                                pytest.fail(msg)
 
 
 def test_ensure_rust_extension_handles_module_not_found_error():
-    """Test that _ensure_rust_extension_importable catches ModuleNotFoundError when loading fails."""
+    """Test that _ensure_rust_extension_importable catches ModuleNotFoundError."""
     # Import the test module to access the function
     test_module_path = Path(__file__).parent / "test_rust_backed_glitchlings.py"
     spec = importlib.util.spec_from_file_location("test_module", test_module_path)
@@ -61,7 +66,7 @@ def test_ensure_rust_extension_handles_module_not_found_error():
     
     # Create a mock loader that raises ModuleNotFoundError
     mock_loader = MagicMock()
-    mock_loader.exec_module.side_effect = ModuleNotFoundError("Missing native dependency")
+    mock_loader.exec_module.side_effect = ModuleNotFoundError("Missing dependency")
     
     mock_spec = MagicMock()
     mock_spec.loader = mock_loader
@@ -74,17 +79,22 @@ def test_ensure_rust_extension_handles_module_not_found_error():
     with patch.object(importlib.util, "find_spec", return_value=None):
         with patch.object(Path, "exists", return_value=True):
             with patch.object(Path, "glob", return_value=[mock_artifact]):
-                with patch.object(importlib.util, "spec_from_file_location", return_value=mock_spec):
+                with patch.object(
+                    importlib.util, "spec_from_file_location", return_value=mock_spec
+                ):
                     with patch.object(importlib, "import_module"):
-                        with patch.object(importlib.util, "module_from_spec", return_value=MagicMock()):
+                        with patch.object(
+                            importlib.util, "module_from_spec", return_value=MagicMock()
+                        ):
                             # This should not raise an exception
                             try:
                                 spec.loader.exec_module(test_module)
                                 # Call the function
                                 test_module._ensure_rust_extension_importable()
                             except ModuleNotFoundError as e:
-                                # The function should catch the ModuleNotFoundError, so this shouldn't happen
-                                pytest.fail(f"_ensure_rust_extension_importable raised ModuleNotFoundError: {e}")
+                                # Should catch ModuleNotFoundError
+                                msg = f"_ensure_rust_extension_importable raised: {e}"
+                                pytest.fail(msg)
 
 
 def test_glitchlings_importable_without_rust_extension():
