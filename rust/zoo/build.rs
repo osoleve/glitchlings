@@ -9,6 +9,8 @@ fn main() {
     stage_asset("ocr_confusions.tsv").expect("failed to stage OCR confusion table for compilation");
     stage_asset("apostrofae_pairs.json")
         .expect("failed to stage Apostrofae replacement table for compilation");
+    stage_asset("ekkokin_homophones.json")
+        .expect("failed to stage Ekkokin homophone table for compilation");
     stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
@@ -111,10 +113,7 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
     println!("cargo:rerun-if-changed={}", packaged_path.display());
 
     let source_path = if canonical_repo_asset.exists() {
-        println!(
-            "cargo:rerun-if-changed={}",
-            canonical_repo_asset.display()
-        );
+        println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
         if packaged_path.exists() {
             let repo_bytes = fs::read(&canonical_repo_asset)?;
             let packaged_bytes = fs::read(&packaged_path)?;

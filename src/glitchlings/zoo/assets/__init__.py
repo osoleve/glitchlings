@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from functools import cache
 from hashlib import blake2b
 from importlib import resources
 from importlib.resources.abc import Traversable
@@ -51,4 +52,19 @@ def hash_asset(name: str) -> str:
     return digest.hexdigest()
 
 
-__all__ = ["read_text", "open_text", "open_binary", "load_json", "hash_asset"]
+@cache
+def load_homophone_groups(name: str = "ekkokin_homophones.json") -> tuple[tuple[str, ...], ...]:
+    """Return the curated homophone sets bundled for the Ekkokin glitchling."""
+
+    data: list[list[str]] = load_json(name)
+    return tuple(tuple(group) for group in data)
+
+
+__all__ = [
+    "read_text",
+    "open_text",
+    "open_binary",
+    "load_json",
+    "hash_asset",
+    "load_homophone_groups",
+]
