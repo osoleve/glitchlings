@@ -128,6 +128,7 @@ class OptionalDependency:
                     self._fallback_instance = self.fallback_factory()
                 module = self._fallback_instance
                 self._cached = module
+                # Preserve the original error so load()/require() can re-raise it
                 self._error = exc
                 self._used_fallback = True
                 return module
