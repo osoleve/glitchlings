@@ -2,6 +2,10 @@
 
 Welcome! This repository corrals a roster of deterministic text-corruption "glitchlings" plus a CLI for orchestrating them. Treat this handbook as the default guidance for any work in the repo.
 
+## Work Tracking
+- Use the [Beads `bd` CLI](https://github.com/steveyegge/beads) for all planning and engineering notes that would otherwise live in Markdown. Initialise or update the tracker with `bd init`, review the quick start via `bd quickstart`, and capture ongoing work as bead entries instead of ad-hoc files.
+- Do not delete `AGENTS.md` or `CLAUDE.md`; keep them alongside the Beads database. When migrating existing Markdown notes, port the relevant content into beads before removing the files.
+
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
   - `__init__.py` exposes the public API (glitchlings, `Gaggle`, `summon`, `SAMPLE_TEXT`).
