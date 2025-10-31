@@ -5,6 +5,7 @@ use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
+use crate::ekkokin::EkkokinOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
     MULTIPLE_WHITESPACE, SPACE_BEFORE_PUNCTUATION,
@@ -1150,6 +1151,7 @@ pub enum GlitchOperation {
     ZeroWidth(ZeroWidthOp),
     QuotePairs(QuotePairsOp),
     Hokey(crate::hokey::HokeyOp),
+    Ekkokin(EkkokinOp),
 }
 
 impl GlitchOp for GlitchOperation {
@@ -1164,6 +1166,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
             GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
             GlitchOperation::Hokey(op) => op.apply(buffer, rng),
+            GlitchOperation::Ekkokin(op) => op.apply(buffer, rng),
         }
     }
 }

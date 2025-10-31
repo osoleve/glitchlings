@@ -55,8 +55,8 @@ impl From<RawHokeyAssets> for HokeyAssets {
 fn assets() -> &'static HokeyAssets {
     static ASSETS: OnceLock<HokeyAssets> = OnceLock::new();
     ASSETS.get_or_init(|| {
-        let raw: RawHokeyAssets = serde_json::from_str(HOKEY_ASSETS)
-            .expect("failed to parse Hokey asset payload");
+        let raw: RawHokeyAssets =
+            serde_json::from_str(HOKEY_ASSETS).expect("failed to parse Hokey asset payload");
         raw.into()
     })
 }
@@ -598,12 +598,12 @@ impl GlitchOp for HokeyOp {
             };
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);
             let alpha_len = original.chars().filter(|c| c.is_alphabetic()).count();
-            
+
             // First check: skip if word is more than double the threshold
             if self.word_length_threshold > 0 && alpha_len > self.word_length_threshold * 2 {
                 continue;
             }
-            
+
             // Second check: adjust intensity if word exceeds threshold
             if self.word_length_threshold > 0 && alpha_len > self.word_length_threshold {
                 let excess = (alpha_len - self.word_length_threshold) as f64;
@@ -612,7 +612,7 @@ impl GlitchOp for HokeyOp {
                     continue;
                 }
             }
-            
+
             intensity = intensity.max(0.05);
             let repeats =
                 self.sample_length(rng, intensity, self.extension_min, self.extension_max)?;
@@ -661,7 +661,11 @@ fn vowel_clusters(lower_chars: &[char], alpha_indices: &[usize]) -> Vec<(usize, 
     clusters
 }
 
-fn coda_site(lower_chars: &[char], alpha_indices: &[usize], has_multi_vowel: bool) -> Option<StretchSite> {
+fn coda_site(
+    lower_chars: &[char],
+    alpha_indices: &[usize],
+    has_multi_vowel: bool,
+) -> Option<StretchSite> {
     if alpha_indices.is_empty() {
         return None;
     }

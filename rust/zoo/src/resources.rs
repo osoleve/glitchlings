@@ -5,6 +5,8 @@ use std::collections::HashMap;
 const RAW_APOSTROFAE_PAIRS: &str = include_str!(concat!(env!("OUT_DIR"), "/apostrofae_pairs.json"));
 
 const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(env!("OUT_DIR"), "/ocr_confusions.tsv"));
+const RAW_EKKOKIN_HOMOPHONES: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/ekkokin_homophones.json"));
 
 /// Precompiled regex removing spaces before punctuation characters.
 pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
@@ -64,10 +66,21 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
         entries.into_iter().map(|(_, pair)| pair).collect()
     });
 
+/// Parsed homophone sets for the Ekkokin glitchling.
+pub static EKKOKIN_HOMOPHONE_SETS: Lazy<Vec<Vec<String>>> = Lazy::new(|| {
+    serde_json::from_str(RAW_EKKOKIN_HOMOPHONES)
+        .expect("Ekkokin homophone table should be valid JSON")
+});
+
 /// Returns the pre-sorted OCR confusion table.
 #[inline]
 pub fn confusion_table() -> &'static [(&'static str, &'static [&'static str])] {
     OCR_CONFUSION_TABLE.as_slice()
+}
+
+/// Returns the parsed homophone sets backing the Ekkokin glitchling.
+pub fn ekkokin_homophone_sets() -> &'static [Vec<String>] {
+    EKKOKIN_HOMOPHONE_SETS.as_slice()
 }
 
 /// Returns the Apostrofae replacement pairs keyed by the straight glyph.

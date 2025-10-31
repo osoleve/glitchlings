@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -14,20 +16,45 @@ MARKER_END = "<!-- END: CLI_USAGE -->"
 
 def run_cli(command: list[str]) -> str:
     """Execute a CLI command and return its stdout, stripped of trailing space."""
-    result = subprocess.run(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        check=True,
-    )
-    return result.stdout.rstrip()
+
+    def execute(argv: list[str], *, extra_env: dict[str, str] | None = None) -> str:
+        env = os.environ.copy()
+        env["COLUMNS"] = "80"
+        if extra_env:
+            env.update(extra_env)
+
+        result = subprocess.run(
+            argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            check=True,
+            env=env,
+        )
+        return result.stdout.rstrip()
+
+    try:
+        return execute(command)
+    except FileNotFoundError:
+        if command and command[0] == "glitchlings":
+            fallback = [sys.executable, "-m", "glitchlings", *command[1:]]
+            src = str(ROOT / "src")
+            pythonpath = os.environ.get("PYTHONPATH")
+            fallback_env = {
+                "PYTHONPATH": (
+                    f"{src}{os.pathsep}{pythonpath}" if pythonpath else src
+                )
+            }
+            return execute(fallback, extra_env=fallback_env)
+        raise
 
 
 def build_cli_usage_block() -> str:
     """Construct the Markdown block inserted into the README."""
     glitchling_list = run_cli(["glitchlings", "--list"])
     help_lines = run_cli(["glitchlings", "--help"]).splitlines()
+    if help_lines:
+        help_lines[0] = help_lines[0].replace("__main__.py", "glitchlings")
 
     help_preview = "\n".join(help_lines[:30]).rstrip()
     if len(help_lines) > 30:

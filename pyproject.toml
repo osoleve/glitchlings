@@ -106,6 +106,7 @@ include-package-data = true
     "apostrofae_pairs.json",
     "hokey_assets.json",
     "ocr_confusions.tsv",
+    "ekkokin_homophones.json",
 ]
 
 [tool.setuptools.packages.find]

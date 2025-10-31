@@ -1,3 +1,4 @@
+mod ekkokin;
 mod glitch_ops;
 mod hokey;
 mod pipeline;
@@ -15,6 +16,7 @@ use pyo3::{exceptions::PyValueError, FromPyObject};
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
+use ekkokin::{EkkokinOp, HomophoneWeighting};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
     RedactWordsOp, ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
@@ -205,6 +207,10 @@ enum PyGlitchOperation {
         word_length_threshold: usize,
         base_p: f64,
     },
+    Ekkokin {
+        rate: f64,
+        weighting: String,
+    },
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
@@ -218,9 +224,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
             "reduplicate" => {
                 let rate = dict
                     .get_item("rate")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("reduplicate operation missing 'rate'")
-                    })?
+                    .ok_or_else(|| PyValueError::new_err("reduplicate operation missing 'rate'"))?
                     .extract()?;
                 let unweighted = dict
                     .get_item("unweighted")?
@@ -232,9 +236,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
             "delete" => {
                 let rate = dict
                     .get_item("rate")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("delete operation missing 'rate'")
-                    })?
+                    .ok_or_else(|| PyValueError::new_err("delete operation missing 'rate'"))?
                     .extract()?;
                 let unweighted = dict
                     .get_item("unweighted")?
@@ -246,9 +248,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
             "swap_adjacent" => {
                 let rate = dict
                     .get_item("rate")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("swap_adjacent operation missing 'rate'")
-                    })?
+                    .ok_or_else(|| PyValueError::new_err("swap_adjacent operation missing 'rate'"))?
                     .extract()?;
                 Ok(PyGlitchOperation::SwapAdjacent { rate })
             }
@@ -261,9 +261,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .extract()?;
                 let rate = dict
                     .get_item("rate")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("redact operation missing 'rate'")
-                    })?
+                    .ok_or_else(|| PyValueError::new_err("redact operation missing 'rate'"))?
                     .extract()?;
                 let merge_adjacent = dict
                     .get_item("merge_adjacent")?
@@ -313,6 +311,18 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .transpose()?
                     .unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
+            }
+            "ekkokin" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("ekkokin operation missing 'rate'"))?
+                    .extract()?;
+                let weighting = dict
+                    .get_item("weighting")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
+                Ok(PyGlitchOperation::Ekkokin { rate, weighting })
             }
             "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             "hokey" => {
@@ -379,10 +389,7 @@ fn reduplicate_words(
     unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    let op = ReduplicateWordsOp {
-        rate,
-        unweighted,
-    };
+    let op = ReduplicateWordsOp { rate, unweighted };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -393,16 +400,26 @@ fn delete_random_words(
     unweighted: bool,
     rng: &Bound<'_, PyAny>,
 ) -> PyResult<String> {
-    let op = DeleteRandomWordsOp {
-        rate,
-        unweighted,
-    };
+    let op = DeleteRandomWordsOp { rate, unweighted };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[pyfunction]
 fn swap_adjacent_words(text: &str, rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
     let op = SwapAdjacentWordsOp { rate };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+}
+
+#[pyfunction]
+fn ekkokin_homophones(
+    text: &str,
+    rate: f64,
+    weighting: &str,
+    rng: &Bound<'_, PyAny>,
+) -> PyResult<String> {
+    let weighting = HomophoneWeighting::try_from_str(weighting)
+        .ok_or_else(|| PyValueError::new_err(format!("unsupported weighting: {weighting}")))?;
+    let op = EkkokinOp { rate, weighting };
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -470,20 +487,15 @@ fn compose_glitchlings(
         .into_iter()
         .map(|descriptor| {
             let operation = match descriptor.operation {
-                PyGlitchOperation::Reduplicate {
-                    rate,
-                    unweighted,
-                } => GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
-                    rate,
-                    unweighted,
-                }),
-                PyGlitchOperation::Delete {
-                    rate,
-                    unweighted,
-                } => GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp {
-                    rate,
-                    unweighted,
-                }),
+                PyGlitchOperation::Reduplicate { rate, unweighted } => {
+                    GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
+                        rate,
+                        unweighted,
+                    })
+                }
+                PyGlitchOperation::Delete { rate, unweighted } => {
+                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { rate, unweighted })
+                }
                 PyGlitchOperation::SwapAdjacent { rate } => {
                     GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
                 }
@@ -511,6 +523,13 @@ fn compose_glitchlings(
                 }
                 PyGlitchOperation::ZeroWidth { rate, characters } => {
                     GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
+                }
+                PyGlitchOperation::Ekkokin { rate, weighting } => {
+                    let weighting =
+                        HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
+                            PyValueError::new_err(format!("unsupported weighting: {weighting}"))
+                        })?;
+                    GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
                 }
                 PyGlitchOperation::QuotePairs => {
                     GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
@@ -546,6 +565,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
+    m.add_function(wrap_pyfunction!(ekkokin_homophones, m)?)?;
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
