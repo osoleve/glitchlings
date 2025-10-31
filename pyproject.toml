@@ -102,11 +102,13 @@ include-package-data = true
 [tool.setuptools.package-data]
 "glitchlings" = ["config.toml"]
 "glitchlings.lexicon" = ["data/*.json"]
-"glitchlings.zoo.assets" = [
-    "apostrofae_pairs.json",
-    "hokey_assets.json",
-    "ocr_confusions.tsv",
-    "ekkokin_homophones.json",
+
+[tool.setuptools.data-files]
+"glitchlings/assets" = [
+    "assets/apostrofae_pairs.json",
+    "assets/hokey_assets.json",
+    "assets/ocr_confusions.tsv",
+    "assets/ekkokin_homophones.json",
 ]
 
 [tool.setuptools.packages.find]

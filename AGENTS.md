@@ -3,8 +3,11 @@
 Welcome! This repository corrals a roster of deterministic text-corruption "glitchlings" plus a CLI for orchestrating them. Treat this handbook as the default guidance for any work in the repo.
 
 ## Work Tracking
-- Use the [Beads `bd` CLI](https://github.com/steveyegge/beads) for all planning and engineering notes that would otherwise live in Markdown. Initialise or update the tracker with `bd init`, review the quick start via `bd quickstart`, and capture ongoing work as bead entries instead of ad-hoc files.
-- Do not delete `AGENTS.md` or `CLAUDE.md`; keep them alongside the Beads database. When migrating existing Markdown notes, port the relevant content into beads before removing the files.
+1. Install the [Beads `bd` CLI](https://github.com/steveyegge/beads) in every environment before writing code. The project ships prebuilt binaries—download the latest release (e.g. `curl -L https://github.com/steveyegge/beads/releases/download/v0.20.1/beads_0.20.1_linux_amd64.tar.gz -o beads.tar.gz && tar -xzf beads.tar.gz`) and move the `bd` executable onto `$PATH` (for example, `install -m 0755 bd /usr/local/bin/bd`). Verify the install with `bd version`.
+2. Run `bd quickstart` once after installation to review the workflow commands and confirm the CLI is operational.
+3. Bootstrap new clones with `bd init --quiet` from the repository root; this keeps `.beads/` synchronised and ready for the agent workflow.
+4. **Before starting any coding task, create or update a bead describing the scope, mark it `in_progress` while you work, and capture completion details in the same bead before finishing.** Use the CLI (`bd create`, `bd update`, `bd close`) instead of editing JSON by hand—beads are the source of truth for ongoing work.
+5. Keep `AGENTS.md` and `CLAUDE.md` alongside the Beads database. When migrating existing Markdown notes, port the relevant content into beads before removing the files.
 
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
