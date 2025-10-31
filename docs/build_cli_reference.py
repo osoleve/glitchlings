@@ -17,7 +17,12 @@ MARKER_END = "<!-- END: CLI_USAGE -->"
 def run_cli(command: list[str]) -> str:
     """Execute a CLI command and return its stdout, stripped of trailing space."""
 
-    def execute(argv: list[str], *, env: dict[str, str] | None = None) -> str:
+    def execute(argv: list[str], *, extra_env: dict[str, str] | None = None) -> str:
+        env = os.environ.copy()
+        env["COLUMNS"] = "80"
+        if extra_env:
+            env.update(extra_env)
+
         result = subprocess.run(
             argv,
             stdout=subprocess.PIPE,
@@ -33,14 +38,14 @@ def run_cli(command: list[str]) -> str:
     except FileNotFoundError:
         if command and command[0] == "glitchlings":
             fallback = [sys.executable, "-m", "glitchlings", *command[1:]]
-            fallback_env = os.environ.copy()
             src = str(ROOT / "src")
-            fallback_env["PYTHONPATH"] = (
-                f"{src}{os.pathsep}{fallback_env['PYTHONPATH']}"
-                if "PYTHONPATH" in fallback_env
-                else src
-            )
-            return execute(fallback, env=fallback_env)
+            pythonpath = os.environ.get("PYTHONPATH")
+            fallback_env = {
+                "PYTHONPATH": (
+                    f"{src}{os.pathsep}{pythonpath}" if pythonpath else src
+                )
+            }
+            return execute(fallback, extra_env=fallback_env)
         raise
 
 
