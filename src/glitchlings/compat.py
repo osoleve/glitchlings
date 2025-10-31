@@ -127,9 +127,8 @@ class OptionalDependency:
                 if self._fallback_instance is None:
                     self._fallback_instance = self.fallback_factory()
                 module = self._fallback_instance
-                sys.modules.setdefault(self.module_name, module)
                 self._cached = module
-                self._error = None
+                self._error = exc
                 self._used_fallback = True
                 return module
             self._cached = None
@@ -159,6 +158,12 @@ class OptionalDependency:
                 raise error
             message = f"{self.module_name} is not installed"
             raise ModuleNotFoundError(message)
+        if self._used_fallback:
+            error = self._error
+            if error is not None:
+                raise error
+            message = f"{self.module_name} is not installed"
+            raise ModuleNotFoundError(message)
         return module
 
     def require(self, message: str) -> ModuleType:
@@ -170,12 +175,15 @@ class OptionalDependency:
 
     def available(self) -> bool:
         """Return ``True`` when the dependency can be imported."""
-        return self.get() is not None
+        module = self.get()
+        if module is None:
+            return False
+        if self._used_fallback:
+            return False
+        return True
 
     def reset(self) -> None:
         """Forget any cached import result."""
-        if self._used_fallback and self.module_name in sys.modules:
-            del sys.modules[self.module_name]
         self._cached = _MISSING
         self._error = None
         self._used_fallback = False
