@@ -1,5 +1,6 @@
 import sys
-from importlib import import_module, util as importlib_util
+from importlib import import_module
+from importlib import util as importlib_util
 
 
 def _ensure_rust_extension_alias() -> None:

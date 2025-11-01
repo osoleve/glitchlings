@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Iterable, Mapping, Sequence, cast
+from typing import Any, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
@@ -196,12 +196,18 @@ class Ekkokin(Glitchling):
             weighting=normalized_weighting,
         )
 
+    def set_param(self, key: str, value: Any) -> None:
+        """Normalise weighting updates before storing them on the glitchling."""
+        if key == "weighting":
+            value = _normalise_weighting(cast(str | None, value))
+        super().set_param(key, value)
+
 
 def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
     rate = glitch.kwargs.get("rate")
     if rate is None:
         return None
-    weighting = glitch.kwargs.get("weighting", _DEFAULT_WEIGHTING)
+    weighting = _normalise_weighting(cast(str | None, glitch.kwargs.get("weighting")))
     return {
         "type": "ekkokin",
         "rate": float(rate),

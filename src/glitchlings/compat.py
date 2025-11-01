@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import re
-import sys
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType

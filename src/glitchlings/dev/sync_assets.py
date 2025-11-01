@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Iterator, Sequence
 
 PIPELINE_ASSETS: frozenset[str] = frozenset(

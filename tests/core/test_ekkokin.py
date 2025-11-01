@@ -133,6 +133,24 @@ def test_ekkokin_weighting_normalisation_and_descriptor() -> None:
     assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.5), "weighting": "flat"}
 
 
+def test_ekkokin_set_param_normalises_weighting() -> None:
+    glitch = ekkokin_module.Ekkokin(rate=0.25, seed=11)
+
+    glitch.set_param("weighting", "FLAT")
+    descriptor = glitch.pipeline_operation()
+
+    assert glitch.weighting == "flat"
+    assert glitch.kwargs["weighting"] == "flat"
+    assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.25), "weighting": "flat"}
+
+    glitch.set_param("weighting", None)
+    descriptor = glitch.pipeline_operation()
+
+    assert glitch.weighting == "flat"
+    assert glitch.kwargs["weighting"] == "flat"
+    assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.25), "weighting": "flat"}
+
+
 def test_ekkokin_rejects_unknown_weighting() -> None:
     with pytest.raises(ValueError, match="Unsupported weighting"):
         ekkokin_module.Ekkokin(weighting="inverse")
