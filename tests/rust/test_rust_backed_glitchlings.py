@@ -129,7 +129,6 @@ def _ensure_rust_extension_importable() -> None:
 
 _ensure_rust_extension_importable()
 
-reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
@@ -177,7 +176,7 @@ def test_orchestration_plan_matches_python_reference():
             "order": int(core_module.AttackOrder.EARLY),
         },
         {
-            "name": "Reduple",
+            "name": "Adjax",
             "scope": int(core_module.AttackWave.WORD),
             "order": int(core_module.AttackOrder.NORMAL),
         },
@@ -224,14 +223,14 @@ def test_ekkokin_matches_python_fallback():
     assert result == expected
 
 
-def test_reduple_matches_python_fallback():
+def test_rushmore_duplicate_matches_python_fallback():
     text = "The quick brown fox jumps over the lazy dog."
-    expected = reduple_module._python_reduplicate_words(
+    expected = rushmore_module._python_reduplicate_words(
         text,
         rate=0.5,
         rng=random.Random(123),
     )
-    result = reduple_module.reduplicate_words(text, rate=0.5, seed=123)
+    result = rushmore_module.reduplicate_words(text, rate=0.5, seed=123)
     assert (
         result
         == expected
@@ -239,14 +238,14 @@ def test_reduple_matches_python_fallback():
     )
 
 
-def test_reduple_respects_explicit_rng():
+def test_rushmore_duplicate_respects_explicit_rng():
     text = "Repeat me"
-    expected = reduple_module._python_reduplicate_words(
+    expected = rushmore_module._python_reduplicate_words(
         text,
         rate=1.0,
         rng=random.Random(99),
     )
-    result = reduple_module.reduplicate_words(
+    result = rushmore_module.reduplicate_words(
         text,
         rate=1.0,
         rng=random.Random(99),
@@ -254,16 +253,16 @@ def test_reduple_respects_explicit_rng():
     assert result == expected == "Repeat Repeat me me"
 
 
-def test_reduple_unweighted_matches_python_fallback():
+def test_rushmore_duplicate_unweighted_matches_python_fallback():
     text = "alpha beta gamma delta epsilon zeta"
     seed = 1
-    expected = reduple_module._python_reduplicate_words(
+    expected = rushmore_module._python_reduplicate_words(
         text,
         rate=0.5,
         rng=random.Random(seed),
         unweighted=True,
     )
-    result = reduple_module.reduplicate_words(
+    result = rushmore_module.reduplicate_words(
         text,
         rate=0.5,
         seed=seed,
@@ -479,7 +478,7 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
         operation = descriptor["operation"]
         op_type = operation["type"]
         if op_type == "reduplicate":
-            current = reduple_module._python_reduplicate_words(
+            current = rushmore_module._python_reduplicate_words(
                 current,
                 rate=operation["rate"],
                 rng=rng,
@@ -548,7 +547,7 @@ def test_compose_glitchlings_matches_python_pipeline():
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
         {
-            "name": "Reduple",
+            "name": "Rushmore",
             "operation": {
                 "type": "reduplicate",
                 "rate": 0.4,
@@ -624,7 +623,7 @@ def test_compose_glitchlings_is_deterministic():
         pytest.skip("swap_adjacent support not available in rust extension")
     raw_descriptors = [
         {
-            "name": "Reduple",
+            "name": "Rushmore",
             "operation": {
                 "type": "reduplicate",
                 "rate": 0.4,
@@ -732,15 +731,15 @@ def test_gaggle_prefers_rust_pipeline(monkeypatch):
     def _fail(*_args: object, **_kwargs: object) -> str:
         raise AssertionError("Python fallback invoked")
 
-    monkeypatch.setattr(reduple_module, "reduplicate_words", _fail)
+    monkeypatch.setattr(rushmore_module, "reduplicate_words", _fail)
     monkeypatch.setattr(rushmore_module, "delete_random_words", _fail)
     monkeypatch.setattr(redactyl_module, "redact_words", _fail)
     monkeypatch.setattr(scannequin_module, "ocr_artifacts", _fail)
 
     gaggle_glitchlings = [
         scannequin_module.Scannequin(rate=0.2),
-        reduple_module.Reduple(rate=0.4),
-        rushmore_module.Rushmore(rate=0.3),
+        rushmore_module.Rushmore(rate=0.4, attack_mode="duplicate"),
+        rushmore_module.Rushmore(rate=0.3, attack_mode="delete"),
         redactyl_module.Redactyl(rate=0.5, merge_adjacent=True),
     ]
     gaggle = core_module.Gaggle(gaggle_glitchlings, seed=777)
@@ -752,14 +751,12 @@ def test_gaggle_prefers_rust_pipeline(monkeypatch):
     apply_names = [glitch.name for glitch in gaggle.apply_order]
     original_names = [glitch.name for glitch in gaggle_glitchlings]
     assert apply_names != original_names, "Expected Gaggle to reorder glitchlings"
-    expected_seeds = {
-        glitch.name: core_module.Gaggle.derive_seed(777, glitch.name, index)
+    assert [descriptor["name"] for descriptor in descriptors] == apply_names
+    expected_seeds = [
+        core_module.Gaggle.derive_seed(777, glitch.name, index)
         for index, glitch in enumerate(gaggle_glitchlings)
-    }
-    assert [descriptor["seed"] for descriptor in descriptors] == [
-        expected_seeds[descriptor["name"]]
-        for descriptor in descriptors
     ]
+    assert [descriptor["seed"] for descriptor in descriptors] == expected_seeds
     expected = _run_python_sequence(text, descriptors, 777)
     assert result == expected
 
@@ -775,8 +772,8 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
 
     gaggle = core_module.Gaggle(
         [
-            reduple_module.Reduple(rate=0.4),
-            rushmore_module.Rushmore(rate=0.3),
+            rushmore_module.Rushmore(rate=0.4, attack_mode="duplicate"),
+            rushmore_module.Rushmore(rate=0.3, attack_mode="delete"),
         ],
         seed=2024,
     )
@@ -785,7 +782,7 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     result = gaggle(text)
     raw_descriptors = [
         {
-            "name": "Reduple",
+            "name": "Rushmore",
             "operation": {
                 "type": "reduplicate",
                 "rate": 0.4,
@@ -816,7 +813,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
         typo.set_param("keyboard", "COLEMAK")
         zwj = zeedub_module.Zeedub(rate=0.03, seed=11)
         zwj.set_param("characters", ["\u200b", "\u2060"])
-        redup = reduple_module.Reduple(rate=0.2, seed=7)
+        redup = rushmore_module.Rushmore(rate=0.2, seed=7, attack_mode="duplicate")
         return [typo, redup, zwj]
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
@@ -828,13 +825,13 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
     descriptors = gaggle._pipeline_descriptors()
     assert descriptors == [
         {
-            "name": "Reduple",
+            "name": "Rushmore",
             "operation": {
                 "type": "reduplicate",
                 "rate": 0.2,
                 "unweighted": False,
             },
-            "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Rushmore", 1),
         },
         {
             "name": "Typogre",
@@ -879,7 +876,7 @@ def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
 
     base_glitchlings = [
         typogre_module.Typogre(rate=0.02, seed=5),
-        reduple_module.Reduple(rate=0.2, seed=7),
+        rushmore_module.Rushmore(rate=0.2, seed=7, attack_mode="duplicate"),
         zeedub_module.Zeedub(rate=0.03, seed=11),
     ]
 
@@ -921,7 +918,7 @@ def test_pipeline_falls_back_for_incomplete_operation(monkeypatch):
     def _make_glitchlings() -> list[core_module.Glitchling]:
         red = redactyl_module.Redactyl(rate=0.5, merge_adjacent=False, seed=11)
         red.set_param("merge_adjacent", None)
-        rush = rushmore_module.Rushmore(rate=0.25, seed=13)
+        rush = rushmore_module.Rushmore(rate=0.25, seed=13, attack_mode="delete")
         return [red, rush]
 
     python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
@@ -947,7 +944,7 @@ def test_pipeline_falls_back_when_compose_raises(monkeypatch):
     def _make_glitchlings() -> list[core_module.Glitchling]:
         return [
             typogre_module.Typogre(rate=0.04, seed=3),
-            reduple_module.Reduple(rate=0.25, seed=5),
+            rushmore_module.Rushmore(rate=0.25, seed=5, attack_mode="duplicate"),
             zeedub_module.Zeedub(rate=0.02, seed=7),
         ]
 
@@ -968,13 +965,13 @@ def test_pipeline_falls_back_when_compose_raises(monkeypatch):
     descriptors = gaggle._pipeline_descriptors()
     assert descriptors == [
         {
-            "name": "Reduple",
+            "name": "Rushmore",
             "operation": {
                 "type": "reduplicate",
                 "rate": 0.25,
                 "unweighted": False,
             },
-            "seed": core_module.Gaggle.derive_seed(master_seed, "Reduple", 1),
+            "seed": core_module.Gaggle.derive_seed(master_seed, "Rushmore", 1),
         },
         {
             "name": "Typogre",
@@ -1133,7 +1130,7 @@ def test_hokey_in_gaggle_rust_pipeline():
 
     def _make_glitchlings() -> list[core_module.Glitchling]:
         hokey = hokey_module.Hokey(rate=0.6, extension_min=3, extension_max=6, seed=42)
-        redup = reduple_module.Reduple(rate=0.2, seed=7)
+        redup = rushmore_module.Rushmore(rate=0.2, seed=7, attack_mode="duplicate")
         return [hokey, redup]
 
     import os

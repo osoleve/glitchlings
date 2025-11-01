@@ -413,50 +413,6 @@ _Did it come out wrong, or did you just hear what you expected?_
 >
 > ---
 
-## Reduple
-
-_Did you say that or did I?_
-
-> Small Fey (echolalic), Chaotic Neutral
->
-> ---
->
-> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
->
-> ### Reduple Args
->
-> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
->
-> ```python
-> >>> from glitchlings import reduple
-> >>> print(reduple(sample_text))
-> ```
->
-> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and and seemed ready to to slide off any moment. His many legs, pitifully thin compared with the size of the the rest of him, waved waved about helplessly as he looked looked.
->
-> ---
->
-> - **Armor Class** 14
-> - **Hit Points** 13 (3d6 + 3)
-> - **Speed** 40 ft.
->
-> ---
->
-> |STR|DEX|CON|INT|WIS|CHA|
-> |:---:|:---:|:---:|:---:|:---:|:---:|
-> |6 |18 |10 |7 |11 |14 |
->
-> ---
->
-> - **Skills** Performance +4, Stealth +6
-> - **Condition Immunities** silenced
-> - **Languages** Sylvan, Common (with an endearing stutter)
-> - **Challenge** 1/2 (100 XP)
->
-> ---
-
 ## Adjax
 
 _Shuffle enough sentences and the truth trips over its own shoelaces._
@@ -502,48 +458,47 @@ _Shuffle enough sentences and the truth trips over its own shoelaces._
 
 ## Rushmore
 
-_I accidentally an entire word._
+_I accidentally an entire sentence._
 
 > Tiny Aberration (kinetic), Chaotic Neutral
->
+
 > ---
->
-> _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
->
+
+> _**Hasty Everything.**_ Rushmore no longer just trims context—it now loops words, erases them, or swaps neighbouring tokens depending on which `attack_mode` you invoke.
+
 > ### Rushmore Args
->
-> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
+
+> - `rate (float)`: The maximum proportion of words to affect (default: 0.01, 1%).
 > - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
+> - `attack_mode (str)`: `"duplicate"`, `"delete"`, `"swap"`, or `"all"` to chain the trio (default: `"all"`).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
->
+
 > ```python
-> >>> from glitchlings import rushmore
-> >>> print(rushmore(sample_text))
+> >>> from glitchlings import Rushmore
+> >>> print(Rushmore(rate=0.05, attack_mode="all")(sample_text))
 > ```
->
-> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
->
+
+> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover and seemed ready slide to any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+
 > ---
->
+
 > - **Armor Class** 16
 > - **Hit Points** 7 (2d4 + 2)
 > - **Speed** 60 ft.
->
+
 > ---
->
+
 > |STR|DEX|CON|INT|WIS|CHA|
 > |:---:|:---:|:---:|:---:|:---:|:---:|
 > |2 |22 |8 |5 |7 |6 |
->
+
 > ---
->
+
 > - **Skills** Acrobatics +8, Stealth +8
 > - **Damage Vulnerabilities** effects that cause slowness
 > - **Senses** blindsight 10 ft.
 > - **Languages** --
 > - **Challenge** 1 (200 XP)
->
-> ---
 
 ## Redactyl
 

@@ -40,7 +40,7 @@ def keyboard_layout(keyboard: str) -> Dict[str, List[str]]:
 
 
 OPERATION_MODULES: Dict[str, str] = {
-    "reduplicate": "Reduple",
+    "reduplicate": "Rushmore",
     "delete": "Rushmore",
     "redact": "Redactyl",
     "ocr": "Scannequin",
@@ -61,7 +61,7 @@ def module_for_operation(op_type: str) -> ModuleType:
 
 BASE_DESCRIPTORS: List[Descriptor] = [
     {
-        "name": "Reduple",
+        "name": "Rushmore-duplicate",
         "operation": {"type": "reduplicate", "rate": 0.01},
     },
     {"name": "Rushmore", "operation": {"type": "delete", "rate": 0.01}},

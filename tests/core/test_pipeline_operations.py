@@ -2,7 +2,6 @@ import pytest
 
 from glitchlings.zoo.adjax import Adjax
 from glitchlings.zoo.redactyl import Redactyl
-from glitchlings.zoo.reduple import Reduple
 from glitchlings.zoo.rushmore import Rushmore
 from glitchlings.zoo.scannequin import Scannequin
 
@@ -26,7 +25,7 @@ from glitchlings.zoo.scannequin import Scannequin
             },
         ),
         (
-            lambda: Rushmore(rate=0.33, unweighted=True),
+            lambda: Rushmore(rate=0.33, unweighted=True, attack_mode="delete"),
             {
                 "type": "delete",
                 "rate": 0.33,
@@ -34,7 +33,7 @@ from glitchlings.zoo.scannequin import Scannequin
             },
         ),
         (
-            lambda: Reduple(rate=0.25),
+            lambda: Rushmore(rate=0.25, attack_mode="duplicate"),
             {
                 "type": "reduplicate",
                 "rate": 0.25,
@@ -71,11 +70,11 @@ def test_pipeline_operations_emit_expected_descriptors(factory, expected):
             lambda glitch: glitch.set_param("merge_adjacent", None),
         ),
         (
-            lambda: Rushmore(rate=0.3),
+            lambda: Rushmore(rate=0.3, attack_mode="delete"),
             lambda glitch: glitch.set_param("rate", None),
         ),
         (
-            lambda: Reduple(rate=0.2),
+            lambda: Rushmore(rate=0.2, attack_mode="duplicate"),
             lambda glitch: glitch.set_param("rate", None),
         ),
         (

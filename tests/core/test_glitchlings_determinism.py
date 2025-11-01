@@ -9,13 +9,13 @@ from glitchlings import (
     jargoyle,
     mim1c,
     redactyl,
-    reduple,
     rushmore,
     scannequin,
     typogre,
     zeedub,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling
+from glitchlings.zoo.rushmore import Rushmore
 
 
 def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
@@ -48,10 +48,11 @@ def test_jargoyle_determinism(sample_text):
     assert a == b
 
 
-def test_reduple_determinism(sample_text):
-    reduple.set_param("seed", 42)
-    reduple.set_param("rate", 0.05)
-    a, b = _twice(reduple, sample_text)
+def test_rushmore_duplicate_determinism(sample_text):
+    duplicate = Rushmore(attack_mode="duplicate")
+    duplicate.set_param("seed", 42)
+    duplicate.set_param("rate", 0.05)
+    a, b = _twice(duplicate, sample_text)
     assert a == b
 
 

@@ -48,13 +48,13 @@ pip install -U glitchlings
 > Glitchlings requires Python 3.10 or newer.
 
 ```python
-from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Rushmore
 
 gaggle = Gaggle([
     Typogre(rate=0.03),
     Mim1c(rate=0.02),
-    Reduple(seed=404),
-    Rushmore(rate=0.02),
+    Rushmore(seed=404, attack_mode="duplicate"),
+    Rushmore(rate=0.02, attack_mode="delete"),
 ])
 
 print(gaggle(SAMPLE_TEXT))
@@ -118,7 +118,6 @@ Apostrofae — scope: Character, order: normal
    Ekkokin — scope: Word, order: early
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
-   Reduple — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
  Spectroll — scope: Word, order: normal
@@ -302,28 +301,17 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
-### Reduple
-
-_Did you say that or did I?_
-
-> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
->
-> Args
->
-> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
 ### Rushmore
 
 _I accidentally an entire word._
 
-> _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
+> _**Hasty Everything.**_ Rushmore now toggles between duplication, deletion, or adjacent swaps depending on its `attack_mode`. Choose `attack_mode="duplicate"` for stuttering repetition, `attack_mode="delete"` to carve out missing context, `attack_mode="swap"` to scramble neighbours, or leave `"all"` (the default) to run the full sequence in order.
 >
 > Args
 >
-> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
+> - `rate (float)`: The maximum proportion of words to affect (default: 0.01, 1%).
+> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (applies to duplicate/delete modes; default: False).
+> - `attack_mode (Literal["duplicate", "delete", "swap", "all"])`: Choose which attack(s) to apply (default: `"all"`).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Adjax

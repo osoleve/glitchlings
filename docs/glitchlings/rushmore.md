@@ -1,12 +1,11 @@
 # Rushmore
 
-Rushmore deletes words to remove context and test summarisation resilience.
+Rushmore orchestrates word-level duplication, deletion, and swap attacks depending on the configured `attack_mode`.
 
 - **Scope**: word level.
-- **Signature**: `Rushmore(rate=0.01, seed=None, unweighted=False)`.
-- **Behaviour**: deletes randomly selected words (skipping the first to preserve context) and tidies double spaces/punctuation afterwards.
+- **Signature**: `Rushmore(rate=0.01, seed=None, unweighted=False, attack_mode="all")`.
+- **Behaviour**: duplicates (`attack_mode="duplicate"`), deletes (`"delete"`), swaps adjacent cores (`"swap"`), or chains the full trio (`"all"`). Deletion mode skips the opening word to preserve a foothold and tidies whitespace/punctuation. Duplication mode reintroduces stuttering repetition, and swap mode mirrors Adjax's adjacent swaps with the same probability semantics.
 - **Usage tips**:
-  - Keep `rate` conservative (<0.03) to avoid stripping sentences bare.
-  - Toggle `unweighted=True` to sample words uniformly instead of favouring shorter tokens.
-  - Because the first word is preserved, prepend short context sentences when you need deletions deeper in the passage.
-  - Sandwich between Reduple and Redactyl to test summarisation robustness under missing context.
+  - Keep deletion rates conservative (<0.03) to avoid stripping sentences bare; duplication and swap modes tolerate higher values.
+  - Toggle `unweighted=True` to sample uniformly instead of favouring shorter tokens for duplication and deletion modes.
+  - Use multiple Rushmore instances with different `attack_mode` values when you want deterministic ordering (e.g., duplicate before delete) without reaching for separate glitchlings.
