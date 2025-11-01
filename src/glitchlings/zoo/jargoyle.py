@@ -5,10 +5,11 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Literal, cast
 
-from glitchlings.lexicon import Lexicon, get_default_lexicon
-from glitchlings.lexicon.substring import (
+from glitchlings.lexicon import (
+    Lexicon,
     apply_casing,
     compile_replacement_pattern,
+    get_default_lexicon,
     substitute_from_dictionary,
 )
 

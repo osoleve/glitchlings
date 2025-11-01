@@ -6,10 +6,7 @@ import math
 import random
 from typing import Any, Sequence, cast
 
-from glitchlings.lexicon.substring import (
-    compile_replacement_pattern,
-    substitute_from_dictionary,
-)
+from glitchlings.lexicon import compile_replacement_pattern, substitute_from_dictionary
 
 from ._rust_extensions import get_rust_operation
 from .assets import load_homophone_groups

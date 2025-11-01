@@ -3,10 +3,7 @@ from __future__ import annotations
 import random
 import re
 
-from glitchlings.lexicon.substring import (
-    compile_replacement_pattern,
-    substitute_from_dictionary,
-)
+from glitchlings.lexicon import compile_replacement_pattern, substitute_from_dictionary
 
 from .core import AttackOrder, AttackWave, Glitchling
 
