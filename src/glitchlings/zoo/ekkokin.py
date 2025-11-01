@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Iterable, Mapping, Sequence, cast
+from typing import Any, Sequence, cast
+
+from glitchlings.lexicon import apply_casing
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
+from ._text_utils import collect_word_tokens, split_preserving_whitespace
 from .core import AttackOrder, AttackWave, Glitchling
 
 _DEFAULT_RATE = 0.02
@@ -24,23 +26,35 @@ def _normalise_group(group: Sequence[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(word.lower() for word in group if word))
 
 
-def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ...]]:
-    """Return a mapping from word -> homophone group."""
+def _build_dictionary(groups: Sequence[Sequence[str]]) -> dict[str, tuple[str, ...]]:
+    """Return a mapping from word -> alternative homophones."""
 
-    lookup: dict[str, tuple[str, ...]] = {}
+    dictionary: dict[str, tuple[str, ...]] = {}
     for group in groups:
         normalised = _normalise_group(group)
         if len(normalised) < 2:
             continue
         for word in normalised:
-            lookup[word] = normalised
-    return lookup
+            alternatives = tuple(candidate for candidate in normalised if candidate != word)
+            if alternatives:
+                dictionary[word] = alternatives
+    return dictionary
 
 
-_homophone_lookup = _build_lookup(_homophone_groups)
+_homophone_dictionary = _build_dictionary(_homophone_groups)
 _ekkokin_rust = get_rust_operation("ekkokin_homophones")
 
 
+def _normalise_weighting(weighting: str | None) -> str:
+    if weighting is None:
+        return _DEFAULT_WEIGHTING
+    lowered = weighting.lower()
+    if lowered not in _VALID_WEIGHTINGS:
+        options = ", ".join(sorted(_VALID_WEIGHTINGS))
+        raise ValueError(f"Unsupported weighting '{weighting}'. Expected one of: {options}")
+    return lowered
+  
+  
 def _apply_casing(template: str, candidate: str) -> str:
     """Return ``candidate`` adjusted to mirror the casing pattern of ``template``."""
 
@@ -80,6 +94,8 @@ def _python_substitute_homophones(
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
 
+    del weighting  # Reserved for future weighting strategies.
+
     if not text:
         return text
 
@@ -91,23 +107,32 @@ def _python_substitute_homophones(
         return text
 
     tokens = split_preserving_whitespace(text)
-    word_tokens = collect_word_tokens(tokens)
-    if not word_tokens:
+    candidates = collect_word_tokens(tokens)
+    if not candidates:
         return text
 
     mutated = False
-    for token in word_tokens:
-        replacement = _maybe_replace_token(token, clamped_rate, rng)
-        if replacement is None:
+
+    for candidate in candidates:
+        if not candidate.has_core:
             continue
-        tokens[token.index] = replacement
+
+        options = _homophone_dictionary.get(candidate.core.lower())
+        if options is None:
+            continue
+
+        if rng.random() >= clamped_rate:
+            continue
+
+        replacement = rng.choice(options)
+        adjusted = apply_casing(candidate.core, replacement)
+        tokens[candidate.index] = f"{candidate.prefix}{adjusted}{candidate.suffix}"
         mutated = True
 
     if not mutated:
         return text
+
     return "".join(tokens)
-
-
 def _maybe_replace_token(
     token: WordToken,
     rate: float,
