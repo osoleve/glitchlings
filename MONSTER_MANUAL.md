@@ -47,6 +47,51 @@ _How can a computer need reading glasses?_
 >
 > ---
 
+## Spectroll
+
+_"The colors, Duke, the colors!"_
+
+> Tiny Elemental (prismatic), Chaotic Neutral
+>
+> ---
+>
+> _**Chromatic Swap.**_ Spectroll rewrites colour words, trading each hue for its opposite in literal mode or sampling neighbour shades when it drifts across the spectrum.
+>
+> ### Spectroll Args
+>
+> - `mode (Literal['literal','drift'])`: Choose deterministic palette swaps or seeded spectral drift (default: `'literal'`).
+> - `seed (int | None)`: Optional seed that anchors spectral drift so the same story beat keeps the same palette (default: 151).
+>
+> ```python
+> >>> from glitchlings import spectroll
+> >>> spectroll("The red balloon and green kite rose together.")
+> 'The blue balloon and lime kite rose together.'
+> >>> spectroll("The red balloon and green kite rose together.", mode="drift", seed=7)
+> 'The orange balloon and teal kite rose together.'
+> ```
+>
+> ---
+>
+> - **Armor Class** 12 (stained glass)
+> - **Hit Points** 8 (2d6 + 1)
+> - **Speed** 25 ft., 1.21 gigawatts
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |6 |14 |12 |11 |10 |15 |
+>
+> ---
+>
+> - **Skills** Performance +4, Deception +3
+> - **Damage Resistances** radiant, psychic (when struck by bright ideas)
+> - **Condition Immunities** blinded (rainbow vision)
+> - **Languages** Common, Color Hex
+> - **Challenge** 1/2 (100 XP)
+>
+> ---
+
 ## Typogre
 
 _What a nice word, would be a shame if something happened to it._
