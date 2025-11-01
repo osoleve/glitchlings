@@ -18,6 +18,8 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
+   - [Ekkokin](glitchlings/ekkokin.md)
+   - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
 7. [Dataset workflows](#dataset-workflows)
@@ -204,6 +206,7 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions that erode context without shredding structure.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
+- [Ekkokin](glitchlings/ekkokin.md) - curated homophone swaps that preserve casing and cadence.
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 ## Dataset workflows

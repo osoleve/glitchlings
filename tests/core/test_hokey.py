@@ -76,8 +76,14 @@ def test_hokey_sentiment_amplifies_length():
     # Find the stretch event corresponding to the final "so" token
     assert any(event.original == "so" for event in pos_events)
     assert any(event.original == "so" for event in neg_events)
-    pos_so = max((event for event in pos_events if event.original == "so"), key=lambda e: e.token_index)
-    neg_so = max((event for event in neg_events if event.original == "so"), key=lambda e: e.token_index)
+    pos_so = max(
+        (event for event in pos_events if event.original == "so"),
+        key=lambda event: event.token_index,
+    )
+    neg_so = max(
+        (event for event in neg_events if event.original == "so"),
+        key=lambda event: event.token_index,
+    )
 
     assert len(pos_output) > len(positive)
     assert pos_so.repeats >= neg_so.repeats

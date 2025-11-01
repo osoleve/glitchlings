@@ -14,6 +14,7 @@ from .core import (
     plan_glitchling_specs,
     plan_glitchlings,
 )
+from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
 from .jargoyle import dependencies_available as _jargoyle_available
@@ -22,6 +23,7 @@ from .redactyl import Redactyl, redactyl
 from .reduple import Reduple, reduple
 from .rushmore import Rushmore, rushmore
 from .scannequin import Scannequin, scannequin
+from .spectroll import Spectroll, spectroll
 from .typogre import Typogre, typogre
 from .zeedub import Zeedub, zeedub
 
@@ -32,6 +34,8 @@ __all__ = [
     "mim1c",
     "Jargoyle",
     "jargoyle",
+    "Ekkokin",
+    "ekkokin",
     "Apostrofae",
     "apostrofae",
     "Hokey",
@@ -44,6 +48,8 @@ __all__ = [
     "rushmore",
     "Redactyl",
     "redactyl",
+    "Spectroll",
+    "spectroll",
     "Scannequin",
     "scannequin",
     "Zeedub",
@@ -64,10 +70,10 @@ __all__ = [
 
 _HAS_JARGOYLE = _jargoyle_available()
 
-_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c]
+_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
-_BUILTIN_GLITCHLING_LIST.extend([adjax, reduple, rushmore, redactyl, scannequin, zeedub])
+_BUILTIN_GLITCHLING_LIST.extend([adjax, reduple, rushmore, redactyl, spectroll, scannequin, zeedub])
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     glitchling.name.lower(): glitchling for glitchling in _BUILTIN_GLITCHLING_LIST
@@ -75,6 +81,7 @@ BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
 
 _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     typogre.name.lower(): Typogre,
+    ekkokin.name.lower(): Ekkokin,
     apostrofae.name.lower(): Apostrofae,
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
@@ -82,6 +89,7 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     reduple.name.lower(): Reduple,
     rushmore.name.lower(): Rushmore,
     redactyl.name.lower(): Redactyl,
+    spectroll.name.lower(): Spectroll,
     scannequin.name.lower(): Scannequin,
     zeedub.name.lower(): Zeedub,
 }
