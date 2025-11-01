@@ -10,7 +10,7 @@ from glitchlings.lexicon import apply_casing
 
 from ._rust_extensions import get_rust_operation
 from .assets import load_homophone_groups
-from ._text_utils import split_preserving_whitespace, split_token_edges
+from ._text_utils import collect_word_tokens, split_preserving_whitespace
 from .core import AttackOrder, AttackWave, Glitchling
 
 _DEFAULT_RATE = 0.02
@@ -78,18 +78,17 @@ def _python_substitute_homophones(
         return text
 
     tokens = split_preserving_whitespace(text)
+    candidates = collect_word_tokens(tokens)
+    if not candidates:
+        return text
+
     mutated = False
 
-    for index in range(0, len(tokens), 2):
-        token = tokens[index]
-        if not token or token.isspace():
+    for candidate in candidates:
+        if not candidate.has_core:
             continue
 
-        prefix, core, suffix = split_token_edges(token)
-        if not core:
-            continue
-
-        options = _homophone_dictionary.get(core.lower())
+        options = _homophone_dictionary.get(candidate.core.lower())
         if options is None:
             continue
 
@@ -97,8 +96,8 @@ def _python_substitute_homophones(
             continue
 
         replacement = rng.choice(options)
-        adjusted = apply_casing(core, replacement)
-        tokens[index] = f"{prefix}{adjusted}{suffix}"
+        adjusted = apply_casing(candidate.core, replacement)
+        tokens[candidate.index] = f"{candidate.prefix}{adjusted}{candidate.suffix}"
         mutated = True
 
     if not mutated:
