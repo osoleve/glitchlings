@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Any, Iterable, Mapping, Sequence, cast
+from typing import Any, Sequence, cast
+
+from glitchlings.lexicon.substring import (
+    compile_replacement_pattern,
+    substitute_from_dictionary,
+)
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave, Glitchling
 
@@ -25,20 +29,23 @@ def _normalise_group(group: Sequence[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(word.lower() for word in group if word))
 
 
-def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ...]]:
-    """Return a mapping from word -> homophone group."""
+def _build_dictionary(groups: Sequence[Sequence[str]]) -> dict[str, tuple[str, ...]]:
+    """Return a mapping from word -> alternative homophones."""
 
-    lookup: dict[str, tuple[str, ...]] = {}
+    dictionary: dict[str, tuple[str, ...]] = {}
     for group in groups:
         normalised = _normalise_group(group)
         if len(normalised) < 2:
             continue
         for word in normalised:
-            lookup[word] = normalised
-    return lookup
+            alternatives = tuple(candidate for candidate in normalised if candidate != word)
+            if alternatives:
+                dictionary[word] = alternatives
+    return dictionary
 
 
-_homophone_lookup = _build_lookup(_homophone_groups)
+_homophone_dictionary = _build_dictionary(_homophone_groups)
+_homophone_pattern = compile_replacement_pattern(_homophone_dictionary.keys())
 _ekkokin_rust = get_rust_operation("ekkokin_homophones")
 
 
@@ -52,39 +59,6 @@ def _normalise_weighting(weighting: str | None) -> str:
     return lowered
 
 
-def _apply_casing(template: str, candidate: str) -> str:
-    """Return ``candidate`` adjusted to mirror the casing pattern of ``template``."""
-
-    if not candidate:
-        return candidate
-    if template.isupper():
-        return candidate.upper()
-    if template.islower():
-        return candidate.lower()
-    if template[:1].isupper() and template[1:].islower():
-        return candidate.capitalize()
-    return candidate
-
-
-def _choose_alternative(
-    *,
-    group: Sequence[str],
-    source_word: str,
-    weighting: str,
-    rng: random.Random,
-) -> str | None:
-    """Return a replacement for ``source_word`` drawn from ``group``."""
-
-    del weighting  # Reserved for future weighting strategies.
-    lowered = source_word.lower()
-    candidates = [candidate for candidate in group if candidate != lowered]
-    if not candidates:
-        return None
-    index = rng.randrange(len(candidates))
-    replacement = candidates[index]
-    return _apply_casing(source_word, replacement)
-
-
 def _python_substitute_homophones(
     text: str,
     *,
@@ -94,54 +68,14 @@ def _python_substitute_homophones(
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
 
-    if not text:
-        return text
-
-    if math.isnan(rate):
-        return text
-
-    clamped_rate = max(0.0, min(1.0, rate))
-    if clamped_rate <= 0.0:
-        return text
-
-    tokens = split_preserving_whitespace(text)
-    word_tokens = collect_word_tokens(tokens)
-    if not word_tokens:
-        return text
-
-    mutated = False
-    for token in word_tokens:
-        replacement = _maybe_replace_token(token, clamped_rate, weighting, rng)
-        if replacement is None:
-            continue
-        tokens[token.index] = replacement
-        mutated = True
-
-    if not mutated:
-        return text
-    return "".join(tokens)
-
-
-def _maybe_replace_token(
-    token: WordToken,
-    rate: float,
-    weighting: str,
-    rng: random.Random,
-) -> str | None:
-    lookup = _homophone_lookup.get(token.core.lower())
-    if lookup is None:
-        return None
-    if rng.random() >= rate:
-        return None
-    replacement_core = _choose_alternative(
-        group=lookup,
-        source_word=token.core,
-        weighting=weighting,
+    del weighting  # Reserved for future weighting strategies.
+    return substitute_from_dictionary(
+        text,
+        _homophone_dictionary,
+        rate=rate,
         rng=rng,
+        pattern=_homophone_pattern,
     )
-    if replacement_core is None:
-        return None
-    return f"{token.prefix}{replacement_core}{token.suffix}"
 
 
 def substitute_homophones(

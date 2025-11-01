@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import random
 import re
-from itertools import zip_longest
+
+from glitchlings.lexicon.substring import (
+    compile_replacement_pattern,
+    substitute_from_dictionary,
+)
 
 from .core import AttackOrder, AttackWave, Glitchling
 
@@ -23,11 +27,9 @@ _CANONICAL_COLOR_MAP: dict[str, str] = {
 
 _VALID_MODES = {"literal", "drift"}
 
-_COLOR_PATTERN = re.compile(
-    r"\b(?P<color>"
-    + "|".join(sorted(_CANONICAL_COLOR_MAP, key=len, reverse=True))
-    + r")(?P<suffix>[a-zA-Z]*)\b",
-    re.IGNORECASE,
+_COLOR_PATTERN = compile_replacement_pattern(
+    _CANONICAL_COLOR_MAP.keys(),
+    suffix_pattern=r"(?P<suffix>[a-zA-Z]*)",
 )
 
 _COLOR_ADJACENCY: dict[str, tuple[str, ...]] = {
@@ -45,27 +47,15 @@ _COLOR_ADJACENCY: dict[str, tuple[str, ...]] = {
     "white": ("yellow", "lime", "cyan"),
 }
 
+_LITERAL_COLOR_DICTIONARY: dict[str, tuple[str, ...]] = {
+    color: (replacement,)
+    for color, replacement in _CANONICAL_COLOR_MAP.items()
+}
 
-def _apply_case(template: str, replacement: str) -> str:
-    if not template:
-        return replacement
-    if template.isupper():
-        return replacement.upper()
-    if template.islower():
-        return replacement.lower()
-    if template[0].isupper() and template[1:].islower():
-        return replacement.capitalize()
-
-    characters: list[str] = []
-    for repl_char, template_char in zip_longest(replacement, template, fillvalue=""):
-        if template_char.isupper():
-            characters.append(repl_char.upper())
-        elif template_char.islower():
-            characters.append(repl_char.lower())
-        else:
-            characters.append(repl_char)
-    return "".join(characters)
-
+_DRIFT_COLOR_DICTIONARY: dict[str, tuple[str, ...]] = {
+    color: tuple(_COLOR_ADJACENCY.get(color, ())) or (replacement,)
+    for color, replacement in _CANONICAL_COLOR_MAP.items()
+}
 
 def _harmonize_suffix(original: str, replacement: str, suffix: str) -> str:
     if not suffix:
@@ -107,30 +97,26 @@ def swap_colors(
 
     normalized_mode = _normalize_mode(mode)
     active_rng = rng if rng is not None else random.Random(seed)
+    dictionary = (
+        _LITERAL_COLOR_DICTIONARY
+        if normalized_mode == "literal"
+        else _DRIFT_COLOR_DICTIONARY
+    )
 
-    def replace(match: re.Match[str]) -> str:
-        base = match.group("color")
+    def _spectroll_transform(match: re.Match[str], replacement: str) -> str:
         suffix = match.group("suffix") or ""
-        canonical = base.lower()
+        base = match.group("key") or ""
+        suffix_fragment = _harmonize_suffix(base, replacement, suffix)
+        return f"{replacement}{suffix_fragment}"
 
-        replacement_base: str | None
-        if normalized_mode == "literal":
-            replacement_base = _CANONICAL_COLOR_MAP.get(canonical)
-        else:
-            palette = _COLOR_ADJACENCY.get(canonical)
-            if palette:
-                replacement_base = active_rng.choice(palette)
-            else:
-                replacement_base = _CANONICAL_COLOR_MAP.get(canonical)
-
-        if not replacement_base:
-            return match.group(0)
-
-        suffix_fragment = _harmonize_suffix(base, replacement_base, suffix)
-        adjusted = _apply_case(base, replacement_base)
-        return f"{adjusted}{suffix_fragment}"
-
-    return _COLOR_PATTERN.sub(replace, text)
+    return substitute_from_dictionary(
+        text,
+        dictionary,
+        rate=1.0,
+        rng=active_rng,
+        pattern=_COLOR_PATTERN,
+        transform=_spectroll_transform,
+    )
 
 
 class Spectroll(Glitchling):
