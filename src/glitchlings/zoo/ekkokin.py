@@ -6,10 +6,11 @@ import math
 import random
 from typing import Any, Sequence, cast
 
-from glitchlings.lexicon import compile_replacement_pattern, substitute_from_dictionary
+from glitchlings.lexicon import apply_casing
 
 from ._rust_extensions import get_rust_operation
 from .assets import load_homophone_groups
+from ._text_utils import split_preserving_whitespace, split_token_edges
 from .core import AttackOrder, AttackWave, Glitchling
 
 _DEFAULT_RATE = 0.02
@@ -42,7 +43,6 @@ def _build_dictionary(groups: Sequence[Sequence[str]]) -> dict[str, tuple[str, .
 
 
 _homophone_dictionary = _build_dictionary(_homophone_groups)
-_homophone_pattern = compile_replacement_pattern(_homophone_dictionary.keys())
 _ekkokin_rust = get_rust_operation("ekkokin_homophones")
 
 
@@ -66,13 +66,45 @@ def _python_substitute_homophones(
     """Replace words in ``text`` with curated homophones."""
 
     del weighting  # Reserved for future weighting strategies.
-    return substitute_from_dictionary(
-        text,
-        _homophone_dictionary,
-        rate=rate,
-        rng=rng,
-        pattern=_homophone_pattern,
-    )
+
+    if not text:
+        return text
+
+    if math.isnan(rate):
+        return text
+
+    clamped_rate = max(0.0, min(1.0, rate))
+    if clamped_rate <= 0.0:
+        return text
+
+    tokens = split_preserving_whitespace(text)
+    mutated = False
+
+    for index in range(0, len(tokens), 2):
+        token = tokens[index]
+        if not token or token.isspace():
+            continue
+
+        prefix, core, suffix = split_token_edges(token)
+        if not core:
+            continue
+
+        options = _homophone_dictionary.get(core.lower())
+        if options is None:
+            continue
+
+        if rng.random() >= clamped_rate:
+            continue
+
+        replacement = rng.choice(options)
+        adjusted = apply_casing(core, replacement)
+        tokens[index] = f"{prefix}{adjusted}{suffix}"
+        mutated = True
+
+    if not mutated:
+        return text
+
+    return "".join(tokens)
 
 
 def substitute_homophones(

@@ -187,3 +187,16 @@ def test_substitute_homophones_clamps_rate_above_one() -> None:
     )
 
     assert result == expected
+
+
+def test_python_substitute_homophones_preserves_non_whitespace_boundaries() -> None:
+    text = "their-they're"
+
+    result = ekkokin_module._python_substitute_homophones(
+        text,
+        rate=1.0,
+        weighting="flat",
+        rng=random.Random(7),
+    )
+
+    assert result == text
