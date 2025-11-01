@@ -121,6 +121,7 @@ Apostrofae — scope: Character, order: normal
    Reduple — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
+ Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late
     Zeedub — scope: Character, order: last
 ```

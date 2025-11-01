@@ -19,6 +19,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
    - [Ekkokin](glitchlings/ekkokin.md)
+   - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
 7. [Dataset workflows](#dataset-workflows)
