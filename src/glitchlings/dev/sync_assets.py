@@ -68,13 +68,12 @@ def sync_assets(
         if legacy_assets:
             if not quiet:
                 for duplicate in legacy_assets:
-                    print(
-                        (
-                            "legacy vendored asset "
-                            f"{duplicate.relative_to(root)} still exists; run sync_assets to remove it"
-                        ),
-                        file=sys.stderr,
+                    message = (
+                        "legacy vendored asset "
+                        f"{duplicate.relative_to(root)} still exists; "
+                        "run sync_assets to remove it"
                     )
+                    print(message, file=sys.stderr)
             return False
         if not quiet:
             print("No legacy Rust asset copies detected.")

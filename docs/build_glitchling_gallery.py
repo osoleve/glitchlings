@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -58,8 +59,15 @@ def _instantiate_glitchling(
 ) -> GlitchlingType:
     """Return a fresh glitchling instance configured for the gallery."""
     glitchling_type = type(glitchling)
+    kwargs: dict[str, object] = {"seed": seed}
     try:
-        return glitchling_type(rate=rate, seed=seed)
+        signature = inspect.signature(glitchling_type)
+    except (TypeError, ValueError):  # pragma: no cover - dynamically generated callables
+        signature = None
+    if signature is None or "rate" in signature.parameters:
+        kwargs["rate"] = rate
+    try:
+        return glitchling_type(**kwargs)
     except TypeError as exc:  # pragma: no cover - defensive guard
         raise GalleryGenerationError(
             f"Failed to configure {glitchling.name} with rate={rate:.2%}: {exc}"

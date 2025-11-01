@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-
 import re
+from pathlib import Path
 
 from glitchlings.dev.sync_assets import PIPELINE_ASSETS, sync_assets
 from glitchlings.zoo import assets
