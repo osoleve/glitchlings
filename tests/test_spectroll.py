@@ -10,6 +10,9 @@ from glitchlings.spectroll import swap_colors
         ("Green light", "Lime light"),
         ("BLUE sky", "RED sky"),
         ("A yellow submarine.", "A purple submarine."),
+        ("brown boots", "maroon boots"),
+        ("PINK SUNSET", "PEACH SUNSET"),
+        ("The grey sky", "The silver sky"),
     ],
 )
 def test_basic_swaps(text: str, expected: str) -> None:
@@ -21,6 +24,7 @@ def test_basic_swaps(text: str, expected: str) -> None:
     [
         ("a reddish hue", "a blueish hue"),
         ("lush greenery", "lush limeery"),
+        ("navyish trim", "indigoish trim"),
     ],
 )
 def test_compound_color_forms(text: str, expected: str) -> None:

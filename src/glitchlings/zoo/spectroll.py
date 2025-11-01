@@ -19,6 +19,17 @@ _CANONICAL_COLOR_MAP: dict[str, str] = {
     "teal": "magenta",
     "black": "white",
     "white": "black",
+    "brown": "maroon",
+    "maroon": "brown",
+    "navy": "indigo",
+    "indigo": "navy",
+    "olive": "chartreuse",
+    "chartreuse": "olive",
+    "pink": "peach",
+    "peach": "pink",
+    "gray": "silver",
+    "silver": "gray",
+    "grey": "silver",
 }
 
 _VALID_MODES = {"literal", "drift"}
@@ -43,6 +54,17 @@ _COLOR_ADJACENCY: dict[str, tuple[str, ...]] = {
     "teal": ("cyan", "green", "blue"),
     "black": ("purple", "blue", "teal"),
     "white": ("yellow", "lime", "cyan"),
+    "brown": ("maroon", "orange", "olive"),
+    "maroon": ("brown", "purple", "red"),
+    "navy": ("indigo", "blue", "teal"),
+    "indigo": ("navy", "purple", "blue"),
+    "olive": ("chartreuse", "green", "yellow"),
+    "chartreuse": ("olive", "lime", "yellow"),
+    "pink": ("peach", "magenta", "red"),
+    "peach": ("pink", "orange", "yellow"),
+    "gray": ("silver", "white", "black"),
+    "silver": ("gray", "white", "cyan"),
+    "grey": ("silver", "white", "black"),
 }
 
 
