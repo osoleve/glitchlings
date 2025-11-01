@@ -478,33 +478,36 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
         operation = descriptor["operation"]
         op_type = operation["type"]
         if op_type == "reduplicate":
-            current = rushmore_module._python_reduplicate_words(
+            current = rushmore_module.reduplicate_words(
                 current,
                 rate=operation["rate"],
                 rng=rng,
+                unweighted=operation.get("unweighted", False),
             )
         elif op_type == "delete":
-            current = rushmore_module._python_delete_random_words(
+            current = rushmore_module.delete_random_words(
                 current,
                 rate=operation["rate"],
                 rng=rng,
+                unweighted=operation.get("unweighted", False),
             )
         elif op_type == "swap_adjacent":
-            current = adjax_module._python_swap_adjacent_words(
+            current = adjax_module.swap_adjacent_words(
                 current,
                 rate=operation["rate"],
                 rng=rng,
             )
         elif op_type == "redact":
-            current = redactyl_module._python_redact_words(
+            current = redactyl_module.redact_words(
                 current,
                 replacement_char=operation["replacement_char"],
                 rate=operation["rate"],
                 merge_adjacent=operation["merge_adjacent"],
                 rng=rng,
+                unweighted=operation.get("unweighted", False),
             )
         elif op_type == "ocr":
-            current = scannequin_module._python_ocr_artifacts(
+            current = scannequin_module.ocr_artifacts(
                 current,
                 rate=operation["rate"],
                 rng=rng,
@@ -515,7 +518,7 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
                 characters = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
             else:
                 characters = tuple(characters)
-            current = zeedub_module._python_insert_zero_widths(
+            current = zeedub_module.insert_zero_widths(
                 current,
                 rate=operation["rate"],
                 rng=rng,
@@ -530,12 +533,35 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
                 layout = {
                     key: list(value) for key, value in layout_override.items()
                 }
-            current = typogre_module._fatfinger_python(
-                current,
-                rate=operation["rate"],
-                rng=rng,
-                layout=layout,
+            canonical_layout = getattr(
+                typogre_module.KEYNEIGHBORS, keyboard, None
             )
+            canonical_dict = None
+            if canonical_layout is not None:
+                canonical_dict = {
+                    key: list(value) for key, value in canonical_layout.items()
+                }
+            if canonical_dict is not None and (layout_override is None or layout == canonical_dict):
+                current = typogre_module.fatfinger(
+                    current,
+                    rate=operation["rate"],
+                    keyboard=keyboard,
+                    rng=rng,
+                )
+            elif layout_override is not None:
+                current = typogre_module._fatfinger_python(
+                    current,
+                    rate=operation["rate"],
+                    rng=rng,
+                    layout=layout,
+                )
+            else:
+                current = typogre_module.fatfinger(
+                    current,
+                    rate=operation["rate"],
+                    keyboard=keyboard,
+                    rng=rng,
+                )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
