@@ -13,7 +13,6 @@ up to date to ensure the published documentation stays accurate.
         - SAMPLE_TEXT
         - Typogre
         - Mim1c
-        - Reduple
         - Rushmore
         - Redactyl
         - Jargoyle

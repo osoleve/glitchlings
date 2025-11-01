@@ -5,7 +5,7 @@ import pytest
 
 import glitchlings.zoo.core as core_module
 from glitchlings.zoo.core import AttackWave, Glitchling
-from glitchlings.zoo.reduple import Reduple
+from glitchlings.zoo.rushmore import Rushmore
 from glitchlings.zoo.typogre import Typogre
 
 
@@ -74,7 +74,7 @@ def test_plan_glitchlings_accepts_instances() -> None:
     master_seed = 777
     glitchlings = [
         Typogre(rate=0.05),
-        Reduple(rate=0.2),
+        Rushmore(rate=0.2, attack_mode="duplicate"),
         Typogre(rate=0.07, seed=910),
     ]
 
@@ -102,7 +102,7 @@ def test_plan_glitchling_specs_accepts_mappings() -> None:
             "order": core_module.AttackOrder.EARLY,
         },
         {
-            "name": "Reduple",
+            "name": "Adjax",
             "scope": core_module.AttackWave.WORD,
             "order": core_module.AttackOrder.NORMAL,
         },
@@ -187,7 +187,7 @@ def test_plan_glitchlings_requires_seed() -> None:
 def test_plan_glitchlings_with_rust_matches_python(monkeypatch) -> None:
     master_seed = 1357
     specs = [
-        {"name": "Reduple", "scope": 3, "order": 1},
+        {"name": "Rushmore", "scope": 3, "order": 1},
         {"name": "Typogre", "scope": 4, "order": 0},
     ]
 

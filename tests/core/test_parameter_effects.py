@@ -5,11 +5,11 @@ import math
 import random
 from typing import cast
 
-from glitchlings import adjax, mim1c, redactyl, reduple, rushmore, scannequin, typogre, zeedub
+from glitchlings import adjax, mim1c, redactyl, rushmore, scannequin, typogre, zeedub
+from glitchlings.zoo.rushmore import Rushmore
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 adjax_module = importlib.import_module("glitchlings.zoo.adjax")
-reduple_module = importlib.import_module("glitchlings.zoo.reduple")
 rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 
@@ -44,31 +44,32 @@ def test_mim1c_respects_banned_characters():
     assert not any(char in banned for char in out)
 
 
-def test_reduple_rate_increases_tokens():
+def test_rushmore_duplicate_rate_increases_tokens():
     text = "a b c d e f g h"
-    reduple.set_param("seed", 5)
-    reduple.set_param("rate", 0.5)
-    out = cast(str, reduple(text))
+    duplicate = Rushmore(attack_mode="duplicate")
+    duplicate.set_param("seed", 5)
+    duplicate.set_param("rate", 0.5)
+    out = cast(str, duplicate(text))
     assert len(out.split()) >= len(text.split())
 
 
-def test_reduple_unweighted_matches_python_reference():
+def test_rushmore_duplicate_unweighted_matches_python_reference():
     text = "alpha beta gamma delta epsilon zeta"
     seed = 1
     rate = 0.5
-    weighted = reduple_module._python_reduplicate_words(
+    weighted = rushmore_module._python_reduplicate_words(
         text,
         rate=rate,
         rng=random.Random(seed),
     )
-    unweighted_expected = reduple_module._python_reduplicate_words(
+    unweighted_expected = rushmore_module._python_reduplicate_words(
         text,
         rate=rate,
         rng=random.Random(seed),
         unweighted=True,
     )
     assert unweighted_expected != weighted
-    instance = reduple.clone()
+    instance = Rushmore(attack_mode="duplicate")
     instance.set_param("seed", seed)
     instance.set_param("rate", rate)
     instance.set_param("unweighted", True)
@@ -104,6 +105,7 @@ def test_rushmore_unweighted_matches_python_reference():
     instance = rushmore.clone()
     instance.set_param("seed", seed)
     instance.set_param("rate", rate)
+    instance.set_param("attack_mode", "delete")
     instance.set_param("unweighted", True)
     result = cast(str, instance(text))
     assert result == unweighted_expected
