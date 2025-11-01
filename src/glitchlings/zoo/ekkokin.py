@@ -15,7 +15,6 @@ from .core import AttackOrder, AttackWave, Glitchling
 
 _DEFAULT_RATE = 0.02
 _DEFAULT_WEIGHTING = "flat"
-_VALID_WEIGHTINGS = {_DEFAULT_WEIGHTING}
 
 _homophone_groups: tuple[tuple[str, ...], ...] = load_homophone_groups()
 
@@ -54,13 +53,43 @@ def _normalise_weighting(weighting: str | None) -> str:
         options = ", ".join(sorted(_VALID_WEIGHTINGS))
         raise ValueError(f"Unsupported weighting '{weighting}'. Expected one of: {options}")
     return lowered
+  
+  
+def _apply_casing(template: str, candidate: str) -> str:
+    """Return ``candidate`` adjusted to mirror the casing pattern of ``template``."""
+
+    if not candidate:
+        return candidate
+    if template.isupper():
+        return candidate.upper()
+    if template.islower():
+        return candidate.lower()
+    if template[:1].isupper() and template[1:].islower():
+        return candidate.capitalize()
+    return candidate
+
+
+def _choose_alternative(
+    *,
+    group: Sequence[str],
+    source_word: str,
+    rng: random.Random,
+) -> str | None:
+    """Return a replacement for ``source_word`` drawn from ``group``."""
+
+    lowered = source_word.lower()
+    candidates = [candidate for candidate in group if candidate != lowered]
+    if not candidates:
+        return None
+    index = rng.randrange(len(candidates))
+    replacement = candidates[index]
+    return _apply_casing(source_word, replacement)
 
 
 def _python_substitute_homophones(
     text: str,
     *,
     rate: float,
-    weighting: str,
     rng: random.Random,
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
@@ -104,6 +133,24 @@ def _python_substitute_homophones(
         return text
 
     return "".join(tokens)
+def _maybe_replace_token(
+    token: WordToken,
+    rate: float,
+    rng: random.Random,
+) -> str | None:
+    lookup = _homophone_lookup.get(token.core.lower())
+    if lookup is None:
+        return None
+    if rng.random() >= rate:
+        return None
+    replacement_core = _choose_alternative(
+        group=lookup,
+        source_word=token.core,
+        rng=rng,
+    )
+    if replacement_core is None:
+        return None
+    return f"{token.prefix}{replacement_core}{token.suffix}"
 
 
 def substitute_homophones(
@@ -111,13 +158,10 @@ def substitute_homophones(
     rate: float | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    weighting: str | None = None,
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
 
     effective_rate = _DEFAULT_RATE if rate is None else rate
-    normalized_weighting = _normalise_weighting(weighting)
 
     active_rng = rng if rng is not None else random.Random(seed)
 
@@ -125,12 +169,11 @@ def substitute_homophones(
     if _ekkokin_rust is not None:
         return cast(
             str,
-            _ekkokin_rust(text, clamped_rate, normalized_weighting, active_rng),
+            _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng),
         )
     return _python_substitute_homophones(
         text,
         rate=clamped_rate,
-        weighting=normalized_weighting,
         rng=active_rng,
     )
 
@@ -143,10 +186,8 @@ class Ekkokin(Glitchling):
         *,
         rate: float | None = None,
         seed: int | None = None,
-        weighting: str | None = None,
     ) -> None:
         effective_rate = _DEFAULT_RATE if rate is None else rate
-        normalized_weighting = _normalise_weighting(weighting)
         super().__init__(
             name="Ekkokin",
             corruption_function=substitute_homophones,
@@ -155,25 +196,17 @@ class Ekkokin(Glitchling):
             seed=seed,
             pipeline_operation=_build_pipeline_descriptor,
             rate=effective_rate,
-            weighting=normalized_weighting,
         )
-
-    def set_param(self, key: str, value: Any) -> None:
-        """Normalise weighting updates before storing them on the glitchling."""
-        if key == "weighting":
-            value = _normalise_weighting(cast(str | None, value))
-        super().set_param(key, value)
 
 
 def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
     rate = glitch.kwargs.get("rate")
     if rate is None:
         return None
-    weighting = _normalise_weighting(cast(str | None, glitch.kwargs.get("weighting")))
     return {
         "type": "ekkokin",
         "rate": float(rate),
-        "weighting": str(weighting),
+        "weighting": _DEFAULT_WEIGHTING,
     }
 
 

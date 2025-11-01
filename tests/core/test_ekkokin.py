@@ -123,39 +123,6 @@ def test_substitute_homophones_preserves_source_casing(source: str) -> None:
         pytest.fail(f"Unhandled casing pattern in source word: {source}")
 
 
-def test_ekkokin_weighting_normalisation_and_descriptor() -> None:
-    glitch = ekkokin_module.Ekkokin(rate=0.5, weighting="FLAT", seed=7)
-
-    assert glitch.weighting == "flat"
-    assert glitch.kwargs["weighting"] == "flat"
-
-    descriptor = glitch.pipeline_operation()
-    assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.5), "weighting": "flat"}
-
-
-def test_ekkokin_set_param_normalises_weighting() -> None:
-    glitch = ekkokin_module.Ekkokin(rate=0.25, seed=11)
-
-    glitch.set_param("weighting", "FLAT")
-    descriptor = glitch.pipeline_operation()
-
-    assert glitch.weighting == "flat"
-    assert glitch.kwargs["weighting"] == "flat"
-    assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.25), "weighting": "flat"}
-
-    glitch.set_param("weighting", None)
-    descriptor = glitch.pipeline_operation()
-
-    assert glitch.weighting == "flat"
-    assert glitch.kwargs["weighting"] == "flat"
-    assert descriptor == {"type": "ekkokin", "rate": pytest.approx(0.25), "weighting": "flat"}
-
-
-def test_ekkokin_rejects_unknown_weighting() -> None:
-    with pytest.raises(ValueError, match="Unsupported weighting"):
-        ekkokin_module.Ekkokin(weighting="inverse")
-
-
 def test_substitute_homophones_respects_explicit_rng() -> None:
     text = "Allowed writers write about the heir."
     rng = random.Random(99)
@@ -164,7 +131,6 @@ def test_substitute_homophones_respects_explicit_rng() -> None:
     expected = ekkokin_module._python_substitute_homophones(
         text,
         rate=1.0,
-        weighting="flat",
         rng=random.Random(99),
     )
 
@@ -182,7 +148,6 @@ def test_substitute_homophones_clamps_rate_above_one() -> None:
     expected = ekkokin_module._python_substitute_homophones(
         text,
         rate=1.0,
-        weighting="flat",
         rng=random.Random(2112),
     )
 

@@ -208,18 +208,16 @@ def test_ekkokin_matches_python_fallback():
 
     text = "Allowed writers write about the heir."
     rate = 0.5
-    weighting = "flat"
     seed = 404
 
     expected = ekkokin_module._python_substitute_homophones(
         text,
         rate=rate,
-        weighting=weighting,
         rng=random.Random(seed),
     )
 
     clamped_rate = max(0.0, min(1.0, rate))
-    result = rust_fn(text, clamped_rate, weighting, random.Random(seed))
+    result = rust_fn(text, clamped_rate, "flat", random.Random(seed))
 
     assert result == expected
 
