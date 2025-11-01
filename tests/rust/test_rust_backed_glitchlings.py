@@ -143,6 +143,15 @@ except ModuleNotFoundError:
 core_module = importlib.import_module("glitchlings.zoo.core")
 
 
+_rushmore_reduplicate = rushmore_module._python_reduplicate_words
+_rushmore_delete = rushmore_module._python_delete_random_words
+_adjax_swap = adjax_module._python_swap_adjacent_words
+_redactyl_redact = redactyl_module._python_redact_words
+_scannequin_ocr = scannequin_module._python_ocr_artifacts
+_typogre_fatfinger = typogre_module._fatfinger_python
+_zeedub_insert = zeedub_module._python_insert_zero_widths
+
+
 def _with_descriptor_seeds(
     descriptors: list[dict[str, object]], master_seed: int
 ) -> list[dict[str, object]]:
@@ -478,90 +487,70 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
         operation = descriptor["operation"]
         op_type = operation["type"]
         if op_type == "reduplicate":
-            current = rushmore_module.reduplicate_words(
+            current = _rushmore_reduplicate(
                 current,
-                rate=operation["rate"],
+                rate=float(operation["rate"]),
                 rng=rng,
-                unweighted=operation.get("unweighted", False),
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "delete":
-            current = rushmore_module.delete_random_words(
+            current = _rushmore_delete(
                 current,
-                rate=operation["rate"],
+                rate=float(operation["rate"]),
                 rng=rng,
-                unweighted=operation.get("unweighted", False),
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "swap_adjacent":
-            current = adjax_module.swap_adjacent_words(
+            current = _adjax_swap(
                 current,
-                rate=operation["rate"],
+                rate=float(operation["rate"]),
                 rng=rng,
             )
         elif op_type == "redact":
-            current = redactyl_module.redact_words(
+            current = _redactyl_redact(
                 current,
-                replacement_char=operation["replacement_char"],
-                rate=operation["rate"],
-                merge_adjacent=operation["merge_adjacent"],
+                replacement_char=str(operation["replacement_char"]),
+                rate=float(operation["rate"]),
+                merge_adjacent=bool(operation["merge_adjacent"]),
                 rng=rng,
-                unweighted=operation.get("unweighted", False),
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "ocr":
-            current = scannequin_module.ocr_artifacts(
+            current = _scannequin_ocr(
                 current,
-                rate=operation["rate"],
+                rate=float(operation["rate"]),
                 rng=rng,
             )
         elif op_type == "zwj":
             characters = operation.get("characters")
             if characters is None:
-                characters = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
+                palette = zeedub_module._DEFAULT_ZERO_WIDTH_CHARACTERS
             else:
-                characters = tuple(characters)
-            current = zeedub_module.insert_zero_widths(
+                palette = tuple(str(char) for char in characters if char)
+            current = _zeedub_insert(
                 current,
-                rate=operation["rate"],
+                rate=float(operation["rate"]),
                 rng=rng,
-                characters=characters,
+                characters=palette,
             )
         elif op_type == "typo":
             keyboard = operation.get("keyboard", "CURATOR_QWERTY")
             layout_override = operation.get("layout")
             if layout_override is None:
-                layout = getattr(typogre_module.KEYNEIGHBORS, keyboard)
+                layout = {
+                    key: list(value)
+                    for key, value in getattr(typogre_module.KEYNEIGHBORS, keyboard).items()
+                }
             else:
                 layout = {
-                    key: list(value) for key, value in layout_override.items()
+                    str(key): list(value) for key, value in layout_override.items()
                 }
-            canonical_layout = getattr(
-                typogre_module.KEYNEIGHBORS, keyboard, None
+            current = _typogre_fatfinger(
+                current,
+                rate=float(operation["rate"]),
+                rng=rng,
+                layout=layout,
             )
-            canonical_dict = None
-            if canonical_layout is not None:
-                canonical_dict = {
-                    key: list(value) for key, value in canonical_layout.items()
-                }
-            if canonical_dict is not None and (layout_override is None or layout == canonical_dict):
-                current = typogre_module.fatfinger(
-                    current,
-                    rate=operation["rate"],
-                    keyboard=keyboard,
-                    rng=rng,
-                )
-            elif layout_override is not None:
-                current = typogre_module._fatfinger_python(
-                    current,
-                    rate=operation["rate"],
-                    rng=rng,
-                    layout=layout,
-                )
-            else:
-                current = typogre_module.fatfinger(
-                    current,
-                    rate=operation["rate"],
-                    keyboard=keyboard,
-                    rng=rng,
-                )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
