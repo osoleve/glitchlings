@@ -24,7 +24,9 @@ _CANONICAL_COLOR_MAP: dict[str, str] = {
 _VALID_MODES = {"literal", "drift"}
 
 _COLOR_PATTERN = re.compile(
-    r"\b(?P<color>" + "|".join(sorted(_CANONICAL_COLOR_MAP, key=len, reverse=True)) + r")(?P<suffix>[a-zA-Z]*)\b",
+    r"\b(?P<color>"
+    + "|".join(sorted(_CANONICAL_COLOR_MAP, key=len, reverse=True))
+    + r")(?P<suffix>[a-zA-Z]*)\b",
     re.IGNORECASE,
 )
 

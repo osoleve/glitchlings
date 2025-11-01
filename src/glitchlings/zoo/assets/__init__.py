@@ -14,13 +14,13 @@ _DEFAULT_DIGEST_SIZE = 32
 def _iter_asset_roots() -> Iterable[Traversable]:
     """Yield candidate locations for the shared glitchling asset bundle."""
 
+    package_root: Traversable | None
     try:
         package_root = resources.files("glitchlings").joinpath("assets")
     except ModuleNotFoundError:  # pragma: no cover - defensive guard for install issues
         package_root = None
-    else:
-        if package_root.is_dir():
-            yield package_root
+    if package_root is not None and package_root.is_dir():
+        yield package_root
 
     repo_root = Path(__file__).resolve().parents[4] / "assets"
     if repo_root.is_dir():

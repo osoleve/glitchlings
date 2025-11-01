@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, Protocol, cast
+from typing import Any, Callable, Iterable, Mapping, NoReturn, Protocol, cast
 
 
 class _MissingSentinel:
@@ -97,13 +97,15 @@ def _build_lightning_stub() -> ModuleType:
         def predict_dataloader(self, *args: Any, **kwargs: Any) -> Any:
             return []
 
-    module.LightningDataModule = LightningDataModule
-    module.__all__ = ["LightningDataModule"]
-    module.__doc__ = (
+    setattr(module, "LightningDataModule", LightningDataModule)
+    setattr(module, "__all__", ["LightningDataModule"])
+    setattr(
+        module,
+        "__doc__",
         "Lightweight stub module that exposes a minimal LightningDataModule "
-        "when PyTorch Lightning is unavailable."
+        "when PyTorch Lightning is unavailable.",
     )
-    module.__version__ = "0.0.0-stub"
+    setattr(module, "__version__", "0.0.0-stub")
     return module
 
 
@@ -140,7 +142,7 @@ class OptionalDependency:
             self._used_fallback = False
             return module
 
-    def _raise_missing_error(self) -> None:
+    def _raise_missing_error(self) -> NoReturn:
         """Raise ModuleNotFoundError for the missing dependency."""
         error = self._error
         if error is not None:
@@ -160,7 +162,9 @@ class OptionalDependency:
     def load(self) -> ModuleType:
         """Return the dependency, raising the original import error when absent."""
         module = self.get()
-        if self._used_fallback or module is None:
+        if self._used_fallback:
+            self._raise_missing_error()
+        if module is None:
             self._raise_missing_error()
         return module
 
