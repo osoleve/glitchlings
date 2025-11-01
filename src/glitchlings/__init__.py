@@ -52,7 +52,10 @@ def _ensure_rust_extension_alias() -> None:
     if importlib_util.find_spec("_zoo_rust") is None:
         return
 
-    module = import_module("_zoo_rust")
+    try:
+        module = import_module("_zoo_rust")
+    except ImportError:
+        return
     sys.modules[target_name] = module
     setattr(sys.modules[__name__], "_zoo_rust", module)
 
