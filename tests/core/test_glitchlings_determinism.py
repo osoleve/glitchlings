@@ -3,8 +3,6 @@ from __future__ import annotations
 from functools import partial
 from typing import cast
 
-import pytest
-
 from glitchlings import (
     adjax,
     apostrofae,

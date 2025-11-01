@@ -322,6 +322,52 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > ---
 
+## Ekkokin
+
+_Did it come out wrong, or did you just hear what you expected?_
+
+> Small Fey (echo), Neutral Mischief
+>
+> ---
+>
+> _**Echo Chamber.**_ Ekkokin replaces words with curated homophones drawn from a lovingly pruned lexicon. Every swap keeps the original casing and punctuation so the sentence still _sounds_ correct even while string comparisons drift.
+>
+> ### Ekkokin Args
+>
+> - `rate (float)`: Maximum proportion of eligible words to rewrite (default: 0.02, 2%).
+> - `weighting (str)`: Homophone sampling strategy (default: "flat").
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import ekkokin
+> >>> print(ekkokin(sample_text))
+> ```
+>
+> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed inn his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of hymn, waved about helplessly as he looked.
+>
+> ---
+>
+> - **Armor Class** 12 (echoing shimmer)
+> - **Hit Points** 22 (5d6 + 5)
+> - **Speed** 30 ft., 40 bpm (metronomic sway)
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |8 |14 |12 |13 |11 |16 |
+>
+> ---
+>
+> - **Skills** Performance +5, Insight +3
+> - **Damage Resistances** thunder (earplugs), psychic (skeptical audiences)
+> - **Condition Immunities** deafened (selective hearing)
+> - **Senses** passive Perception 13
+> - **Languages** Common, Old Tongue homophones
+> - **Challenge** 1 (200 XP)
+>
+> ---
+
 ## Reduple
 
 _Did you say that or did I?_
