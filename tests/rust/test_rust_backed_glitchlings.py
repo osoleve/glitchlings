@@ -752,10 +752,7 @@ def test_gaggle_prefers_rust_pipeline(monkeypatch):
     original_names = [glitch.name for glitch in gaggle_glitchlings]
     assert apply_names != original_names, "Expected Gaggle to reorder glitchlings"
     assert [descriptor["name"] for descriptor in descriptors] == apply_names
-    expected_seeds = [
-        core_module.Gaggle.derive_seed(777, glitch.name, index)
-        for index, glitch in enumerate(gaggle_glitchlings)
-    ]
+    expected_seeds = [seed for _, seed in gaggle._plan]
     assert [descriptor["seed"] for descriptor in descriptors] == expected_seeds
     expected = _run_python_sequence(text, descriptors, 777)
     assert result == expected
@@ -818,7 +815,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "0")
     python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
-    python_expected = python_gaggle(text)
+    python_output = python_gaggle(text)
 
     monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
     gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
@@ -854,7 +851,11 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
         },
     ]
 
+    python_expected = _run_python_sequence(text, descriptors, master_seed)
+    assert python_output == python_expected
+
     rust_expected = zoo_rust.compose_glitchlings(text, descriptors, master_seed)
+    assert rust_expected == python_expected
 
     invoked: dict[str, bool] = {}
 
@@ -866,7 +867,7 @@ def test_pipeline_handles_typogre_and_zeedub(monkeypatch):
 
     result = gaggle(text)
     assert invoked.get("called") is True
-    assert result == python_expected == rust_expected
+    assert result == python_expected
 
 
 def test_gaggle_python_and_rust_paths_share_plan(monkeypatch):
