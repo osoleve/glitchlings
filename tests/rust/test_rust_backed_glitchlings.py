@@ -114,13 +114,18 @@ def _ensure_rust_extension_importable() -> None:
         spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
         if spec is None or spec.loader is None:
             continue
-        module = importlib.util.module_from_spec(spec)
-        sys.modules["glitchlings._zoo_rust"] = module
-        spec.loader.exec_module(module)
-        package = sys.modules.get("glitchlings")
-        if package is not None and hasattr(package, "__path__"):
-            package.__path__.append(str(artifact.parent))
-        return
+        try:
+            module = importlib.util.module_from_spec(spec)
+            sys.modules["glitchlings._zoo_rust"] = module
+            spec.loader.exec_module(module)
+            package = sys.modules.get("glitchlings")
+            if package is not None and hasattr(package, "__path__"):
+                package.__path__.append(str(artifact.parent))
+            return
+        except (ImportError, ModuleNotFoundError):
+            # Extension exists but cannot be loaded (ABI mismatch, missing libraries, etc.)
+            # Continue to try other artifacts or fall back to Python implementation
+            continue
 
 _ensure_rust_extension_importable()
 
@@ -131,6 +136,7 @@ redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 typogre_module = importlib.import_module("glitchlings.zoo.typogre")
 zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
 adjax_module = importlib.import_module("glitchlings.zoo.adjax")
+ekkokin_module = importlib.import_module("glitchlings.zoo.ekkokin")
 try:
     apostrofae_module = importlib.import_module("glitchlings.zoo.apostrofae")
 except ModuleNotFoundError:
@@ -192,6 +198,30 @@ def test_orchestration_plan_matches_python_reference():
         pytest.skip("plan_glitchlings requires a rebuilt Rust extension")
     python_plan = core_module._plan_glitchlings_python(specs, master_seed)
     assert rust_plan == python_plan
+
+
+def test_ekkokin_matches_python_fallback():
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    rust_fn = getattr(zoo_rust, "ekkokin_homophones", None)
+    if rust_fn is None:
+        pytest.skip("ekkokin_homophones operation requires a rebuilt Rust extension")
+
+    text = "Allowed writers write about the heir."
+    rate = 0.5
+    weighting = "flat"
+    seed = 404
+
+    expected = ekkokin_module._python_substitute_homophones(
+        text,
+        rate=rate,
+        weighting=weighting,
+        rng=random.Random(seed),
+    )
+
+    clamped_rate = max(0.0, min(1.0, rate))
+    result = rust_fn(text, clamped_rate, weighting, random.Random(seed))
+
+    assert result == expected
 
 
 def test_reduple_matches_python_fallback():
@@ -1097,7 +1127,7 @@ def test_hokey_respects_explicit_rng():
 
 
 def test_hokey_in_gaggle_rust_pipeline():
-    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 9999
     text = "this is so cool and fun"
 

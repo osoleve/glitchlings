@@ -1,8 +1,13 @@
+import sys
+from importlib import import_module
+from importlib import util as importlib_util
+
 from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
     Adjax,
     Apostrofae,
+    Ekkokin,
     Gaggle,
     Glitchling,
     Hokey,
@@ -12,10 +17,12 @@ from .zoo import (
     Reduple,
     Rushmore,
     Scannequin,
+    Spectroll,
     Typogre,
     Zeedub,
     adjax,
     apostrofae,
+    ekkokin,
     hokey,
     is_rust_pipeline_enabled,
     is_rust_pipeline_supported,
@@ -28,10 +35,32 @@ from .zoo import (
     reduple,
     rushmore,
     scannequin,
+    spectroll,
     summon,
     typogre,
     zeedub,
 )
+
+
+def _ensure_rust_extension_alias() -> None:
+    """Expose the compiled Rust extension under the expected namespace."""
+
+    target_name = "glitchlings._zoo_rust"
+    if target_name in sys.modules:
+        return
+
+    if importlib_util.find_spec("_zoo_rust") is None:
+        return
+
+    try:
+        module = import_module("_zoo_rust")
+    except ImportError:
+        return
+    sys.modules[target_name] = module
+    setattr(sys.modules[__name__], "_zoo_rust", module)
+
+
+_ensure_rust_extension_alias()
 
 __all__ = [
     "Typogre",
@@ -44,6 +73,8 @@ __all__ = [
     "adjax",
     "Apostrofae",
     "apostrofae",
+    "Ekkokin",
+    "ekkokin",
     "Hokey",
     "hokey",
     "Redactyl",
@@ -52,6 +83,8 @@ __all__ = [
     "reduple",
     "Rushmore",
     "rushmore",
+    "Spectroll",
+    "spectroll",
     "Scannequin",
     "scannequin",
     "Zeedub",

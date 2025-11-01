@@ -47,6 +47,51 @@ _How can a computer need reading glasses?_
 >
 > ---
 
+## Spectroll
+
+_"The colors, Duke, the colors!"_
+
+> Tiny Elemental (prismatic), Chaotic Neutral
+>
+> ---
+>
+> _**Chromatic Swap.**_ Spectroll rewrites colour words, trading each hue for its opposite in literal mode or sampling neighbour shades when it drifts across the spectrum.
+>
+> ### Spectroll Args
+>
+> - `mode (Literal['literal','drift'])`: Choose deterministic palette swaps or seeded spectral drift (default: `'literal'`).
+> - `seed (int | None)`: Optional seed that anchors spectral drift so the same story beat keeps the same palette (default: 151).
+>
+> ```python
+> >>> from glitchlings import spectroll
+> >>> spectroll("The red balloon and green kite rose together.")
+> 'The blue balloon and lime kite rose together.'
+> >>> spectroll("The red balloon and green kite rose together.", mode="drift", seed=7)
+> 'The orange balloon and teal kite rose together.'
+> ```
+>
+> ---
+>
+> - **Armor Class** 12 (stained glass)
+> - **Hit Points** 8 (2d6 + 1)
+> - **Speed** 25 ft., 1.21 gigawatts
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |6 |14 |12 |11 |10 |15 |
+>
+> ---
+>
+> - **Skills** Performance +4, Deception +3
+> - **Damage Resistances** radiant, psychic (when struck by bright ideas)
+> - **Condition Immunities** blinded (rainbow vision)
+> - **Languages** Common, Color Hex
+> - **Challenge** 1/2 (100 XP)
+>
+> ---
+
 ## Typogre
 
 _What a nice word, would be a shame if something happened to it._
@@ -319,6 +364,52 @@ _Uh oh. The worst person you know just bought a thesaurus._
 > - **Senses** darkvision 60 ft.
 > - **Languages** understands all, but only speaks in overwrought synonyms
 > - **Challenge** 3 (700 XP)
+>
+> ---
+
+## Ekkokin
+
+_Did it come out wrong, or did you just hear what you expected?_
+
+> Small Fey (echo), Neutral Mischief
+>
+> ---
+>
+> _**Echo Chamber.**_ Ekkokin replaces words with curated homophones drawn from a lovingly pruned lexicon. Every swap keeps the original casing and punctuation so the sentence still _sounds_ correct even while string comparisons drift.
+>
+> ### Ekkokin Args
+>
+> - `rate (float)`: Maximum proportion of eligible words to rewrite (default: 0.02, 2%).
+> - `weighting (str)`: Homophone sampling strategy (default: "flat").
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+>
+> ```python
+> >>> from glitchlings import ekkokin
+> >>> print(ekkokin(sample_text))
+> ```
+>
+> > One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed inn his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of hymn, waved about helplessly as he looked.
+>
+> ---
+>
+> - **Armor Class** 12 (echoing shimmer)
+> - **Hit Points** 22 (5d6 + 5)
+> - **Speed** 30 ft., 40 bpm (metronomic sway)
+>
+> ---
+>
+> |STR|DEX|CON|INT|WIS|CHA|
+> |:---:|:---:|:---:|:---:|:---:|:---:|
+> |8 |14 |12 |13 |11 |16 |
+>
+> ---
+>
+> - **Skills** Performance +5, Insight +3
+> - **Damage Resistances** thunder (earplugs), psychic (skeptical audiences)
+> - **Condition Immunities** deafened (selective hearing)
+> - **Senses** passive Perception 13
+> - **Languages** Common, Old Tongue homophones
+> - **Challenge** 1 (200 XP)
 >
 > ---
 

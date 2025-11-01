@@ -115,11 +115,13 @@ glitchlings --list
 Apostrofae — scope: Character, order: normal
      Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
+   Ekkokin — scope: Word, order: early
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
    Reduple — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
+ Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late
     Zeedub — scope: Character, order: last
 ```
@@ -274,6 +276,18 @@ _Watch your step around here._
 > - `characters (Sequence[str])`: Optional override for the pool of zero-width strings to inject (default: curated invisibles such as U+200B, U+200C, U+200D, U+FEFF, U+2060).
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
+### Ekkokin
+
+_Did you hear what I heard?_
+
+> _**Echo Chamber.**_ Ekkokin swaps words with curated homophones so the text still sounds right while the spelling drifts. Groups are normalised to prevent duplicates and casing is preserved when substitutions fire.
+>
+> Args
+>
+> - `rate (float)`: Maximum proportion of eligible words to replace with homophones (default: 0.02, 2%).
+> - `weighting (str)`: Sampling strategy applied within each homophone set (default: "flat").
+> - `seed (int)`: The random seed for reproducibility (default: 151).
+
 ### Jargoyle
 
 _Uh oh. The worst person you know just bought a thesaurus._
@@ -341,7 +355,6 @@ _Oops, that was my black highlighter._
 
 ### _Containment procedures pending_
 
-- `ekkokin` substitutes words with homophones (phonetic equivalents).
 - `nylingual` backtranslates portions of text.
 - `glothopper` introduces code-switching effects, blending languages or dialects.
 - `palimpsest` rewrites, but leaves accidental traces of the past.

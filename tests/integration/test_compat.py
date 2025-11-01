@@ -95,3 +95,70 @@ def test_get_installed_extras_reflects_available_dependencies(
     result = compat.get_installed_extras(["prime", "vectors", "dev"])
     assert result == {"prime": True, "vectors": False, "dev": False}
     compat.reset_optional_dependencies()
+
+
+def test_pytorch_lightning_stub_not_in_sys_modules(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify stub is not registered in sys.modules when dependency is missing."""
+    compat.reset_optional_dependencies()
+    _force_missing(monkeypatch, "pytorch_lightning")
+
+    # get() should return the stub internally
+    module = compat.pytorch_lightning.get()
+    assert module is not None
+    assert hasattr(module, "LightningDataModule")
+
+    # But the stub should NOT be in sys.modules
+    assert "pytorch_lightning" not in sys.modules
+
+    # Direct import should fail
+    with pytest.raises(ModuleNotFoundError):
+        import_module("pytorch_lightning")
+
+    compat.reset_optional_dependencies()
+
+
+def test_pytorch_lightning_require_raises_with_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify require() raises ModuleNotFoundError when fallback is used."""
+    compat.reset_optional_dependencies()
+    _force_missing(monkeypatch, "pytorch_lightning")
+
+    # require() should raise even though stub exists internally
+    with pytest.raises(ModuleNotFoundError, match="pytorch_lightning is not installed"):
+        compat.require_pytorch_lightning()
+
+    compat.reset_optional_dependencies()
+
+
+def test_pytorch_lightning_load_raises_with_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify load() raises ModuleNotFoundError when fallback is used."""
+    compat.reset_optional_dependencies()
+    _force_missing(monkeypatch, "pytorch_lightning")
+
+    # load() should raise even though stub exists internally
+    with pytest.raises(ModuleNotFoundError):
+        compat.pytorch_lightning.load()
+
+    compat.reset_optional_dependencies()
+
+
+def test_pytorch_lightning_available_false_with_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify available() returns False when fallback is used."""
+    compat.reset_optional_dependencies()
+    _force_missing(monkeypatch, "pytorch_lightning")
+
+    # available() should return False when only stub is present
+    assert not compat.pytorch_lightning.available()
+
+    compat.reset_optional_dependencies()
+
+
+def test_pytorch_lightning_attr_returns_none_with_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify attr() reports missing attributes when fallback is used."""
+    compat.reset_optional_dependencies()
+    _force_missing(monkeypatch, "pytorch_lightning")
+
+    # attr() should return None so callers know the dependency is missing
+    datamodule_cls = compat.pytorch_lightning.attr("LightningDataModule")
+    assert datamodule_cls is None
+
+    compat.reset_optional_dependencies()
