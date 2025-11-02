@@ -19,6 +19,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
    - [Ekkokin](glitchlings/ekkokin.md)
+   - [Pedant](glitchlings/pedant.md)
    - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
@@ -38,45 +39,41 @@ Install the latest release directly from PyPI:
 pip install -U glitchlings
 ```
 
-Need the optional Prime Intellect loader or extra lexicon tooling?
+### DLC
+
+Install optional dependencies as needed
+
+e.g. to install all optional deps:
 
 ```bash
-# Prime Intellect DLC + verifiers dependency
-pip install -U 'glitchlings[prime]'
-
-# Embedding-based lexicon helpers (spaCy/gensim + NumPy)
-pip install -U 'glitchlings[vectors]'
-
-# SentenceTransformer-backed cache builder
-pip install -U 'glitchlings[st]'
-
-# Optional: NLTK WordNet corpora if you want the legacy synonym backend
-python -m nltk.downloader wordnet
+pip install -U 'glitchlings[all]'
 ```
 
-### Precomputing vector lexicon caches
+#### RL Environment DLC
 
-The vector backend prefers cached nearest neighbours for fast, deterministic lookups. Build a cache from a spaCy pipeline or a gensim `KeyedVectors` file:
+- `prime` for Prime Intellect RL Hub utilities (see [Prime Intellect integration](#prime-intellect-integration))
 
-```bash
-glitchlings build-lexicon \
-    --source spacy:en_core_web_md \
-    --output data/vector_lexicon.json \
-    --overwrite
-```
+#### Dataset/Loader Monkeypatching DLC
 
-Provide a newline-delimited vocabulary with `--tokens words.txt` when you only care about a subset of words, or point `--source` at a KeyedVectors/word2vec file to work from pre-trained embeddings stored on disk. SentenceTransformer checkpoints are supported via `--source sentence-transformers:<model>` (pair them with `--tokens` to define the vocabulary). The repo ships a compact default cache (`lexicon/data/default_vector_cache.json`) derived from the `sentence-transformers/all-mpnet-base-v2` model so the CLI and tests work out of the box; regenerate it when you have richer embeddings or bespoke vocabularies.
+Add a `.glitch(...)` method to popular dataset loaders for seamless, reproducible corruption:
 
-### Lexicon evaluation metrics
+- `hf` for Hugging Face Datasets
+- `torch` for PyTorch DataLoader
+- `lightning` for Lightning DataModule
 
-Compare alternative synonym sources or refreshed caches with `glitchlings.lexicon.metrics`. The `compare_lexicons(...)` helper reports average synonym diversity, the share of tokens with three or more substitutes, and mean cosine similarity using any embedding table you pass in. These utilities underpin the lexicon regression tests so new backends stay deterministic without sacrificing coverage or semantic cohesion.
+See [Dataset workflows](#dataset-workflows) for details.
+
+#### Lexicon Backend DLC
+
+- `vectors` for spaCy/gensim lexicon building
+- `st` for SentenceTransformer lexicon caches
 
 ### Source install
 
 When working from a local clone, install in editable mode so your changes take effect immediately:
 
 ```bash
-pip install -e .
+pip install -e .[dev]
 ```
 
 Looking for a complete development workflow (virtual environments, test suite, and Rust tips)? Consult the [development setup guide](development.md).
@@ -128,35 +125,6 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly. Pass glitchling parameters with `-g "Name(arg=value, ...)"` to mirror the Python API without writing code.
 
-## Rust pipeline acceleration
-
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
-
-Parity with the pure-Python pipeline is asserted in `tests/test_rust_backed_glitchlings.py`.
-
-1. Compile the Rust crate once per environment:
-
-   ```bash
-   maturin develop -m rust/zoo/Cargo.toml
-   ```
-
-   Re-run the command after switching Python versions or pulling changes that touch the Rust sources.
-
-2. Opt out temporarily (for debugging or profiling) by exporting `GLITCHLINGS_RUST_PIPELINE=0` (accepted values: `0`, `false`, `no`, `off`). Any truthy value re-enables the accelerator, while the default is enabled when the extension imports successfully.
-
-Supported operations and their Rust counterparts:
-
-- `Reduple` (`type: "reduplicate"`) – deterministic word reduplication with optional length weighting.
-- `Rushmore` (`type: "delete"`) – word deletions that retain punctuation spacing.
-- `Redactyl` (`type: "redact"`) – block-character redactions with merge and weighting controls.
-- `Adjax` (`type: "swap_adjacent"`) – adjacent word-core swaps that respect affixes.
-- `Scannequin` (`type: "ocr"`) – OCR-style confusions sourced from the shared lookup table.
-- `Typogre` (`type: "typo"`) – character-level fat-finger edits preserving the configured keyboard layout.
-- `Zeedub` (`type: "zwj"`) – zero-width glyph injections with per-glitchling palettes.
-
-Glitchlings that do not expose a pipeline descriptor (including custom subclasses) continue to run on the Python orchestrator automatically, and mixed rosters downgrade gracefully when any member lacks Rust support.
-
-
 ## The Gaggle orchestrator
 
 The `Gaggle` class coordinates multiple glitchlings with deterministic sequencing and shared seeding:
@@ -195,6 +163,12 @@ Omit `--seed` to honour the configuration's `seed`; supply `--seed` to override 
 
 Configuration files are now validated against a JSON Schema before any glitchlings are instantiated. Unknown top-level keys raise an error, and each mapping entry must define a `name`. The schema is exposed as `glitchlings.config.ATTACK_CONFIG_SCHEMA` if you want to reuse it in external tooling.
 
+## Rust pipeline acceleration
+
+The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
+
+Parity with the pure-Python pipeline is asserted in `tests/test_rust_backed_glitchlings.py`.
+
 ## Glitchling reference
 
 Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. Dive into the dedicated pages below for signatures, behaviours, and usage tips:
@@ -207,8 +181,10 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
 - [Ekkokin](glitchlings/ekkokin.md) - curated homophone swaps that preserve casing and cadence.
+- [Pedant](glitchlings/pedant.md) - grammar evolutions driven by themed stones (Whomst, Fewerling, Commama, Kiloa, and more).
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
+
 ## Dataset workflows
 
 Leverage the Hugging Face integration to perturb large corpora reproducibly:
