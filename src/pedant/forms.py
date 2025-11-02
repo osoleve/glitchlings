@@ -7,6 +7,18 @@ import re
 from .core import Pedant
 
 
+def _match_casing(source: str, replacement: str) -> str:
+    """Return ``replacement`` adjusted to match ``source`` casing."""
+
+    if source.isupper():
+        return replacement.upper()
+    if source.islower():
+        return replacement.lower()
+    if source.istitle():
+        return replacement.capitalize()
+    return replacement
+
+
 class Whomst(Pedant):
     name = "Whomst"
     type = "Ghost"
@@ -31,12 +43,22 @@ class Fewerling(Pedant):
     type = "Fairy"
     flavor = "Counts only countable nouns."
 
-    _pattern = re.compile(r"(?P<prefix>\b(?:\d[\d,]*|many|few)\b[^.?!]*?)\bor less\b", re.IGNORECASE)
+    _pattern = re.compile(
+        r"(?P<prefix>\b(?:\d[\d,]*|many|few)\b[^.?!]*?\b)"
+        r"(?P<or>or)"
+        r"(?P<space>\s+)"
+        r"(?P<less>less)\b",
+        re.IGNORECASE,
+    )
 
     def move(self, text: str) -> str:
         def repl(match: re.Match[str]) -> str:
-            segment = match.group(0)
-            return segment[: -len("or less")] + "or fewer"
+            prefix = match.group("prefix")
+            or_word = match.group("or")
+            space = match.group("space")
+            less_word = match.group("less")
+            fewer = _match_casing(less_word, "fewer")
+            return f"{prefix}{or_word}{space}{fewer}"
 
         return self._pattern.sub(repl, text)
 
@@ -113,10 +135,12 @@ class Subjunic(Pedant):
     type = "Psychic"
     flavor = "Corrects the subjunctive wherever it can."
 
-    _pattern = re.compile(r"\bif\s+i\s+was\b", re.IGNORECASE)
+    _pattern = re.compile(r"(?P<prefix>\bif\s+i\s+)(?P<verb>was)\b", re.IGNORECASE)
 
     def move(self, text: str) -> str:
-        return self._pattern.sub(lambda m: f"{m.group(0)[:-3]}were", text)
+        return self._pattern.sub(
+            lambda m: f"{m.group('prefix')}{_match_casing(m.group('verb'), 'were')}", text
+        )
 
 
 class SerialComma(Pedant):
@@ -141,13 +165,16 @@ class Oxforda(Pedant):
     type = "Electric"
     flavor = "Measures the world in rational units."
 
-    _pattern = re.compile(r"\b(\d+) miles\b")
+    _pattern = re.compile(r"\b(?P<distance>\d[\d,]*)\s+(?P<unit>mile(?:s)?)\b", re.IGNORECASE)
 
     def move(self, text: str) -> str:
         def repl(match: re.Match[str]) -> str:
-            miles = int(match.group(1))
+            raw_distance = match.group("distance")
+            miles = int(raw_distance.replace(",", ""))
             kilometres = round(miles * 1.60934)
-            return f"{kilometres} kilometres"
+            km_unit = "kilometre" if kilometres == 1 else "kilometres"
+            km_unit = _match_casing(match.group("unit"), km_unit)
+            return f"{kilometres} {km_unit}"
 
         return self._pattern.sub(repl, text)
 
