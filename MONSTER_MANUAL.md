@@ -380,7 +380,6 @@ _Did it come out wrong, or did you just hear what you expected?_
 > ### Ekkokin Args
 >
 > - `rate (float)`: Maximum proportion of eligible words to rewrite (default: 0.02, 2%).
-> - `weighting (str)`: Homophone sampling strategy (default: "flat").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 >
 > ```python

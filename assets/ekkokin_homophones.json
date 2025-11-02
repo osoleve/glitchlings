@@ -216,7 +216,8 @@
   ],
   [
     "bight",
-    "bite"
+    "bite",
+    "byte"
   ],
   [
     "billed",
@@ -348,9 +349,14 @@
     "cantor"
   ],
   [
+    "capital",
+    "capitol"
+  ],
+  [
     "carat",
     "caret",
-    "carrot"
+    "carrot",
+    "karat"
   ],
   [
     "caries",
@@ -374,6 +380,7 @@
   ],
   [
     "censor",
+    "censer",
     "sensor"
   ],
   [
@@ -427,6 +434,10 @@
     "quire"
   ],
   [
+    "choral",
+    "coral"
+  ],
+  [
     "chord",
     "cord",
     "cored"
@@ -471,6 +482,10 @@
   [
     "cocks",
     "cox"
+  ],
+  [
+    "colonel",
+    "kernel"
   ],
   [
     "complement",
@@ -527,6 +542,10 @@
   [
     "curser",
     "cursor"
+  ],
+  [
+    "cymbal",
+    "symbol"
   ],
   [
     "dam",

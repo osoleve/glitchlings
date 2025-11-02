@@ -284,7 +284,6 @@ _Did you hear what I heard?_
 > Args
 >
 > - `rate (float)`: Maximum proportion of eligible words to replace with homophones (default: 0.02, 2%).
-> - `weighting (str)`: Sampling strategy applied within each homophone set (default: "flat").
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Jargoyle
