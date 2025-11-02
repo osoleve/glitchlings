@@ -27,8 +27,7 @@ def _canonical_asset_dir(project_root: Path) -> Path:
     canonical = project_root / "assets"
     if not canonical.is_dir():
         raise RuntimeError(
-            "expected canonical assets under 'assets'; "
-            "run this command from the repository root"
+            "expected canonical assets under 'assets'; run this command from the repository root"
         )
     return canonical
 

@@ -320,9 +320,7 @@ def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
 
     if isinstance(entry, Mapping):
         if "type" in entry:
-            raise ValueError(
-                f"{source}: glitchling #{index} uses unsupported 'type'; use 'name'."
-            )
+            raise ValueError(f"{source}: glitchling #{index} uses unsupported 'type'; use 'name'.")
 
         name_value = entry.get("name")
 
@@ -338,9 +336,7 @@ def _build_glitchling(entry: Any, source: str, index: int) -> "Glitchling":
             kwargs = dict(parameters)
         else:
             kwargs = {
-                key: value
-                for key, value in entry.items()
-                if key not in {"name", "parameters"}
+                key: value for key, value in entry.items() if key not in {"name", "parameters"}
             }
 
         try:

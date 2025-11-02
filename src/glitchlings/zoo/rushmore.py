@@ -231,25 +231,26 @@ def _resolve_rushmore_config(
                 )
         else:
             if mode is RushmoreMode.DELETE:
-                resolved = _resolve_rate(
+                _resolved = _resolve_rate(
                     mode=mode,
                     global_rate=global_rate,
                     specific_rate=delete_rate,
                 )
             elif mode is RushmoreMode.DUPLICATE:
-                resolved = _resolve_rate(
+                _resolved = _resolve_rate(
                     mode=mode,
                     global_rate=global_rate,
                     specific_rate=duplicate_rate,
                 )
             else:
-                resolved = _resolve_rate(
+                _resolved = _resolve_rate(
                     mode=mode,
                     global_rate=global_rate,
                     specific_rate=swap_rate,
                 )
-            if resolved is None:
+            if _resolved is None:
                 return None
+            resolved = _resolved
         if resolved is None:
             return None
         rates[mode] = resolved

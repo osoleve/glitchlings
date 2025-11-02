@@ -120,9 +120,9 @@ Apostrofae — scope: Character, order: normal
    Ekkokin — scope: Word, order: early
     Pedant — scope: Word, order: late
   Jargoyle — scope: Word, order: normal
+  Rushmore — scope: Word, order: normal
      Adjax — scope: Word, order: normal
    Reduple — scope: Word, order: normal
-  Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
  Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late

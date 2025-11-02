@@ -30,9 +30,7 @@ class Reduple(Rushmore):
                 raise ValueError("Reduple only supports the 'duplicate' mode")
 
         effective_rate = 0.01 if rate is None else rate
-        active_duplicate_rate = (
-            duplicate_rate if duplicate_rate is not None else effective_rate
-        )
+        active_duplicate_rate = duplicate_rate if duplicate_rate is not None else effective_rate
         active_duplicate_unweighted = (
             duplicate_unweighted if duplicate_unweighted is not None else unweighted
         )

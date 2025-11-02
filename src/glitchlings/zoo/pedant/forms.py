@@ -107,7 +107,7 @@ class Aetheria(PedantBase):
             new_second = "Ö"
         else:
             new_second = "ö"
-        return f"{word[:index]}{first}{new_second}{word[index + 2:]}"
+        return f"{word[:index]}{first}{new_second}{word[index + 2 :]}"
 
     def _apply_ligatures(self, text: str) -> str:
         matches = [m.start() for m in self._aether_pattern.finditer(text)]
