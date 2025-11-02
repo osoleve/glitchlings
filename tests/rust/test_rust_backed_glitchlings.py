@@ -1068,18 +1068,39 @@ def test_zeedub_respects_explicit_rng():
     assert result == expected
 
 
-def test_pedant_matches_python_fallback():
+@pytest.mark.parametrize(
+    ("stone", "text"),
+    [
+        ("Whom Stone", "It is I who remain."),
+        ("Fewerite", "There were 3 apples or less."),
+        ("Aetherite", "Coordinate cooperative aesthetics."),
+        ("Subjunctite", "If I was planning ahead, we would adapt."),
+        ("Oxfordium", "We invited apples, pears and bananas."),
+        ("Orthogonite", "Pedagorgon emerges at dusk."),
+        ("Metricite", "The trail was 5 miles long."),
+    ],
+)
+def test_pedant_matches_python_fallback_for_all_stones(stone, text):
     pytest.importorskip("glitchlings._zoo_rust")
+    assert pedant_module._PEDANT_RUST is not None
 
-    text = "Coordinate cooperative efforts across aesthetic areas."
-    expected = (
-        pedant_module.PedantBase(seed=77)
-        .evolve("Aetherite")
-        .move(text)
-    )
+    seed = 31415
+    expected = pedant_module.PedantBase(seed=seed).evolve(stone).move(text)
 
-    pedant = pedant_module.Pedant(stone="Aetherite", seed=77)
-    assert pedant(text) == expected
+    pedant = pedant_module.Pedant(stone=stone, seed=seed)
+    result = pedant(text)
+
+    assert result == expected
+    assert result != text
+
+
+def test_pedant_respects_style_guide_with_rust():
+    pytest.importorskip("glitchlings._zoo_rust")
+    assert pedant_module._PEDANT_RUST is not None
+
+    pedant = pedant_module.Pedant(stone="Whom Stone", seed=21, items=["Style Guide"])
+    with pytest.raises(RuntimeError):
+        pedant("Who waits outside?")
 
 
 def test_pedant_in_gaggle_rust_pipeline():

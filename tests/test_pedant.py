@@ -1,6 +1,12 @@
 import pytest
 
-from glitchlings.zoo.pedant import Pedant, PedantBase, StyleGuide, pedant_transform
+from glitchlings.zoo.pedant import (
+    CopyeditBadge,
+    Pedant,
+    PedantBase,
+    StyleGuide,
+    pedant_transform,
+)
 from glitchlings.zoo.pedant.forms import Aetherial
 
 SAMPLE_TEXT = (
@@ -99,3 +105,39 @@ def test_pedant_pipeline_descriptor_includes_items():
         "stone": "Aetherite",
         "items": ["Copyedit Badge"],
     }
+
+
+def test_subjunic_corrects_subjunctive():
+    pedant = PedantBase(seed=31).evolve("Subjunctite")
+    text = "If I was prepared, we would thrive."
+    expected = "If I were prepared, we would thrive."
+    assert pedant.move(text) == expected
+
+
+def test_serial_comma_adds_missing_delimiter():
+    pedant = PedantBase(seed=43).evolve("Oxfordium")
+    text = "Invite apples, pears and bananas."
+    expected = "Invite apples, pears, and bananas."
+    assert pedant.move(text) == expected
+
+
+def test_serial_comma_respects_existing_delimiter():
+    pedant = PedantBase(seed=43).evolve("Oxfordium")
+    original = "Invite apples, pears, and bananas."
+    assert pedant.move(original) == original
+
+
+def test_oxforda_converts_miles_to_kilometres():
+    pedant = PedantBase(seed=19).evolve("Metricite")
+    assert pedant.move("The trail spans 5 miles.") == "The trail spans 8 kilometres."
+
+
+def test_pedagorgon_uppercases_text():
+    pedant = PedantBase(seed=7).evolve("Orthogonite")
+    assert pedant.move("Quiet edits now.") == "QUIET EDITS NOW."
+
+
+def test_pedant_transform_accepts_item_instances():
+    badge = CopyeditBadge()
+    result = pedant_transform("Who will help?", stone="Whom Stone", seed=55, items=[badge])
+    assert result == "Whom will help?"
