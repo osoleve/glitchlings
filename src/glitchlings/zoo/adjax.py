@@ -1,113 +1,49 @@
 from __future__ import annotations
 
-import random
-from typing import Any, cast
+from collections.abc import Iterable
 
-from ._rust_extensions import get_rust_operation
-from ._text_utils import split_preserving_whitespace, split_token_edges
-from .core import AttackWave, Glitchling
-
-# Load Rust-accelerated operation if available
-_swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
-
-
-def _python_swap_adjacent_words(
-    text: str,
-    *,
-    rate: float,
-    rng: random.Random,
-) -> str:
-    """Swap the cores of adjacent words while keeping affixes and spacing intact."""
-    tokens = split_preserving_whitespace(text)
-    if len(tokens) < 2:
-        return text
-
-    word_indices: list[int] = []
-    for index in range(len(tokens)):
-        token = tokens[index]
-        if not token or token.isspace():
-            continue
-        if index % 2 == 0:
-            word_indices.append(index)
-
-    if len(word_indices) < 2:
-        return text
-
-    clamped = max(0.0, min(rate, 1.0))
-    if clamped <= 0.0:
-        return text
-
-    for cursor in range(0, len(word_indices) - 1, 2):
-        left_index = word_indices[cursor]
-        right_index = word_indices[cursor + 1]
-
-        left_token = tokens[left_index]
-        right_token = tokens[right_index]
-
-        left_prefix, left_core, left_suffix = split_token_edges(left_token)
-        right_prefix, right_core, right_suffix = split_token_edges(right_token)
-
-        if not left_core or not right_core:
-            continue
-
-        should_swap = clamped >= 1.0 or rng.random() < clamped
-        if not should_swap:
-            continue
-
-        tokens[left_index] = f"{left_prefix}{right_core}{left_suffix}"
-        tokens[right_index] = f"{right_prefix}{left_core}{right_suffix}"
-
-    return "".join(tokens)
+from .rushmore import (
+    Rushmore,
+    RushmoreMode,
+    _normalize_modes,
+    _python_swap_adjacent_words,
+    swap_adjacent_words,
+)
 
 
-def swap_adjacent_words(
-    text: str,
-    rate: float | None = None,
-    seed: int | None = None,
-    rng: random.Random | None = None,
-) -> str:
-    """Swap adjacent word cores while preserving spacing and punctuation."""
-    effective_rate = 0.5 if rate is None else rate
-    clamped_rate = max(0.0, min(effective_rate, 1.0))
-
-    if rng is None:
-        rng = random.Random(seed)
-
-    if _swap_adjacent_words_rust is not None:
-        return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
-
-    return _python_swap_adjacent_words(text, rate=clamped_rate, rng=rng)
-
-
-class Adjax(Glitchling):
-    """Glitchling that swaps adjacent words to scramble local semantics."""
+class Adjax(Rushmore):
+    """Compatibility wrapper for Rushmore's adjacent swap mode."""
 
     def __init__(
         self,
         *,
         rate: float | None = None,
         seed: int | None = None,
+        modes: RushmoreMode | str | Iterable[RushmoreMode | str] | None = None,
+        swap_rate: float | None = None,
     ) -> None:
+        if modes is not None:
+            normalized = _normalize_modes(modes)
+            if any(mode is not RushmoreMode.SWAP for mode in normalized):
+                raise ValueError("Adjax only supports the 'swap' mode")
+
         effective_rate = 0.5 if rate is None else rate
+        clamped = max(0.0, min(effective_rate, 1.0))
+        active_swap_rate = swap_rate if swap_rate is not None else effective_rate
         super().__init__(
             name="Adjax",
-            corruption_function=swap_adjacent_words,
-            scope=AttackWave.WORD,
+            modes=RushmoreMode.SWAP,
+            rate=clamped,
+            swap_rate=active_swap_rate,
             seed=seed,
-            rate=effective_rate,
         )
-
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        rate = self.kwargs.get("rate")
-        if rate is None:
-            return None
-        return {
-            "type": "swap_adjacent",
-            "rate": float(rate),
-        }
+        self.kwargs.pop("delete_rate", None)
+        self.kwargs.pop("duplicate_rate", None)
+        self.kwargs.pop("delete_unweighted", None)
+        self.kwargs.pop("duplicate_unweighted", None)
 
 
 adjax = Adjax()
 
 
-__all__ = ["Adjax", "adjax", "swap_adjacent_words"]
+__all__ = ["Adjax", "adjax", "swap_adjacent_words", "_python_swap_adjacent_words"]

@@ -23,7 +23,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - **`benchmarks/`** - Performance harnesses (`pipeline_benchmark.py`, etc.) that exercise both the Python and Rust execution paths.
 - **`docs/`** - Field guide, development notes, release process, and per-glitchling reference pages. Changes to behaviour should update the relevant doc alongside code.
 - **`rust/`** - PyO3 crates backing the optional Rust extensions.
-  - `rust/zoo/` builds `glitchlings._zoo_rust` (fast paths for Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin). Use `maturin develop -m rust/zoo/Cargo.toml` after touching Rust sources.
+  - `rust/zoo/` builds `glitchlings._zoo_rust` (fast paths for Typogre, Mim1c, Rushmore and its duplicate/swap modes, Redactyl, and Scannequin). Use `maturin develop -m rust/zoo/Cargo.toml` after touching Rust sources.
 - **`tests/`** - Pytest suite covering determinism, dataset integrations, CLI behaviour, Rust parity, and DLC hooks.
   - Highlights: `test_glitchling_core.py` (Gaggle orchestration and feature flags), `test_parameter_effects.py` (argument coverage), `test_benchmarks.py` (pipeline smoke tests), `test_prime_echo_chamber.py` (Prime DLC), and `test_rust_backed_glitchlings.py` (parity checks).
 

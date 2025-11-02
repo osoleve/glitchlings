@@ -48,14 +48,16 @@ pip install -U glitchlings
 > Glitchlings requires Python 3.10 or newer.
 
 ```python
-from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Rushmore
 
-gaggle = Gaggle([
-    Typogre(rate=0.03),
-    Mim1c(rate=0.02),
-    Reduple(seed=404),
-    Rushmore(rate=0.02),
-])
+gaggle = Gaggle(
+    [
+        Rushmore(rate=0.02),
+        Rushmore(modes="duplicate", seed=404),
+        Mim1c(rate=0.02),
+        Typogre(rate=0.03),
+    ]
+)
 
 print(gaggle(SAMPLE_TEXT))
 ```
@@ -306,7 +308,7 @@ _Uh oh. The worst person you know just bought a thesaurus._
 
 _Did you say that or did I?_
 
-> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
+> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread. Reduple now delegates to `Rushmore(modes='duplicate')`, so reach for Rushmore directly when you want to compose duplication with deletions or swaps.
 >
 > Args
 >
@@ -330,7 +332,7 @@ _I accidentally an entire word._
 
 _Keep your hands and punctuation where I can see them._
 
-> _**Perfect Shuffle.**_ Adjax trades the cores of neighbouring words while leaving punctuation, casing, and surrounding whitespace untouched, turning fluent prose into locally scrambled tongue-twisters.
+> _**Perfect Shuffle.**_ Adjax trades the cores of neighbouring words while leaving punctuation, casing, and surrounding whitespace untouched, turning fluent prose into locally scrambled tongue-twisters. Adjax is implemented via `Rushmore(modes='swap')`, so you can combine swaps with deletions or reduplications by switching to Rushmore directly.
 >
 > Args
 >
@@ -383,3 +385,4 @@ If you're trying to add a new glitchling and can't seem to make it deterministic
 2. Ensure you sort collections before shuffling or sampling.
 3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
 4. Make sure there are enough sort keys to maintain stability.
+

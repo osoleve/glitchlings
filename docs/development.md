@@ -80,7 +80,7 @@ pytest --maxfail=1 --disable-warnings -q
 
 ## Rust acceleration
 
-Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Reduple, Adjax, Rushmore, Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
+Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Rushmore (including its duplication and swap modes), Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
 
 ```bash
 # Compile the shared Rust crate (rerun after Rust or Python updates)

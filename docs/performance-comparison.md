@@ -24,7 +24,7 @@ Default six-glitch pipeline mirroring the public benchmark configuration.
 
 ### Scenario: Shuffle Mix
 
-Adds the Adjax word swapper and varies rates to stress mixed workloads.
+Adds Rushmore's swap mode (formerly Adjax) and varies rates to stress mixed workloads.
 
 | Text size | Characters | Python (ms) | Rust (ms) | Speedup |
 | --- | ---: | ---: | ---: | ---: |

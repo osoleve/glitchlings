@@ -1,12 +1,13 @@
 # Rushmore
 
-Rushmore deletes words to remove context and test summarisation resilience.
+Rushmore now bundles three word-level attacks—deletions, reduplications, and adjacent swaps—under a single configurable interface. By default it continues to delete words, but you can opt into any combination of the historical Reduple and Adjax behaviours with the `modes` parameter.
 
 - **Scope**: word level.
-- **Signature**: `Rushmore(rate=0.01, seed=None, unweighted=False)`.
-- **Behaviour**: deletes randomly selected words (skipping the first to preserve context) and tidies double spaces/punctuation afterwards.
+- **Signature**: `Rushmore(modes='delete', rate=None, delete_rate=None, duplicate_rate=None, swap_rate=None, unweighted=False, delete_unweighted=None, duplicate_unweighted=None, seed=None)`.
+- **Behaviour**: executes the enabled modes in order (delete → duplicate → swap) using the same RNG so chained operations remain deterministic. When a per-mode rate is omitted, Rushmore falls back to sensible defaults (0.01 for deletions/reduplications, 0.5 for swaps). Each mode continues to tidy whitespace and punctuation exactly as before.
 - **Usage tips**:
-  - Keep `rate` conservative (<0.03) to avoid stripping sentences bare.
-  - Toggle `unweighted=True` to sample words uniformly instead of favouring shorter tokens.
-  - Because the first word is preserved, prepend short context sentences when you need deletions deeper in the passage.
-  - Sandwich between Reduple and Redactyl to test summarisation robustness under missing context.
+  - Use `modes='delete'`, `modes='duplicate'`, or `modes='swap'` to reproduce the legacy Rushmore, Reduple, and Adjax behaviours respectively; `modes='all'` (or any iterable of mode names) composes them.
+  - `rate` applies to every active mode unless you provide a per-mode override such as `duplicate_rate=0.02` or `swap_rate=0.4`.
+  - Toggle `unweighted=True` to sample uniformly; override individual modes with `delete_unweighted` / `duplicate_unweighted` when you only want to change part of the attack.
+  - The first word is still preserved during deletions—prepend a short throwaway sentence if you need removals deeper in the passage.
+  - Standalone `Reduple` and `Adjax` imports remain available for compatibility, but they now delegate to `Rushmore(modes='duplicate')` and `Rushmore(modes='swap')` under the hood.

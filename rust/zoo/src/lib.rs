@@ -20,7 +20,8 @@ use std::sync::{Arc, OnceLock, RwLock};
 use ekkokin::{EkkokinOp, HomophoneWeighting};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
-    RedactWordsOp, ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
+    RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp, SwapAdjacentWordsOp,
+    TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
 use pedant::PedantOp;
@@ -184,6 +185,12 @@ enum PyGlitchOperation {
     SwapAdjacent {
         rate: f64,
     },
+    RushmoreCombo {
+        modes: Vec<String>,
+        delete: Option<DeleteRandomWordsOp>,
+        duplicate: Option<ReduplicateWordsOp>,
+        swap: Option<SwapAdjacentWordsOp>,
+    },
     Redact {
         replacement_char: String,
         rate: f64,
@@ -256,6 +263,71 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .ok_or_else(|| PyValueError::new_err("swap_adjacent operation missing 'rate'"))?
                     .extract()?;
                 Ok(PyGlitchOperation::SwapAdjacent { rate })
+            }
+            "rushmore_combo" => {
+                let modes: Vec<String> = dict
+                    .get_item("modes")?
+                    .ok_or_else(|| PyValueError::new_err("rushmore_combo operation missing 'modes'"))?
+                    .extract()?;
+
+                let delete = dict
+                    .get_item("delete")?
+                    .map(|value| -> PyResult<DeleteRandomWordsOp> {
+                        let mapping = value.downcast::<PyDict>()?;
+                        let rate = mapping
+                            .get_item("rate")?
+                            .ok_or_else(|| {
+                                PyValueError::new_err("rushmore_combo delete missing 'rate'")
+                            })?
+                            .extract()?;
+                        let unweighted = mapping
+                            .get_item("unweighted")?
+                            .map(|inner| inner.extract())
+                            .transpose()?
+                            .unwrap_or(false);
+                        Ok(DeleteRandomWordsOp { rate, unweighted })
+                    })
+                    .transpose()?;
+
+                let duplicate = dict
+                    .get_item("duplicate")?
+                    .map(|value| -> PyResult<ReduplicateWordsOp> {
+                        let mapping = value.downcast::<PyDict>()?;
+                        let rate = mapping
+                            .get_item("rate")?
+                            .ok_or_else(|| {
+                                PyValueError::new_err("rushmore_combo duplicate missing 'rate'")
+                            })?
+                            .extract()?;
+                        let unweighted = mapping
+                            .get_item("unweighted")?
+                            .map(|inner| inner.extract())
+                            .transpose()?
+                            .unwrap_or(false);
+                        Ok(ReduplicateWordsOp { rate, unweighted })
+                    })
+                    .transpose()?;
+
+                let swap = dict
+                    .get_item("swap")?
+                    .map(|value| -> PyResult<SwapAdjacentWordsOp> {
+                        let mapping = value.downcast::<PyDict>()?;
+                        let rate = mapping
+                            .get_item("rate")?
+                            .ok_or_else(|| {
+                                PyValueError::new_err("rushmore_combo swap missing 'rate'")
+                            })?
+                            .extract()?;
+                        Ok(SwapAdjacentWordsOp { rate })
+                    })
+                    .transpose()?;
+
+                Ok(PyGlitchOperation::RushmoreCombo {
+                    modes,
+                    delete,
+                    duplicate,
+                    swap,
+                })
             }
             "redact" => {
                 let replacement_char = dict
@@ -521,6 +593,27 @@ fn compose_glitchlings(
                 }
                 PyGlitchOperation::SwapAdjacent { rate } => {
                     GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
+                }
+                PyGlitchOperation::RushmoreCombo {
+                    modes,
+                    delete,
+                    duplicate,
+                    swap,
+                } => {
+                    let rushmore_modes = modes
+                        .into_iter()
+                        .map(|mode| match mode.as_str() {
+                            "delete" => Ok(glitch_ops::RushmoreComboMode::Delete),
+                            "duplicate" => Ok(glitch_ops::RushmoreComboMode::Duplicate),
+                            "swap" => Ok(glitch_ops::RushmoreComboMode::Swap),
+                            other => Err(PyValueError::new_err(format!(
+                                "unsupported Rushmore mode: {other}"
+                            ))),
+                        })
+                        .collect::<Result<Vec<_>, PyErr>>()?;
+                    GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
+                        rushmore_modes, delete, duplicate, swap,
+                    ))
                 }
                 PyGlitchOperation::Redact {
                     replacement_char,
