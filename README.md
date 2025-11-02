@@ -116,6 +116,7 @@ Apostrofae — scope: Character, order: normal
      Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
    Ekkokin — scope: Word, order: early
+    Pedant — scope: Word, order: late
   Jargoyle — scope: Word, order: normal
      Adjax — scope: Word, order: normal
    Reduple — scope: Word, order: normal

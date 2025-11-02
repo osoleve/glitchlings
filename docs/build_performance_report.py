@@ -159,22 +159,6 @@ def build_report_content(
             lines.append(row)
         lines.append("\n")
 
-    lines.extend(
-        [
-            "\n",
-            "### Notes\n\n",
-            "- Timings use `time.perf_counter` and report population standard deviation.\n",
-            (
-                "- Rust results appear only when `glitchlings._zoo_rust` imports successfully; "
-                "otherwise the column is marked as unavailable.\n"
-            ),
-            (
-                "- Re-run this script after changing pipeline code or the Rust extension "
-                "to keep the comparison current.\n"
-            ),
-        ]
-    )
-
     return "".join(lines)
 
 
@@ -185,10 +169,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--iterations",
         type=int,
         default=DEFAULT_ITERATIONS,
-        help=(
-            "Timing samples to collect for each text size "
-            f"(default: {DEFAULT_ITERATIONS})"
-        ),
+        help=(f"Timing samples to collect for each text size (default: {DEFAULT_ITERATIONS})"),
     )
     parser.add_argument(
         "--output",
@@ -219,9 +200,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         output = REPO_ROOT / output
     output.parent.mkdir(parents=True, exist_ok=True)
 
-    content = build_report_content(
-        iterations=args.iterations, scenarios=args.scenarios
-    )
+    content = build_report_content(iterations=args.iterations, scenarios=args.scenarios)
     output.write_text(content, encoding="utf-8")
     relative = output.relative_to(REPO_ROOT)
     print(f"Wrote {relative}")
