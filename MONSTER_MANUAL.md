@@ -2,6 +2,8 @@
 
 This manual contains the detailed stat blocks and descriptions of the various Glitchlings.
 
+Any resemblance to real text, living or dead, is purely coincidental and probably your own fault for leaving the PDF open after midnight.
+
 ---
 
 ## Scannequin
