@@ -176,7 +176,6 @@ def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
     return {
         "type": "ekkokin",
         "rate": float(rate),
-        "weighting": _DEFAULT_WEIGHTING,
     }
 
 
