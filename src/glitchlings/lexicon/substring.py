@@ -84,7 +84,7 @@ def substitute_from_dictionary(
 
     normalized: dict[str, tuple[str, ...]] = {}
     for key, values in dictionary.items():
-        options = tuple(value for value in values if value)
+        options = tuple(value for value in values if value) or None
         if not options:
             continue
         normalized_key = key if case_sensitive else key.lower()
@@ -109,15 +109,19 @@ def substitute_from_dictionary(
         if key_fragment is None:
             continue
         lookup_key = key_fragment if case_sensitive else key_fragment.lower()
-        options = normalized.get(lookup_key)
+        options = normalized.get(lookup_key, None)
         if not options:
             continue
         if clamped_rate < 1.0 and active_rng.random() >= clamped_rate:
             continue
 
-        replacement = active_rng.choice(options)
-        adjusted = apply_casing(key_fragment, replacement) if preserve_case else replacement
-        if transform is not None:
+        replacement: str = active_rng.choice(options)
+        adjusted: str | None = (
+            apply_casing(key_fragment, replacement) if preserve_case else replacement
+        )
+        if adjusted is None:
+            continue
+        if transform is not None and adjusted is not None:
             adjusted = transform(match, adjusted)
             if adjusted is None:
                 continue
@@ -148,4 +152,3 @@ __all__ = [
     "compile_replacement_pattern",
     "substitute_from_dictionary",
 ]
-
