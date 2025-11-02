@@ -19,6 +19,7 @@ from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
 from .jargoyle import dependencies_available as _jargoyle_available
 from .mim1c import Mim1c, mim1c
+from .pedant import Pedant, pedant
 from .redactyl import Redactyl, redactyl
 from .reduple import Reduple, reduple
 from .rushmore import Rushmore, rushmore
@@ -54,6 +55,8 @@ __all__ = [
     "scannequin",
     "Zeedub",
     "zeedub",
+    "Pedant",
+    "pedant",
     "Glitchling",
     "Gaggle",
     "plan_glitchlings",
@@ -70,7 +73,7 @@ __all__ = [
 
 _HAS_JARGOYLE = _jargoyle_available()
 
-_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin]
+_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin, pedant]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
 _BUILTIN_GLITCHLING_LIST.extend([adjax, reduple, rushmore, redactyl, spectroll, scannequin, zeedub])
@@ -85,6 +88,7 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     apostrofae.name.lower(): Apostrofae,
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
+    pedant.name.lower(): Pedant,
     adjax.name.lower(): Adjax,
     reduple.name.lower(): Reduple,
     rushmore.name.lower(): Rushmore,

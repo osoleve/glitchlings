@@ -16,6 +16,7 @@ blake2 = { workspace = true }
 smallvec = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+sha2 = "0.10"
 
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"
