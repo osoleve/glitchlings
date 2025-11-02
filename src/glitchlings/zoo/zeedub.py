@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
@@ -94,29 +94,46 @@ def insert_zero_widths(
         return text
 
     if _inject_zero_widths_rust is not None:
-        state = None
-        python_state = None
-        if hasattr(rng, "getstate") and hasattr(rng, "setstate"):
-            state = rng.getstate()
-        python_result = _python_insert_zero_widths(
+        getstate = getattr(rng, "getstate", None)
+        setstate = getattr(rng, "setstate", None)
+        snapshot = None
+        if callable(getstate) and callable(setstate):
+            try:
+                snapshot = getstate()
+            except TypeError:
+                snapshot = None
+
+        try:
+            rust_result = _inject_zero_widths_rust(
+                text, clamped_rate, list(cleaned_palette), rng
+            )
+        except (AttributeError, RuntimeError, TypeError, ValueError):
+            if snapshot is not None and callable(setstate):
+                try:
+                    setstate(snapshot)
+                except (TypeError, ValueError):
+                    pass
+            return _python_insert_zero_widths(
+                text,
+                rate=clamped_rate,
+                rng=rng,
+                characters=cleaned_palette,
+            )
+
+        if isinstance(rust_result, str):
+            return rust_result
+
+        if snapshot is not None and callable(setstate):
+            try:
+                setstate(snapshot)
+            except (TypeError, ValueError):
+                pass
+        return _python_insert_zero_widths(
             text,
             rate=clamped_rate,
             rng=rng,
             characters=cleaned_palette,
         )
-        if state is not None:
-            if hasattr(rng, "getstate"):
-                python_state = rng.getstate()
-            rng.setstate(state)
-        rust_result = cast(
-            str,
-            _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng),
-        )
-        if rust_result == python_result:
-            return rust_result
-        if python_state is not None and hasattr(rng, "setstate"):
-            rng.setstate(python_state)
-        return python_result
 
     return _python_insert_zero_widths(
         text,
