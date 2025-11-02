@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from .rushmore import (
     Rushmore,
@@ -21,6 +22,7 @@ class Adjax(Rushmore):
         seed: int | None = None,
         modes: RushmoreMode | str | Iterable[RushmoreMode | str] | None = None,
         swap_rate: float | None = None,
+        unweighted: bool = False,
     ) -> None:
         if modes is not None:
             normalized = _normalize_modes(modes)
@@ -36,11 +38,17 @@ class Adjax(Rushmore):
             rate=clamped,
             swap_rate=active_swap_rate,
             seed=seed,
+            unweighted=unweighted,
         )
         self.kwargs.pop("delete_rate", None)
         self.kwargs.pop("duplicate_rate", None)
         self.kwargs.pop("delete_unweighted", None)
         self.kwargs.pop("duplicate_unweighted", None)
+
+    def set_param(self, key: str, value: Any) -> None:
+        if key == "rate":
+            super().set_param("swap_rate", value)
+        super().set_param(key, value)
 
 
 adjax = Adjax()

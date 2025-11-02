@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from typing import Any
 
 from .rushmore import (
     Rushmore,
@@ -46,6 +47,13 @@ class Reduple(Rushmore):
         self.kwargs.pop("delete_rate", None)
         self.kwargs.pop("delete_unweighted", None)
         self.kwargs.pop("swap_rate", None)
+
+    def set_param(self, key: str, value: Any) -> None:
+        if key == "rate":
+            super().set_param("duplicate_rate", value)
+        if key == "unweighted":
+            super().set_param("duplicate_unweighted", value)
+        super().set_param(key, value)
 
 
 reduple = Reduple()
