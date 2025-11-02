@@ -150,8 +150,8 @@ class Subjunic(PedantBase):
         )
 
 
-class SerialComma(PedantBase):
-    name = "SerialComma"
+class Commama(PedantBase):
+    name = "Commama"
     type = "Steel"
     flavor = "Oxonian hero of the list."
 
@@ -167,8 +167,8 @@ class SerialComma(PedantBase):
         return self._pattern.sub(repl, text)
 
 
-class Oxforda(PedantBase):
-    name = "Oxforda"
+class Kiloa(PedantBase):
+    name = "Kiloa"
     type = "Electric"
     flavor = "Measures the world in rational units."
 
@@ -200,7 +200,7 @@ __all__ = [
     "Fewerling",
     "Aetheria",
     "Subjunic",
-    "SerialComma",
-    "Oxforda",
+    "Commama",
+    "Kiloa",
     "Correctopus",
 ]

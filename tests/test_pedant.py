@@ -84,20 +84,20 @@ def test_subjunic_corrects_subjunctive():
     assert pedant.move(text) == expected
 
 
-def test_serial_comma_adds_missing_delimiter():
+def test_commama_adds_missing_delimiter():
     pedant = PedantBase(seed=43).evolve(PedantStone.OXFORDIUM)
     text = "Invite apples, pears and bananas."
     expected = "Invite apples, pears, and bananas."
     assert pedant.move(text) == expected
 
 
-def test_serial_comma_respects_existing_delimiter():
+def test_commama_respects_existing_delimiter():
     pedant = PedantBase(seed=43).evolve(PedantStone.OXFORDIUM)
     original = "Invite apples, pears, and bananas."
     assert pedant.move(original) == original
 
 
-def test_oxforda_converts_miles_to_kilometres():
+def test_kiloa_converts_miles_to_kilometres():
     pedant = PedantBase(seed=19).evolve(PedantStone.METRICITE)
     assert pedant.move("The trail spans 5 miles.") == "The trail spans 8 kilometres."
 

@@ -17,8 +17,8 @@ enum PedantStone {
     Fewerling,
     Aetheria,
     Subjunic,
-    SerialComma,
-    Oxforda,
+    Commama,
+    Kiloa,
     Correctopus,
 }
 
@@ -29,9 +29,9 @@ impl PedantStone {
             "Fewerite" => Some(PedantStone::Fewerling),
             "Coeurite" => Some(PedantStone::Aetheria),
             "Subjunctite" => Some(PedantStone::Subjunic),
-            "Oxfordium" => Some(PedantStone::SerialComma),
+            "Oxfordium" => Some(PedantStone::Commama),
             "Orthogonite" => Some(PedantStone::Correctopus),
-            "Metricite" => Some(PedantStone::Oxforda),
+            "Metricite" => Some(PedantStone::Kiloa),
             _ => None,
         }
     }
@@ -42,9 +42,9 @@ impl PedantStone {
             PedantStone::Fewerling => "Fewerite",
             PedantStone::Aetheria => "Coeurite",
             PedantStone::Subjunic => "Subjunctite",
-            PedantStone::SerialComma => "Oxfordium",
+            PedantStone::Commama => "Oxfordium",
             PedantStone::Correctopus => "Orthogonite",
-            PedantStone::Oxforda => "Metricite",
+            PedantStone::Kiloa => "Metricite",
         }
     }
 
@@ -54,9 +54,9 @@ impl PedantStone {
             PedantStone::Fewerling => "Fewerling",
             PedantStone::Aetheria => "Aetheria",
             PedantStone::Subjunic => "Subjunic",
-            PedantStone::SerialComma => "SerialComma",
+            PedantStone::Commama => "Commama",
             PedantStone::Correctopus => "Correctopus",
-            PedantStone::Oxforda => "Oxforda",
+            PedantStone::Kiloa => "Kiloa",
         }
     }
 }
@@ -92,8 +92,8 @@ impl GlitchOp for PedantOp {
             PedantStone::Fewerling => apply_fewerling(&original),
             PedantStone::Aetheria => apply_aetheria(&original, self.root_seed, &lineage)?,
             PedantStone::Subjunic => apply_subjunic(&original),
-            PedantStone::SerialComma => apply_serial_comma(&original),
-            PedantStone::Oxforda => apply_oxforda(&original),
+            PedantStone::Commama => apply_commama(&original),
+            PedantStone::Kiloa => apply_kiloa(&original),
             PedantStone::Correctopus => original.to_uppercase(),
         };
 
@@ -146,7 +146,7 @@ fn apply_subjunic(text: &str) -> String {
         .into_owned()
 }
 
-fn apply_serial_comma(text: &str) -> String {
+fn apply_commama(text: &str) -> String {
     static SERIAL_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"(,\s*)([^,]+)\s+and\s+([^,]+)").expect("valid regex"));
 
@@ -163,7 +163,7 @@ fn apply_serial_comma(text: &str) -> String {
         .into_owned()
 }
 
-fn apply_oxforda(text: &str) -> String {
+fn apply_kiloa(text: &str) -> String {
     static OXFORD_REGEX: Lazy<Regex> = Lazy::new(|| {
         Regex::new(r"(?i)\b(?P<distance>\d[\d,]*)\s+(?P<unit>mile(?:s)?)\b").expect("valid regex")
     });
