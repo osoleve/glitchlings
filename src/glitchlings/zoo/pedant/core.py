@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from .items import Item
 
 
-class Pedant:
+class PedantBase:
     """Base pedant capable of evolving into specialised grammar forms."""
 
     name: str = "Pedant"
@@ -54,7 +54,7 @@ class Pedant:
         return random.Random(self.derive_seed(*parts))
 
     # --- Core behaviour ---------------------------------------------------
-    def evolve(self, stone_name: str) -> "Pedant":
+    def evolve(self, stone_name: str) -> "PedantBase":
         """Evolve the pedant using the provided stone."""
 
         blocked_index: int | None = None
@@ -92,7 +92,7 @@ class Pedant:
         return f"<{self.__class__.__name__} seed={self.seed} type={self.type}>"
 
 
-EVOLUTIONS: Dict[str, Type[Pedant]] = {}
+EVOLUTIONS: Dict[str, Type[PedantBase]] = {}
 
 
 try:  # pragma: no cover - import resolution occurs at runtime

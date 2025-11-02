@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-from .core import Pedant
+from .core import PedantBase
 
 
 def _match_casing(source: str, replacement: str) -> str:
@@ -19,7 +19,7 @@ def _match_casing(source: str, replacement: str) -> str:
     return replacement
 
 
-class Whomst(Pedant):
+class Whomst(PedantBase):
     name = "Whomst"
     type = "Ghost"
     flavor = "Insists upon objective-case precision."
@@ -38,7 +38,7 @@ class Whomst(Pedant):
         return pattern.sub(repl, text)
 
 
-class Fewerling(Pedant):
+class Fewerling(PedantBase):
     name = "Fewerling"
     type = "Fairy"
     flavor = "Counts only countable nouns."
@@ -63,7 +63,7 @@ class Fewerling(Pedant):
         return self._pattern.sub(repl, text)
 
 
-class Aetherial(Pedant):
+class Aetherial(PedantBase):
     name = "Aetherial"
     type = "Psychic"
     flavor = "Resurrects archaic ligatures and diacritics."
@@ -137,7 +137,7 @@ class Aetherial(Pedant):
         return "".join(result)
 
 
-class Subjunic(Pedant):
+class Subjunic(PedantBase):
     name = "Subjunic"
     type = "Psychic"
     flavor = "Corrects the subjunctive wherever it can."
@@ -150,7 +150,7 @@ class Subjunic(Pedant):
         )
 
 
-class SerialComma(Pedant):
+class SerialComma(PedantBase):
     name = "SerialComma"
     type = "Steel"
     flavor = "Oxonian hero of the list."
@@ -167,7 +167,7 @@ class SerialComma(Pedant):
         return self._pattern.sub(repl, text)
 
 
-class Oxforda(Pedant):
+class Oxforda(PedantBase):
     name = "Oxforda"
     type = "Electric"
     flavor = "Measures the world in rational units."
@@ -186,7 +186,7 @@ class Oxforda(Pedant):
         return self._pattern.sub(repl, text)
 
 
-class Pedagorgon(Pedant):
+class Pedagorgon(PedantBase):
     name = "Pedagorgon"
     type = "Dragon"
     flavor = "The final editor, breathing blue ink."

@@ -1,6 +1,7 @@
 mod ekkokin;
 mod glitch_ops;
 mod hokey;
+mod pedant;
 mod pipeline;
 mod resources;
 mod rng;
@@ -22,6 +23,7 @@ pub use glitch_ops::{
     RedactWordsOp, ReduplicateWordsOp, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
+use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
@@ -211,6 +213,10 @@ enum PyGlitchOperation {
         rate: f64,
         weighting: String,
     },
+    Pedant {
+        stone: String,
+        items: Vec<String>,
+    },
 }
 
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
@@ -324,6 +330,18 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
                 Ok(PyGlitchOperation::Ekkokin { rate, weighting })
             }
+            "pedant" => {
+                let stone = dict
+                    .get_item("stone")?
+                    .ok_or_else(|| PyValueError::new_err("pedant operation missing 'stone'"))?
+                    .extract()?;
+                let items = dict
+                    .get_item("items")?
+                    .map(|value| value.extract())
+                    .transpose()?
+                    .unwrap_or_default();
+                Ok(PyGlitchOperation::Pedant { stone, items })
+            }
             "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             "hokey" => {
                 let rate = dict
@@ -420,6 +438,18 @@ fn ekkokin_homophones(
     let weighting = HomophoneWeighting::try_from_str(weighting)
         .ok_or_else(|| PyValueError::new_err(format!("unsupported weighting: {weighting}")))?;
     let op = EkkokinOp { rate, weighting };
+    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+}
+
+#[pyfunction(name = "pedant", signature = (text, stone, seed, rng, items=None))]
+fn pedant_operation(
+    text: &str,
+    stone: &str,
+    seed: i128,
+    rng: &Bound<'_, PyAny>,
+    items: Option<Vec<String>>,
+) -> PyResult<String> {
+    let op = PedantOp::new(seed, stone, items.unwrap_or_default())?;
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -531,6 +561,10 @@ fn compose_glitchlings(
                         })?;
                     GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
                 }
+                PyGlitchOperation::Pedant { stone, items } => {
+                    let op = PedantOp::new(descriptor.seed as i128, &stone, items)?;
+                    GlitchOperation::Pedant(op)
+                }
                 PyGlitchOperation::QuotePairs => {
                     GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
                 }
@@ -566,6 +600,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(ekkokin_homophones, m)?)?;
+    m.add_function(wrap_pyfunction!(pedant_operation, m)?)?;
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;

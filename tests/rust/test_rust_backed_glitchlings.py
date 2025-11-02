@@ -142,6 +142,7 @@ try:
 except ModuleNotFoundError:
     apostrofae_module = None
 core_module = importlib.import_module("glitchlings.zoo.core")
+pedant_module = importlib.import_module("glitchlings.zoo.pedant")
 
 
 def _with_descriptor_seeds(
@@ -1065,6 +1066,50 @@ def test_zeedub_respects_explicit_rng():
     rng_actual = random.Random(99)
     result = zeedub_module.insert_zero_widths(text, rate=rate, rng=rng_actual)
     assert result == expected
+
+
+def test_pedant_matches_python_fallback():
+    pytest.importorskip("glitchlings._zoo_rust")
+
+    text = "Coordinate cooperative efforts across aesthetic areas."
+    expected = (
+        pedant_module.PedantBase(seed=77)
+        .evolve("Aetherite")
+        .move(text)
+    )
+
+    pedant = pedant_module.Pedant(stone="Aetherite", seed=77)
+    assert pedant(text) == expected
+
+
+def test_pedant_in_gaggle_rust_pipeline():
+    pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 3141
+    text = "Who will coordinate cooperative efforts across aesthetic areas?"
+
+    def _make_glitchlings() -> list[core_module.Glitchling]:
+        pedant = pedant_module.Pedant(stone="Whom Stone", seed=101)
+        redup = reduple_module.Reduple(rate=0.25, seed=11)
+        return [pedant, redup]
+
+    import os
+
+    original_flag = os.environ.get("GLITCHLINGS_RUST_PIPELINE")
+    try:
+        os.environ["GLITCHLINGS_RUST_PIPELINE"] = "0"
+        python_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+        python_result = python_gaggle(text)
+
+        os.environ["GLITCHLINGS_RUST_PIPELINE"] = "1"
+        rust_gaggle = core_module.Gaggle(_make_glitchlings(), seed=master_seed)
+        rust_result = rust_gaggle(text)
+    finally:
+        if original_flag is None:
+            os.environ.pop("GLITCHLINGS_RUST_PIPELINE", None)
+        else:
+            os.environ["GLITCHLINGS_RUST_PIPELINE"] = original_flag
+
+    assert rust_result == python_result
 
 
 hokey_module = importlib.import_module("glitchlings.zoo.hokey")

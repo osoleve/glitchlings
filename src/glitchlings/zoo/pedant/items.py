@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .core import Pedant
+    from .core import PedantBase
 
 
 @dataclass
@@ -16,7 +16,7 @@ class Item:
     name: str
     consumable: bool = True
 
-    def on_evolution_attempt(self, pedant: "Pedant", stone_name: str) -> bool:
+    def on_evolution_attempt(self, pedant: "PedantBase", stone_name: str) -> bool:
         """Hook invoked before an evolution attempt.
 
         Returning ``True`` blocks the evolution.
@@ -31,7 +31,7 @@ class StyleGuide(Item):
     def __init__(self) -> None:
         super().__init__(name="Style Guide", consumable=True)
 
-    def on_evolution_attempt(self, pedant: "Pedant", stone_name: str) -> bool:
+    def on_evolution_attempt(self, pedant: "PedantBase", stone_name: str) -> bool:
         return True
 
 

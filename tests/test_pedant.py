@@ -1,8 +1,7 @@
 import pytest
 
-from pedant.core import Pedant
-from pedant.forms import Aetherial
-from pedant.items import StyleGuide
+from glitchlings.zoo.pedant import Pedant, PedantBase, StyleGuide, pedant_transform
+from glitchlings.zoo.pedant.forms import Aetherial
 
 SAMPLE_TEXT = (
     "It is I who am here. We have 10 waters or less. "
@@ -11,21 +10,21 @@ SAMPLE_TEXT = (
 
 
 def test_evolve_with_whom_stone():
-    pedant = Pedant(seed=42)
+    pedant = PedantBase(seed=42)
     evolved = pedant.evolve("Whom Stone")
     output = evolved.move("It is I who am here.")
     assert "It is I whom am here" in output
 
 
 def test_evolve_with_fewerite():
-    pedant = Pedant(seed=7)
+    pedant = PedantBase(seed=7)
     evolved = pedant.evolve("Fewerite")
     output = evolved.move("We have 10 waters or less.")
     assert "10 waters or fewer" in output
 
 
 def test_evolve_with_aetherite():
-    pedant = Pedant(seed=9)
+    pedant = PedantBase(seed=9)
     evolved = pedant.evolve("Aetherite")
     output = evolved.move("We cooperate on aesthetic archaeology.")
     assert "coöperate" in output
@@ -33,13 +32,13 @@ def test_evolve_with_aetherite():
 
 
 def test_aetherial_ligature_handles_title_case():
-    pedant = Pedant(seed=9).evolve("Aetherite")
+    pedant = PedantBase(seed=9).evolve("Aetherite")
     output = pedant.move("Aether lore beckons.")
     assert "Æther" in output
 
 
 def test_aetherial_ligature_handles_uppercase_pair():
-    pedant = Pedant(seed=9).evolve("Aetherite")
+    pedant = PedantBase(seed=9).evolve("Aetherite")
     assert pedant.move("AE") == "Æ"
 
 
@@ -49,28 +48,28 @@ def test_aetherial_diaeresis_handles_title_case_pair():
 
 
 def test_evolution_determinism_same_seed():
-    pedant_one = Pedant(seed=11).evolve("Aetherite")
-    pedant_two = Pedant(seed=11).evolve("Aetherite")
+    pedant_one = PedantBase(seed=11).evolve("Aetherite")
+    pedant_two = PedantBase(seed=11).evolve("Aetherite")
     text = "Coordinate cooperative efforts across aesthetic areas."
     assert pedant_one.move(text) == pedant_two.move(text)
 
 
 def test_evolution_determinism_different_seeds():
-    pedant_one = Pedant(seed=11).evolve("Aetherite")
-    pedant_two = Pedant(seed=12).evolve("Aetherite")
+    pedant_one = PedantBase(seed=11).evolve("Aetherite")
+    pedant_two = PedantBase(seed=12).evolve("Aetherite")
     text = "Coordinate cooperative efforts across aesthetic areas."
     assert pedant_one.move(text) != pedant_two.move(text)
 
 
 def test_style_guide_prevents_evolution():
-    pedant = Pedant(seed=17)
+    pedant = PedantBase(seed=17)
     pedant.give_item(StyleGuide())
     with pytest.raises(RuntimeError):
         pedant.evolve("Whom Stone")
 
 
 def test_item_consumption_on_use():
-    pedant = Pedant(seed=17)
+    pedant = PedantBase(seed=17)
     pedant.give_item(StyleGuide())
     with pytest.raises(RuntimeError):
         pedant.evolve("Whom Stone")
@@ -78,5 +77,25 @@ def test_item_consumption_on_use():
 
 
 def test_whomst_move_transformation():
-    pedant = Pedant(seed=21).evolve("Whom Stone")
+    pedant = PedantBase(seed=21).evolve("Whom Stone")
     assert pedant.move("Who is there?") == "Whom is there?"
+
+
+def test_pedant_glitch_applies_selected_stone():
+    glitch = Pedant(stone="Whom Stone", seed=21)
+    assert glitch("Who was that?") == "Whom was that?"
+
+
+def test_pedant_transform_respects_style_guide():
+    with pytest.raises(RuntimeError):
+        pedant_transform("Who is there?", stone="Whom Stone", seed=99, items=["Style Guide"])
+
+
+def test_pedant_pipeline_descriptor_includes_items():
+    glitch = Pedant(stone="Aetherite", items=["Copyedit Badge"], seed=5)
+    descriptor = glitch.pipeline_operation()
+    assert descriptor == {
+        "type": "pedant",
+        "stone": "Aetherite",
+        "items": ["Copyedit Badge"],
+    }
