@@ -20,10 +20,10 @@ class PedantStone(Enum):
 
     WHOM = Stone("Whom Stone", "Ghost", "Encourages object-pronoun precision.")
     FEWERITE = Stone("Fewerite", "Fairy", "Obsesses over countable quantities.")
-    AETHERITE = Stone("Aetherite", "Psychic", "Restores archaic ligatures to modern words.")
+    COEURITE = Stone("Coeurite", "Psychic", "Restores archaic ligatures to modern words.")
     SUBJUNCTITE = Stone("Subjunctite", "Psychic", "Demands contrary-to-fact phrasing.")
     OXFORDIUM = Stone("Oxfordium", "Steel", "Polishes serial comma usage.")
-    ORTHOGONITE = Stone("Orthogonite", "Dragon", "Unlocks the legendary Pedagorgon.")
+    ORTHOGONITE = Stone("Orthogonite", "Dragon", "Unlocks the legendary Correctopus.")
     METRICITE = Stone("Metricite", "Electric", "Compels metrication of measures.")
 
     @property
@@ -60,13 +60,10 @@ class PedantStone(Enum):
             raise ValueError(f"Unknown pedant stone: {value!r}") from exc
 
 
-_STONE_BY_NAME: dict[str, PedantStone] = {
-    stone.value.name: stone for stone in PedantStone
-}
+_STONE_BY_NAME: dict[str, PedantStone] = {stone.value.name: stone for stone in PedantStone}
 
 
 STONES: dict[str, Stone] = {stone.label: stone.descriptor for stone in PedantStone}
 
 
 __all__ = ["Stone", "PedantStone", "STONES"]
-

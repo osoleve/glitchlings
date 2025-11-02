@@ -1,11 +1,10 @@
 import pytest
 
 from glitchlings.zoo.pedant import Pedant, PedantBase, PedantStone
-from glitchlings.zoo.pedant.forms import Aetherial
+from glitchlings.zoo.pedant.forms import Aetheria
 
 SAMPLE_TEXT = (
-    "It is I who am here. We have 10 waters or less. "
-    "Please cooperate on these aesthetics."
+    "It is I who am here. We have 10 waters or less. Please cooperate on these aesthetics."
 )
 
 
@@ -23,40 +22,40 @@ def test_evolve_with_fewerite():
     assert "10 waters or fewer" in output
 
 
-def test_evolve_with_aetherite():
+def test_evolve_with_coeurite():
     pedant = PedantBase(seed=9)
-    evolved = pedant.evolve(PedantStone.AETHERITE)
+    evolved = pedant.evolve(PedantStone.COEURITE)
     output = evolved.move("We cooperate on aesthetic archaeology.")
     assert "coöperate" in output
     assert "æ" in output
 
 
-def test_aetherial_ligature_handles_title_case():
-    pedant = PedantBase(seed=9).evolve(PedantStone.AETHERITE)
+def test_aetheria_ligature_handles_title_case():
+    pedant = PedantBase(seed=9).evolve(PedantStone.COEURITE)
     output = pedant.move("Aether lore beckons.")
     assert "Æther" in output
 
 
-def test_aetherial_ligature_handles_uppercase_pair():
-    pedant = PedantBase(seed=9).evolve(PedantStone.AETHERITE)
+def test_aetheria_ligature_handles_uppercase_pair():
+    pedant = PedantBase(seed=9).evolve(PedantStone.COEURITE)
     assert pedant.move("AE") == "Æ"
 
 
-def test_aetherial_diaeresis_handles_title_case_pair():
-    form = Aetherial(seed=9)
+def test_aetheria_diaeresis_handles_title_case_pair():
+    form = Aetheria(seed=9)
     assert form._apply_diaeresis("Oolong") == "Oölong"
 
 
 def test_evolution_determinism_same_seed():
-    pedant_one = PedantBase(seed=11).evolve(PedantStone.AETHERITE)
-    pedant_two = PedantBase(seed=11).evolve(PedantStone.AETHERITE)
+    pedant_one = PedantBase(seed=11).evolve(PedantStone.COEURITE)
+    pedant_two = PedantBase(seed=11).evolve(PedantStone.COEURITE)
     text = "Coordinate cooperative efforts across aesthetic areas."
     assert pedant_one.move(text) == pedant_two.move(text)
 
 
 def test_evolution_determinism_different_seeds():
-    pedant_one = PedantBase(seed=11).evolve(PedantStone.AETHERITE)
-    pedant_two = PedantBase(seed=12).evolve(PedantStone.AETHERITE)
+    pedant_one = PedantBase(seed=5).evolve(PedantStone.COEURITE)
+    pedant_two = PedantBase(seed=9).evolve(PedantStone.COEURITE)
     text = "Coordinate cooperative efforts across aesthetic areas."
     assert pedant_one.move(text) != pedant_two.move(text)
 
@@ -73,9 +72,9 @@ def test_pedant_glitch_applies_selected_stone(stone_input):
 
 
 def test_pedant_pipeline_descriptor_includes_stone_label():
-    glitch = Pedant(stone=PedantStone.AETHERITE, seed=5)
+    glitch = Pedant(stone=PedantStone.COEURITE, seed=5)
     descriptor = glitch.pipeline_operation()
-    assert descriptor == {"type": "pedant", "stone": PedantStone.AETHERITE.label}
+    assert descriptor == {"type": "pedant", "stone": PedantStone.COEURITE.label}
 
 
 def test_subjunic_corrects_subjunctive():

@@ -1073,10 +1073,10 @@ def test_zeedub_respects_explicit_rng():
     [
         (pedant_module.PedantStone.WHOM, "It is I who remain."),
         (pedant_module.PedantStone.FEWERITE, "There were 3 apples or less."),
-        (pedant_module.PedantStone.AETHERITE, "Coordinate cooperative aesthetics."),
+        (pedant_module.PedantStone.COEURITE, "Coordinate cooperative aesthetics."),
         (pedant_module.PedantStone.SUBJUNCTITE, "If I was planning ahead, we would adapt."),
         (pedant_module.PedantStone.OXFORDIUM, "We invited apples, pears and bananas."),
-        (pedant_module.PedantStone.ORTHOGONITE, "Pedagorgon emerges at dusk."),
+        (pedant_module.PedantStone.ORTHOGONITE, "Correctopus emerges at dusk."),
         (pedant_module.PedantStone.METRICITE, "The trail was 5 miles long."),
     ],
 )

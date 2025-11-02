@@ -15,11 +15,11 @@ use crate::text_buffer::TextBuffer;
 enum PedantStone {
     Whomst,
     Fewerling,
-    Aetherial,
+    Aetheria,
     Subjunic,
     SerialComma,
     Oxforda,
-    Pedagorgon,
+    Correctopus,
 }
 
 impl PedantStone {
@@ -27,10 +27,10 @@ impl PedantStone {
         match name {
             "Whom Stone" => Some(PedantStone::Whomst),
             "Fewerite" => Some(PedantStone::Fewerling),
-            "Aetherite" => Some(PedantStone::Aetherial),
+            "Coeurite" => Some(PedantStone::Aetheria),
             "Subjunctite" => Some(PedantStone::Subjunic),
             "Oxfordium" => Some(PedantStone::SerialComma),
-            "Orthogonite" => Some(PedantStone::Pedagorgon),
+            "Orthogonite" => Some(PedantStone::Correctopus),
             "Metricite" => Some(PedantStone::Oxforda),
             _ => None,
         }
@@ -40,10 +40,10 @@ impl PedantStone {
         match self {
             PedantStone::Whomst => "Whom Stone",
             PedantStone::Fewerling => "Fewerite",
-            PedantStone::Aetherial => "Aetherite",
+            PedantStone::Aetheria => "Coeurite",
             PedantStone::Subjunic => "Subjunctite",
             PedantStone::SerialComma => "Oxfordium",
-            PedantStone::Pedagorgon => "Orthogonite",
+            PedantStone::Correctopus => "Orthogonite",
             PedantStone::Oxforda => "Metricite",
         }
     }
@@ -52,10 +52,10 @@ impl PedantStone {
         match self {
             PedantStone::Whomst => "Whomst",
             PedantStone::Fewerling => "Fewerling",
-            PedantStone::Aetherial => "Aetherial",
+            PedantStone::Aetheria => "Aetheria",
             PedantStone::Subjunic => "Subjunic",
             PedantStone::SerialComma => "SerialComma",
-            PedantStone::Pedagorgon => "Pedagorgon",
+            PedantStone::Correctopus => "Correctopus",
             PedantStone::Oxforda => "Oxforda",
         }
     }
@@ -90,11 +90,11 @@ impl GlitchOp for PedantOp {
         let transformed = match self.stone {
             PedantStone::Whomst => apply_whomst(&original),
             PedantStone::Fewerling => apply_fewerling(&original),
-            PedantStone::Aetherial => apply_aetherial(&original, self.root_seed, &lineage)?,
+            PedantStone::Aetheria => apply_aetheria(&original, self.root_seed, &lineage)?,
             PedantStone::Subjunic => apply_subjunic(&original),
             PedantStone::SerialComma => apply_serial_comma(&original),
             PedantStone::Oxforda => apply_oxforda(&original),
-            PedantStone::Pedagorgon => original.to_uppercase(),
+            PedantStone::Correctopus => original.to_uppercase(),
         };
 
         if transformed != original {
@@ -188,7 +188,7 @@ fn apply_oxforda(text: &str) -> String {
         .into_owned()
 }
 
-fn apply_aetherial(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
+fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
     static COOPERATE_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"(?i)cooperate").expect("valid regex"));
     static COORDINATE_REGEX: Lazy<Regex> =
@@ -250,11 +250,7 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         return Ok(text.to_string());
     }
 
-    let seed = derive_seed(
-        root_seed,
-        lineage,
-        &[ReprArg::Str("aetherial"), ReprArg::Str(text)],
-    );
+    let seed = derive_seed(root_seed, lineage, &[ReprArg::Str("aetheria"), ReprArg::Str(text)]);
     let mut rng = PyRng::new(seed);
 
     let mut chosen: HashSet<usize> = HashSet::new();

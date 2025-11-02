@@ -22,7 +22,7 @@ def _coerce_stone(value: Any) -> PedantStone:
 def pedant_transform(
     text: str,
     *,
-    stone: PedantStone | str = PedantStone.AETHERITE,
+    stone: PedantStone | str = PedantStone.COEURITE,
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -80,7 +80,7 @@ class Pedant(Glitchling):
     def __init__(
         self,
         *,
-        stone: PedantStone | str = PedantStone.AETHERITE,
+        stone: PedantStone | str = PedantStone.COEURITE,
         seed: int | None = None,
     ) -> None:
         super().__init__(
@@ -92,12 +92,21 @@ class Pedant(Glitchling):
             pipeline_operation=_build_pipeline_descriptor,
             stone=_coerce_stone(stone),
         )
+        if seed is not None:
+            self.set_param("seed", int(seed))
 
     def set_param(self, key: str, value: object) -> None:
         if key in {"stone", "form", "stone_name"}:
             super().set_param(key, _coerce_stone(value))
             return
         super().set_param(key, value)
+
+    def reset_rng(self, seed: int | None = None) -> None:
+        super().reset_rng(seed)
+        if self.seed is None:
+            self.kwargs.pop("seed", None)
+            return
+        self.kwargs["seed"] = int(self.seed)
 
 
 pedant = Pedant()

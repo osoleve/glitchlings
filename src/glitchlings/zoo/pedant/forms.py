@@ -63,8 +63,8 @@ class Fewerling(PedantBase):
         return self._pattern.sub(repl, text)
 
 
-class Aetherial(PedantBase):
-    name = "Aetherial"
+class Aetheria(PedantBase):
+    name = "Aetheria"
     type = "Psychic"
     flavor = "Resurrects archaic ligatures and diacritics."
 
@@ -114,7 +114,7 @@ class Aetherial(PedantBase):
         if not matches:
             return text
 
-        rng = self.get_rng("aetherial", text)
+        rng = self.get_rng("aetheria", text)
         chosen = {pos for pos in matches if rng.random() < 0.6}
         if not chosen:
             chosen = {matches[rng.randrange(len(matches))]}
@@ -186,8 +186,8 @@ class Oxforda(PedantBase):
         return self._pattern.sub(repl, text)
 
 
-class Pedagorgon(PedantBase):
-    name = "Pedagorgon"
+class Correctopus(PedantBase):
+    name = "Correctopus"
     type = "Dragon"
     flavor = "The final editor, breathing blue ink."
 
@@ -198,10 +198,9 @@ class Pedagorgon(PedantBase):
 __all__ = [
     "Whomst",
     "Fewerling",
-    "Aetherial",
+    "Aetheria",
     "Subjunic",
     "SerialComma",
     "Oxforda",
-    "Pedagorgon",
+    "Correctopus",
 ]
-
