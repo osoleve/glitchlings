@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import math
 import random
-from typing import Iterable, Mapping, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
 from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
-from .core import AttackOrder, AttackWave, Glitchling
+from .core import AttackOrder, AttackWave
+from .core import Glitchling as _GlitchlingRuntime
 
 _DEFAULT_RATE = 0.02
 _DEFAULT_WEIGHTING = "flat"
@@ -39,6 +40,25 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 _homophone_lookup = _build_lookup(_homophone_groups)
 _ekkokin_rust = get_rust_operation("ekkokin_homophones")
+
+
+class _GlitchlingProtocol:
+    kwargs: dict[str, Any]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None: ...
+
+    def reset_rng(self, seed: int | None = None) -> None: ...
+
+    def pipeline_operation(self) -> dict[str, object] | None: ...
+
+
+if TYPE_CHECKING:
+
+    class _GlitchlingBase(_GlitchlingProtocol):
+        pass
+
+else:
+    _GlitchlingBase = _GlitchlingRuntime
 
 
 def _apply_casing(template: str, candidate: str) -> str:
@@ -153,7 +173,7 @@ def substitute_homophones(
     )
 
 
-class Ekkokin(Glitchling):
+class Ekkokin(_GlitchlingBase):
     """Glitchling that swaps words for curated homophones."""
 
     def __init__(
@@ -174,7 +194,7 @@ class Ekkokin(Glitchling):
         )
 
 
-def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
+def _build_pipeline_descriptor(glitch: _GlitchlingProtocol) -> dict[str, object] | None:
     rate = glitch.kwargs.get("rate")
     if rate is None:
         return None
