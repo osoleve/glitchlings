@@ -16,11 +16,7 @@ HOMOPHONE_SOURCE = PROJECT_ROOT / "wiki_homophones.txt"
 
 
 def _parse_homophones(line: str) -> set[str]:
-    tokens = {
-        match
-        for match in re.findall(r"[a-z']+", line.lower())
-        if match not in {"and"}
-    }
+    tokens = {match for match in re.findall(r"[a-z']+", line.lower()) if match not in {"and"}}
     return tokens
 
 
@@ -57,7 +53,6 @@ def test_ekkokin_exports_word_level_glitchling() -> None:
     assert descriptor == {
         "type": "ekkokin",
         "rate": pytest.approx(glitch.kwargs["rate"]),
-        "weighting": "flat",
     }
 
 
@@ -105,11 +100,7 @@ def test_substitute_homophones_preserves_source_casing(source: str) -> None:
     result = ekkokin_module.substitute_homophones(source, rate=1.0, rng=random.Random(17))
 
     assert result != source
-    alternatives = {
-        candidate
-        for candidate in HOMOPHONE_SETS["allowed"]
-        if candidate != "allowed"
-    }
+    alternatives = {candidate for candidate in HOMOPHONE_SETS["allowed"] if candidate != "allowed"}
     assert result.lower() in alternatives
 
     if source.isupper():
