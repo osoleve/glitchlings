@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt::Write;
 
 use once_cell::sync::Lazy;
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyValueError;
 use pyo3::PyErr;
 use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
@@ -65,18 +65,13 @@ impl PedantStone {
 pub struct PedantOp {
     root_seed: i128,
     stone: PedantStone,
-    items: Vec<String>,
 }
 
 impl PedantOp {
-    pub fn new(seed: i128, stone_name: &str, items: Vec<String>) -> Result<Self, PyErr> {
+    pub fn new(seed: i128, stone_name: &str) -> Result<Self, PyErr> {
         let stone = PedantStone::try_from_name(stone_name)
             .ok_or_else(|| PyValueError::new_err(format!("Unknown pedant stone: {stone_name}")))?;
-        Ok(Self {
-            root_seed: seed,
-            stone,
-            items,
-        })
+        Ok(Self { root_seed: seed, stone })
     }
 
     fn lineage(&self) -> [&'static str; 3] {
@@ -90,12 +85,6 @@ impl GlitchOp for PedantOp {
         buffer: &mut TextBuffer,
         _rng: &mut dyn GlitchRng,
     ) -> Result<(), GlitchOpError> {
-        if self.items.iter().any(|item| item == "Style Guide") {
-            return Err(GlitchOpError::Python(PyRuntimeError::new_err(
-                "Evolution prevented by style enforcement",
-            )));
-        }
-
         let original = buffer.to_string();
         let lineage = self.lineage();
         let transformed = match self.stone {

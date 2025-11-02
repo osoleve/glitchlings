@@ -215,7 +215,6 @@ enum PyGlitchOperation {
     },
     Pedant {
         stone: String,
-        items: Vec<String>,
     },
 }
 
@@ -335,12 +334,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .get_item("stone")?
                     .ok_or_else(|| PyValueError::new_err("pedant operation missing 'stone'"))?
                     .extract()?;
-                let items = dict
-                    .get_item("items")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or_default();
-                Ok(PyGlitchOperation::Pedant { stone, items })
+                Ok(PyGlitchOperation::Pedant { stone })
             }
             "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             "hokey" => {
@@ -441,15 +435,14 @@ fn ekkokin_homophones(
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction(name = "pedant", signature = (text, stone, seed, rng, items=None))]
+#[pyfunction(name = "pedant", signature = (text, stone, seed, rng))]
 fn pedant_operation(
     text: &str,
     stone: &str,
     seed: i128,
     rng: &Bound<'_, PyAny>,
-    items: Option<Vec<String>>,
 ) -> PyResult<String> {
-    let op = PedantOp::new(seed, stone, items.unwrap_or_default())?;
+    let op = PedantOp::new(seed, stone)?;
     apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -561,8 +554,8 @@ fn compose_glitchlings(
                         })?;
                     GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
                 }
-                PyGlitchOperation::Pedant { stone, items } => {
-                    let op = PedantOp::new(descriptor.seed as i128, &stone, items)?;
+                PyGlitchOperation::Pedant { stone } => {
+                    let op = PedantOp::new(descriptor.seed as i128, &stone)?;
                     GlitchOperation::Pedant(op)
                 }
                 PyGlitchOperation::QuotePairs => {
