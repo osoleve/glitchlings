@@ -1,6 +1,6 @@
 import random
 import re
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
 from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Literal, cast
