@@ -5,7 +5,13 @@ from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Literal, cast
 
-from glitchlings.lexicon import Lexicon, get_default_lexicon
+from glitchlings.lexicon import (
+    Lexicon,
+    apply_casing,
+    compile_replacement_pattern,
+    get_default_lexicon,
+    substitute_from_dictionary,
+)
 
 from .core import AttackWave, Glitchling
 
@@ -66,7 +72,6 @@ PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
 NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]
 
 _VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
-
 
 def _split_token(token: str) -> tuple[str, str, str]:
     """Split a token into leading punctuation, core word, and trailing punctuation."""
@@ -318,4 +323,12 @@ class Jargoyle(Glitchling):
 jargoyle = Jargoyle()
 
 
-__all__ = ["Jargoyle", "dependencies_available", "ensure_wordnet", "jargoyle"]
+__all__ = [
+    "Jargoyle",
+    "apply_casing",
+    "compile_replacement_pattern",
+    "dependencies_available",
+    "ensure_wordnet",
+    "jargoyle",
+    "substitute_from_dictionary",
+]
