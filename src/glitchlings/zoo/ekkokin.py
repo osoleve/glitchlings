@@ -7,7 +7,7 @@ import random
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
+from ._text_utils import collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -25,20 +25,22 @@ def _normalise_group(group: Sequence[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(word.lower() for word in group if word))
 
 
-def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ...]]:
-    """Return a mapping from word -> homophone group."""
+def _build_dictionary(groups: Sequence[Sequence[str]]) -> dict[str, tuple[str, ...]]:
+    """Return a mapping from word -> alternative homophones."""
 
-    lookup: dict[str, tuple[str, ...]] = {}
+    dictionary: dict[str, tuple[str, ...]] = {}
     for group in groups:
         normalised = _normalise_group(group)
         if len(normalised) < 2:
             continue
         for word in normalised:
-            lookup[word] = normalised
-    return lookup
+            alternatives = tuple(candidate for candidate in normalised if candidate != word)
+            if alternatives:
+                dictionary[word] = alternatives
+    return dictionary
 
 
-_homophone_lookup = _build_lookup(_homophone_groups)
+_homophone_dictionary = _build_dictionary(_homophone_groups)
 _ekkokin_rust = get_rust_operation("ekkokin_homophones")
 
 
@@ -108,41 +110,32 @@ def _python_substitute_homophones(
         return text
 
     tokens = split_preserving_whitespace(text)
-    word_tokens = collect_word_tokens(tokens)
-    if not word_tokens:
+    candidates = collect_word_tokens(tokens)
+    if not candidates:
         return text
 
     mutated = False
-    for token in word_tokens:
-        replacement = _maybe_replace_token(token, clamped_rate, rng)
-        if replacement is None:
+
+    for candidate in candidates:
+        if not candidate.has_core:
             continue
-        tokens[token.index] = replacement
+
+        options = _homophone_dictionary.get(candidate.core.lower())
+        if options is None:
+            continue
+
+        if rng.random() >= clamped_rate:
+            continue
+
+        replacement = rng.choice(options)
+        adjusted = apply_casing(candidate.core, replacement)
+        tokens[candidate.index] = f"{candidate.prefix}{adjusted}{candidate.suffix}"
         mutated = True
 
     if not mutated:
         return text
+
     return "".join(tokens)
-
-
-def _maybe_replace_token(
-    token: WordToken,
-    rate: float,
-    rng: random.Random,
-) -> str | None:
-    lookup = _homophone_lookup.get(token.core.lower())
-    if lookup is None:
-        return None
-    if rng.random() >= rate:
-        return None
-    replacement_core = _choose_alternative(
-        group=lookup,
-        source_word=token.core,
-        rng=rng,
-    )
-    if replacement_core is None:
-        return None
-    return f"{token.prefix}{replacement_core}{token.suffix}"
 
 
 def substitute_homophones(
@@ -198,7 +191,6 @@ def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object] | N
     return {
         "type": "ekkokin",
         "rate": float(rate),
-        "weighting": _DEFAULT_WEIGHTING,
     }
 
 

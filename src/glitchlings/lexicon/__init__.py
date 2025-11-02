@@ -11,6 +11,13 @@ from typing import Callable, Iterable
 from glitchlings.config import get_config
 
 from ._cache import CacheEntries, CacheSnapshot
+from .substring import (
+    ReplacementDictionary,
+    ReplacementTransform,
+    apply_casing,
+    compile_replacement_pattern,
+    substitute_from_dictionary,
+)
 
 
 class Lexicon(ABC):
@@ -178,8 +185,13 @@ def get_default_lexicon(seed: int | None = None) -> Lexicon:
 __all__ = [
     "Lexicon",
     "LexiconBackend",
+    "ReplacementDictionary",
+    "ReplacementTransform",
     "VectorLexicon",
     "WordNetLexicon",
+    "apply_casing",
+    "compile_replacement_pattern",
+    "substitute_from_dictionary",
     "build_vector_cache",
     "compare_lexicons",
     "coverage_ratio",
