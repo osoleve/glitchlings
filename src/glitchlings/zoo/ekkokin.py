@@ -53,10 +53,7 @@ class _GlitchlingProtocol:
 
 
 if TYPE_CHECKING:
-
-    class _GlitchlingBase(_GlitchlingProtocol):
-        pass
-
+    from .core import Glitchling as _GlitchlingBase
 else:
     _GlitchlingBase = _GlitchlingRuntime
 
@@ -194,7 +191,7 @@ class Ekkokin(_GlitchlingBase):
         )
 
 
-def _build_pipeline_descriptor(glitch: _GlitchlingProtocol) -> dict[str, object] | None:
+def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object] | None:
     rate = glitch.kwargs.get("rate")
     if rate is None:
         return None

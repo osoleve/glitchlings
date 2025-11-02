@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import random
-from typing import Dict, Iterable, List, Sequence, Tuple, Type
+from typing import TYPE_CHECKING, Dict, Iterable, List, Sequence, Tuple, Type
+
+if TYPE_CHECKING:
+    from .items import Item
 
 
 class Pedant:
@@ -20,15 +23,15 @@ class Pedant:
         *,
         root_seed: int | None = None,
         lineage: Sequence[str] | None = None,
-        items: Iterable["Item"] | None = None,
+        items: Iterable[Item] | None = None,
     ) -> None:
         self.seed = int(seed)
         self.root_seed = int(seed if root_seed is None else root_seed)
         self.lineage: Tuple[str, ...] = tuple(lineage or (self.name,))
-        self.items: List["Item"] = list(items or [])
+        self.items: List[Item] = list(items or [])
 
     # --- Item management -------------------------------------------------
-    def give_item(self, item: "Item") -> None:
+    def give_item(self, item: Item) -> None:
         """Add an item to the pedant's inventory."""
 
         self.items.append(item)
@@ -53,8 +56,6 @@ class Pedant:
     # --- Core behaviour ---------------------------------------------------
     def evolve(self, stone_name: str) -> "Pedant":
         """Evolve the pedant using the provided stone."""
-
-        from .items import Item
 
         blocked_index: int | None = None
         for index, item in enumerate(list(self.items)):
@@ -100,7 +101,7 @@ except ImportError:  # pragma: no cover - partial imports during type checking
     # Forms are imported lazily by consumers during runtime.
     pass
 else:
-    EVOLUTIONS: Dict[str, Type[Pedant]] = {
+    EVOLUTIONS = {
         "Whom Stone": Whomst,
         "Fewerite": Fewerling,
         "Aetherite": Aetherial,
@@ -109,4 +110,3 @@ else:
         "Orthogonite": Pedagorgon,
         "Metricite": Oxforda,
     }
-

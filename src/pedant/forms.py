@@ -70,7 +70,7 @@ class Aetherial(Pedant):
 
     _cooperate_pattern = re.compile(r"cooperate", re.IGNORECASE)
     _coordinate_pattern = re.compile(r"coordinate", re.IGNORECASE)
-    _aether_pattern = re.compile(r"ae")
+    _aether_pattern = re.compile(r"ae", re.IGNORECASE)
 
     def move(self, text: str) -> str:
         text = self._cooperate_pattern.sub(self._cooperate_replacement, text)
@@ -96,11 +96,18 @@ class Aetherial(Pedant):
 
     @staticmethod
     def _apply_diaeresis(word: str) -> str:
-        if word.isupper():
-            return word.replace("OO", "OÖ", 1)
-        if word[0].isupper():
-            return word.replace("oo", "oö", 1).replace("Oo", "Öo", 1)
-        return word.replace("oo", "oö", 1)
+        lower = word.lower()
+        index = lower.find("oo")
+        if index == -1:
+            return word
+
+        first = word[index]
+        second = word[index + 1]
+        if second.isupper():
+            new_second = "Ö"
+        else:
+            new_second = "ö"
+        return f"{word[:index]}{first}{new_second}{word[index + 2:]}"
 
     def _apply_ligatures(self, text: str) -> str:
         matches = [m.start() for m in self._aether_pattern.finditer(text)]

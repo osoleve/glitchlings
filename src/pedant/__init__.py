@@ -1,7 +1,7 @@
 """Pedant module exposing deterministic grammar evolutions."""
 
-from .core import Pedant, EVOLUTIONS
-from .items import StyleGuide, CopyeditBadge
+from .core import EVOLUTIONS, Pedant
+from .items import CopyeditBadge, StyleGuide
 from .stones import STONES
 
 __all__ = [

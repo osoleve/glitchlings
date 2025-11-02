@@ -1,10 +1,13 @@
 import pytest
 
 from pedant.core import Pedant
+from pedant.forms import Aetherial
 from pedant.items import StyleGuide
 
-
-SAMPLE_TEXT = "It is I who am here. We have 10 waters or less. Please cooperate on these aesthetics."
+SAMPLE_TEXT = (
+    "It is I who am here. We have 10 waters or less. "
+    "Please cooperate on these aesthetics."
+)
 
 
 def test_evolve_with_whom_stone():
@@ -27,6 +30,22 @@ def test_evolve_with_aetherite():
     output = evolved.move("We cooperate on aesthetic archaeology.")
     assert "coöperate" in output
     assert "æ" in output
+
+
+def test_aetherial_ligature_handles_title_case():
+    pedant = Pedant(seed=9).evolve("Aetherite")
+    output = pedant.move("Aether lore beckons.")
+    assert "Æther" in output
+
+
+def test_aetherial_ligature_handles_uppercase_pair():
+    pedant = Pedant(seed=9).evolve("Aetherite")
+    assert pedant.move("AE") == "Æ"
+
+
+def test_aetherial_diaeresis_handles_title_case_pair():
+    form = Aetherial(seed=9)
+    assert form._apply_diaeresis("Oolong") == "Oölong"
 
 
 def test_evolution_determinism_same_seed():
