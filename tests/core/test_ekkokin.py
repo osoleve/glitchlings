@@ -151,7 +151,6 @@ def test_python_substitute_homophones_preserves_non_whitespace_boundaries() -> N
     result = ekkokin_module._python_substitute_homophones(
         text,
         rate=1.0,
-        weighting="flat",
         rng=random.Random(7),
     )
 
