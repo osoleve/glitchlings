@@ -230,155 +230,10 @@ def _resolve_rushmore_config(
     )
 
 
-def _build_weighted_word_tokens(
-    tokens: Sequence[str],
-    *,
-    skip_first_word: bool,
-    unweighted: bool,
-) -> tuple[list[_WeightedWordToken], float]:
-    word_tokens = collect_word_tokens(tokens, skip_first_word=skip_first_word)
-    weighted: list[_WeightedWordToken] = []
-    for token in word_tokens:
-        weight = 1.0 if unweighted else 1.0 / float(token.core_length)
-        weighted.append(_WeightedWordToken(token=token, weight=weight))
-
-    if not weighted:
-        return [], 0.0
-
-    mean_weight = sum(candidate.weight for candidate in weighted) / len(weighted)
-    return weighted, mean_weight
-
-
-def _calculate_weighted_probability(
-    *,
-    effective_rate: float,
-    weight: float,
-    mean_weight: float,
-) -> float:
-    if effective_rate >= 1.0:
-        return 1.0
-    if mean_weight <= 0.0:
-        return min(1.0, effective_rate)
-    return min(1.0, effective_rate * (weight / mean_weight))
-
-
-def _merge_whitespace_tokens(left: str, right: str) -> str:
-    def _score(value: str) -> tuple[int, int]:
-        has_special = 1 if any(ch in value for ch in ("\n", "\r", "\t")) else 0
-        return (has_special, len(value))
-
-    if not left:
-        return right
-    if not right:
-        return left
-
-    left_score = _score(left)
-    right_score = _score(right)
-    return left if left_score >= right_score else right
-
-
-def _remove_word_token(tokens: list[str], token: WordToken) -> None:
-    replacement = f"{token.prefix}{token.suffix}"
-    tokens[token.index] = replacement
-    if replacement:
-        return
-
-    prev_index = token.index - 1 if token.index > 0 else None
-    next_index = token.index + 1 if token.index + 1 < len(tokens) else None
-
-    prev_whitespace = tokens[prev_index] if isinstance(prev_index, int) else None
-    next_whitespace = tokens[next_index] if isinstance(next_index, int) else None
-
-    if prev_index is not None and next_index is not None:
-        if (
-            prev_whitespace
-            and prev_whitespace.isspace()
-            and next_whitespace
-            and next_whitespace.isspace()
-        ):
-            tokens[prev_index] = _merge_whitespace_tokens(prev_whitespace, next_whitespace)
-            tokens[next_index] = ""
-        elif next_whitespace and next_whitespace.isspace():
-            tokens[next_index] = ""
-        elif prev_whitespace and prev_whitespace.isspace():
-            tokens[prev_index] = ""
-
-
-def _compose_text_from_tokens(tokens: Sequence[str]) -> str:
-    composed: list[str] = []
-    for token in tokens:
-        if not token:
-            continue
-        if token.isspace():
-            if not composed:
-                continue
-            if composed[-1].isspace():
-                composed[-1] = _merge_whitespace_tokens(composed[-1], token)
-            else:
-                composed.append(token)
-            continue
-        if composed and composed[-1].isspace() and token[0] in ".,;:":
-            composed.pop()
-        composed.append(token)
-
-    while composed and composed[-1].isspace():
-        composed.pop()
-    return "".join(composed)
-
-
 # Load Rust-accelerated operations if available
 _delete_random_words_rust = get_rust_operation("delete_random_words")
 _reduplicate_words_rust = get_rust_operation("reduplicate_words")
 _swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
-
-
-def _python_delete_random_words(
-    text: str,
-    *,
-    rate: float,
-    rng: random.Random,
-    unweighted: bool = False,
-) -> str:
-    """Delete random words from the input text while preserving whitespace."""
-    effective_rate = max(rate, 0.0)
-    if effective_rate <= 0.0:
-        return text
-
-    tokens = split_preserving_whitespace(text)
-    weighted_tokens, mean_weight = _build_weighted_word_tokens(
-        tokens,
-        skip_first_word=True,
-        unweighted=unweighted,
-    )
-    if not weighted_tokens:
-        return text
-
-    allowed_deletions = min(
-        len(weighted_tokens),
-        math.floor(len(weighted_tokens) * effective_rate),
-    )
-    if allowed_deletions <= 0:
-        return text
-
-    deletions = 0
-    for candidate in weighted_tokens:
-        if deletions >= allowed_deletions:
-            break
-
-        probability = _calculate_weighted_probability(
-            effective_rate=effective_rate,
-            weight=candidate.weight,
-            mean_weight=mean_weight,
-        )
-        if rng.random() >= probability:
-            continue
-
-        _remove_word_token(tokens, candidate.token)
-
-        deletions += 1
-
-    return _compose_text_from_tokens(tokens)
-
 
 def delete_random_words(
     text: str,
@@ -396,50 +251,9 @@ def delete_random_words(
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
-    if _delete_random_words_rust is not None:
-        return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng))
-
-    return _python_delete_random_words(
-        text,
-        rate=clamped_rate,
-        rng=rng,
-        unweighted=unweighted_flag,
-    )
+    return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng))
 
 
-def _python_reduplicate_words(
-    text: str,
-    *,
-    rate: float,
-    rng: random.Random,
-    unweighted: bool = False,
-) -> str:
-    """Randomly reduplicate words in the text."""
-    tokens = split_preserving_whitespace(text)
-    weighted_tokens, mean_weight = _build_weighted_word_tokens(
-        tokens,
-        skip_first_word=False,
-        unweighted=unweighted,
-    )
-
-    effective_rate = max(rate, 0.0)
-    if effective_rate <= 0.0:
-        return "".join(tokens)
-    if not weighted_tokens:
-        return "".join(tokens)
-
-    for candidate in weighted_tokens:
-        probability = _calculate_weighted_probability(
-            effective_rate=effective_rate,
-            weight=candidate.weight,
-            mean_weight=mean_weight,
-        )
-        if rng.random() >= probability:
-            continue
-
-        token = candidate.token
-        tokens[token.index] = f"{token.prefix}{token.core} {token.core}{token.suffix}"
-    return _compose_text_from_tokens(tokens)
 
 
 def reduplicate_words(
@@ -459,45 +273,7 @@ def reduplicate_words(
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
-    if _reduplicate_words_rust is not None:
-        return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
-
-    return _python_reduplicate_words(
-        text,
-        rate=clamped_rate,
-        rng=rng,
-        unweighted=unweighted_flag,
-    )
-
-
-def _python_swap_adjacent_words(
-    text: str,
-    *,
-    rate: float,
-    rng: random.Random,
-) -> str:
-    """Swap the cores of adjacent words while keeping affixes and spacing intact."""
-    tokens = split_preserving_whitespace(text)
-    word_tokens = [token for token in collect_word_tokens(tokens) if token.has_core]
-    if len(word_tokens) < 2:
-        return text
-
-    clamped = max(0.0, min(rate, 1.0))
-    if clamped <= 0.0:
-        return text
-
-    for cursor in range(0, len(word_tokens) - 1, 2):
-        left = word_tokens[cursor]
-        right = word_tokens[cursor + 1]
-
-        should_swap = clamped >= 1.0 or rng.random() < clamped
-        if not should_swap:
-            continue
-
-        tokens[left.index] = f"{left.prefix}{right.core}{left.suffix}"
-        tokens[right.index] = f"{right.prefix}{left.core}{right.suffix}"
-
-    return "".join(tokens)
+    return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
 
 
 def swap_adjacent_words(
@@ -513,10 +289,7 @@ def swap_adjacent_words(
     if rng is None:
         rng = random.Random(seed)
 
-    if _swap_adjacent_words_rust is not None:
-        return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
-
-    return _python_swap_adjacent_words(text, rate=clamped_rate, rng=rng)
+    return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
 
 
 def rushmore_attack(
@@ -643,9 +416,6 @@ __all__ = [
     "RushmoreMode",
     "rushmore_attack",
     "delete_random_words",
-    "_python_delete_random_words",
     "reduplicate_words",
-    "_python_reduplicate_words",
     "swap_adjacent_words",
-    "_python_swap_adjacent_words",
 ]
