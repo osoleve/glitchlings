@@ -34,6 +34,28 @@ from glitchlings.zoo.scannequin import Scannequin
             },
         ),
         (
+            lambda: Rushmore(modes="duplicate", duplicate_rate=0.25),
+            {
+                "type": "reduplicate",
+                "rate": 0.25,
+                "unweighted": False,
+            },
+        ),
+        (
+            lambda: Rushmore(
+                modes=("delete", "swap"),
+                delete_rate=0.2,
+                swap_rate=0.6,
+                unweighted=True,
+            ),
+            {
+                "type": "rushmore_combo",
+                "modes": ["delete", "swap"],
+                "delete": {"rate": 0.2, "unweighted": True},
+                "swap": {"rate": 0.6},
+            },
+        ),
+        (
             lambda: Reduple(rate=0.25),
             {
                 "type": "reduplicate",
@@ -72,11 +94,17 @@ def test_pipeline_operations_emit_expected_descriptors(factory, expected):
         ),
         (
             lambda: Rushmore(rate=0.3),
-            lambda glitch: glitch.set_param("rate", None),
+            lambda glitch: (
+                glitch.set_param("rate", None),
+                glitch.set_param("delete_rate", None),
+            ),
         ),
         (
             lambda: Reduple(rate=0.2),
-            lambda glitch: glitch.set_param("rate", None),
+            lambda glitch: (
+                glitch.set_param("rate", None),
+                glitch.set_param("duplicate_rate", None),
+            ),
         ),
         (
             lambda: Scannequin(rate=0.18),
@@ -84,7 +112,10 @@ def test_pipeline_operations_emit_expected_descriptors(factory, expected):
         ),
         (
             lambda: Adjax(rate=0.4),
-            lambda glitch: glitch.set_param("rate", None),
+            lambda glitch: (
+                glitch.set_param("rate", None),
+                glitch.set_param("swap_rate", None),
+            ),
         ),
     ],
 )

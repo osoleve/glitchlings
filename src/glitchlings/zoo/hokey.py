@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import random
-from typing import Any, cast
+from typing import Any
 
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
@@ -95,9 +95,17 @@ def extend_vowels(
             return_trace=return_trace,
         )
 
-    return cast(
-        str,
-        _hokey_rust(
+    getstate = getattr(rng, "getstate", None)
+    setstate = getattr(rng, "setstate", None)
+    snapshot = None
+    if callable(getstate) and callable(setstate):
+        try:
+            snapshot = getstate()
+        except TypeError:
+            snapshot = None
+
+    try:
+        rust_result = _hokey_rust(
             text,
             rate,
             extension_min,
@@ -105,7 +113,41 @@ def extend_vowels(
             word_length_threshold,
             base_probability,
             rng,
-        ),
+        )
+    except (AttributeError, RuntimeError, TypeError, ValueError):
+        if snapshot is not None and callable(setstate):
+            try:
+                setstate(snapshot)
+            except (TypeError, ValueError):
+                pass
+        return _python_extend_vowels(
+            text,
+            rate=rate,
+            extension_min=extension_min,
+            extension_max=extension_max,
+            word_length_threshold=word_length_threshold,
+            base_p=base_probability,
+            rng=rng,
+            return_trace=return_trace,
+        )
+
+    if isinstance(rust_result, str):
+        return rust_result
+
+    if snapshot is not None and callable(setstate):
+        try:
+            setstate(snapshot)
+        except (TypeError, ValueError):
+            pass
+    return _python_extend_vowels(
+        text,
+        rate=rate,
+        extension_min=extension_min,
+        extension_max=extension_max,
+        word_length_threshold=word_length_threshold,
+        base_p=base_probability,
+        rng=rng,
+        return_trace=return_trace,
     )
 
 

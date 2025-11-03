@@ -422,7 +422,7 @@ _Did you say that or did I?_
 >
 > ---
 >
-> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread.
+> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread. Reduple now proxies `Rushmore(modes='duplicate')`, so invoke Rushmore directly when you want to compose duplication with other modes or tweak per-mode weighting.
 >
 > ### Reduple Args
 >
@@ -466,7 +466,7 @@ _Shuffle enough sentences and the truth trips over its own shoelaces._
 >
 > ---
 >
-> _**Perfect Shuffle.**_ Adjax swaps the cores of neighbouring words while leaving punctuation, casing, and spacing glued in place, producing prose that still scans even as the meaning slides sideways.
+> _**Perfect Shuffle.**_ Adjax swaps the cores of neighbouring words while leaving punctuation, casing, and spacing glued in place, producing prose that still scans even as the meaning slides sideways. It now rides atop `Rushmore(modes='swap')`, so hop over to Rushmore when you need swaps alongside deletions or reduplications.
 >
 > ### Adjax Args
 >
@@ -509,13 +509,19 @@ _I accidentally an entire word._
 >
 > ---
 >
-> _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
+> _**Hasty Omission.**_ Once known solely for erasing context, Rushmore now channels the full triad of word-level tricks: deletions, reduplications, and adjacent swaps. Pick which attack modes to unleash with `modes` and it will execute them in deterministic order using a shared RNG, mirroring the former Reduple and Adjax behaviours when those modes are selected.
 >
 > ### Rushmore Args
 >
-> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
+> - `modes (str | Sequence[str])`: Attack modes to enable ("delete", "duplicate", "swap", or any combination such as "all"). Order controls how effects chain.
+> - `rate (float | None)`: Global rate applied to every enabled mode when a per-mode override is not supplied.
+> - `delete_rate (float | None)`: Override for the deletion mode (default 0.01 when omitted).
+> - `duplicate_rate (float | None)`: Override for the reduplication mode (default 0.01 when omitted).
+> - `swap_rate (float | None)`: Override for the adjacent swap mode (default 0.5 when omitted).
+> - `unweighted (bool)`: Toggle length-weighted sampling off for all modes that support it.
+> - `delete_unweighted (bool | None)`: Per-mode override for deletion weighting.
+> - `duplicate_unweighted (bool | None)`: Per-mode override for reduplication weighting.
+> - `seed (int | None)`: Deterministic seed for this Rushmore instance.
 >
 > ```python
 > >>> from glitchlings import rushmore

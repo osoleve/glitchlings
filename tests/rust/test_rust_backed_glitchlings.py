@@ -495,6 +495,38 @@ def _run_python_sequence(text: str, descriptors: list[dict[str, object]], master
                 rate=operation["rate"],
                 rng=rng,
             )
+        elif op_type == "rushmore_combo":
+            modes = operation.get("modes", [])
+            for mode in modes:
+                if mode == "delete":
+                    config = operation.get("delete")
+                    if config is None:
+                        continue
+                    current = rushmore_module._python_delete_random_words(
+                        current,
+                        rate=config.get("rate", 0.0),
+                        rng=rng,
+                        unweighted=config.get("unweighted", False),
+                    )
+                elif mode == "duplicate":
+                    config = operation.get("duplicate")
+                    if config is None:
+                        continue
+                    current = reduple_module._python_reduplicate_words(
+                        current,
+                        rate=config.get("rate", 0.0),
+                        rng=rng,
+                        unweighted=config.get("unweighted", False),
+                    )
+                elif mode == "swap":
+                    config = operation.get("swap")
+                    if config is None:
+                        continue
+                    current = adjax_module._python_swap_adjacent_words(
+                        current,
+                        rate=config.get("rate", 0.0),
+                        rng=rng,
+                    )
         elif op_type == "redact":
             current = redactyl_module._python_redact_words(
                 current,
@@ -803,6 +835,52 @@ def test_gaggle_python_fallback_when_pipeline_disabled(monkeypatch):
     descriptors = _with_descriptor_seeds(raw_descriptors, 2024)
     expected = _run_python_sequence(text, descriptors, 2024)
     assert result == expected
+
+
+def test_rushmore_combo_pipeline_matches_python(monkeypatch):
+    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
+    master_seed = 4242
+    text = "Dense documents demand deliberate distortions"
+
+    rushmore = rushmore_module.Rushmore(
+        modes=("delete", "duplicate", "swap"),
+        delete_rate=0.4,
+        duplicate_rate=0.2,
+        swap_rate=0.6,
+        unweighted=True,
+        duplicate_unweighted=True,
+        seed=11,
+    )
+
+    descriptor = rushmore.pipeline_operation()
+    assert descriptor is not None
+    assert descriptor["type"] == "rushmore_combo"
+
+    decorated = _with_descriptor_seeds(
+        [
+            {
+                "name": rushmore.name,
+                "operation": descriptor,
+            }
+        ],
+        master_seed,
+    )
+
+    python_expected = _run_python_sequence(text, decorated, master_seed)
+
+    monkeypatch.setenv("GLITCHLINGS_RUST_PIPELINE", "1")
+    try:
+        rust_result = zoo_rust.compose_glitchlings(
+            text,
+            decorated,
+            master_seed,
+        )
+    except ValueError as exc:
+        if "rushmore_combo" in str(exc):
+            pytest.skip("rushmore_combo not supported by the compiled extension")
+        raise
+
+    assert rust_result == python_expected
 
 
 def test_pipeline_handles_typogre_and_zeedub(monkeypatch):

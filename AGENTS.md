@@ -7,7 +7,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 2. Run `bd quickstart` once after installation to review the workflow commands and confirm the CLI is operational.
 3. Bootstrap new clones with `bd init --quiet` from the repository root; this keeps `.beads/` synchronised and ready for the agent workflow.
 4. **Before starting any coding task, create or update a bead describing the scope, mark it `in_progress` while you work, and capture completion details in the same bead before finishing.** Use the CLI (`bd create`, `bd update`, `bd close`) instead of editing JSON by hand—beads are the source of truth for ongoing work.
-5. Keep `AGENTS.md` and `CLAUDE.md` alongside the Beads database. When migrating existing Markdown notes, port the relevant content into beads before removing the files.
+5. Keep `AGENTS.md` and `CLAUDE.md` under `.github/` with the Beads database tracked via `bd`; when migrating existing Markdown notes, port the relevant content into beads before retiring the files.
 
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
