@@ -2,7 +2,6 @@
 
 import inspect
 import logging
-import os
 import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
@@ -15,11 +14,6 @@ from ._rust_extensions import get_rust_operation
 _DatasetsDataset = get_datasets_dataset()
 
 log = logging.getLogger(__name__)
-
-
-_PIPELINE_FEATURE_FLAG_ENV = "GLITCHLINGS_RUST_PIPELINE"
-_PIPELINE_ENABLE_VALUES = {"1", "true", "yes", "on"}
-_PIPELINE_DISABLE_VALUES = {"0", "false", "no", "off"}
 
 
 class PlanSpecification(TypedDict):
@@ -35,34 +29,32 @@ PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
 
 def pipeline_feature_flag_enabled() -> bool:
-    """Return ``True`` when the environment does not explicitly disable the Rust pipeline."""
-    value = os.environ.get(_PIPELINE_FEATURE_FLAG_ENV)
-    if value is None:
-        return True
+    """Return ``True`` when the Rust orchestration pipeline is available."""
 
-    normalized = value.strip().lower()
-    if normalized in _PIPELINE_DISABLE_VALUES:
-        return False
-
-    if normalized in _PIPELINE_ENABLE_VALUES:
-        return True
-
-    return True
+    return is_rust_pipeline_supported()
 
 
 def _pipeline_feature_flag_enabled() -> bool:
-    """Compatibility shim for legacy callers."""
+    """Compatibility shim mirroring :func:`pipeline_feature_flag_enabled`."""
+
     return pipeline_feature_flag_enabled()
 
 
 def is_rust_pipeline_supported() -> bool:
-    """Return ``True`` when the Rust extension is importable."""
+    """Return ``True`` when the Rust orchestration bridge is importable."""
+
+    try:
+        get_rust_operation("plan_glitchlings")
+    except RuntimeError:
+        return False
+
     return True
 
 
 def is_rust_pipeline_enabled() -> bool:
-    """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-    return is_rust_pipeline_supported() and pipeline_feature_flag_enabled()
+    """Return ``True`` when the Rust pipeline is both supported and active."""
+
+    return is_rust_pipeline_supported()
 
 
 def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
@@ -120,31 +112,15 @@ def _plan_glitchlings_with_rust(
     return [(int(index), int(seed)) for index, seed in plan]
 
 
-def _resolve_orchestration_plan(
-    specs: Sequence[PlanSpecification],
-    master_seed: int,
-    prefer_rust: bool,
-) -> list[tuple[int, int]]:
-    """Dispatch to the Rust planner, raising if it is unavailable."""
-    if not prefer_rust:
-        message = "Python orchestration planning has been removed; prefer_rust must be True"
-        raise RuntimeError(message)
-
-    return _plan_glitchlings_with_rust(list(specs), master_seed)
-
-
 def plan_glitchling_specs(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int | None,
-    *,
-    prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
     """Resolve orchestration order and seeds from glitchling specifications.
 
     Notes
     -----
-    The Rust extension is now required for orchestration; ``prefer_rust`` must
-    remain ``True``.
+    The Rust extension is required for orchestration.
     """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
@@ -152,21 +128,18 @@ def plan_glitchling_specs(
 
     normalized_specs = [_normalize_plan_entry(spec) for spec in specs]
     master_seed_int = int(master_seed)
-    return _resolve_orchestration_plan(normalized_specs, master_seed_int, prefer_rust)
+    return _plan_glitchlings_with_rust(list(normalized_specs), master_seed_int)
 
 
 def plan_glitchlings(
     entries: Sequence[PlanEntry],
     master_seed: int | None,
-    *,
-    prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
     """Normalize glitchling instances or specs and compute an orchestration plan.
 
     Notes
     -----
-    The Rust extension is required for orchestration; ``prefer_rust`` must
-    remain ``True``.
+    The Rust extension is required for orchestration.
     """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
@@ -174,7 +147,7 @@ def plan_glitchlings(
 
     normalized_specs = _normalize_plan_entries(entries)
     master_seed_int = int(master_seed)
-    return _resolve_orchestration_plan(normalized_specs, master_seed_int, prefer_rust)
+    return _plan_glitchlings_with_rust(list(normalized_specs), master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
