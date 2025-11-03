@@ -6,7 +6,7 @@ Spectroll remaps colour-centric vocabulary to keep descriptions surprising while
 - **Usage tips**:
   - Literal mode is ideal for regression tests or deterministic golden files.
   - Drift mode pairs well with dialogue or descriptive prose where you want repeatable but non-static palettes—set the seed per scene to keep revisions stable.
-  - Stack Spectroll after structural glitchlings (Adjax, Rushmore) so that sentence boundaries stay legible before the colours start drifting.
+  - Stack Spectroll after structural glitchlings (Rushmore in swap mode) so that sentence boundaries stay legible before the colours start drifting.
 
 | Source phrase | Literal mode | Drift mode (seed=7) |
 | --- | --- | --- |

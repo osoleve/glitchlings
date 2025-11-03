@@ -83,14 +83,17 @@ Looking for a complete development workflow (virtual environments, test suite, a
 Glitchlings are callable objects that accept strings (and string-like iterables) and return corrupted copies. Summon a single glitchling or gather multiple into a `Gaggle` to orchestrate compound effects:
 
 ```python
-from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Reduple, Rushmore
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Rushmore
 
-gaggle = Gaggle([
-    Typogre(rate=0.02),
-    Mim1c(rate=0.01),
-    Reduple(rate=0.005),
-    Rushmore(rate=0.005),
-], seed=1234)
+gaggle = Gaggle(
+    [
+        Rushmore(rate=0.01),  # deletions
+        Rushmore(modes="duplicate", duplicate_rate=0.005),
+        Mim1c(rate=0.01),
+        Typogre(rate=0.02),
+    ],
+    seed=1234,
+)
 
 print(gaggle(SAMPLE_TEXT))
 ```
@@ -130,7 +133,7 @@ Append `--diff` to render a unified diff comparing the original and corrupted ou
 The `Gaggle` class coordinates multiple glitchlings with deterministic sequencing and shared seeding:
 
 - **Seed derivation** - pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
-- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Apostrofae, Mim1c, Scannequin) happen after word-level operations (Reduple, Adjax, Rushmore, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
+- **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Apostrofae, Mim1c, Scannequin) happen after word-level operations (Rushmore and its duplicate/swap modes, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
 - **Dataset utilities** - after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
 - **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
@@ -176,8 +179,9 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
 - [Apostrofae](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
-- [Reduple](glitchlings/reduple.md) - word-level reduplication for hesitant transcripts.
-- [Rushmore](glitchlings/rushmore.md) - targeted deletions that erode context without shredding structure.
+- [Reduple](glitchlings/reduple.md) - compatibility wrapper for Rushmore's duplication mode.
+- [Adjax](glitchlings/adjax.md) - compatibility wrapper for Rushmore's adjacent swap mode.
+- [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
 - [Ekkokin](glitchlings/ekkokin.md) - curated homophone swaps that preserve casing and cadence.

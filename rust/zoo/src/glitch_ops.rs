@@ -441,6 +441,63 @@ impl GlitchOp for SwapAdjacentWordsOp {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum RushmoreComboMode {
+    Delete,
+    Duplicate,
+    Swap,
+}
+
+#[derive(Debug, Clone)]
+pub struct RushmoreComboOp {
+    pub modes: Vec<RushmoreComboMode>,
+    pub delete: Option<DeleteRandomWordsOp>,
+    pub duplicate: Option<ReduplicateWordsOp>,
+    pub swap: Option<SwapAdjacentWordsOp>,
+}
+
+impl RushmoreComboOp {
+    pub fn new(
+        modes: Vec<RushmoreComboMode>,
+        delete: Option<DeleteRandomWordsOp>,
+        duplicate: Option<ReduplicateWordsOp>,
+        swap: Option<SwapAdjacentWordsOp>,
+    ) -> Self {
+        Self {
+            modes,
+            delete,
+            duplicate,
+            swap,
+        }
+    }
+}
+
+impl GlitchOp for RushmoreComboOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        for mode in &self.modes {
+            match mode {
+                RushmoreComboMode::Delete => {
+                    if let Some(op) = self.delete {
+                        op.apply(buffer, rng)?;
+                    }
+                }
+                RushmoreComboMode::Duplicate => {
+                    if let Some(op) = self.duplicate {
+                        op.apply(buffer, rng)?;
+                    }
+                }
+                RushmoreComboMode::Swap => {
+                    if let Some(op) = self.swap {
+                        op.apply(buffer, rng)?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 /// Redacts words by replacing core characters with a replacement token.
 #[derive(Debug, Clone)]
 pub struct RedactWordsOp {
@@ -1146,6 +1203,7 @@ pub enum GlitchOperation {
     Reduplicate(ReduplicateWordsOp),
     Delete(DeleteRandomWordsOp),
     SwapAdjacent(SwapAdjacentWordsOp),
+    RushmoreCombo(RushmoreComboOp),
     Redact(RedactWordsOp),
     Ocr(OcrArtifactsOp),
     Typo(TypoOp),
@@ -1162,6 +1220,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Reduplicate(op) => op.apply(buffer, rng),
             GlitchOperation::Delete(op) => op.apply(buffer, rng),
             GlitchOperation::SwapAdjacent(op) => op.apply(buffer, rng),
+            GlitchOperation::RushmoreCombo(op) => op.apply(buffer, rng),
             GlitchOperation::Redact(op) => op.apply(buffer, rng),
             GlitchOperation::Ocr(op) => op.apply(buffer, rng),
             GlitchOperation::Typo(op) => op.apply(buffer, rng),

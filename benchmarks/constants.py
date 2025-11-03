@@ -47,6 +47,11 @@ OPERATION_MODULES: Dict[str, str] = {
     "zwj": "Zeedub",
     "swap_adjacent": "Adjax",
     "typo": "Typogre",
+    "hokey": "Hokey",
+    "apostrofae": "Apostrofae",
+    "pedant": "Pedant",
+    "ekkokin": "Ekkokin",
+    "rushmore_combo": "Rushmore",
 }
 
 
@@ -113,7 +118,7 @@ MASTER_SEED = 151
 
 SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "baseline": "Default six-glitch pipeline mirroring the public benchmark configuration.",
-    "shuffle_mix": "Adds the Adjax word swapper and varies rates to stress mixed workloads.",
+    "shuffle_mix": "Adds Rushmore's swap mode (formerly Adjax) and varies rates to stress mixed workloads.",
     "aggressive_cleanup": "Heavy redaction and deletion pass to emulate worst-case sanitisation.",
     "stealth_noise": "Lightweight typo and zero-width noise focused on subtle obfuscations.",
 }

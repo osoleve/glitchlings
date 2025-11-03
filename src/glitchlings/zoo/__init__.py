@@ -22,7 +22,7 @@ from .mim1c import Mim1c, mim1c
 from .pedant import Pedant, pedant
 from .redactyl import Redactyl, redactyl
 from .reduple import Reduple, reduple
-from .rushmore import Rushmore, rushmore
+from .rushmore import Rushmore, RushmoreMode, rushmore
 from .scannequin import Scannequin, scannequin
 from .spectroll import Spectroll, spectroll
 from .typogre import Typogre, typogre
@@ -46,6 +46,7 @@ __all__ = [
     "Reduple",
     "reduple",
     "Rushmore",
+    "RushmoreMode",
     "rushmore",
     "Redactyl",
     "redactyl",
@@ -76,7 +77,7 @@ _HAS_JARGOYLE = _jargoyle_available()
 _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin, pedant]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
-_BUILTIN_GLITCHLING_LIST.extend([adjax, reduple, rushmore, redactyl, spectroll, scannequin, zeedub])
+_BUILTIN_GLITCHLING_LIST.extend([rushmore, adjax, reduple, redactyl, spectroll, scannequin, zeedub])
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     glitchling.name.lower(): glitchling for glitchling in _BUILTIN_GLITCHLING_LIST

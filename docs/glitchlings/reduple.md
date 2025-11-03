@@ -1,12 +1,11 @@
 # Reduple
 
-Reduple repeats words to mimic stuttering transcripts while preserving whitespace and punctuation.
+Reduple now serves as a compatibility wrapper for `Rushmore(modes='duplicate')`. It still repeats words to mimic stuttering transcripts, but the implementation (and new features such as multi-mode chaining) live in Rushmore.
 
 - **Scope**: word level.
-- **Signature**: `Reduple(rate=0.01, seed=None, unweighted=False)`.
-- **Behaviour**: randomly repeats words ("reduplication") to mimic stuttering transcripts or speech disfluencies while preserving whitespace and punctuation.
+- **Signature**: `Reduple(rate=0.01, seed=None, unweighted=False)` → delegates to `Rushmore` with the duplication mode selected.
+- **Behaviour**: randomly repeats words while preserving whitespace and punctuation. For advanced control (e.g., combining deletions and reduplications or altering per-mode weights), switch to Rushmore directly.
 - **Usage tips**:
-  - Use `rate=0.01` to emulate occasional hesitations; bump to `~0.08` for heavy repetition stress tests.
-  - Toggle `unweighted=True` to sample words uniformly instead of favouring shorter tokens.
-  - Because edits preserve separators, downstream whitespace-sensitive parsers remain stable.
-  - Combine with Jargoyle to mix synonym swaps and repeated words for lexical drift.
+  - Existing code continues to work, but new projects should prefer `Rushmore(modes='duplicate', ...)` for clarity.
+  - Increase `rate` to intensify repetitions, or set `duplicate_unweighted=True` on Rushmore to sample words uniformly.
+  - Combine with Jargoyle or Rushmore's deletion mode to mix redundancy with missing context.
