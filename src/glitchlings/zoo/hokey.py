@@ -16,28 +16,6 @@ _ANALYZER = StretchabilityAnalyzer()
 _GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
 
 
-def _python_extend_vowels(
-    text: str,
-    *,
-    rate: float,
-    extension_min: int,
-    extension_max: int,
-    word_length_threshold: int,
-    base_p: float,
-    rng: random.Random,
-    return_trace: bool = False,
-) -> str | tuple[str, list[StretchEvent]]:
-    config = HokeyConfig(
-        rate=rate,
-        extension_min=extension_min,
-        extension_max=extension_max,
-        word_length_threshold=word_length_threshold,
-        base_p=base_p,
-    )
-    result, events = _GENERATOR.generate(text, rng=rng, config=config)
-    return (result, events) if return_trace else result
-
-
 def extend_vowels(
     text: str,
     rate: float = 0.3,
@@ -83,29 +61,7 @@ def extend_vowels(
         rng = random.Random(seed)
     base_probability = base_p if base_p is not None else 0.45
 
-    if return_trace or _hokey_rust is None:
-        return _python_extend_vowels(
-            text,
-            rate=rate,
-            extension_min=extension_min,
-            extension_max=extension_max,
-            word_length_threshold=word_length_threshold,
-            base_p=base_probability,
-            rng=rng,
-            return_trace=return_trace,
-        )
-
-    getstate = getattr(rng, "getstate", None)
-    setstate = getattr(rng, "setstate", None)
-    snapshot = None
-    if callable(getstate) and callable(setstate):
-        try:
-            snapshot = getstate()
-        except TypeError:
-            snapshot = None
-
-    try:
-        rust_result = _hokey_rust(
+    return _hokey_rust(
             text,
             rate,
             extension_min,
@@ -114,41 +70,6 @@ def extend_vowels(
             base_probability,
             rng,
         )
-    except (AttributeError, RuntimeError, TypeError, ValueError):
-        if snapshot is not None and callable(setstate):
-            try:
-                setstate(snapshot)
-            except (TypeError, ValueError):
-                pass
-        return _python_extend_vowels(
-            text,
-            rate=rate,
-            extension_min=extension_min,
-            extension_max=extension_max,
-            word_length_threshold=word_length_threshold,
-            base_p=base_probability,
-            rng=rng,
-            return_trace=return_trace,
-        )
-
-    if isinstance(rust_result, str):
-        return rust_result
-
-    if snapshot is not None and callable(setstate):
-        try:
-            setstate(snapshot)
-        except (TypeError, ValueError):
-            pass
-    return _python_extend_vowels(
-        text,
-        rate=rate,
-        extension_min=extension_min,
-        extension_max=extension_max,
-        word_length_threshold=word_length_threshold,
-        base_p=base_probability,
-        rng=rng,
-        return_trace=return_trace,
-    )
 
 
 class Hokey(GlitchlingBase):
