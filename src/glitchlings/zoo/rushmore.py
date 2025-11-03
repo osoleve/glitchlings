@@ -552,7 +552,7 @@ def rushmore_attack(
         return text
 
     result = text
-    for mode in RushmoreMode.execution_order():
+    for mode in config.modes:
         if not config.has_mode(mode):
             continue
 
