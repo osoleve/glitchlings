@@ -64,7 +64,7 @@ def get_rust_operation(operation_name: str) -> Callable[..., Any] | None:
         _rust_operation_cache[operation_name] = None
         return None
 
-    operation = getattr(module, operation_name, None)
+    operation: Callable[..., Any] | None = getattr(module, operation_name, None)
     if not callable(operation):
         log.debug(
             "Rust operation '%s' is unavailable in glitchlings._zoo_rust", operation_name
