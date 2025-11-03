@@ -80,7 +80,7 @@ def substitute_homophones(
             "with `pip install .` or `maturin develop` to enable homophone substitution.",
         )
 
-    return _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng),
+    return _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng)
     
 
 
