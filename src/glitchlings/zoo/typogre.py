@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import math
 import random
-from typing import Any, Optional, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from ..util import KEYNEIGHBORS
 from ._rust_extensions import get_rust_operation
@@ -15,6 +15,7 @@ def fatfinger(
     text: str,
     rate: float | None = None,
     keyboard: str = "CURATOR_QWERTY",
+    layout: Mapping[str, Sequence[str]] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -30,11 +31,16 @@ def fatfinger(
     if clamped_rate == 0.0:
         return text
 
-    layout = getattr(KEYNEIGHBORS, keyboard)
+    layout_mapping = layout if layout is not None else getattr(KEYNEIGHBORS, keyboard)
 
     return cast(
             str,
-            _fatfinger_rust(text, max_change_rate=clamped_rate, layout=layout, rng=rng),
+            _fatfinger_rust(
+                text,
+                max_change_rate=clamped_rate,
+                layout=layout_mapping,
+                rng=rng,
+            ),
         )
 
 

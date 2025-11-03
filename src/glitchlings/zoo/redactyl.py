@@ -1,14 +1,7 @@
 import random
-import re
 from typing import Any, cast
 
 from ._rust_extensions import get_rust_operation
-from ._sampling import weighted_sample_without_replacement
-from ._text_utils import (
-    WordToken,
-    collect_word_tokens,
-    split_preserving_whitespace,
-)
 from .core import AttackWave, Glitchling
 
 FULL_BLOCK = "█"

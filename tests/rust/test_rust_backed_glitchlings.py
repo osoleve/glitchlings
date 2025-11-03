@@ -1,10 +1,9 @@
 import importlib
-import importlib.util
-import random
 import sys
 from pathlib import Path
 
 import pytest
+
 
 def _ensure_rust_extension_importable() -> None:
     """Attempt to expose a locally built Rust extension for test runs."""
@@ -45,17 +44,8 @@ def _ensure_rust_extension_importable() -> None:
 
 _ensure_rust_extension_importable()
 
-reduple_module = importlib.import_module("glitchlings.zoo.reduple")
-rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
-scannequin_module = importlib.import_module("glitchlings.zoo.scannequin")
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
-typogre_module = importlib.import_module("glitchlings.zoo.typogre")
-zeedub_module = importlib.import_module("glitchlings.zoo.zeedub")
-adjax_module = importlib.import_module("glitchlings.zoo.adjax")
-ekkokin_module = importlib.import_module("glitchlings.zoo.ekkokin")
-apostrofae_module = importlib.import_module("glitchlings.zoo.apostrofae")
 core_module = importlib.import_module("glitchlings.zoo.core")
-pedant_module = importlib.import_module("glitchlings.zoo.pedant")
 
 
 def _with_descriptor_seeds(
@@ -73,21 +63,6 @@ def _with_descriptor_seeds(
             }
         )
     return seeded
-
-
-def test_reduple_respects_explicit_rng():
-    text = "Repeat me"
-    expected = reduple_module._python_reduplicate_words(
-        text,
-        rate=1.0,
-        rng=random.Random(99),
-    )
-    result = reduple_module.reduplicate_words(
-        text,
-        rate=1.0,
-        rng=random.Random(99),
-    )
-    assert result == expected == "Repeat Repeat me me"
 
 
 def test_redactyl_empty_text_raises_value_error():

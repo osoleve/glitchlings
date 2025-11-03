@@ -5,7 +5,6 @@ import pytest
 
 import glitchlings.zoo.core as core_module
 from glitchlings.zoo.core import AttackWave, Glitchling
-from glitchlings.zoo.reduple import Reduple
 from glitchlings.zoo.typogre import Typogre
 
 

@@ -7,7 +7,6 @@ import random
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime

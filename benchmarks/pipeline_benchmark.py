@@ -159,7 +159,7 @@ def _seeded_descriptors(
     return seeded
 
 
-def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
+def _baseline_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
     operation_modules = {key: module_for_operation(key) for key in OPERATION_MODULES}
     current = text
     for index, descriptor in enumerate(descriptors):
@@ -169,32 +169,35 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
         op_type = operation["type"]
         if op_type == "reduplicate":
             module = operation_modules["reduplicate"]
-            current = module._python_reduplicate_words(
+            current = module.reduplicate_words(
                 current,
-                rate=operation["rate"],
+                rate=operation.get("rate"),
                 rng=rng,
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "delete":
             module = operation_modules["delete"]
-            current = module._python_delete_random_words(
+            current = module.delete_random_words(
                 current,
-                rate=operation["rate"],
+                rate=operation.get("rate"),
                 rng=rng,
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "redact":
             module = operation_modules["redact"]
-            current = module._python_redact_words(
+            current = module.redact_words(
                 current,
-                replacement_char=operation["replacement_char"],
-                rate=operation["rate"],
-                merge_adjacent=operation["merge_adjacent"],
+                replacement_char=str(operation.get("replacement_char", module.FULL_BLOCK)),
+                rate=operation.get("rate"),
+                merge_adjacent=bool(operation.get("merge_adjacent", False)),
                 rng=rng,
+                unweighted=bool(operation.get("unweighted", False)),
             )
         elif op_type == "ocr":
             module = operation_modules["ocr"]
-            current = module._python_ocr_artifacts(
+            current = module.ocr_artifacts(
                 current,
-                rate=operation["rate"],
+                rate=operation.get("rate"),
                 rng=rng,
             )
         elif op_type == "zwj":
@@ -204,29 +207,29 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
             else:
                 characters = tuple(characters)
             module = operation_modules["zwj"]
-            current = module._python_insert_zero_widths(
+            current = module.insert_zero_widths(
                 current,
-                rate=operation["rate"],
+                rate=operation.get("rate"),
                 rng=rng,
                 characters=characters,
             )
         elif op_type == "typo":
             keyboard = operation.get("keyboard", "CURATOR_QWERTY")
             layout_override = operation.get("layout")
-            if layout_override is None:
-                layout = getattr(operation_modules["typo"].KEYNEIGHBORS, keyboard)
-            else:
-                layout = {key: list(value) for key, value in layout_override.items()}
             module = operation_modules["typo"]
-            current = module._fatfinger_python(
+            layout_mapping = None
+            if layout_override is not None:
+                layout_mapping = {key: tuple(value) for key, value in layout_override.items()}
+            current = module.fatfinger(
                 current,
-                rate=operation["rate"],
+                rate=operation.get("rate"),
+                keyboard=keyboard,
+                layout=layout_mapping,
                 rng=rng,
-                layout=layout,
             )
         elif op_type == "swap_adjacent":
             module = operation_modules["swap_adjacent"]
-            current = module._python_swap_adjacent_words(
+            current = module.swap_adjacent_words(
                 current,
                 rate=float(operation.get("rate", 0.5)),
                 rng=rng,
@@ -377,7 +380,7 @@ def collect_benchmark_results(
     results: list[BenchmarkResult] = []
     for label, text in samples:
         def python_subject(text: str = text) -> str:
-            return _python_pipeline(
+            return _baseline_pipeline(
                 text,
                 _clone_descriptors(descriptor_template),
                 MASTER_SEED,

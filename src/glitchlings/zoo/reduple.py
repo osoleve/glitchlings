@@ -7,7 +7,6 @@ from .rushmore import (
     Rushmore,
     RushmoreMode,
     _normalize_modes,
-    _python_reduplicate_words,
     reduplicate_words,
 )
 
@@ -59,4 +58,4 @@ class Reduple(Rushmore):
 reduple = Reduple()
 
 
-__all__ = ["Reduple", "reduple", "reduplicate_words", "_python_reduplicate_words"]
+__all__ = ["Reduple", "reduple", "reduplicate_words"]
