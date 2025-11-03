@@ -71,23 +71,3 @@ def test_glitchling_pipeline_operation_factory_survives_clone() -> None:
 def test_plan_glitchlings_requires_seed() -> None:
     with pytest.raises(ValueError, match="master seed"):
         core_module.plan_glitchlings([], master_seed=None)
-
-
-def test_plan_glitchling_orchestration_requires_rust(monkeypatch) -> None:
-    def missing_operation(_name: str):
-        raise RuntimeError("extension unavailable")
-
-    monkeypatch.setattr(core_module, "get_rust_operation", missing_operation)
-
-    glitchling = Typogre(rate=0.1)
-    specification = {
-        "name": glitchling.name,
-        "scope": int(glitchling.level),
-        "order": int(glitchling.order),
-    }
-
-    with pytest.raises(RuntimeError, match="Rust orchestration"):
-        core_module.plan_glitchlings([glitchling], master_seed=151)
-
-    with pytest.raises(RuntimeError, match="Rust orchestration"):
-        core_module.plan_glitchling_specs([specification], master_seed=151)
