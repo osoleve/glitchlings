@@ -28,18 +28,6 @@ Transcript = list[TranscriptTurn]
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
 
-def pipeline_feature_flag_enabled() -> bool:
-    """Return ``True`` when the Rust orchestration pipeline is available."""
-
-    return is_rust_pipeline_supported()
-
-
-def _pipeline_feature_flag_enabled() -> bool:
-    """Compatibility shim mirroring :func:`pipeline_feature_flag_enabled`."""
-
-    return pipeline_feature_flag_enabled()
-
-
 def is_rust_pipeline_supported() -> bool:
     """Return ``True`` when the Rust orchestration bridge is importable."""
 
