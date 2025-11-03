@@ -168,9 +168,9 @@ Configuration files are now validated against a JSON Schema before any glitchlin
 
 ## Rust pipeline acceleration
 
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
+The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. The orchestrator now requires this compiled extension, so build the PyO3 crate before running Glitchlings.
 
-Parity with the pure-Python pipeline is asserted in `tests/test_rust_backed_glitchlings.py`.
+`tests/test_rust_backed_glitchlings.py` exercises the Rust-backed glitchlings to ensure the accelerated implementations remain stable.
 
 ## Glitchling reference
 

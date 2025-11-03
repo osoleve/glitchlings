@@ -1,12 +1,12 @@
 # Glitchlings development setup
 
-This guide walks through preparing a local development environment, running the automated checks, and exercising the optional Rust acceleration layer.
+This guide walks through preparing a local development environment, running the automated checks, and working with the Rust acceleration layer that now powers the core runtime.
 
 ## Prerequisites
 
 - Python 3.10+
 - `pip` and a virtual environment tool of your choice (the examples below use `python -m venv`)
-- [Optional] A Rust toolchain (`rustup` or system packages) and [`maturin`](https://www.maturin.rs/) for compiling the PyO3 extensions
+- A Rust toolchain (`rustup` or system packages) and [`maturin`](https://www.maturin.rs/) for compiling the PyO3 extensions
 
 ## Install the project
 
@@ -58,13 +58,13 @@ Execute the automated tests from the repository root:
 pytest
 ```
 
-The suite covers determinism guarantees, dataset integrations, and parity between Python and Rust implementations. Vector-backed lexicons ship with the repository so the Jargoyle tests run without external downloads, while optional WordNet checks are gated behind the legacy backend being available.
+The suite covers determinism guarantees, dataset integrations, and the compiled Rust implementation that now backs orchestration. Vector-backed lexicons ship with the repository so the Jargoyle tests run without external downloads, while optional WordNet checks are gated behind the legacy backend being available.
 
 Key regression guardrails live in:
 
-- `tests/test_glitchling_core.py` for `Gaggle` orchestration and feature flags.
+- `tests/test_glitchling_core.py` for `Gaggle` orchestration invariants.
 - `tests/test_cli.py` for CLI argument wiring and diff output.
-- `tests/test_rust_backed_glitchlings.py` to ensure the acceleration layer mirrors the Python pipeline.
+- `tests/test_rust_backed_glitchlings.py` to keep the Rust-backed glitchlings stable.
 
 ## Automated checks
 
@@ -80,17 +80,15 @@ pytest --maxfail=1 --disable-warnings -q
 
 ## Rust acceleration
 
-Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Rushmore (including its duplication and swap modes), Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces pick them up automatically when available:
+Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Rushmore (including its duplication and swap modes), Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces require the resulting module at runtime:
 
 ```bash
 # Compile the shared Rust crate (rerun after Rust or Python updates)
 maturin develop -m rust/zoo/Cargo.toml
 
-# Optional: disable the fast path before importing glitchlings
-export GLITCHLINGS_RUST_PIPELINE=0
 ```
 
-`Gaggle` prefers the compiled fast path whenever the extension is importable. Set the environment variable to `0`/`false` (or any other falsey value) to force the pure-Python orchestrator when debugging or profiling. The test suite automatically covers both code paths - re-run `pytest` once normally and once with the flag set to `0` to verify changes across implementations.
+`Gaggle` now requires the compiled fast path; build failures surface immediately when orchestration runs. Keep the extension up to date as you iterate so the Python interfaces continue to import the Rust operations successfully.
 
 
 ## Additional tips

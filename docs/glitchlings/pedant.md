@@ -29,9 +29,8 @@ deterministic "cleanup" pass over the input text.
 - **Usage tips**:
   - Import `PedantStone` when you want static analysis or autocompletion of the
     available forms; otherwise pass the stone name as a string.
-  - The optional Rust pipeline mirrors the Python implementation when the
-    compiled extension is present, so performance stays high even in long
-    pipelines.
+  - The Rust pipeline powers Pedant in production builds; keep the compiled
+    extension available so performance stays high even in long pipelines.
 
 ```python
 from glitchlings import Pedant
