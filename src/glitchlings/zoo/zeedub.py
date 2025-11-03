@@ -7,7 +7,7 @@ from typing import Any, Callable, cast
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-# Load Rust-accelerated operation if available
+# Load the mandatory Rust implementation
 _inject_zero_widths_rust = cast(
     Callable[[str, float, list[str], random.Random], str],
     get_rust_operation("inject_zero_widths"),
@@ -46,12 +46,6 @@ def insert_zero_widths(
     clamped_rate = max(0.0, effective_rate)
     if clamped_rate == 0.0:
         return text
-
-    if _inject_zero_widths_rust is None:
-        raise RuntimeError(
-            "Zeedub requires the glitchlings._zoo_rust extension. Rebuild the project with "
-            "`pip install .` or `maturin develop` to enable zero-width injection.",
-        )
 
     return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
 

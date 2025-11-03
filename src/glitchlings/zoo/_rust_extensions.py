@@ -1,101 +1,69 @@
-"""Helpers for loading optional Rust acceleration hooks."""
+"""Helpers for loading the mandatory Rust acceleration hooks."""
 
 from __future__ import annotations
 
-import importlib
-import logging
-from types import ModuleType
-from typing import Any, Callable
+import sys
+from importlib import import_module
+from typing import Any, Callable, Mapping, MutableMapping
 
-log = logging.getLogger(__name__)
-
-
-_rust_operation_cache: dict[str, Callable[..., Any] | None] = {}
-_rust_module: ModuleType | None = None
-_module_checked: bool = False
-
-
-def _load_rust_module() -> ModuleType | None:
-    """Attempt to import the optional :mod:`glitchlings._zoo_rust` module."""
-
-    global _rust_module, _module_checked
-
-    if _module_checked:
-        return _rust_module
-
-    _module_checked = True
+def _import_rust_module() -> Any:
     try:
-        module = importlib.import_module("glitchlings._zoo_rust")
+        module = import_module("_zoo_rust")
     except ModuleNotFoundError:
-        log.debug(
-            "Rust extension module glitchlings._zoo_rust is unavailable; Rust-backed"
-            " glitchlings will raise when invoked",
-        )
-        _rust_module = None
-    except ImportError as exc:  # pragma: no cover - defensive
-        log.warning("Failed to import glitchlings._zoo_rust: %s", exc)
-        _rust_module = None
+        try:
+            module = import_module("glitchlings._zoo_rust")
+        except ModuleNotFoundError as exc:  # pragma: no cover - fatal configuration
+            raise RuntimeError(
+                "Glitchlings requires the compiled glitchlings._zoo_rust extension. "
+                "Rebuild the project with `pip install .` or `maturin develop`."
+            ) from exc
     else:
-        _rust_module = module
-        log.debug("Rust extension module successfully loaded")
-
-    return _rust_module
+        sys.modules.setdefault("glitchlings._zoo_rust", module)
+    return module
 
 
-def get_rust_operation(operation_name: str) -> Callable[..., Any] | None:
-    """Load a specific Rust operation by name with caching.
+_RUST_MODULE = _import_rust_module()
+_OPERATION_CACHE: MutableMapping[str, Callable[..., Any]] = {}
+
+
+def _build_missing_operation_error(name: str) -> RuntimeError:
+    message = (
+        "Rust operation '{name}' is not exported by glitchlings._zoo_rust. "
+        "Rebuild the project to refresh the compiled extension."
+    ).format(name=name)
+    return RuntimeError(message)
+
+
+def get_rust_operation(operation_name: str) -> Callable[..., Any]:
+    """Return a callable exported by :mod:`glitchlings._zoo_rust`.
 
     Parameters
     ----------
     operation_name : str
-        The name of the operation to import from glitchlings._zoo_rust.
+        Name of the function to retrieve from the compiled extension.
 
-    Returns
-    -------
-    Callable | None
-        The Rust operation callable if available, ``None`` otherwise.
+    Raises
+    ------
+    RuntimeError
+        If the operation cannot be located or is not callable.
     """
 
-    if operation_name in _rust_operation_cache:
-        return _rust_operation_cache[operation_name]
+    operation = _OPERATION_CACHE.get(operation_name)
+    if operation is not None:
+        return operation
 
-    module = _load_rust_module()
-    if module is None:
-        _rust_operation_cache[operation_name] = None
-        return None
+    candidate = getattr(_RUST_MODULE, operation_name, None)
+    if not callable(candidate):
+        raise _build_missing_operation_error(operation_name)
 
-    operation: Callable[..., Any] | None = getattr(module, operation_name, None)
-    if not callable(operation):
-        log.debug(
-            "Rust operation '%s' is unavailable in glitchlings._zoo_rust", operation_name
-        )
-        _rust_operation_cache[operation_name] = None
-        return None
-
-    _rust_operation_cache[operation_name] = operation
-    log.debug("Rust operation '%s' loaded successfully", operation_name)
-    return operation
+    _OPERATION_CACHE[operation_name] = candidate
+    return candidate
 
 
-def clear_cache() -> None:
-    """Clear cached module and operation handles."""
-
-    global _rust_module, _module_checked, _rust_operation_cache
-
-    _rust_module = None
-    _module_checked = False
-    _rust_operation_cache.clear()
-    log.debug("Rust extension cache cleared")
-
-
-def preload_operations(*operation_names: str) -> dict[str, Callable[..., Any] | None]:
+def preload_operations(*operation_names: str) -> Mapping[str, Callable[..., Any]]:
     """Eagerly load multiple Rust operations at once."""
 
     return {name: get_rust_operation(name) for name in operation_names}
 
 
-__all__ = [
-    "get_rust_operation",
-    "clear_cache",
-    "preload_operations",
-]
+__all__ = ["get_rust_operation", "preload_operations"]

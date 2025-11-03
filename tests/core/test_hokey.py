@@ -6,8 +6,6 @@ import importlib
 
 import pytest
 
-pytest.importorskip("glitchlings._zoo_rust")
-
 hokey_module = importlib.import_module("glitchlings.zoo.hokey")
 core_module = importlib.import_module("glitchlings.zoo.core")
 

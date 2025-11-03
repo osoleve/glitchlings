@@ -14,7 +14,7 @@ from .core import Glitchling as GlitchlingBase
 StretchResult = str | tuple[str, list[StretchEvent]]
 HokeyRustCallable = Callable[[str, float, int, int, int, float, random.Random], StretchResult]
 
-_hokey_rust = cast(HokeyRustCallable | None, get_rust_operation("hokey"))
+_hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
 _ANALYZER = StretchabilityAnalyzer()
 _GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
 
@@ -71,12 +71,6 @@ def extend_vowels(
         base_p=base_probability,
         word_length_threshold=word_length_threshold,
     )
-
-    if _hokey_rust is None:
-        raise RuntimeError(
-            "Hokey requires the glitchlings._zoo_rust extension. Rebuild the project "
-            "with `pip install .` or `maturin develop` to enable expressive lengthening.",
-        )
 
     python_result: str | None = None
     trace_events: list[StretchEvent] | None = None
