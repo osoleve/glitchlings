@@ -231,6 +231,54 @@ def _python_pipeline(text: str, descriptors: list[Descriptor], master_seed: int)
                 rate=float(operation.get("rate", 0.5)),
                 rng=rng,
             )
+        elif op_type == "hokey":
+            module = operation_modules["hokey"]
+            result = module.extend_vowels(
+                current,
+                rate=float(operation.get("rate", 0.3)),
+                extension_min=int(operation.get("extension_min", 2)),
+                extension_max=int(operation.get("extension_max", 5)),
+                word_length_threshold=int(operation.get("word_length_threshold", 6)),
+                base_p=operation.get("base_p"),
+                seed=seed,
+                rng=rng,
+            )
+            current = result if isinstance(result, str) else result[0]
+        elif op_type == "apostrofae":
+            module = operation_modules["apostrofae"]
+            current = module.smart_quotes(current, seed=seed, rng=rng)
+        elif op_type == "pedant":
+            module = operation_modules["pedant"]
+            current = module.pedant_transform(
+                current,
+                stone=operation.get("stone"),
+                seed=seed,
+                rng=rng,
+            )
+        elif op_type == "ekkokin":
+            module = operation_modules["ekkokin"]
+            current = module.substitute_homophones(
+                current,
+                rate=operation.get("rate"),
+                seed=seed,
+                rng=rng,
+            )
+        elif op_type == "rushmore_combo":
+            module = operation_modules["rushmore_combo"]
+            delete_cfg = operation.get("delete") or {}
+            duplicate_cfg = operation.get("duplicate") or {}
+            swap_cfg = operation.get("swap") or {}
+            current = module.rushmore_attack(
+                current,
+                modes=operation.get("modes"),
+                delete_rate=delete_cfg.get("rate"),
+                duplicate_rate=duplicate_cfg.get("rate"),
+                swap_rate=swap_cfg.get("rate"),
+                delete_unweighted=delete_cfg.get("unweighted"),
+                duplicate_unweighted=duplicate_cfg.get("unweighted"),
+                seed=seed,
+                rng=rng,
+            )
         else:  # pragma: no cover - defensive guard
             raise AssertionError(f"Unsupported operation type: {op_type!r}")
     return current
