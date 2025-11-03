@@ -14,11 +14,6 @@ from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
 
-# Load Rust-accelerated orchestration operations if available
-_compose_glitchlings_rust = get_rust_operation("compose_glitchlings")
-_plan_glitchlings_rust = get_rust_operation("plan_glitchlings")
-
-
 log = logging.getLogger(__name__)
 
 
@@ -61,8 +56,8 @@ def _pipeline_feature_flag_enabled() -> bool:
 
 
 def is_rust_pipeline_supported() -> bool:
-    """Return ``True`` when the optional Rust extension is importable."""
-    return _compose_glitchlings_rust is not None
+    """Return ``True`` when the Rust extension is importable."""
+    return True
 
 
 def is_rust_pipeline_enabled() -> bool:
@@ -110,14 +105,9 @@ def _plan_glitchlings_with_rust(
     master_seed: int,
 ) -> list[tuple[int, int]]:
     """Obtain the orchestration plan from the compiled Rust module."""
-    if _plan_glitchlings_rust is None:
-        message = (
-            "The optional glitchlings._zoo_rust extension is required for orchestration."
-        )
-        raise RuntimeError(message)
-
     try:
-        plan = _plan_glitchlings_rust(specs, int(master_seed))
+        plan_glitchlings = get_rust_operation("plan_glitchlings")
+        plan = plan_glitchlings(specs, int(master_seed))
     except (
         TypeError,
         ValueError,
@@ -536,17 +526,15 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if (
-            master_seed is not None
-            and descriptors is not None
-            and _compose_glitchlings_rust is not None
-        ):
+        if master_seed is not None and descriptors is not None:
             try:
-                return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
+                compose_glitchlings = get_rust_operation("compose_glitchlings")
+                return cast(
+                    str, compose_glitchlings(text, descriptors, master_seed)
+                )
             except (
                 TypeError,
                 ValueError,
-                RuntimeError,
                 AttributeError,
             ):  # pragma: no cover - fall back to Python execution
                 log.debug("Rust pipeline failed; falling back", exc_info=True)
