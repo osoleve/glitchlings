@@ -16,78 +16,6 @@ FULL_BLOCK = "█"
 # Load Rust-accelerated operation if available
 _redact_words_rust = get_rust_operation("redact_words")
 
-
-def _python_redact_words(
-    text: str,
-    *,
-    replacement_char: str,
-    rate: float,
-    merge_adjacent: bool,
-    rng: random.Random,
-    unweighted: bool = False,
-) -> str:
-    """Redact random words by replacing their characters.
-
-    Parameters
-    ----------
-    - text: Input text.
-    - replacement_char: The character to use for redaction (default FULL_BLOCK).
-    - rate: Max proportion of words to redact (default 0.05).
-    - merge_adjacent: If True, merges adjacent redactions across intervening non-word chars.
-    - rng: RNG used for sampling decisions.
-    - unweighted: When True, sample words uniformly instead of by length.
-
-    """
-    tokens = split_preserving_whitespace(text)
-    word_tokens = collect_word_tokens(tokens)
-    if not word_tokens:
-        raise ValueError("Cannot redact words because the input text contains no redactable words.")
-
-    population = [token.index for token in word_tokens]
-    weights = [1.0 if unweighted else float(token.core_length) for token in word_tokens]
-
-    clamped_rate = max(0.0, min(rate, 1.0))
-    raw_quota = len(population) * clamped_rate
-    num_to_redact = int(raw_quota)
-    if clamped_rate > 0.0:
-        num_to_redact = max(1, num_to_redact)
-    num_to_redact = min(num_to_redact, len(population))
-    if num_to_redact <= 0:
-        return "".join(tokens)
-
-    indices_to_redact = weighted_sample_without_replacement(
-        population,
-        weights,
-        k=num_to_redact,
-        rng=rng,
-    )
-    indices_to_redact.sort()
-
-    token_by_index: dict[int, WordToken] = {token.index: token for token in word_tokens}
-
-    for i in indices_to_redact:
-        if i >= len(tokens):
-            break
-
-        token = token_by_index.get(i)
-        if token is None:
-            continue
-
-        prefix, core, suffix = token.prefix, token.core, token.suffix
-        tokens[i] = f"{prefix}{replacement_char * len(core)}{suffix}"
-
-    text = "".join(tokens)
-
-    if merge_adjacent:
-        text = re.sub(
-            rf"{replacement_char}\W+{replacement_char}",
-            lambda m: replacement_char * (len(m.group(0)) - 1),
-            text,
-        )
-
-    return text
-
-
 def redact_words(
     text: str,
     replacement_char: str = FULL_BLOCK,
@@ -107,11 +35,7 @@ def redact_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
-    use_rust = _redact_words_rust is not None and isinstance(merge_adjacent, bool)
-
-    if use_rust:
-        assert _redact_words_rust is not None  # Type narrowing for mypy
-        return cast(
+    return cast(
             str,
             _redact_words_rust(
                 text,
@@ -122,15 +46,6 @@ def redact_words(
                 rng,
             ),
         )
-
-    return _python_redact_words(
-        text,
-        replacement_char=replacement_char,
-        rate=clamped_rate,
-        merge_adjacent=merge_adjacent,
-        rng=rng,
-        unweighted=unweighted_flag,
-    )
 
 
 class Redactyl(Glitchling):
@@ -176,4 +91,4 @@ class Redactyl(Glitchling):
 redactyl = Redactyl()
 
 
-__all__ = ["Redactyl", "redactyl"]
+__all__ = ["Redactyl", "redactyl", "redact_words"]
