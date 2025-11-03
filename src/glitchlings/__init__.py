@@ -2,6 +2,7 @@ import sys
 from importlib import import_module
 from importlib import util as importlib_util
 
+from .auggie import Auggie
 from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
@@ -107,4 +108,5 @@ __all__ = [
     "AttackConfig",
     "build_gaggle",
     "load_attack_config",
+    "Auggie",
 ]
