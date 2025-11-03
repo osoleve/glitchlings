@@ -105,31 +105,16 @@ def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[PlanSpecificat
     return [_normalize_plan_entry(entry) for entry in entries]
 
 
-def _plan_glitchlings_python(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int,
-) -> list[tuple[int, int]]:
-    """Pure-Python fallback for orchestrating glitchlings in deterministic order."""
-    master_seed_int = int(master_seed)
-    planned: list[tuple[int, int, int, int, str]] = []
-    for index, spec in enumerate(specs):
-        name = str(spec["name"])
-        scope = int(spec["scope"])
-        order = int(spec["order"])
-        derived_seed = Gaggle.derive_seed(master_seed_int, name, index)
-        planned.append((index, derived_seed, scope, order, name))
-
-    planned.sort(key=lambda entry: (entry[2], entry[3], entry[4], entry[0]))
-    return [(index, seed) for index, seed, *_ in planned]
-
-
 def _plan_glitchlings_with_rust(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int,
-) -> list[tuple[int, int]] | None:
-    """Attempt to obtain the orchestration plan from the compiled Rust module."""
+) -> list[tuple[int, int]]:
+    """Obtain the orchestration plan from the compiled Rust module."""
     if _plan_glitchlings_rust is None:
-        return None
+        message = (
+            "The optional glitchlings._zoo_rust extension is required for orchestration."
+        )
+        raise RuntimeError(message)
 
     try:
         plan = _plan_glitchlings_rust(specs, int(master_seed))
@@ -138,9 +123,9 @@ def _plan_glitchlings_with_rust(
         ValueError,
         RuntimeError,
         AttributeError,
-    ):  # pragma: no cover - defer to Python fallback on failure
-        log.debug("Rust orchestration planning failed; falling back to Python plan", exc_info=True)
-        return None
+    ) as error:
+        message = "Rust orchestration planning failed"
+        raise RuntimeError(message) from error
 
     return [(int(index), int(seed)) for index, seed in plan]
 
@@ -150,13 +135,12 @@ def _resolve_orchestration_plan(
     master_seed: int,
     prefer_rust: bool,
 ) -> list[tuple[int, int]]:
-    """Dispatch to the Rust planner when available, otherwise fall back to Python."""
-    if prefer_rust:
-        plan = _plan_glitchlings_with_rust(list(specs), master_seed)
-        if plan is not None:
-            return plan
+    """Dispatch to the Rust planner, raising if it is unavailable."""
+    if not prefer_rust:
+        message = "Python orchestration planning has been removed; prefer_rust must be True"
+        raise RuntimeError(message)
 
-    return _plan_glitchlings_python(list(specs), master_seed)
+    return _plan_glitchlings_with_rust(list(specs), master_seed)
 
 
 def plan_glitchling_specs(
@@ -165,7 +149,13 @@ def plan_glitchling_specs(
     *,
     prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
-    """Resolve orchestration order and seeds from glitchling specifications."""
+    """Resolve orchestration order and seeds from glitchling specifications.
+
+    Notes
+    -----
+    The Rust extension is now required for orchestration; ``prefer_rust`` must
+    remain ``True``.
+    """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
@@ -181,7 +171,13 @@ def plan_glitchlings(
     *,
     prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
-    """Normalize glitchling instances or specs and compute an orchestration plan."""
+    """Normalize glitchling instances or specs and compute an orchestration plan.
+
+    Notes
+    -----
+    The Rust extension is required for orchestration; ``prefer_rust`` must
+    remain ``True``.
+    """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)

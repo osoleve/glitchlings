@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import argparse
 import difflib
-import importlib
 
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
 from glitchlings.config import build_gaggle, load_attack_config
-from glitchlings.lexicon import Lexicon
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,

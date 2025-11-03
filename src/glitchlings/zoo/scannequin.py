@@ -1,8 +1,6 @@
 import random
-import re
 from typing import Any, cast
 
-from ._ocr_confusions import load_confusion_table
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 

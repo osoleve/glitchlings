@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any
 
-from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
+from ..util.hokey_generator import HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Gaggle

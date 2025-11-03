@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import random
-from functools import cache
-from typing import Any, Sequence, cast
+from typing import Any, cast
 
 from ._rust_extensions import get_rust_operation
-from .assets import load_json
 from .core import AttackOrder, AttackWave, Gaggle, Glitchling
 
 # Load Rust-accelerated operation if available

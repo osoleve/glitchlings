@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import random
 import re
 from collections.abc import Iterable, Sequence
@@ -9,11 +8,7 @@ from enum import Enum, unique
 from typing import Any, cast
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import (
-    WordToken,
-    collect_word_tokens,
-    split_preserving_whitespace,
-)
+from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
 
 
