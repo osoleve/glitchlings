@@ -6,7 +6,7 @@ from .core import AttackWave, Glitchling
 
 FULL_BLOCK = "█"
 
-# Load Rust-accelerated operation if available
+# Load the mandatory Rust implementation
 _redact_words_rust = get_rust_operation("redact_words")
 
 def redact_words(
@@ -27,12 +27,6 @@ def redact_words(
 
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
-
-    if _redact_words_rust is None:
-        raise RuntimeError(
-            "Redactyl requires the glitchlings._zoo_rust extension. Rebuild the project "
-            "with `pip install .` or `maturin develop` to enable word redaction.",
-        )
 
     return cast(
         str,

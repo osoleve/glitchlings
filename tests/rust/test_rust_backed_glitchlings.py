@@ -3,6 +3,7 @@ import pytest
 
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 core_module = importlib.import_module("glitchlings.zoo.core")
+zoo_rust = importlib.import_module("glitchlings._zoo_rust")
 
 
 def _with_descriptor_seeds(
@@ -34,7 +35,6 @@ def test_redactyl_whitespace_only_text_raises_value_error():
         redactyl_module.redact_words("   \t\n  ", seed=2)
 
 def test_compose_glitchlings_propagates_glitch_errors():
-    zoo_rust = pytest.importorskip("glitchlings._zoo_rust")
     master_seed = 404
     descriptors = _with_descriptor_seeds(
         [

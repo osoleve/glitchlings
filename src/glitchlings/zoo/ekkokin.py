@@ -39,7 +39,7 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 _homophone_lookup = _build_lookup(_homophone_groups)
 _ekkokin_rust = cast(
-    Callable[[str, float, str, random.Random], str] | None,
+    Callable[[str, float, str, random.Random], str],
     get_rust_operation("ekkokin_homophones"),
 )
 
@@ -73,12 +73,6 @@ def substitute_homophones(
     active_rng = rng if rng is not None else random.Random(seed)
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
-
-    if _ekkokin_rust is None:
-        raise RuntimeError(
-            "Ekkokin requires the glitchlings._zoo_rust extension. Rebuild the project "
-            "with `pip install .` or `maturin develop` to enable homophone substitution.",
-        )
 
     return _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng)
     

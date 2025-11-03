@@ -4,7 +4,7 @@ from typing import Any, cast
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-# Load Rust-accelerated operation if available
+# Load the mandatory Rust implementation
 _ocr_artifacts_rust = get_rust_operation("ocr_artifacts")
 
 def ocr_artifacts(
@@ -15,7 +15,7 @@ def ocr_artifacts(
 ) -> str:
     """Introduce OCR-like artifacts into text.
 
-    Prefers the Rust implementation when available.
+    Uses the Rust implementation for performance and determinism.
     """
     if not text:
         return text
@@ -26,12 +26,6 @@ def ocr_artifacts(
         rng = random.Random(seed)
 
     clamped_rate = max(0.0, effective_rate)
-
-    if _ocr_artifacts_rust is None:
-        raise RuntimeError(
-            "Scannequin requires the glitchlings._zoo_rust extension. Rebuild the project "
-            "with `pip install .` or `maturin develop` to enable OCR artifact generation.",
-        )
 
     return cast(str, _ocr_artifacts_rust(text, clamped_rate, rng))
 

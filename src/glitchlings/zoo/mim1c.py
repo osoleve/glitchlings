@@ -9,7 +9,7 @@ from typing import Callable, Literal, cast
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-_MIM1C_RUST = cast(Callable[..., str] | None, get_rust_operation("mim1c"))
+_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
 
 _DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
@@ -63,11 +63,6 @@ def swap_homoglyphs(
     rng: random.Random | None = None,
 ) -> str:
     """Replace characters with visually confusable homoglyphs via the Rust engine."""
-
-    if _MIM1C_RUST is None:  # pragma: no cover - exercised indirectly when compiled
-        raise RuntimeError(
-            "Mim1c requires the glitchlings._zoo_rust extension to be compiled and available",
-        )
 
     effective_rate = 0.02 if rate is None else rate
     effective_rng = rng if rng is not None else random.Random(seed)

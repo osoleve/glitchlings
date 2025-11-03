@@ -1,7 +1,6 @@
 """Core data structures used to model glitchlings and their interactions."""
 
 import inspect
-import logging
 import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
@@ -13,9 +12,6 @@ from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
 
-log = logging.getLogger(__name__)
-
-
 class PlanSpecification(TypedDict):
     name: str
     scope: int
@@ -26,18 +22,6 @@ TranscriptTurn = dict[str, Any]
 Transcript = list[TranscriptTurn]
 
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
-
-
-def is_rust_pipeline_supported() -> bool:
-    """Return ``True`` when the Rust orchestration bridge is importable."""
-
-    return get_rust_operation("plan_glitchlings") is not None
-
-
-def is_rust_pipeline_enabled() -> bool:
-    """Return ``True`` when the Rust pipeline is both supported and active."""
-
-    return is_rust_pipeline_supported()
 
 
 def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
@@ -81,12 +65,6 @@ def _plan_glitchlings_with_rust(
 ) -> list[tuple[int, int]]:
     """Obtain the orchestration plan from the compiled Rust module."""
     plan_glitchlings = get_rust_operation("plan_glitchlings")
-    if plan_glitchlings is None:
-        raise RuntimeError(
-            "Gaggle orchestration requires the compiled glitchlings._zoo_rust extension. "
-            "Rebuild the project with `pip install .` or `maturin develop`.",
-        )
-
     try:
         plan = plan_glitchlings(specs, int(master_seed))
     except (TypeError, ValueError, RuntimeError, AttributeError) as error:
@@ -442,31 +420,26 @@ class Gaggle(Glitchling):
         self.apply_order = apply_order
 
     @staticmethod
-    def rust_pipeline_supported() -> bool:
-        """Return ``True`` when the compiled Rust pipeline is importable."""
-        return is_rust_pipeline_supported()
-
-    @staticmethod
-    def rust_pipeline_enabled() -> bool:
-        """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-        return is_rust_pipeline_enabled()
-
-    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
-        if not self.rust_pipeline_enabled():
-            return None
-
+    def _pipeline_descriptors(self) -> list[dict[str, Any]]:
         descriptors: list[dict[str, Any]] = []
         for glitchling in self.apply_order:
             operation = glitchling.pipeline_operation()
             if operation is None:
-                return None
+                message = (
+                    "Glitchling %s does not expose a Rust pipeline descriptor."
+                    " Rebuild the extension or update the glitchling implementation."
+                )
+                raise RuntimeError(message % glitchling.name)
 
             seed = glitchling.seed
             if seed is None:
                 index = getattr(glitchling, "_gaggle_index", None)
                 master_seed = self.seed
                 if index is None or master_seed is None:
-                    return None
+                    raise RuntimeError(
+                        "Glitchling %s is missing deterministic seed configuration"
+                        % glitchling.name
+                    )
                 seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
 
             descriptors.append(
@@ -483,29 +456,15 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if master_seed is not None and descriptors is not None:
-            compose_glitchlings = get_rust_operation("compose_glitchlings")
-            if compose_glitchlings is not None:
-                try:
-                    return cast(
-                        str, compose_glitchlings(text, descriptors, master_seed)
-                    )
-                except (
-                    TypeError,
-                    ValueError,
-                    AttributeError,
-                ):  # pragma: no cover - fall back to Python execution
-                    log.debug("Rust pipeline failed; falling back", exc_info=True)
+        if master_seed is None:
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
 
-        corrupted = text
-        for glitchling in self.apply_order:
-            next_value = glitchling.corrupt(corrupted)
-            if not isinstance(next_value, str):
-                message = "Glitchling pipeline produced non-string output for string input"
-                raise TypeError(message)
-            corrupted = next_value
-
-        return corrupted
+        compose_glitchlings = get_rust_operation("compose_glitchlings")
+        try:
+            return cast(str, compose_glitchlings(text, descriptors, master_seed))
+        except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+            raise RuntimeError("Rust pipeline execution failed") from error
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially."""

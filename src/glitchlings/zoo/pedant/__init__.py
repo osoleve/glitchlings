@@ -1,4 +1,4 @@
-"""Pedant glitchling integrating grammar evolutions with optional Rust acceleration."""
+"""Pedant glitchling integrating grammar evolutions with Rust acceleration."""
 
 from __future__ import annotations
 

@@ -14,39 +14,10 @@ if str(SRC) not in sys.path:
 
 
 def ensure_rust_extension_importable() -> None:
-    """Expose a locally built Rust extension for test runs when available."""
-
-    if importlib_util.find_spec("glitchlings._zoo_rust") is not None:
-        return
-
-    build_root = ROOT / "build"
-    if not build_root.exists():
-        return
-
-    artifacts = sorted(
-        build_root.glob("lib.*/glitchlings/_zoo_rust.*"),
-        key=lambda candidate: candidate.stat().st_mtime,
-        reverse=True,
-    )
-    if not artifacts:
-        return
+    """Ensure the compiled Rust extension is importable for tests."""
 
     importlib.import_module("glitchlings")
-
-    for artifact in artifacts:
-        spec = importlib_util.spec_from_file_location("glitchlings._zoo_rust", artifact)
-        if spec is None or spec.loader is None:
-            continue
-        try:
-            module = importlib.util.module_from_spec(spec)
-            sys.modules["glitchlings._zoo_rust"] = module
-            spec.loader.exec_module(module)
-            package = sys.modules.get("glitchlings")
-            if package is not None and hasattr(package, "__path__"):
-                package.__path__.append(str(artifact.parent))
-            return
-        except (ImportError, ModuleNotFoundError):
-            continue
+    importlib.import_module("glitchlings._zoo_rust")
 
 
 ensure_rust_extension_importable()

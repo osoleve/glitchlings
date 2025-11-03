@@ -20,11 +20,6 @@ def apply_pedant(
 ) -> str:
     """Apply a pedant transformation via the Rust extension."""
 
-    if _PEDANT_RUST is None:  # pragma: no cover - exercised indirectly when compiled
-        raise RuntimeError(
-            "Pedant requires the glitchlings._zoo_rust extension to be compiled and available",
-        )
-
     effective_rng = rng if rng is not None else random.Random(seed)
     return cast(
         str,
