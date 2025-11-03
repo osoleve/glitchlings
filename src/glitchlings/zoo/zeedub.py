@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, Callable, cast
 
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
 # Load Rust-accelerated operation if available
-_inject_zero_widths_rust = get_rust_operation("inject_zero_widths")
+_inject_zero_widths_rust = cast(
+    Callable[[str, float, list[str], random.Random], str],
+    get_rust_operation("inject_zero_widths"),
+)
 
 _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE
@@ -44,9 +47,7 @@ def insert_zero_widths(
     if clamped_rate == 0.0:
         return text
 
-    return _inject_zero_widths_rust(
-                text, clamped_rate, list(cleaned_palette), rng
-            )
+    return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
 
 
 class Zeedub(Glitchling):
