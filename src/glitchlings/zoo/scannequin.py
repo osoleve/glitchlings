@@ -27,6 +27,12 @@ def ocr_artifacts(
 
     clamped_rate = max(0.0, effective_rate)
 
+    if _ocr_artifacts_rust is None:
+        raise RuntimeError(
+            "Scannequin requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable OCR artifact generation.",
+        )
+
     return cast(str, _ocr_artifacts_rust(text, clamped_rate, rng))
 
 

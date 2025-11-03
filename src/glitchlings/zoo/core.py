@@ -31,12 +31,7 @@ PlanEntry = Union["Glitchling", Mapping[str, Any]]
 def is_rust_pipeline_supported() -> bool:
     """Return ``True`` when the Rust orchestration bridge is importable."""
 
-    try:
-        get_rust_operation("plan_glitchlings")
-    except RuntimeError:
-        return False
-
-    return True
+    return get_rust_operation("plan_glitchlings") is not None
 
 
 def is_rust_pipeline_enabled() -> bool:
@@ -85,15 +80,16 @@ def _plan_glitchlings_with_rust(
     master_seed: int,
 ) -> list[tuple[int, int]]:
     """Obtain the orchestration plan from the compiled Rust module."""
+    plan_glitchlings = get_rust_operation("plan_glitchlings")
+    if plan_glitchlings is None:
+        raise RuntimeError(
+            "Gaggle orchestration requires the compiled glitchlings._zoo_rust extension. "
+            "Rebuild the project with `pip install .` or `maturin develop`.",
+        )
+
     try:
-        plan_glitchlings = get_rust_operation("plan_glitchlings")
         plan = plan_glitchlings(specs, int(master_seed))
-    except (
-        TypeError,
-        ValueError,
-        RuntimeError,
-        AttributeError,
-    ) as error:
+    except (TypeError, ValueError, RuntimeError, AttributeError) as error:
         message = "Rust orchestration planning failed"
         raise RuntimeError(message) from error
 
@@ -488,17 +484,18 @@ class Gaggle(Glitchling):
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
         if master_seed is not None and descriptors is not None:
-            try:
-                compose_glitchlings = get_rust_operation("compose_glitchlings")
-                return cast(
-                    str, compose_glitchlings(text, descriptors, master_seed)
-                )
-            except (
-                TypeError,
-                ValueError,
-                AttributeError,
-            ):  # pragma: no cover - fall back to Python execution
-                log.debug("Rust pipeline failed; falling back", exc_info=True)
+            compose_glitchlings = get_rust_operation("compose_glitchlings")
+            if compose_glitchlings is not None:
+                try:
+                    return cast(
+                        str, compose_glitchlings(text, descriptors, master_seed)
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                    AttributeError,
+                ):  # pragma: no cover - fall back to Python execution
+                    log.debug("Rust pipeline failed; falling back", exc_info=True)
 
         corrupted = text
         for glitchling in self.apply_order:

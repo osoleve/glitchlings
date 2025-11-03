@@ -31,6 +31,12 @@ def fatfinger(
     if clamped_rate == 0.0:
         return text
 
+    if _fatfinger_rust is None:
+        raise RuntimeError(
+            "Typogre requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable the Rust fast path.",
+        )
+
     layout_mapping = layout if layout is not None else getattr(KEYNEIGHBORS, keyboard)
 
     return cast(

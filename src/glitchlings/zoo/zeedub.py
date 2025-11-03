@@ -47,6 +47,12 @@ def insert_zero_widths(
     if clamped_rate == 0.0:
         return text
 
+    if _inject_zero_widths_rust is None:
+        raise RuntimeError(
+            "Zeedub requires the glitchlings._zoo_rust extension. Rebuild the project with "
+            "`pip install .` or `maturin develop` to enable zero-width injection.",
+        )
+
     return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
 
 

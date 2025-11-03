@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import random
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
 from .assets import load_homophone_groups
@@ -38,7 +38,10 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 
 _homophone_lookup = _build_lookup(_homophone_groups)
-_ekkokin_rust = get_rust_operation("ekkokin_homophones")
+_ekkokin_rust = cast(
+    Callable[[str, float, str, random.Random], str] | None,
+    get_rust_operation("ekkokin_homophones"),
+)
 
 
 class _GlitchlingProtocol:
@@ -70,10 +73,17 @@ def substitute_homophones(
     active_rng = rng if rng is not None else random.Random(seed)
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
-    return cast(
-            str,
-            _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng),
+
+    if _ekkokin_rust is None:
+        raise RuntimeError(
+            "Ekkokin requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable homophone substitution.",
         )
+
+    return cast(
+        str,
+        _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng),
+    )
 
 
 

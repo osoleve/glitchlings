@@ -28,17 +28,23 @@ def redact_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
-    return cast(
-            str,
-            _redact_words_rust(
-                text,
-                replacement_char,
-                clamped_rate,
-                merge_adjacent,
-                unweighted_flag,
-                rng,
-            ),
+    if _redact_words_rust is None:
+        raise RuntimeError(
+            "Redactyl requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable word redaction.",
         )
+
+    return cast(
+        str,
+        _redact_words_rust(
+            text,
+            replacement_char,
+            clamped_rate,
+            merge_adjacent,
+            unweighted_flag,
+            rng,
+        ),
+    )
 
 
 class Redactyl(Glitchling):
