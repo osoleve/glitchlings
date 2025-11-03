@@ -109,8 +109,8 @@ The Rust implementation mirrors the Python pipeline:
 * Ported lexical prior and heuristic tables to `rust/zoo/src/hokey.rs`.
 * Implemented a deterministic scorer and negative-binomial sampler using the
   `rand` traits already available in the crate.
-* Ensured feature parity through integration tests that compare Python and Rust
-  outputs across seeded corpora.
+* When traces are requested, the Python generator replays the same RNG sequence to
+  produce introspection data and asserts the Rust output remains in lockstep.
 
 When the PyO3 extension is available, Hokey uses the Rust path automatically.
 
@@ -118,10 +118,8 @@ When the PyO3 extension is available, Hokey uses the Rust path automatically.
 
 * `tests/core/test_hokey.py` – Updated to validate clause-aware scoring, sentiment
   effects, and deterministic site selection.
-* `tests/core/test_stretchability.py` – Unit coverage for the scoring model,
-  candidate filtering, and stretch locator edge cases.
-* `tests/rust/test_rust_backed_glitchlings.py` – Parity assertions against the new
-  pipeline parameters.
+* `tests/rust/test_rust_backed_glitchlings.py` – Smoke coverage for the compiled
+  extension and error propagation from Rust into Python.
 
 ## 9. Future Work
 

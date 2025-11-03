@@ -72,33 +72,57 @@ def extend_vowels(
         word_length_threshold=word_length_threshold,
     )
 
-    def _generate_with_trace() -> tuple[str, list[StretchEvent]]:
-        return _GENERATOR.generate(text, rng=rng, config=config)
+    if _hokey_rust is None:
+        raise RuntimeError(
+            "Hokey requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable expressive lengthening.",
+        )
+
+    python_result: str | None = None
+    trace_events: list[StretchEvent] | None = None
+    if return_trace:
+        try:
+            state = rng.getstate()
+        except AttributeError as exc:  # pragma: no cover - non-standard RNG usage
+            raise TypeError(
+                "Hokey tracing requires an RNG compatible with random.Random.getstate()",
+            ) from exc
+        trace_rng = random.Random()
+        trace_rng.setstate(state)
+        python_result, trace_events = _GENERATOR.generate(
+            text,
+            rng=trace_rng,
+            config=config,
+        )
+
+    result: StretchResult = _hokey_rust(
+        text,
+        rate,
+        extension_min,
+        extension_max,
+        word_length_threshold,
+        base_probability,
+        rng,
+    )
+
+    if isinstance(result, tuple):
+        output, events = result
+        if return_trace:
+            return output, events
+        return output
+
+    output = cast(str, result)
 
     if return_trace:
-        return _generate_with_trace()
-
-    if _hokey_rust is not None:
-        try:
-            result: StretchResult = _hokey_rust(
-                text,
-                rate,
-                extension_min,
-                extension_max,
-                word_length_threshold,
-                base_probability,
-                rng,
+        assert python_result is not None and trace_events is not None
+        if python_result != output:
+            raise RuntimeError(
+                "Rust Hokey output diverged from the Python trace generation. Rebuild the "
+                "extension to restore parity.",
             )
-        except RuntimeError:
-            # Fall back to the Python implementation if the Rust path errors at runtime.
-            pass
-        else:
-            if isinstance(result, tuple):
-                return result[0]
-            return result
+        return output, trace_events
 
-    python_result, _ = _generate_with_trace()
-    return python_result
+    return output
 
 
 class Hokey(GlitchlingBase):

@@ -28,8 +28,8 @@ def _load_rust_module() -> ModuleType | None:
         module = importlib.import_module("glitchlings._zoo_rust")
     except ModuleNotFoundError:
         log.debug(
-            "Rust extension module glitchlings._zoo_rust is unavailable; falling back to"
-            " Python implementations where possible",
+            "Rust extension module glitchlings._zoo_rust is unavailable; Rust-backed"
+            " glitchlings will raise when invoked",
         )
         _rust_module = None
     except ImportError as exc:  # pragma: no cover - defensive

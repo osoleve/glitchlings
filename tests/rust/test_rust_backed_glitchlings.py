@@ -1,48 +1,5 @@
 import importlib
-import sys
-from pathlib import Path
-
 import pytest
-
-
-def _ensure_rust_extension_importable() -> None:
-    """Attempt to expose a locally built Rust extension for test runs."""
-    if importlib.util.find_spec("glitchlings._zoo_rust") is not None:
-        return
-
-    repo_root = Path(__file__).resolve().parents[1]
-    build_root = repo_root / "build"
-    if not build_root.exists():
-        return
-
-    artifacts = sorted(
-        build_root.glob("lib.*/glitchlings/_zoo_rust.*"),
-        key=lambda candidate: candidate.stat().st_mtime,
-        reverse=True,
-    )
-
-    if not artifacts:
-        return
-
-    importlib.import_module("glitchlings")
-
-    for artifact in artifacts:
-        spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
-        if spec is None or spec.loader is None:
-            continue
-        try:
-            module = importlib.util.module_from_spec(spec)
-            sys.modules["glitchlings._zoo_rust"] = module
-            spec.loader.exec_module(module)
-            package = sys.modules.get("glitchlings")
-            if package is not None and hasattr(package, "__path__"):
-                package.__path__.append(str(artifact.parent))
-            return
-        except (ImportError, ModuleNotFoundError):
-            # Extension exists but cannot be loaded (ABI mismatch, missing libraries, etc.)
-            continue
-
-_ensure_rust_extension_importable()
 
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
 core_module = importlib.import_module("glitchlings.zoo.core")
