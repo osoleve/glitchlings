@@ -1,6 +1,7 @@
 mod ekkokin;
 mod glitch_ops;
 mod hokey;
+mod mim1c;
 mod pedant;
 mod pipeline;
 mod resources;
@@ -24,6 +25,7 @@ pub use glitch_ops::{
     TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
+use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -204,6 +206,11 @@ enum PyGlitchOperation {
         rate: f64,
         layout: Arc<Vec<(String, Vec<String>)>>,
     },
+    Mimic {
+        rate: f64,
+        classes: MimicClassSelection,
+        banned: Vec<String>,
+    },
     ZeroWidth {
         rate: f64,
         characters: Vec<String>,
@@ -267,7 +274,9 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
             "rushmore_combo" => {
                 let modes: Vec<String> = dict
                     .get_item("modes")?
-                    .ok_or_else(|| PyValueError::new_err("rushmore_combo operation missing 'modes'"))?
+                    .ok_or_else(|| {
+                        PyValueError::new_err("rushmore_combo operation missing 'modes'")
+                    })?
                     .extract()?;
 
                 let delete = dict
@@ -368,14 +377,27 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
             "typo" => {
                 let rate = dict
                     .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("typo operation missing \'rate\' field"))?
+                    .ok_or_else(|| PyValueError::new_err("typo operation missing 'rate' field"))?
                     .extract()?;
                 let layout_obj = dict.get_item("layout")?.ok_or_else(|| {
-                    PyValueError::new_err("typo operation missing \'layout\' field")
+                    PyValueError::new_err("typo operation missing 'layout' field")
                 })?;
                 let layout_dict = layout_obj.downcast::<PyDict>()?;
                 let layout = cached_layout_vec(layout_dict)?;
                 Ok(PyGlitchOperation::Typo { rate, layout })
+            }
+            "mimic" => {
+                let rate = dict
+                    .get_item("rate")?
+                    .ok_or_else(|| PyValueError::new_err("mimic operation missing 'rate' field"))?
+                    .extract()?;
+                let classes = mim1c::parse_class_selection(dict.get_item("classes")?)?;
+                let banned = mim1c::parse_banned_characters(dict.get_item("banned_characters")?)?;
+                Ok(PyGlitchOperation::Mimic {
+                    rate,
+                    classes,
+                    banned,
+                })
             }
             "zwj" => {
                 let rate = dict
@@ -452,7 +474,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
     }
 }
 
-fn apply_operation<'py, O>(
+pub(crate) fn apply_operation<'py, O>(
     text: &str,
     op: O,
     rng: &Bound<'py, PyAny>,
@@ -612,7 +634,10 @@ fn compose_glitchlings(
                         })
                         .collect::<Result<Vec<_>, PyErr>>()?;
                     GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
-                        rushmore_modes, delete, duplicate, swap,
+                        rushmore_modes,
+                        delete,
+                        duplicate,
+                        swap,
                     ))
                 }
                 PyGlitchOperation::Redact {
@@ -637,6 +662,11 @@ fn compose_glitchlings(
                         layout: layout_map,
                     })
                 }
+                PyGlitchOperation::Mimic {
+                    rate,
+                    classes,
+                    banned,
+                } => GlitchOperation::Mimic(Mim1cOp::new(rate, classes.clone(), banned.clone())),
                 PyGlitchOperation::ZeroWidth { rate, characters } => {
                     GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
                 }
@@ -685,6 +715,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
+    m.add_function(wrap_pyfunction!(mim1c::swap_homoglyphs, m)?)?;
     m.add_function(wrap_pyfunction!(ekkokin_homophones, m)?)?;
     m.add_function(wrap_pyfunction!(pedant_operation, m)?)?;
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;

@@ -23,3 +23,5 @@ module-name = "glitchlings._zoo_rust"
 
 [build-dependencies]
 pyo3-build-config = { workspace = true }
+flate2 = "1"
+base64 = "0.21"
