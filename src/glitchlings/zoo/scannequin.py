@@ -63,4 +63,4 @@ class Scannequin(Glitchling):
 scannequin = Scannequin()
 
 
-__all__ = ["Scannequin", "scannequin"]
+__all__ = ["Scannequin", "scannequin", "ocr_artifacts"]
