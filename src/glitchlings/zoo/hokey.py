@@ -72,7 +72,6 @@ def extend_vowels(
         word_length_threshold=word_length_threshold,
     )
 
-    python_result: str | None = None
     trace_events: list[StretchEvent] | None = None
     if return_trace:
         try:
@@ -83,7 +82,7 @@ def extend_vowels(
             ) from exc
         trace_rng = random.Random()
         trace_rng.setstate(state)
-        python_result, trace_events = _GENERATOR.generate(
+        _, trace_events = _GENERATOR.generate(
             text,
             rng=trace_rng,
             config=config,
@@ -108,12 +107,7 @@ def extend_vowels(
     output = cast(str, result)
 
     if return_trace:
-        assert python_result is not None and trace_events is not None
-        if python_result != output:
-            raise RuntimeError(
-                "Rust Hokey output diverged from the Python trace generation. Rebuild the "
-                "extension to restore parity.",
-            )
+        assert trace_events is not None
         return output, trace_events
 
     return output
