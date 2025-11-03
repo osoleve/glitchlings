@@ -246,6 +246,12 @@ def delete_random_words(
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
+    if _delete_random_words_rust is None:
+        raise RuntimeError(
+            "Rushmore requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable word deletion.",
+        )
+
     return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng))
 
 
@@ -268,6 +274,12 @@ def reduplicate_words(
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
+    if _reduplicate_words_rust is None:
+        raise RuntimeError(
+            "Rushmore requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable word duplication.",
+        )
+
     return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
 
 
@@ -283,6 +295,12 @@ def swap_adjacent_words(
 
     if rng is None:
         rng = random.Random(seed)
+
+    if _swap_adjacent_words_rust is None:
+        raise RuntimeError(
+            "Rushmore requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable word swapping.",
+        )
 
     return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
 

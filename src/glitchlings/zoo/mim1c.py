@@ -9,7 +9,9 @@ from typing import Callable, Literal, cast
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
+_MIM1C_RUST = cast(Callable[..., str] | None, get_rust_operation("mim1c"))
+
+_DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
 
 def _normalise_classes(
@@ -73,7 +75,10 @@ def swap_homoglyphs(
     normalised_classes = _normalise_classes(classes)
     normalised_banned = _normalise_banned(banned_characters)
 
-    payload_classes = _serialise_classes(normalised_classes)
+    if normalised_classes is None:
+        payload_classes: list[str] | Literal["all"] | None = list(_DEFAULT_CLASS_NAMES)
+    else:
+        payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
 
     return _MIM1C_RUST(

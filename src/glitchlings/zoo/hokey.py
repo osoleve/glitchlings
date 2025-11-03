@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any, Callable, cast
 
-from ..util.hokey_generator import HokeyGenerator, StretchEvent
+from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Gaggle
@@ -14,7 +14,7 @@ from .core import Glitchling as GlitchlingBase
 StretchResult = str | tuple[str, list[StretchEvent]]
 HokeyRustCallable = Callable[[str, float, int, int, int, float, random.Random], StretchResult]
 
-_hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
+_hokey_rust = cast(HokeyRustCallable | None, get_rust_operation("hokey"))
 _ANALYZER = StretchabilityAnalyzer()
 _GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
 
@@ -64,25 +64,41 @@ def extend_vowels(
         rng = random.Random(seed)
     base_probability = base_p if base_p is not None else 0.45
 
-    result: StretchResult = _hokey_rust(
-        text,
-        rate,
-        extension_min,
-        extension_max,
-        word_length_threshold,
-        base_probability,
-        rng,
+    config = HokeyConfig(
+        rate=rate,
+        extension_min=extension_min,
+        extension_max=extension_max,
+        base_p=base_probability,
+        word_length_threshold=word_length_threshold,
     )
 
+    def _generate_with_trace() -> tuple[str, list[StretchEvent]]:
+        return _GENERATOR.generate(text, rng=rng, config=config)
+
     if return_trace:
-        if isinstance(result, tuple):
+        return _generate_with_trace()
+
+    if _hokey_rust is not None:
+        try:
+            result: StretchResult = _hokey_rust(
+                text,
+                rate,
+                extension_min,
+                extension_max,
+                word_length_threshold,
+                base_probability,
+                rng,
+            )
+        except RuntimeError:
+            # Fall back to the Python implementation if the Rust path errors at runtime.
+            pass
+        else:
+            if isinstance(result, tuple):
+                return result[0]
             return result
-        return result, []
 
-    if isinstance(result, tuple):
-        return result[0]
-
-    return result
+    python_result, _ = _generate_with_trace()
+    return python_result
 
 
 class Hokey(GlitchlingBase):

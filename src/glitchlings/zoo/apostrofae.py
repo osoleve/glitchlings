@@ -24,6 +24,12 @@ def smart_quotes(
     if rng is None:
         rng = random.Random(seed)
 
+    if _apostrofae_rust is None:
+        raise RuntimeError(
+            "Apostrofae requires the glitchlings._zoo_rust extension. Rebuild the project "
+            "with `pip install .` or `maturin develop` to enable smart quotes.",
+        )
+
     return cast(str, _apostrofae_rust(text, rng))
 
 
