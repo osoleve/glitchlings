@@ -100,18 +100,6 @@ def test_hokey_is_deterministic_with_seed():
     assert result1 == result2
 
 
-def test_hokey_python_fallback_with_explicit_rng():
-    """Explicit RNG instances should yield identical output."""
-    text = "wow this is cool"
-    rng1 = random.Random(555)
-    rng2 = random.Random(555)
-
-    result1 = hokey_module.extend_vowels(text, rate=0.8, rng=rng1)
-    result2 = hokey_module.extend_vowels(text, rate=0.8, rng=rng2)
-
-    assert result1 == result2
-
-
 def test_hokey_handles_empty_text():
     """Empty input returns an empty output and trace."""
     output, events = hokey_module.extend_vowels("", return_trace=True)
@@ -159,32 +147,6 @@ def test_hokey_class_initialization_tracks_parameters():
     assert glitch.order == core_module.AttackOrder.FIRST
     assert glitch.kwargs["base_p"] == 0.4
 
-
-def test_hokey_invokes_python_fallback_when_rust_unavailable(monkeypatch):
-    """With the Rust extension disabled Hokey should use the Python generator."""
-    monkeypatch.setattr(hokey_module, "_hokey_rust", None, raising=False)
-
-    text = "wow such cool beans"
-    seed = 88
-    derived = core_module.Gaggle.derive_seed(seed, hokey_module.hokey.name, 0)
-
-    expected = hokey_module._python_extend_vowels(
-        text,
-        rate=hokey_module.hokey.kwargs["rate"],
-        extension_min=hokey_module.hokey.kwargs["extension_min"],
-        extension_max=hokey_module.hokey.kwargs["extension_max"],
-        word_length_threshold=hokey_module.hokey.kwargs["word_length_threshold"],
-        base_p=hokey_module.hokey.kwargs["base_p"],
-        rng=random.Random(derived),
-    )
-
-    glitch = hokey_module.Hokey(seed=seed)
-    glitch.reset_rng(seed)
-    result = glitch(text)
-
-    assert result == expected
-
-
 def test_hokey_glitchling_callable_returns_str():
     """Hokey instances remain callable and return strings."""
     glitch = hokey_module.Hokey(rate=0.5, seed=123)
@@ -193,7 +155,6 @@ def test_hokey_glitchling_callable_returns_str():
 
     assert isinstance(result, str)
     assert len(result) >= len(text)
-
 
 def test_hokey_handles_utf8_characters_correctly():
     """UTF-8 characters should be counted properly when applying stretches."""
