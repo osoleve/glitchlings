@@ -10,7 +10,7 @@ from __future__ import annotations
 import importlib
 import logging
 from types import ModuleType
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 log = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def get_rust_operation(operation_name: str) -> Callable[..., Any]:
     module = _load_rust_module()
 
     try:
-        operation = getattr(module, operation_name)
+        operation_obj = getattr(module, operation_name)
     except AttributeError as exc:
         message = (
             f"Rust operation '{operation_name}' is missing from glitchlings._zoo_rust. "
@@ -87,10 +87,11 @@ def get_rust_operation(operation_name: str) -> Callable[..., Any]:
         )
         raise RuntimeError(message) from exc
 
-    if not callable(operation):  # pragma: no cover - defensive
+    if not callable(operation_obj):  # pragma: no cover - defensive
         message = f"Rust operation '{operation_name}' is not callable"
         raise RuntimeError(message)
 
+    operation = cast(Callable[..., Any], operation_obj)
     _rust_operation_cache[operation_name] = operation
     log.debug("Rust operation '%s' loaded successfully", operation_name)
 

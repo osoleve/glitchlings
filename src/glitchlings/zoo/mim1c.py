@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Collection
-from typing import Literal, cast
+from collections.abc import Collection, Iterable
+from typing import Callable, Literal, cast
 
 from ._rust_extensions import get_rust_operation
 from .core import AttackOrder, AttackWave, Glitchling
 
-_MIM1C_RUST = get_rust_operation("mim1c")
+_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
 
 
 def _normalise_classes(
@@ -21,10 +21,9 @@ def _normalise_classes(
         if value.lower() == "all":
             return "all"
         return (value,)
-    try:
-        return tuple(str(item) for item in value)  # type: ignore[arg-type]
-    except TypeError as exc:  # pragma: no cover - defensive guard
-        raise TypeError("classes must be an iterable of strings or 'all'") from exc
+    if isinstance(value, Iterable):
+        return tuple(str(item) for item in value)
+    raise TypeError("classes must be an iterable of strings or 'all'")
 
 
 def _normalise_banned(value: object) -> tuple[str, ...] | None:
@@ -32,10 +31,9 @@ def _normalise_banned(value: object) -> tuple[str, ...] | None:
         return None
     if isinstance(value, str):
         return tuple(value)
-    try:
-        return tuple(str(item) for item in value)  # type: ignore[arg-type]
-    except TypeError as exc:  # pragma: no cover - defensive guard
-        raise TypeError("banned_characters must be an iterable of strings") from exc
+    if isinstance(value, Iterable):
+        return tuple(str(item) for item in value)
+    raise TypeError("banned_characters must be an iterable of strings")
 
 
 def _serialise_classes(
@@ -78,15 +76,12 @@ def swap_homoglyphs(
     payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
 
-    return cast(
-        str,
-        _MIM1C_RUST(
-            text,
-            rate=effective_rate,
-            classes=payload_classes,
-            banned_characters=payload_banned,
-            rng=effective_rng,
-        ),
+    return _MIM1C_RUST(
+        text,
+        rate=effective_rate,
+        classes=payload_classes,
+        banned_characters=payload_banned,
+        rng=effective_rng,
     )
 
 
