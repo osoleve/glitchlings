@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import importlib
-import random
 import statistics
 import sys
 import time
@@ -18,9 +17,7 @@ from benchmarks.constants import (
     DEFAULT_ITERATIONS,
     DEFAULT_TEXTS,
     MASTER_SEED,
-    OPERATION_MODULES,
     Descriptor,
-    module_for_operation,
     redactyl_full_block,
     zero_width_characters,
 )
@@ -40,10 +37,7 @@ _ensure_datasets_stub()
 
 core_module = importlib.import_module("glitchlings.zoo.core")
 
-try:  # pragma: no cover - optional dependency
-    zoo_rust = importlib.import_module("glitchlings._zoo_rust")
-except ImportError:  # pragma: no cover - optional dependency
-    zoo_rust = None
+zoo_rust = importlib.import_module("glitchlings._zoo_rust")
 
 
 def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
@@ -159,134 +153,6 @@ def _seeded_descriptors(
     return seeded
 
 
-def _baseline_pipeline(text: str, descriptors: list[Descriptor], master_seed: int) -> str:
-    operation_modules = {key: module_for_operation(key) for key in OPERATION_MODULES}
-    current = text
-    for index, descriptor in enumerate(descriptors):
-        seed = core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)
-        rng = random.Random(seed)
-        operation = descriptor["operation"]
-        op_type = operation["type"]
-        if op_type == "reduplicate":
-            module = operation_modules["reduplicate"]
-            current = module.reduplicate_words(
-                current,
-                rate=operation.get("rate"),
-                rng=rng,
-                unweighted=bool(operation.get("unweighted", False)),
-            )
-        elif op_type == "delete":
-            module = operation_modules["delete"]
-            current = module.delete_random_words(
-                current,
-                rate=operation.get("rate"),
-                rng=rng,
-                unweighted=bool(operation.get("unweighted", False)),
-            )
-        elif op_type == "redact":
-            module = operation_modules["redact"]
-            current = module.redact_words(
-                current,
-                replacement_char=str(operation.get("replacement_char", module.FULL_BLOCK)),
-                rate=operation.get("rate"),
-                merge_adjacent=bool(operation.get("merge_adjacent", False)),
-                rng=rng,
-                unweighted=bool(operation.get("unweighted", False)),
-            )
-        elif op_type == "ocr":
-            module = operation_modules["ocr"]
-            current = module.ocr_artifacts(
-                current,
-                rate=operation.get("rate"),
-                rng=rng,
-            )
-        elif op_type == "zwj":
-            characters = operation.get("characters")
-            if characters is None:
-                characters = tuple(zero_width_characters())
-            else:
-                characters = tuple(characters)
-            module = operation_modules["zwj"]
-            current = module.insert_zero_widths(
-                current,
-                rate=operation.get("rate"),
-                rng=rng,
-                characters=characters,
-            )
-        elif op_type == "typo":
-            keyboard = operation.get("keyboard", "CURATOR_QWERTY")
-            layout_override = operation.get("layout")
-            module = operation_modules["typo"]
-            layout_mapping = None
-            if layout_override is not None:
-                layout_mapping = {key: tuple(value) for key, value in layout_override.items()}
-            current = module.fatfinger(
-                current,
-                rate=operation.get("rate"),
-                keyboard=keyboard,
-                layout=layout_mapping,
-                rng=rng,
-            )
-        elif op_type == "swap_adjacent":
-            module = operation_modules["swap_adjacent"]
-            current = module.swap_adjacent_words(
-                current,
-                rate=float(operation.get("rate", 0.5)),
-                rng=rng,
-            )
-        elif op_type == "hokey":
-            module = operation_modules["hokey"]
-            result = module.extend_vowels(
-                current,
-                rate=float(operation.get("rate", 0.3)),
-                extension_min=int(operation.get("extension_min", 2)),
-                extension_max=int(operation.get("extension_max", 5)),
-                word_length_threshold=int(operation.get("word_length_threshold", 6)),
-                base_p=operation.get("base_p"),
-                seed=seed,
-                rng=rng,
-            )
-            current = result if isinstance(result, str) else result[0]
-        elif op_type == "apostrofae":
-            module = operation_modules["apostrofae"]
-            current = module.smart_quotes(current, seed=seed, rng=rng)
-        elif op_type == "pedant":
-            module = operation_modules["pedant"]
-            current = module.pedant_transform(
-                current,
-                stone=operation.get("stone"),
-                seed=seed,
-                rng=rng,
-            )
-        elif op_type == "ekkokin":
-            module = operation_modules["ekkokin"]
-            current = module.substitute_homophones(
-                current,
-                rate=operation.get("rate"),
-                seed=seed,
-                rng=rng,
-            )
-        elif op_type == "rushmore_combo":
-            module = operation_modules["rushmore_combo"]
-            delete_cfg = operation.get("delete") or {}
-            duplicate_cfg = operation.get("duplicate") or {}
-            swap_cfg = operation.get("swap") or {}
-            current = module.rushmore_attack(
-                current,
-                modes=operation.get("modes"),
-                delete_rate=delete_cfg.get("rate"),
-                duplicate_rate=duplicate_cfg.get("rate"),
-                swap_rate=swap_cfg.get("rate"),
-                delete_unweighted=delete_cfg.get("unweighted"),
-                duplicate_unweighted=duplicate_cfg.get("unweighted"),
-                seed=seed,
-                rng=rng,
-            )
-        else:  # pragma: no cover - defensive guard
-            raise AssertionError(f"Unsupported operation type: {op_type!r}")
-    return current
-
-
 BenchmarkSubject = Callable[[], None]
 
 
@@ -312,8 +178,7 @@ class BenchmarkResult:
 
     label: str
     char_count: int
-    python: BenchmarkStatistics
-    rust: BenchmarkStatistics | None
+    runtime: BenchmarkStatistics
 
 
 def _time_subject(subject: BenchmarkSubject, iterations: int) -> BenchmarkStatistics:
@@ -336,32 +201,15 @@ def _format_table_stats(stats: BenchmarkStatistics) -> str:
 def _print_results(scenario: str, results: Sequence[BenchmarkResult]) -> None:
     print(f"\n=== Scenario: {scenario} ===")
     header = (
-        "| Text size | Characters | Python (ms)           | Rust (ms)             | Speedup |\n"
-        "| ---       | ---:       | ---:                  | ---:                  | ---:    |"
+        "| Text size | Characters | Runtime (ms)          |\n"
+        "| ---       | ---:       | ---:                  |"
     )
     print(header)
     for result in results:
-        python_cell = _format_table_stats(result.python)
-        if result.rust is None:
-            rust_cell = "unavailable"
-            speedup_cell = "N/A"
-        else:
-            rust_cell = _format_table_stats(result.rust)
-            speedup_value = (
-                result.python.mean_seconds / result.rust.mean_seconds
-                if result.rust.mean_seconds > 0
-                else float("inf")
-            )
-            speedup_cell = f"{speedup_value:5.2f}x"
-        row = (
-            "| {label:<9} | {char_count:10d} | {python:<21} | "
-            "{rust:<21} | {speedup:>6} |"
-        ).format(
+        row = "| {label:<9} | {char_count:10d} | {runtime:<21} |".format(
             label=result.label,
             char_count=result.char_count,
-            python=python_cell,
-            rust=rust_cell,
-            speedup=speedup_cell,
+            runtime=_format_table_stats(result.runtime),
         )
         print(row)
 
@@ -379,30 +227,19 @@ def collect_benchmark_results(
 
     results: list[BenchmarkResult] = []
     for label, text in samples:
-        def python_subject(text: str = text) -> str:
-            return _baseline_pipeline(
+        def runtime_subject(text: str = text) -> str:
+            return zoo_rust.compose_glitchlings(
                 text,
-                _clone_descriptors(descriptor_template),
+                _seeded_descriptors(MASTER_SEED, descriptor_template),
                 MASTER_SEED,
             )
 
-        python_stats = _time_subject(python_subject, iterations)
-        rust_stats: BenchmarkStatistics | None = None
-        if zoo_rust is not None:
-            def rust_subject(text: str = text) -> str:
-                return zoo_rust.compose_glitchlings(
-                    text,
-                    _seeded_descriptors(MASTER_SEED, descriptor_template),
-                    MASTER_SEED,
-                )
-
-            rust_stats = _time_subject(rust_subject, iterations)
+        runtime_stats = _time_subject(runtime_subject, iterations)
         results.append(
             BenchmarkResult(
                 label=label,
                 char_count=len(text),
-                python=python_stats,
-                rust=rust_stats,
+                runtime=runtime_stats,
             )
         )
     return results

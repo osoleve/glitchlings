@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
@@ -17,36 +16,18 @@ MARKER_END = "<!-- END: CLI_USAGE -->"
 def run_cli(command: list[str]) -> str:
     """Execute a CLI command and return its stdout, stripped of trailing space."""
 
-    def execute(argv: list[str], *, extra_env: dict[str, str] | None = None) -> str:
-        env = os.environ.copy()
-        env["COLUMNS"] = "80"
-        if extra_env:
-            env.update(extra_env)
+    env = os.environ.copy()
+    env["COLUMNS"] = "80"
 
-        result = subprocess.run(
-            argv,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            check=True,
-            env=env,
-        )
-        return result.stdout.rstrip()
-
-    try:
-        return execute(command)
-    except FileNotFoundError:
-        if command and command[0] == "glitchlings":
-            fallback = [sys.executable, "-m", "glitchlings", *command[1:]]
-            src = str(ROOT / "src")
-            pythonpath = os.environ.get("PYTHONPATH")
-            fallback_env = {
-                "PYTHONPATH": (
-                    f"{src}{os.pathsep}{pythonpath}" if pythonpath else src
-                )
-            }
-            return execute(fallback, extra_env=fallback_env)
-        raise
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        check=True,
+        env=env,
+    )
+    return result.stdout.rstrip()
 
 
 def build_cli_usage_block() -> str:
