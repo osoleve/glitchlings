@@ -998,7 +998,7 @@ impl GlitchOp for TypoOp {
                                             scratch.extend(neighbors[choice].chars());
                                         }
                                         _ => {
-                                            // Match Python fallback that still advances RNG state.
+                                            // Maintain deterministic RNG advancement when no replacements are available.
                                             rng.rand_index(1)?;
                                             scratch.push(ch);
                                         }

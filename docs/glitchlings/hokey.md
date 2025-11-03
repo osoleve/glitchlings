@@ -30,7 +30,9 @@ phonotactic cues, and nearby punctuation before sampling a heavy-tailed stretch 
   - `seed` (int, optional): Seed for deterministic behaviour.
 
 - **Usage tips**:
-  - Call `extend_vowels(..., return_trace=True)` to inspect the chosen stretch sites.
+  - Call `extend_vowels(..., return_trace=True)` to inspect the chosen stretch sites;
+    the generator replays the Python pipeline to provide events and verifies the Rust
+    output stays in sync.
   - Lower `base_p` to produce occasional dramatic stretches while keeping most
     output moderate.
   - When combining with other character glitchlings, run Hokey first so later agents

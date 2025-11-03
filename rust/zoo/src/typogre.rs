@@ -203,7 +203,7 @@ fn positional_action(
                         neighbors[choice].clone()
                     }
                     _ => {
-                        // Maintain RNG parity with Python's fallback path.
+                        // Maintain RNG parity with the historical implementation when no neighbours exist.
                         python_rand_index(rng, 1)?;
                         ch.to_string()
                     }
