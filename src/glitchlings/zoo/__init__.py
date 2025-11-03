@@ -10,7 +10,6 @@ from .core import (
     Glitchling,
     is_rust_pipeline_enabled,
     is_rust_pipeline_supported,
-    pipeline_feature_flag_enabled,
     plan_glitchling_specs,
     plan_glitchlings,
 )
@@ -64,7 +63,6 @@ __all__ = [
     "plan_glitchling_specs",
     "is_rust_pipeline_enabled",
     "is_rust_pipeline_supported",
-    "pipeline_feature_flag_enabled",
     "summon",
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",
