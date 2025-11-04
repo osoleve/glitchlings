@@ -64,15 +64,13 @@ class Typogre(Glitchling):
             keyboard=keyboard,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        rate = self.kwargs.get("rate")
-        if rate is None:
-            return None
-
+    def pipeline_operation(self) -> dict[str, Any]:
+        rate = float(self.kwargs.get("rate", 0.02))
         keyboard = self.kwargs.get("keyboard", "CURATOR_QWERTY")
         layout = getattr(KEYNEIGHBORS, str(keyboard), None)
         if layout is None:
-            return None
+            message = f"Unknown keyboard layout '{keyboard}' for Typogre pipeline"
+            raise RuntimeError(message)
 
         serialized_layout = {key: list(value) for key, value in layout.items()}
 
