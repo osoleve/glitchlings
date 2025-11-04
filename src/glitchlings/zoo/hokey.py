@@ -8,7 +8,7 @@ from typing import Any, Callable, cast
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle
+from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
 
 StretchResult = str | tuple[str, list[StretchEvent]]
@@ -147,15 +147,18 @@ class Hokey(GlitchlingBase):
             base_p=base_p,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        return {
-            "type": "hokey",
-            "rate": self.kwargs.get("rate", 0.3),
-            "extension_min": self.kwargs.get("extension_min", 2),
-            "extension_max": self.kwargs.get("extension_max", 5),
-            "word_length_threshold": self.kwargs.get("word_length_threshold", 6),
-            "base_p": self.kwargs.get("base_p", 0.45),
-        }
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "hokey",
+                "rate": self.kwargs.get("rate", 0.3),
+                "extension_min": self.kwargs.get("extension_min", 2),
+                "extension_max": self.kwargs.get("extension_max", 5),
+                "word_length_threshold": self.kwargs.get("word_length_threshold", 6),
+                "base_p": self.kwargs.get("base_p", 0.45),
+            },
+        )
 
     def reset_rng(self, seed: int | None = None) -> None:
         if seed is not None:

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import random
-from typing import Any, cast
+from typing import cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle, Glitchling
+from .core import AttackOrder, AttackWave, Gaggle, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
 _apostrofae_rust = get_rust_operation("apostrofae")
@@ -40,8 +40,8 @@ class Apostrofae(Glitchling):
             seed=seed,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        return {"type": "apostrofae"}
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        return cast(PipelineOperationPayload, {"type": "apostrofae"})
 
     def reset_rng(self, seed: int | None = None) -> None:  # pragma: no cover - exercised indirectly
         if seed is not None:

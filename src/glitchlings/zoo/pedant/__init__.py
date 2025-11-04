@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, cast
 
-from ..core import AttackOrder, AttackWave, Glitchling
+from ..core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 from .core import EVOLUTIONS, PedantBase, apply_pedant
 from .stones import STONES, PedantStone
 
@@ -47,17 +47,18 @@ def pedant_transform(
     )
 
 
-def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
+def _build_pipeline_descriptor(glitch: Glitchling) -> PipelineOperationPayload:
     stone_value = glitch.kwargs.get("stone")
     if stone_value is None:
-        return None
+        message = "Pedant requires a stone to build the pipeline descriptor"
+        raise RuntimeError(message)
 
-    try:
-        pedant_stone = _coerce_stone(stone_value)
-    except ValueError:
-        return None
+    pedant_stone = _coerce_stone(stone_value)
 
-    return {"type": "pedant", "stone": pedant_stone.label}
+    return cast(
+        PipelineOperationPayload,
+        {"type": "pedant", "stone": pedant_stone.label},
+    )
 
 
 class Pedant(Glitchling):

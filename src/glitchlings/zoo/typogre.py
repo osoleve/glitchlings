@@ -6,7 +6,7 @@ from typing import Any, cast
 
 from ..util import KEYNEIGHBORS
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Glitchling
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _fatfinger_rust = get_rust_operation("fatfinger")
 
@@ -64,7 +64,7 @@ class Typogre(Glitchling):
             keyboard=keyboard,
         )
 
-    def pipeline_operation(self) -> dict[str, Any]:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         rate = float(self.kwargs.get("rate", 0.02))
         keyboard = self.kwargs.get("keyboard", "CURATOR_QWERTY")
         layout = getattr(KEYNEIGHBORS, str(keyboard), None)
@@ -74,12 +74,15 @@ class Typogre(Glitchling):
 
         serialized_layout = {key: list(value) for key, value in layout.items()}
 
-        return {
-            "type": "typo",
-            "rate": float(rate),
-            "keyboard": str(keyboard),
-            "layout": serialized_layout,
-        }
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "typo",
+                "rate": float(rate),
+                "keyboard": str(keyboard),
+                "layout": serialized_layout,
+            },
+        )
 
 
 typogre = Typogre()

@@ -1,8 +1,8 @@
 import random
-from typing import Any, cast
+from typing import cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackWave, Glitchling
+from .core import AttackWave, Glitchling, PipelineOperationPayload
 
 FULL_BLOCK = "█"
 
@@ -65,7 +65,7 @@ class Redactyl(Glitchling):
             unweighted=unweighted,
         )
 
-    def pipeline_operation(self) -> dict[str, Any]:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         replacement_char = self.kwargs.get("replacement_char")
         rate = self.kwargs.get("rate")
         merge_adjacent = self.kwargs.get("merge_adjacent")
@@ -74,13 +74,16 @@ class Redactyl(Glitchling):
             raise RuntimeError(message)
 
         unweighted = bool(self.kwargs.get("unweighted", False))
-        return {
-            "type": "redact",
-            "replacement_char": str(replacement_char),
-            "rate": float(rate),
-            "merge_adjacent": bool(merge_adjacent),
-            "unweighted": unweighted,
-        }
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "redact",
+                "replacement_char": str(replacement_char),
+                "rate": float(rate),
+                "merge_adjacent": bool(merge_adjacent),
+                "unweighted": unweighted,
+            },
+        )
 
 
 redactyl = Redactyl()
