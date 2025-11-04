@@ -29,8 +29,8 @@ def test_mim1c_respects_banned_characters():
     m.set_param("rate", 1.0)
     m.set_param("banned_characters", ["ａ"])
 
-    banned = {"a"}
-    out = cast(str, m("a"))
+    banned = {"ａ"}
+    out = cast(str, m("ａ"))
     assert not any(char in banned for char in out)
 
 
