@@ -22,7 +22,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - **`src/glitchlings/dlc/prime/`** - Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).
 - **`benchmarks/`** - Performance harnesses (`pipeline_benchmark.py`, etc.) that exercise both the Python and Rust execution paths.
 - **`docs/`** - Field guide, development notes, release process, and per-glitchling reference pages. Changes to behaviour should update the relevant doc alongside code.
-- **`rust/`** - PyO3 crates backing the optional Rust extensions.
+- **`rust/`** - PyO3 crates that implement the required Rust backend.
   - `rust/zoo/` builds `glitchlings._zoo_rust` (fast paths for Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin). Use `maturin develop -m rust/zoo/Cargo.toml` after touching Rust sources.
 - **`tests/`** - Pytest suite covering determinism, dataset integrations, CLI behaviour, Rust parity, and DLC hooks.
   - Highlights: `test_glitchling_core.py` (Gaggle orchestration and feature flags), `test_parameter_effects.py` (argument coverage), `test_benchmarks.py` (pipeline smoke tests), `test_prime_echo_chamber.py` (Prime DLC), and `test_rust_backed_glitchlings.py` (parity checks).
@@ -38,7 +38,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - Keep helper functions small and well-scoped; include docstrings that describe behaviour and note any determinism considerations.
 - When mutating token sequences, preserve whitespace and punctuation via separator-preserving regex splits (see `reduple.py`, `rushmore.py`, `redactyl.py`).
 - CLI work should continue the existing UX: validate inputs with `ArgumentParser.error`, keep deterministic output ordering, and gate optional behaviours behind explicit flags.
-- Rust fast paths must remain optional: guard imports with `try`/`except ImportError`, surface identical signatures, and fall back to the Python implementation when the extension is absent.
+- Treat Rust failures as fatal: the compiled backend must import cleanly, surface identical signatures, and stay in lockstep with the Python shims.
 
 ## Testing & Tooling
 - Run the full suite with `pytest` from the repository root.
@@ -58,4 +58,4 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - The CLI lists built-in glitchlings (`glitchlings --list`) and can show diffs; update `BUILTIN_GLITCHLINGS` and help text when introducing new creatures.
 - Keep documentation synchronised: update `README.md`, `docs/index.md`, per-glitchling reference pages, and `MONSTER_MANUAL.md` when behaviours or defaults change.
 - When editing keyboard layouts or homoglyph mappings, ensure downstream consumers continue to work with lowercase keys (`util.KEYNEIGHBORS`).
-- Rust builds are optional--keep the project functional when extensions are absent (e.g., in CI or user installs without `maturin`).
+- Verify the Rust backend builds in every environment (CI, local, release) and fix import errors immediately—there is no supported Python-only mode anymore.

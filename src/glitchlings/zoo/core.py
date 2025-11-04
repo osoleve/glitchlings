@@ -24,6 +24,20 @@ Transcript = list[TranscriptTurn]
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
 
+class PipelineOperationPayload(TypedDict, total=False):
+    """Typed mapping describing a Rust pipeline operation."""
+
+    type: str
+
+
+class PipelineDescriptor(TypedDict):
+    """Typed mapping representing a glitchling's Rust pipeline descriptor."""
+
+    name: str
+    operation: PipelineOperationPayload
+    seed: int
+
+
 def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
     """Create a plan specification mapping from a glitchling instance."""
     return {
@@ -187,7 +201,7 @@ class Glitchling:
         scope: AttackWave,
         order: AttackOrder = AttackOrder.NORMAL,
         seed: int | None = None,
-        pipeline_operation: Callable[["Glitchling"], dict[str, Any] | None] | None = None,
+        pipeline_operation: Callable[["Glitchling"], Mapping[str, Any]] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -237,13 +251,25 @@ class Glitchling:
             if target == canonical:
                 setattr(self, alias, value)
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         """Return the Rust pipeline operation descriptor for this glitchling."""
+
         factory = self._pipeline_descriptor_factory
         if factory is None:
-            return None
+            message = f"{self.name} does not define a Rust pipeline descriptor"
+            raise RuntimeError(message)
 
-        return factory(self)
+        descriptor = factory(self)
+        if not isinstance(descriptor, Mapping):  # pragma: no cover - defensive
+            raise TypeError("Pipeline descriptor factories must return a mapping")
+
+        payload = dict(descriptor)
+        payload_type = payload.get("type")
+        if not isinstance(payload_type, str):
+            message = f"Pipeline descriptor for {self.name} is missing a string 'type' field"
+            raise RuntimeError(message)
+
+        return cast(PipelineOperationPayload, payload)
 
     def _corruption_expects_rng(self) -> bool:
         """Return `True` when the corruption function accepts an rng keyword."""
@@ -419,12 +445,17 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
-    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
-        descriptors: list[dict[str, Any]] = []
+    def _pipeline_descriptors(self) -> list[PipelineDescriptor]:
+        descriptors: list[PipelineDescriptor] = []
         for glitchling in self.apply_order:
             operation = glitchling.pipeline_operation()
-            if operation is None:
-                return None
+            if not isinstance(operation, Mapping):  # pragma: no cover - defensive
+                raise TypeError("Pipeline operations must be mappings")
+            operation_payload = dict(operation)
+            operation_type = cast(object, operation_payload.get("type"))
+            if not isinstance(operation_type, str):
+                message = f"Pipeline operation for {glitchling.name} is missing a string 'type'"
+                raise RuntimeError(message)
 
             seed = glitchling.seed
             if seed is None:
@@ -438,11 +469,14 @@ class Gaggle(Glitchling):
                 seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
 
             descriptors.append(
-                {
-                    "name": glitchling.name,
-                    "operation": operation,
-                    "seed": int(seed),
-                }
+                cast(
+                    PipelineDescriptor,
+                    {
+                        "name": glitchling.name,
+                        "operation": cast(PipelineOperationPayload, operation_payload),
+                        "seed": int(seed),
+                    },
+                )
             )
 
         return descriptors
@@ -451,11 +485,6 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
-        if descriptors is None:
-            result = text
-            for glitchling in self.apply_order:
-                result = cast(str, glitchling.corrupt(result))
-            return result
 
         if master_seed is None:
             message = "Gaggle orchestration requires a master seed"

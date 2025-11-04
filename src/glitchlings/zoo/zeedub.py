@@ -71,10 +71,11 @@ class Zeedub(Glitchling):
             characters=tuple(characters) if characters is not None else None,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
+    def pipeline_operation(self) -> dict[str, Any]:
         rate = self.kwargs.get("rate")
         if rate is None:
-            return None
+            message = "Zeedub is missing a configured zero-width insertion rate"
+            raise RuntimeError(message)
 
         raw_characters = self.kwargs.get("characters")
         if raw_characters is None:
@@ -83,7 +84,8 @@ class Zeedub(Glitchling):
             palette = tuple(str(char) for char in raw_characters if char)
 
         if not palette:
-            return None
+            message = "Zeedub requires at least one zero-width character for the pipeline"
+            raise RuntimeError(message)
 
         return {
             "type": "zwj",

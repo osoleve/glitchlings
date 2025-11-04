@@ -51,10 +51,11 @@ class Scannequin(Glitchling):
             rate=effective_rate,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
+    def pipeline_operation(self) -> dict[str, Any]:
         rate = self.kwargs.get("rate")
         if rate is None:
-            return None
+            message = "Scannequin is missing a configured OCR corruption rate"
+            raise RuntimeError(message)
         return {"type": "ocr", "rate": float(rate)}
 
 

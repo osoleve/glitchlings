@@ -65,12 +65,14 @@ class Redactyl(Glitchling):
             unweighted=unweighted,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
+    def pipeline_operation(self) -> dict[str, Any]:
         replacement_char = self.kwargs.get("replacement_char")
         rate = self.kwargs.get("rate")
         merge_adjacent = self.kwargs.get("merge_adjacent")
         if replacement_char is None or rate is None or merge_adjacent is None:
-            return None
+            message = "Redactyl is missing required pipeline parameters"
+            raise RuntimeError(message)
+
         unweighted = bool(self.kwargs.get("unweighted", False))
         return {
             "type": "redact",

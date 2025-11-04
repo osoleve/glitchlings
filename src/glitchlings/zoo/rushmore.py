@@ -58,15 +58,16 @@ class RushmoreRuntimeConfig:
     def has_mode(self, mode: RushmoreMode) -> bool:
         return mode in self.rates
 
-    def to_pipeline_descriptor(self) -> dict[str, Any] | None:
+    def to_pipeline_descriptor(self) -> dict[str, Any]:
         if not self.modes:
-            return None
+            raise RuntimeError("Rushmore configuration is missing attack modes")
 
         if len(self.modes) == 1:
             mode = self.modes[0]
             rate = self.rates.get(mode)
             if rate is None:
-                return None
+                message = f"Rushmore mode {mode!r} is missing a configured rate"
+                raise RuntimeError(message)
             if mode is RushmoreMode.DELETE:
                 return {
                     "type": "delete",
@@ -84,7 +85,8 @@ class RushmoreRuntimeConfig:
                     "type": "swap_adjacent",
                     "rate": rate,
                 }
-            return None
+            message = f"Rushmore mode {mode!r} is not serialisable"
+            raise RuntimeError(message)
 
         descriptor: dict[str, Any] = {
             "type": "rushmore_combo",
@@ -348,7 +350,7 @@ def rushmore_attack(
     return result
 
 
-def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | None:
+def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any]:
     config = _resolve_rushmore_config(
         modes=glitchling.kwargs.get("modes"),
         rate=glitchling.kwargs.get("rate"),
@@ -361,7 +363,7 @@ def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | No
         allow_defaults=False,
     )
     if config is None:
-        return None
+        raise RuntimeError("Rushmore configuration could not be resolved for the pipeline")
     return config.to_pipeline_descriptor()
 
 

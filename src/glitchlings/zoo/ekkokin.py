@@ -100,10 +100,11 @@ class Ekkokin(_GlitchlingBase):
         )
 
 
-def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object] | None:
+def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object]:
     rate = glitch.kwargs.get("rate")
     if rate is None:
-        return None
+        message = "Ekkokin is missing a configured homophone substitution rate"
+        raise RuntimeError(message)
     return {
         "type": "ekkokin",
         "rate": float(rate),
