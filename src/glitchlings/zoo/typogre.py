@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import cast
 
 from ..util import KEYNEIGHBORS
 from ._rust_extensions import get_rust_operation
