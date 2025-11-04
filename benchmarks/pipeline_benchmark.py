@@ -19,7 +19,6 @@ from benchmarks.constants import (
     MASTER_SEED,
     Descriptor,
     redactyl_full_block,
-    zero_width_characters,
 )
 
 

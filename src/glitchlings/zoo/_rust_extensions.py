@@ -4,7 +4,37 @@ from __future__ import annotations
 
 import sys
 from importlib import import_module
-from typing import Any, Callable, Mapping, MutableMapping
+from typing import Any, Callable, Mapping, MutableMapping, cast
+
+
+class _MissingRustOperation:
+    """Callable placeholder that raises when the Rust extension is unavailable."""
+
+    __slots__ = ("name",)
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover - runtime failure
+        message = (
+            "Rust operation '{name}' is unavailable because glitchlings._zoo_rust "
+            "failed to import. Rebuild the project with `pip install .` or "
+            "`maturin develop`."
+        ).format(name=self.name)
+        raise RuntimeError(message)
+
+
+class _MissingRustModule:
+    """Sentinel module that provides informative error callables."""
+
+    __slots__ = ()
+
+    def __getattr__(self, name: str) -> _MissingRustOperation:
+        return _MissingRustOperation(name)
+
+    def __dir__(self) -> list[str]:  # pragma: no cover - debug helper
+        return []
+
 
 def _import_rust_module() -> Any:
     try:
@@ -12,17 +42,15 @@ def _import_rust_module() -> Any:
     except ModuleNotFoundError:
         try:
             module = import_module("glitchlings._zoo_rust")
-        except ModuleNotFoundError as exc:  # pragma: no cover - fatal configuration
-            raise RuntimeError(
-                "Glitchlings requires the compiled glitchlings._zoo_rust extension. "
-                "Rebuild the project with `pip install .` or `maturin develop`."
-            ) from exc
+        except ModuleNotFoundError:
+            module = _MissingRustModule()
     else:
         sys.modules.setdefault("glitchlings._zoo_rust", module)
     return module
 
 
 _RUST_MODULE = _import_rust_module()
+HAS_RUST_EXTENSION = not isinstance(_RUST_MODULE, _MissingRustModule)
 _OPERATION_CACHE: MutableMapping[str, Callable[..., Any]] = {}
 
 
@@ -52,12 +80,17 @@ def get_rust_operation(operation_name: str) -> Callable[..., Any]:
     if operation is not None:
         return operation
 
-    candidate = getattr(_RUST_MODULE, operation_name, None)
+    try:
+        candidate = getattr(_RUST_MODULE, operation_name)
+    except AttributeError as exc:
+        raise _build_missing_operation_error(operation_name) from exc
+
     if not callable(candidate):
         raise _build_missing_operation_error(operation_name)
 
-    _OPERATION_CACHE[operation_name] = candidate
-    return candidate
+    operation = cast(Callable[..., Any], candidate)
+    _OPERATION_CACHE[operation_name] = operation
+    return operation
 
 
 def preload_operations(*operation_names: str) -> Mapping[str, Callable[..., Any]]:
@@ -66,4 +99,4 @@ def preload_operations(*operation_names: str) -> Mapping[str, Callable[..., Any]
     return {name: get_rust_operation(name) for name in operation_names}
 
 
-__all__ = ["get_rust_operation", "preload_operations"]
+__all__ = ["get_rust_operation", "preload_operations", "HAS_RUST_EXTENSION"]

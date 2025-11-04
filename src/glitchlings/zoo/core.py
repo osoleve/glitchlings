@@ -419,17 +419,12 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
-    @staticmethod
-    def _pipeline_descriptors(self) -> list[dict[str, Any]]:
+    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
         descriptors: list[dict[str, Any]] = []
         for glitchling in self.apply_order:
             operation = glitchling.pipeline_operation()
             if operation is None:
-                message = (
-                    "Glitchling %s does not expose a Rust pipeline descriptor."
-                    " Rebuild the extension or update the glitchling implementation."
-                )
-                raise RuntimeError(message % glitchling.name)
+                return None
 
             seed = glitchling.seed
             if seed is None:
@@ -456,6 +451,12 @@ class Gaggle(Glitchling):
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
         descriptors = self._pipeline_descriptors()
+        if descriptors is None:
+            result = text
+            for glitchling in self.apply_order:
+                result = cast(str, glitchling.corrupt(result))
+            return result
+
         if master_seed is None:
             message = "Gaggle orchestration requires a master seed"
             raise RuntimeError(message)
