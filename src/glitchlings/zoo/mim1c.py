@@ -110,11 +110,10 @@ class Mim1c(Glitchling):
             banned_characters=normalised_banned,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload:
+    def pipeline_operation(self) -> PipelineOperationPayload | None:
         rate = self.kwargs.get("rate")
         if rate is None:
-            message = "Mim1c is missing a configured homoglyph substitution rate"
-            raise RuntimeError(message)
+            return None
 
         descriptor: dict[str, object] = {"type": "mimic", "rate": float(rate)}
 

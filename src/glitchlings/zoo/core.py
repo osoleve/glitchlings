@@ -201,7 +201,7 @@ class Glitchling:
         scope: AttackWave,
         order: AttackOrder = AttackOrder.NORMAL,
         seed: int | None = None,
-        pipeline_operation: Callable[["Glitchling"], Mapping[str, Any]] | None = None,
+        pipeline_operation: Callable[["Glitchling"], Mapping[str, Any] | None] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -251,17 +251,26 @@ class Glitchling:
             if target == canonical:
                 setattr(self, alias, value)
 
-    def pipeline_operation(self) -> PipelineOperationPayload:
-        """Return the Rust pipeline operation descriptor for this glitchling."""
+    def pipeline_operation(self) -> PipelineOperationPayload | None:
+        """Return the Rust pipeline descriptor or ``None`` when unavailable.
+
+        Glitchlings that cannot provide a compiled pipeline (for example the
+        lightweight helpers used in tests) should override this hook or supply
+        a ``pipeline_operation`` factory that returns ``None`` to indicate that
+        Python orchestration must be used instead. When a descriptor mapping is
+        returned it is validated and forwarded to the Rust pipeline.
+        """
 
         factory = self._pipeline_descriptor_factory
         if factory is None:
-            message = f"{self.name} does not define a Rust pipeline descriptor"
-            raise RuntimeError(message)
+            return None
 
         descriptor = factory(self)
+        if descriptor is None:
+            return None
+
         if not isinstance(descriptor, Mapping):  # pragma: no cover - defensive
-            raise TypeError("Pipeline descriptor factories must return a mapping")
+            raise TypeError("Pipeline descriptor factories must return a mapping or None")
 
         payload = dict(descriptor)
         payload_type = payload.get("type")
@@ -445,12 +454,19 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
-    def _pipeline_descriptors(self) -> list[PipelineDescriptor]:
+    def _pipeline_descriptors(self) -> tuple[list[PipelineDescriptor], list[Glitchling]]:
+        """Collect pipeline descriptors and track glitchlings missing them."""
         descriptors: list[PipelineDescriptor] = []
+        missing: list[Glitchling] = []
         for glitchling in self.apply_order:
             operation = glitchling.pipeline_operation()
+            if operation is None:
+                missing.append(glitchling)
+                continue
+
             if not isinstance(operation, Mapping):  # pragma: no cover - defensive
-                raise TypeError("Pipeline operations must be mappings")
+                raise TypeError("Pipeline operations must be mappings or None")
+
             operation_payload = dict(operation)
             operation_type = operation_payload.get("type")
             if not isinstance(operation_type, str):
@@ -479,12 +495,18 @@ class Gaggle(Glitchling):
                 )
             )
 
-        return descriptors
+        return descriptors, missing
 
     def _corrupt_text(self, text: str) -> str:
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
-        descriptors = self._pipeline_descriptors()
+        descriptors, missing = self._pipeline_descriptors()
+
+        if missing:
+            result = text
+            for glitchling in self.apply_order:
+                result = cast(str, glitchling.corrupt(result))
+            return result
 
         if master_seed is None:
             message = "Gaggle orchestration requires a master seed"
