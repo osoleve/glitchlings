@@ -42,35 +42,6 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Ignored because pytest-cov is not installed.",
     )
 
-
-def _build_rust_extension() -> None:
-    """Install the project in editable mode to compile the Rust extension."""
-
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "pip", "install", "-e", str(ROOT)],
-            check=True,
-            cwd=str(ROOT),
-        )
-    except subprocess.CalledProcessError as exc:  # pragma: no cover - build failure
-        message = "Failed to build the Rust extension."
-        raise RuntimeError(message) from exc
-
-
-def ensure_rust_extension_importable() -> None:
-    """Ensure the compiled Rust extension is importable for tests."""
-
-    importlib.import_module("glitchlings")
-    try:
-        importlib.import_module("glitchlings._zoo_rust")
-    except ModuleNotFoundError:
-        _build_rust_extension()
-        importlib.invalidate_caches()
-        sys.modules.pop("glitchlings._zoo_rust", None)
-        sys.modules.pop("_zoo_rust", None)
-        importlib.import_module("glitchlings._zoo_rust")
-ensure_rust_extension_importable()
-
 @pytest.fixture(scope="session")
 def sample_text() -> str:
     from glitchlings import SAMPLE_TEXT
