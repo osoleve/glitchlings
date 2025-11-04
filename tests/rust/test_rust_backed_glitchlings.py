@@ -63,27 +63,33 @@ def test_compose_glitchlings_propagates_glitch_errors():
 
 
 @pytest.mark.parametrize(
-    ("glitch_cls", "expected_rate"),
+    ("glitch_cls", "expected_rate", "expects_descriptor"),
     [
-        (typogre_module.Typogre, 0.02),
-        (mim1c_module.Mim1c, 0.02),
-        (scannequin_module.Scannequin, 0.02),
-        (zeedub_module.Zeedub, 0.02),
-        (ekkokin_module.Ekkokin, 0.02),
-        (hokey_module.Hokey, 0.3),
+        (typogre_module.Typogre, 0.02, True),
+        (mim1c_module.Mim1c, 0.02, True),
+        (scannequin_module.Scannequin, 0.02, False),
+        (zeedub_module.Zeedub, 0.02, True),
+        (ekkokin_module.Ekkokin, 0.02, True),
+        (hokey_module.Hokey, 0.3, True),
     ],
 )
-def test_pipeline_descriptor_restores_default_rate(glitch_cls, expected_rate):
+def test_pipeline_descriptor_restores_default_rate(
+    glitch_cls, expected_rate, expects_descriptor
+):
     glitch = glitch_cls()
     glitch.set_param("rate", None)
 
     descriptor = glitch.pipeline_operation()
 
+    if not expects_descriptor:
+        assert descriptor is None
+        return
+
     assert descriptor is not None
     assert descriptor["rate"] == pytest.approx(expected_rate)
 
 
-def test_redactyl_pipeline_resets_optional_parameters():
+def test_redactyl_pipeline_requires_complete_parameters():
     glitch = redactyl_module.Redactyl(
         replacement_char="*",
         rate=0.5,
@@ -96,10 +102,24 @@ def test_redactyl_pipeline_resets_optional_parameters():
 
     descriptor = glitch.pipeline_operation()
 
-    assert descriptor is not None
-    assert descriptor["replacement_char"] == redactyl_module.FULL_BLOCK
-    assert descriptor["merge_adjacent"] is False
-    assert descriptor["rate"] == pytest.approx(0.025)
+    assert descriptor is None
+
+
+def test_redactyl_python_fallback_coerces_optional_parameters():
+    glitch = redactyl_module.Redactyl(
+        replacement_char="*",
+        rate=0.5,
+        merge_adjacent=True,
+    )
+
+    glitch.set_param("replacement_char", None)
+    glitch.set_param("merge_adjacent", None)
+
+    text = "one two three four five six seven eight nine ten"
+
+    result = glitch.corrupt(text)
+
+    assert redactyl_module.FULL_BLOCK in result
 
 
 def test_zeedub_pipeline_defaults_to_curated_characters():

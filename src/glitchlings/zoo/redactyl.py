@@ -11,9 +11,9 @@ _redact_words_rust = get_rust_operation("redact_words")
 
 def redact_words(
     text: str,
-    replacement_char: str = FULL_BLOCK,
+    replacement_char: str | None = FULL_BLOCK,
     rate: float | None = None,
-    merge_adjacent: bool = False,
+    merge_adjacent: bool | None = False,
     seed: int = 151,
     rng: random.Random | None = None,
     *,
@@ -21,6 +21,9 @@ def redact_words(
 ) -> str:
     """Redact random words by replacing their characters."""
     effective_rate = 0.025 if rate is None else rate
+
+    replacement = FULL_BLOCK if replacement_char is None else str(replacement_char)
+    merge = False if merge_adjacent is None else bool(merge_adjacent)
 
     if rng is None:
         rng = random.Random(seed)
@@ -32,9 +35,9 @@ def redact_words(
         str,
         _redact_words_rust(
             text,
-            replacement_char,
+            replacement,
             clamped_rate,
-            merge_adjacent,
+            merge,
             unweighted_flag,
             rng,
         ),
@@ -65,19 +68,23 @@ class Redactyl(Glitchling):
             unweighted=unweighted,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload:
+    def pipeline_operation(self) -> PipelineOperationPayload | None:
         replacement_char_value = self.kwargs.get("replacement_char")
         rate_value = self.kwargs.get("rate")
         merge_value = self.kwargs.get("merge_adjacent")
 
-        if replacement_char_value is None:
-            replacement_char = FULL_BLOCK
-        else:
-            replacement_char = str(replacement_char_value)
-        rate = 0.025 if rate_value is None else float(rate_value)
-        merge_adjacent = False if merge_value is None else bool(merge_value)
+        if (
+            replacement_char_value is None
+            or rate_value is None
+            or merge_value is None
+        ):
+            return None
 
+        replacement_char = str(replacement_char_value)
+        rate = float(rate_value)
+        merge_adjacent = bool(merge_value)
         unweighted = bool(self.kwargs.get("unweighted", False))
+
         return cast(
             PipelineOperationPayload,
             {
