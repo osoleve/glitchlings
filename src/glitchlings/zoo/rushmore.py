@@ -350,7 +350,7 @@ def rushmore_attack(
     return result
 
 
-def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any]:
+def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | None:
     config = _resolve_rushmore_config(
         modes=glitchling.kwargs.get("modes"),
         rate=glitchling.kwargs.get("rate"),
@@ -363,7 +363,7 @@ def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any]:
         allow_defaults=False,
     )
     if config is None:
-        raise RuntimeError("Rushmore configuration could not be resolved for the pipeline")
+        return None
     return config.to_pipeline_descriptor()
 
 
