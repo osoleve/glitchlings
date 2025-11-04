@@ -60,15 +60,34 @@ def _build_rust_extension() -> None:
 def ensure_rust_extension_importable() -> None:
     """Ensure the compiled Rust extension is importable for tests."""
 
-    importlib.import_module("glitchlings")
-    try:
+    def _import_extension() -> None:
         importlib.import_module("glitchlings._zoo_rust")
+
+    def _needs_rebuild(error: RuntimeError) -> bool:
+        message = str(error)
+        return "glitchlings._zoo_rust" in message or "Rust operation" in message
+
+    try:
+        _import_extension()
     except ModuleNotFoundError:
+        rebuild = True
+    except RuntimeError as exc:
+        if _needs_rebuild(exc):
+            rebuild = True
+        else:  # pragma: no cover - unrelated runtime failure
+            raise
+    else:
+        rebuild = False
+
+    if rebuild:
         _build_rust_extension()
         importlib.invalidate_caches()
+        sys.modules.pop("glitchlings", None)
         sys.modules.pop("glitchlings._zoo_rust", None)
         sys.modules.pop("_zoo_rust", None)
-        importlib.import_module("glitchlings._zoo_rust")
+        _import_extension()
+
+    importlib.import_module("glitchlings")
 ensure_rust_extension_importable()
 
 @pytest.fixture(scope="session")

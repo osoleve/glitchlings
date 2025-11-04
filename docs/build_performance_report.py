@@ -54,7 +54,7 @@ def _ensure_rust_extension_importable() -> None:
     if not artifacts:
         return
 
-    importlib.import_module("glitchlings")
+    sys.modules.pop("glitchlings", None)
 
     for artifact in artifacts:
         spec = importlib.util.spec_from_file_location("glitchlings._zoo_rust", artifact)
@@ -64,9 +64,14 @@ def _ensure_rust_extension_importable() -> None:
             module = importlib.util.module_from_spec(spec)
             sys.modules["glitchlings._zoo_rust"] = module
             spec.loader.exec_module(module)
-            package = sys.modules.get("glitchlings")
-            if package is not None and hasattr(package, "__path__"):
-                package.__path__.append(str(artifact.parent))
+            try:
+                package = importlib.import_module("glitchlings")
+            except RuntimeError:
+                continue
+            if hasattr(package, "__path__"):
+                path_entry = str(artifact.parent)
+                if path_entry not in package.__path__:
+                    package.__path__.append(path_entry)
             return
         except (ImportError, ModuleNotFoundError):
             # Extension exists but cannot be loaded (ABI mismatch, missing libraries, etc.)
