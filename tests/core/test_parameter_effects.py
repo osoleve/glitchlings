@@ -1,19 +1,10 @@
 from __future__ import annotations
 
-import importlib
 import math
 from typing import cast
 
 from glitchlings import adjax, mim1c, redactyl, reduple, rushmore, scannequin, typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
-
-adjax_module = importlib.import_module("glitchlings.zoo.adjax")
-reduple_module = importlib.import_module("glitchlings.zoo.reduple")
-rushmore_module = importlib.import_module("glitchlings.zoo.rushmore")
-redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")
-
-def _count_blocks(s: str, block_char: str = "\u2588") -> int:
-    return s.count(block_char)
 
 
 def test_mim1c_rate_bounds(sample_text):
@@ -45,17 +36,19 @@ def test_mim1c_respects_banned_characters():
 
 def test_reduple_rate_increases_tokens():
     text = "a b c d e f g h"
-    reduple.set_param("seed", 5)
-    reduple.set_param("rate", 0.5)
-    out = cast(str, reduple(text))
+    glitch = reduple.clone()
+    glitch.set_param("seed", 5)
+    glitch.set_param("rate", 0.5)
+    out = cast(str, glitch(text))
     assert len(out.split()) >= len(text.split())
 
 
 def test_rushmore_rate_decreases_tokens():
     text = "a b c d e f g h"
-    rushmore.set_param("seed", 5)
-    rushmore.set_param("rate", 0.5)
-    out = cast(str, rushmore(text))
+    glitch = rushmore.clone()
+    glitch.set_param("seed", 5)
+    glitch.set_param("rate", 0.5)
+    out = cast(str, glitch(text))
     assert len(out.split()) <= len(text.split())
 
 
@@ -65,9 +58,10 @@ def test_rushmore_max_deletion_cap():
     candidate_count = max(len(words) - 1, 0)
 
     for rate, seed in [(0.1, 3), (0.5, 11), (1.0, 17)]:
-        rushmore.set_param("seed", seed)
-        rushmore.set_param("rate", rate)
-        out = cast(str, rushmore(text))
+        glitch = rushmore.clone()
+        glitch.set_param("seed", seed)
+        glitch.set_param("rate", rate)
+        out = cast(str, glitch(text))
 
         removed = len(words) - len(out.split())
         allowed = min(candidate_count, math.floor(candidate_count * rate))
@@ -77,11 +71,13 @@ def test_rushmore_max_deletion_cap():
 def test_rushmore_preserves_leading_token_and_spacing():
     text = "Alpha, beta; gamma: delta epsilon zeta"
     seeds = (0, 3, 11, 21)
-    rushmore.set_param("rate", 1.0)
+    template = rushmore.clone()
+    template.set_param("rate", 1.0)
     words = text.split()
     for seed in seeds:
-        rushmore.set_param("seed", seed)
-        out = cast(str, rushmore(text))
+        glitch = template.clone()
+        glitch.set_param("seed", seed)
+        out = cast(str, glitch(text))
         leading = out.split()[0]
         original_core = "".join(ch for ch in words[0] if ch.isalnum())
         result_core = "".join(ch for ch in leading if ch.isalnum())
@@ -95,25 +91,28 @@ def test_rushmore_preserves_leading_token_and_spacing():
 
 def test_adjax_full_rate_swaps_word_cores():
     text = "Alpha, beta! Gamma delta"
-    adjax.set_param("seed", 11)
-    adjax.set_param("rate", 1.0)
-    out = cast(str, adjax(text))
+    glitch = adjax.clone()
+    glitch.set_param("seed", 11)
+    glitch.set_param("rate", 1.0)
+    out = cast(str, glitch(text))
     assert out == "beta, Alpha! delta Gamma"
 
 def test_adjax_zero_rate_preserves_text():
     text = "Leave punctuation intact, please."
-    adjax.set_param("seed", 7)
-    adjax.set_param("rate", 0.0)
-    out = cast(str, adjax(text))
+    glitch = adjax.clone()
+    glitch.set_param("seed", 7)
+    glitch.set_param("rate", 0.0)
+    out = cast(str, glitch(text))
     assert out == text
 
 def test_redactyl_replacement_char_and_merge():
     text = "alpha beta gamma"
-    redactyl.set_param("seed", 2)
-    redactyl.set_param("rate", 1.0)
-    redactyl.set_param("replacement_char", "#")
-    redactyl.set_param("merge_adjacent", True)
-    out = cast(str, redactyl(text))
+    glitch = redactyl.clone()
+    glitch.set_param("seed", 2)
+    glitch.set_param("rate", 1.0)
+    glitch.set_param("replacement_char", "#")
+    glitch.set_param("merge_adjacent", True)
+    out = cast(str, glitch(text))
     assert set(out) <= {"#", " "}
     assert "# #" not in out  # merged
 
@@ -122,13 +121,15 @@ def test_scannequin_rate_increases_changes(sample_text):
     def diff_count(a: str, b: str) -> int:
         return sum(1 for x, y in zip(a, b) if x != y) + abs(len(a) - len(b))
 
-    scannequin.set_param("seed", 7)
-    scannequin.set_param("rate", 0.005)
-    low = cast(str, scannequin(sample_text))
+    low_glitch = scannequin.clone()
+    low_glitch.set_param("seed", 7)
+    low_glitch.set_param("rate", 0.005)
+    low = cast(str, low_glitch(sample_text))
 
-    scannequin.set_param("seed", 7)
-    scannequin.set_param("rate", 0.05)
-    high = cast(str, scannequin(sample_text))
+    high_glitch = scannequin.clone()
+    high_glitch.set_param("seed", 7)
+    high_glitch.set_param("rate", 0.05)
+    high = cast(str, high_glitch(sample_text))
 
     assert diff_count(sample_text, high) >= diff_count(sample_text, low)
 
@@ -138,13 +139,15 @@ def _count_zero_width(text: str) -> int:
 
 
 def test_zeedub_rate_increases_insertions(sample_text):
-    zeedub.set_param("seed", 11)
-    zeedub.set_param("rate", 0.004)
-    low = cast(str, zeedub(sample_text))
+    low_glitch = zeedub.clone()
+    low_glitch.set_param("seed", 11)
+    low_glitch.set_param("rate", 0.004)
+    low = cast(str, low_glitch(sample_text))
 
-    zeedub.set_param("seed", 11)
-    zeedub.set_param("rate", 0.05)
-    high = cast(str, zeedub(sample_text))
+    high_glitch = zeedub.clone()
+    high_glitch.set_param("seed", 11)
+    high_glitch.set_param("rate", 0.05)
+    high = cast(str, high_glitch(sample_text))
 
     assert _count_zero_width(high) >= _count_zero_width(low)
 
