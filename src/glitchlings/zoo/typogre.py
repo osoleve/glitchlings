@@ -65,7 +65,8 @@ class Typogre(Glitchling):
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:
-        rate = float(self.kwargs.get("rate", 0.02))
+        rate_value = self.kwargs.get("rate")
+        rate = 0.02 if rate_value is None else float(rate_value)
         keyboard = self.kwargs.get("keyboard", "CURATOR_QWERTY")
         layout = getattr(KEYNEIGHBORS, str(keyboard), None)
         if layout is None:

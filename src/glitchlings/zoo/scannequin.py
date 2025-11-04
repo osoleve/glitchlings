@@ -51,13 +51,12 @@ class Scannequin(Glitchling):
             rate=effective_rate,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload | None:
-        rate = self.kwargs.get("rate")
-        if rate is None:
-            return None
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        rate_value = self.kwargs.get("rate")
+        rate = 0.02 if rate_value is None else float(rate_value)
         return cast(
             PipelineOperationPayload,
-            {"type": "ocr", "rate": float(rate)},
+            {"type": "ocr", "rate": rate},
         )
 
 
