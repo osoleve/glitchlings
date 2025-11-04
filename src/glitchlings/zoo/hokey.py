@@ -148,15 +148,23 @@ class Hokey(GlitchlingBase):
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:
+        kwargs = self.kwargs
+        rate = kwargs.get("rate")
+        extension_min = kwargs.get("extension_min")
+        extension_max = kwargs.get("extension_max")
+        word_length_threshold = kwargs.get("word_length_threshold")
+        base_p = kwargs.get("base_p")
         return cast(
             PipelineOperationPayload,
             {
                 "type": "hokey",
-                "rate": self.kwargs.get("rate", 0.3),
-                "extension_min": self.kwargs.get("extension_min", 2),
-                "extension_max": self.kwargs.get("extension_max", 5),
-                "word_length_threshold": self.kwargs.get("word_length_threshold", 6),
-                "base_p": self.kwargs.get("base_p", 0.45),
+                "rate": 0.3 if rate is None else float(rate),
+                "extension_min": 2 if extension_min is None else int(extension_min),
+                "extension_max": 5 if extension_max is None else int(extension_max),
+                "word_length_threshold": 6
+                if word_length_threshold is None
+                else int(word_length_threshold),
+                "base_p": 0.45 if base_p is None else float(base_p),
             },
         )
 

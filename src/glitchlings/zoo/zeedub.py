@@ -72,9 +72,8 @@ class Zeedub(Glitchling):
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload | None:
-        rate = self.kwargs.get("rate")
-        if rate is None:
-            return None
+        rate_value = self.kwargs.get("rate")
+        rate = 0.02 if rate_value is None else float(rate_value)
 
         raw_characters = self.kwargs.get("characters")
         if raw_characters is None:
@@ -89,7 +88,7 @@ class Zeedub(Glitchling):
             PipelineOperationPayload,
             {
                 "type": "zwj",
-                "rate": float(rate),
+                "rate": rate,
                 "characters": list(palette),
             },
         )
