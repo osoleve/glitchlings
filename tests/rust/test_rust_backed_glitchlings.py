@@ -105,6 +105,23 @@ def test_redactyl_pipeline_requires_complete_parameters():
     assert descriptor is None
 
 
+def test_redactyl_python_fallback_coerces_optional_parameters():
+    glitch = redactyl_module.Redactyl(
+        replacement_char="*",
+        rate=0.5,
+        merge_adjacent=True,
+    )
+
+    glitch.set_param("replacement_char", None)
+    glitch.set_param("merge_adjacent", None)
+
+    text = "one two three four five six seven eight nine ten"
+
+    result = glitch.corrupt(text)
+
+    assert redactyl_module.FULL_BLOCK in result
+
+
 def test_zeedub_pipeline_defaults_to_curated_characters():
     glitch = zeedub_module.Zeedub(characters=("\u200b",))
     glitch.set_param("characters", None)
