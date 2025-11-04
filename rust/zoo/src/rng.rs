@@ -1,3 +1,5 @@
+use rand::RngCore;
+use rand::SeedableRng;
 use std::collections::HashSet;
 use std::fmt;
 
@@ -269,6 +271,44 @@ impl PyRng {
             out.push(population[index].clone());
         }
         Ok(out)
+    }
+}
+
+impl RngCore for PyRng {
+    fn next_u32(&mut self) -> u32 {
+        self.gen_u32()
+    }
+
+    fn next_u64(&mut self) -> u64 {
+        ((self.gen_u32() as u64) << 32) | self.gen_u32() as u64
+    }
+
+    fn fill_bytes(&mut self, dest: &mut [u8]) {
+        self.try_fill_bytes(dest)
+            .expect("PyRng::try_fill_bytes is infallible");
+    }
+
+    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), rand::Error> {
+        let mut written = 0;
+        while written < dest.len() {
+            let chunk = self.gen_u32().to_le_bytes();
+            let take = (dest.len() - written).min(chunk.len());
+            dest[written..written + take].copy_from_slice(&chunk[..take]);
+            written += take;
+        }
+        Ok(())
+    }
+}
+
+impl SeedableRng for PyRng {
+    type Seed = [u8; 8];
+
+    fn from_seed(seed: Self::Seed) -> Self {
+        Self::new(u64::from_le_bytes(seed))
+    }
+
+    fn seed_from_u64(seed: u64) -> Self {
+        Self::new(seed)
     }
 }
 
