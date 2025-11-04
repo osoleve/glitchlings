@@ -414,6 +414,104 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
     }
 }
 
+impl PyGlitchOperation {
+    fn into_glitch_operation(self, seed: u64) -> PyResult<GlitchOperation> {
+        let operation = match self {
+            PyGlitchOperation::Reduplicate { rate, unweighted } => {
+                GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp { rate, unweighted })
+            }
+            PyGlitchOperation::Delete { rate, unweighted } => {
+                GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { rate, unweighted })
+            }
+            PyGlitchOperation::SwapAdjacent { rate } => {
+                GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
+            }
+            PyGlitchOperation::RushmoreCombo {
+                modes,
+                delete,
+                duplicate,
+                swap,
+            } => {
+                let rushmore_modes = modes
+                    .into_iter()
+                    .map(|mode| match mode.as_str() {
+                        "delete" => Ok(glitch_ops::RushmoreComboMode::Delete),
+                        "duplicate" => Ok(glitch_ops::RushmoreComboMode::Duplicate),
+                        "swap" => Ok(glitch_ops::RushmoreComboMode::Swap),
+                        other => Err(PyValueError::new_err(format!(
+                            "unsupported Rushmore mode: {other}"
+                        ))),
+                    })
+                    .collect::<Result<Vec<_>, PyErr>>()?;
+                GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
+                    rushmore_modes,
+                    delete,
+                    duplicate,
+                    swap,
+                ))
+            }
+            PyGlitchOperation::Redact {
+                replacement_char,
+                rate,
+                merge_adjacent,
+                unweighted,
+            } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
+                replacement_char,
+                rate,
+                merge_adjacent,
+                unweighted,
+            }),
+            PyGlitchOperation::Ocr { rate } => {
+                GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
+            }
+            PyGlitchOperation::Typo { rate, layout } => {
+                let layout_map: HashMap<String, Vec<String>> =
+                    layout.as_ref().iter().cloned().collect();
+                GlitchOperation::Typo(glitch_ops::TypoOp {
+                    rate,
+                    layout: layout_map,
+                })
+            }
+            PyGlitchOperation::Mimic {
+                rate,
+                classes,
+                banned,
+            } => GlitchOperation::Mimic(Mim1cOp::new(rate, classes, banned)),
+            PyGlitchOperation::ZeroWidth { rate, characters } => {
+                GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
+            }
+            PyGlitchOperation::Ekkokin { rate, weighting } => {
+                let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
+                    PyValueError::new_err(format!("unsupported weighting: {weighting}"))
+                })?;
+                GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
+            }
+            PyGlitchOperation::Pedant { stone } => {
+                let op = PedantOp::new(seed as i128, &stone)?;
+                GlitchOperation::Pedant(op)
+            }
+            PyGlitchOperation::QuotePairs => {
+                GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
+            }
+            PyGlitchOperation::Hokey {
+                rate,
+                extension_min,
+                extension_max,
+                word_length_threshold,
+                base_p,
+            } => GlitchOperation::Hokey(HokeyOp {
+                rate,
+                extension_min,
+                extension_max,
+                word_length_threshold,
+                base_p,
+            }),
+        };
+
+        Ok(operation)
+    }
+}
+
 pub(crate) fn apply_operation<'py, O>(
     text: &str,
     op: O,
@@ -543,101 +641,9 @@ fn compose_glitchlings(
     let operations = descriptors
         .into_iter()
         .map(|descriptor| {
-            let operation = match descriptor.operation {
-                PyGlitchOperation::Reduplicate { rate, unweighted } => {
-                    GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
-                        rate,
-                        unweighted,
-                    })
-                }
-                PyGlitchOperation::Delete { rate, unweighted } => {
-                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { rate, unweighted })
-                }
-                PyGlitchOperation::SwapAdjacent { rate } => {
-                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
-                }
-                PyGlitchOperation::RushmoreCombo {
-                    modes,
-                    delete,
-                    duplicate,
-                    swap,
-                } => {
-                    let rushmore_modes = modes
-                        .into_iter()
-                        .map(|mode| match mode.as_str() {
-                            "delete" => Ok(glitch_ops::RushmoreComboMode::Delete),
-                            "duplicate" => Ok(glitch_ops::RushmoreComboMode::Duplicate),
-                            "swap" => Ok(glitch_ops::RushmoreComboMode::Swap),
-                            other => Err(PyValueError::new_err(format!(
-                                "unsupported Rushmore mode: {other}"
-                            ))),
-                        })
-                        .collect::<Result<Vec<_>, PyErr>>()?;
-                    GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
-                        rushmore_modes,
-                        delete,
-                        duplicate,
-                        swap,
-                    ))
-                }
-                PyGlitchOperation::Redact {
-                    replacement_char,
-                    rate,
-                    merge_adjacent,
-                    unweighted,
-                } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
-                    replacement_char,
-                    rate,
-                    merge_adjacent,
-                    unweighted,
-                }),
-                PyGlitchOperation::Ocr { rate } => {
-                    GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
-                }
-                PyGlitchOperation::Typo { rate, layout } => {
-                    let layout_map: HashMap<String, Vec<String>> =
-                        layout.as_ref().iter().cloned().collect();
-                    GlitchOperation::Typo(glitch_ops::TypoOp {
-                        rate,
-                        layout: layout_map,
-                    })
-                }
-                PyGlitchOperation::Mimic {
-                    rate,
-                    classes,
-                    banned,
-                } => GlitchOperation::Mimic(Mim1cOp::new(rate, classes.clone(), banned.clone())),
-                PyGlitchOperation::ZeroWidth { rate, characters } => {
-                    GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
-                }
-                PyGlitchOperation::Ekkokin { rate, weighting } => {
-                    let weighting =
-                        HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
-                            PyValueError::new_err(format!("unsupported weighting: {weighting}"))
-                        })?;
-                    GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
-                }
-                PyGlitchOperation::Pedant { stone } => {
-                    let op = PedantOp::new(descriptor.seed as i128, &stone)?;
-                    GlitchOperation::Pedant(op)
-                }
-                PyGlitchOperation::QuotePairs => {
-                    GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
-                }
-                PyGlitchOperation::Hokey {
-                    rate,
-                    extension_min,
-                    extension_max,
-                    word_length_threshold,
-                    base_p,
-                } => GlitchOperation::Hokey(HokeyOp {
-                    rate,
-                    extension_min,
-                    extension_max,
-                    word_length_threshold,
-                    base_p,
-                }),
-            };
+            let operation = descriptor
+                .operation
+                .into_glitch_operation(descriptor.seed)?;
             Ok(GlitchDescriptor {
                 name: descriptor.name,
                 seed: descriptor.seed,

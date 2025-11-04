@@ -3,6 +3,7 @@
 import inspect
 import random
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
@@ -38,39 +39,54 @@ class PipelineDescriptor(TypedDict):
     seed: int
 
 
-def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
-    """Create a plan specification mapping from a glitchling instance."""
-    return {
-        "name": glitchling.name,
-        "scope": int(glitchling.level),
-        "order": int(glitchling.order),
-    }
+@dataclass(slots=True)
+class NormalizedPlanSpec:
+    """Concrete representation of orchestration metadata consumed by Rust."""
+
+    name: str
+    scope: int
+    order: int
+
+    @classmethod
+    def from_glitchling(cls, glitchling: "Glitchling") -> "NormalizedPlanSpec":
+        return cls(glitchling.name, int(glitchling.level), int(glitchling.order))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> "NormalizedPlanSpec":
+        try:
+            name = str(mapping["name"])
+            scope_value = int(mapping["scope"])
+            order_value = int(mapping["order"])
+        except KeyError as exc:  # pragma: no cover - defensive guard
+            raise ValueError(f"Plan specification missing required field: {exc.args[0]}") from exc
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Plan specification fields must be coercible to integers") from exc
+
+        return cls(name, scope_value, order_value)
+
+    @classmethod
+    def from_entry(cls, entry: PlanEntry) -> "NormalizedPlanSpec":
+        if isinstance(entry, Glitchling):
+            return cls.from_glitchling(entry)
+        if not isinstance(entry, Mapping):
+            message = "plan_glitchlings expects Glitchling instances or mapping specifications"
+            raise TypeError(message)
+        return cls.from_mapping(entry)
+
+    def as_mapping(self) -> PlanSpecification:
+        return {"name": self.name, "scope": self.scope, "order": self.order}
 
 
-def _normalize_plan_entry(entry: PlanEntry) -> PlanSpecification:
-    """Convert a plan entry (glitchling or mapping) into a normalized specification."""
-    if isinstance(entry, Glitchling):
-        return _spec_from_glitchling(entry)
-
-    if not isinstance(entry, Mapping):
-        message = "plan_glitchlings expects Glitchling instances or mapping specifications"
-        raise TypeError(message)
-
-    try:
-        name = str(entry["name"])
-        scope_value = int(entry["scope"])
-        order_value = int(entry["order"])
-    except KeyError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(f"Plan specification missing required field: {exc.args[0]}") from exc
-    except (TypeError, ValueError) as exc:
-        raise ValueError("Plan specification fields must be coercible to integers") from exc
-
-    return {"name": name, "scope": scope_value, "order": order_value}
-
-
-def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[PlanSpecification]:
+def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[NormalizedPlanSpec]:
     """Normalize a collection of orchestration plan entries."""
-    return [_normalize_plan_entry(entry) for entry in entries]
+
+    return [NormalizedPlanSpec.from_entry(entry) for entry in entries]
+
+
+def _normalize_plan_specs(specs: Sequence[Mapping[str, Any]]) -> list[NormalizedPlanSpec]:
+    """Normalize raw plan specification mappings."""
+
+    return [NormalizedPlanSpec.from_mapping(spec) for spec in specs]
 
 
 def _plan_glitchlings_with_rust(
@@ -102,9 +118,9 @@ def plan_glitchling_specs(
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
 
-    normalized_specs = [_normalize_plan_entry(spec) for spec in specs]
+    normalized_specs = [spec.as_mapping() for spec in _normalize_plan_specs(specs)]
     master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(list(normalized_specs), master_seed_int)
+    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
 
 
 def plan_glitchlings(
@@ -121,9 +137,9 @@ def plan_glitchlings(
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
 
-    normalized_specs = _normalize_plan_entries(entries)
+    normalized_specs = [spec.as_mapping() for spec in _normalize_plan_entries(entries)]
     master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(list(normalized_specs), master_seed_int)
+    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -379,6 +395,51 @@ class Glitchling:
         return cls(**filtered_kwargs)
 
 
+@dataclass(slots=True)
+class PipelineDescriptorModel:
+    """In-memory representation of a glitchling pipeline descriptor."""
+
+    name: str
+    seed: int
+    operation: PipelineOperationPayload
+
+    def as_mapping(self) -> PipelineDescriptor:
+        return {"name": self.name, "operation": self.operation, "seed": self.seed}
+
+
+def _build_pipeline_descriptor(
+    glitchling: "Glitchling",
+    *,
+    master_seed: int | None,
+) -> PipelineDescriptorModel | None:
+    """Materialise the Rust pipeline descriptor for ``glitchling`` when available."""
+
+    operation = glitchling.pipeline_operation()
+    if operation is None:
+        return None
+
+    if not isinstance(operation, Mapping):  # pragma: no cover - defensive
+        raise TypeError("Pipeline operations must be mappings or None")
+
+    operation_payload = dict(operation)
+    operation_type = operation_payload.get("type")
+    if not isinstance(operation_type, str):
+        message = f"Pipeline operation for {glitchling.name} is missing a string 'type'"
+        raise RuntimeError(message)
+
+    seed = glitchling.seed
+    if seed is None:
+        index = getattr(glitchling, "_gaggle_index", None)
+        if index is None or master_seed is None:
+            raise RuntimeError(
+                "Glitchling %s is missing deterministic seed configuration" % glitchling.name
+            )
+        seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
+
+    payload = cast(PipelineOperationPayload, operation_payload)
+    return PipelineDescriptorModel(glitchling.name, int(seed), payload)
+
+
 class Gaggle(Glitchling):
     """A collection of glitchlings executed in a deterministic order."""
 
@@ -458,42 +519,13 @@ class Gaggle(Glitchling):
         """Collect pipeline descriptors and track glitchlings missing them."""
         descriptors: list[PipelineDescriptor] = []
         missing: list[Glitchling] = []
+        master_seed = self.seed
         for glitchling in self.apply_order:
-            operation = glitchling.pipeline_operation()
-            if operation is None:
+            descriptor = _build_pipeline_descriptor(glitchling, master_seed=master_seed)
+            if descriptor is None:
                 missing.append(glitchling)
                 continue
-
-            if not isinstance(operation, Mapping):  # pragma: no cover - defensive
-                raise TypeError("Pipeline operations must be mappings or None")
-
-            operation_payload = dict(operation)
-            operation_type = operation_payload.get("type")
-            if not isinstance(operation_type, str):
-                message = f"Pipeline operation for {glitchling.name} is missing a string 'type'"
-                raise RuntimeError(message)
-
-            seed = glitchling.seed
-            if seed is None:
-                index = getattr(glitchling, "_gaggle_index", None)
-                master_seed = self.seed
-                if index is None or master_seed is None:
-                    raise RuntimeError(
-                        "Glitchling %s is missing deterministic seed configuration"
-                        % glitchling.name
-                    )
-                seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
-
-            descriptors.append(
-                cast(
-                    PipelineDescriptor,
-                    {
-                        "name": glitchling.name,
-                        "operation": cast(PipelineOperationPayload, operation_payload),
-                        "seed": int(seed),
-                    },
-                )
-            )
+            descriptors.append(descriptor.as_mapping())
 
         return descriptors, missing
 
