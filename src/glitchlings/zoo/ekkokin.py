@@ -100,13 +100,12 @@ class Ekkokin(_GlitchlingBase):
         )
 
 
-def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object] | None:
-    rate = glitch.kwargs.get("rate")
-    if rate is None:
-        return None
+def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object]:
+    rate_value = glitch.kwargs.get("rate")
+    rate = _DEFAULT_RATE if rate_value is None else float(rate_value)
     return {
         "type": "ekkokin",
-        "rate": float(rate),
+        "rate": rate,
         "weighting": _DEFAULT_WEIGHTING,
     }
 
