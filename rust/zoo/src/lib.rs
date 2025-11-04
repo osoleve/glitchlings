@@ -1,6 +1,7 @@
 mod ekkokin;
 mod glitch_ops;
 mod hokey;
+mod mim1c;
 mod pedant;
 mod pipeline;
 mod resources;
@@ -24,6 +25,7 @@ pub use glitch_ops::{
     TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
+use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{PyRng, PyRngError};
@@ -82,18 +84,9 @@ struct PyGlitchDescriptor {
 impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         let dict = obj.downcast::<PyDict>()?;
-        let name = dict
-            .get_item("name")?
-            .ok_or_else(|| PyValueError::new_err("descriptor missing 'name' field"))?
-            .extract()?;
-        let seed = dict
-            .get_item("seed")?
-            .ok_or_else(|| PyValueError::new_err("descriptor missing 'seed' field"))?
-            .extract()?;
-        let operation = dict
-            .get_item("operation")?
-            .ok_or_else(|| PyValueError::new_err("descriptor missing 'operation' field"))?
-            .extract()?;
+        let name = extract_required_field_with_field_suffix(&dict, "descriptor", "name")?;
+        let seed = extract_required_field_with_field_suffix(&dict, "descriptor", "seed")?;
+        let operation = extract_required_field_with_field_suffix(&dict, "descriptor", "operation")?;
         Ok(Self {
             name,
             seed,
@@ -107,6 +100,61 @@ type LayoutVecCache = HashMap<usize, Arc<Vec<(String, Vec<String>)>>>;
 fn layout_vec_cache() -> &'static RwLock<LayoutVecCache> {
     static CACHE: OnceLock<RwLock<LayoutVecCache>> = OnceLock::new();
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+enum MissingFieldSuffix {
+    Absent,
+    IncludeField,
+}
+
+fn extract_required_field_inner<'py, T>(
+    dict: &Bound<'py, PyDict>,
+    context: &str,
+    field: &str,
+    suffix: MissingFieldSuffix,
+) -> PyResult<T>
+where
+    T: FromPyObject<'py>,
+{
+    let message = match suffix {
+        MissingFieldSuffix::Absent => format!("{context} missing '{field}'"),
+        MissingFieldSuffix::IncludeField => format!("{context} missing '{field}' field"),
+    };
+
+    dict.get_item(field)?
+        .ok_or_else(|| PyValueError::new_err(message))?
+        .extract()
+}
+
+fn extract_required_field<'py, T>(
+    dict: &Bound<'py, PyDict>,
+    context: &str,
+    field: &str,
+) -> PyResult<T>
+where
+    T: FromPyObject<'py>,
+{
+    extract_required_field_inner(dict, context, field, MissingFieldSuffix::Absent)
+}
+
+fn extract_required_field_with_field_suffix<'py, T>(
+    dict: &Bound<'py, PyDict>,
+    context: &str,
+    field: &str,
+) -> PyResult<T>
+where
+    T: FromPyObject<'py>,
+{
+    extract_required_field_inner(dict, context, field, MissingFieldSuffix::IncludeField)
+}
+
+fn extract_optional_field<'py, T>(dict: &Bound<'py, PyDict>, field: &str) -> PyResult<Option<T>>
+where
+    T: FromPyObject<'py>,
+{
+    dict.get_item(field)?
+        .map(|value| value.extract())
+        .transpose()
 }
 
 fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Vec<(String, Vec<String>)>>> {
@@ -141,18 +189,12 @@ struct PyGagglePlanInput {
 impl<'py> FromPyObject<'py> for PyGagglePlanInput {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         if let Ok(dict) = obj.downcast::<PyDict>() {
-            let name: String = dict
-                .get_item("name")?
-                .ok_or_else(|| PyValueError::new_err("plan input missing 'name' field"))?
-                .extract()?;
-            let scope: i32 = dict
-                .get_item("scope")?
-                .ok_or_else(|| PyValueError::new_err("plan input missing 'scope' field"))?
-                .extract()?;
-            let order: i32 = dict
-                .get_item("order")?
-                .ok_or_else(|| PyValueError::new_err("plan input missing 'order' field"))?
-                .extract()?;
+            let name: String =
+                extract_required_field_with_field_suffix(&dict, "plan input", "name")?;
+            let scope: i32 =
+                extract_required_field_with_field_suffix(&dict, "plan input", "scope")?;
+            let order: i32 =
+                extract_required_field_with_field_suffix(&dict, "plan input", "order")?;
             return Ok(Self { name, scope, order });
         }
 
@@ -204,6 +246,11 @@ enum PyGlitchOperation {
         rate: f64,
         layout: Arc<Vec<(String, Vec<String>)>>,
     },
+    Mimic {
+        rate: f64,
+        classes: MimicClassSelection,
+        banned: Vec<String>,
+    },
     ZeroWidth {
         rate: f64,
         characters: Vec<String>,
@@ -228,63 +275,34 @@ enum PyGlitchOperation {
 impl<'py> FromPyObject<'py> for PyGlitchOperation {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         let dict = obj.downcast::<PyDict>()?;
-        let op_type: String = dict
-            .get_item("type")?
-            .ok_or_else(|| PyValueError::new_err("operation missing 'type' field"))?
-            .extract()?;
+        let op_type: String = extract_required_field_with_field_suffix(&dict, "operation", "type")?;
         match op_type.as_str() {
             "reduplicate" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("reduplicate operation missing 'rate'"))?
-                    .extract()?;
-                let unweighted = dict
-                    .get_item("unweighted")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or(false);
+                let rate = extract_required_field(&dict, "reduplicate operation", "rate")?;
+                let unweighted = extract_optional_field(&dict, "unweighted")?.unwrap_or(false);
                 Ok(PyGlitchOperation::Reduplicate { rate, unweighted })
             }
             "delete" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("delete operation missing 'rate'"))?
-                    .extract()?;
-                let unweighted = dict
-                    .get_item("unweighted")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or(false);
+                let rate = extract_required_field(&dict, "delete operation", "rate")?;
+                let unweighted = extract_optional_field(&dict, "unweighted")?.unwrap_or(false);
                 Ok(PyGlitchOperation::Delete { rate, unweighted })
             }
             "swap_adjacent" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("swap_adjacent operation missing 'rate'"))?
-                    .extract()?;
+                let rate = extract_required_field(&dict, "swap_adjacent operation", "rate")?;
                 Ok(PyGlitchOperation::SwapAdjacent { rate })
             }
             "rushmore_combo" => {
-                let modes: Vec<String> = dict
-                    .get_item("modes")?
-                    .ok_or_else(|| PyValueError::new_err("rushmore_combo operation missing 'modes'"))?
-                    .extract()?;
+                let modes: Vec<String> =
+                    extract_required_field(&dict, "rushmore_combo operation", "modes")?;
 
                 let delete = dict
                     .get_item("delete")?
                     .map(|value| -> PyResult<DeleteRandomWordsOp> {
                         let mapping = value.downcast::<PyDict>()?;
-                        let rate = mapping
-                            .get_item("rate")?
-                            .ok_or_else(|| {
-                                PyValueError::new_err("rushmore_combo delete missing 'rate'")
-                            })?
-                            .extract()?;
-                        let unweighted = mapping
-                            .get_item("unweighted")?
-                            .map(|inner| inner.extract())
-                            .transpose()?
-                            .unwrap_or(false);
+                        let rate =
+                            extract_required_field(&mapping, "rushmore_combo delete", "rate")?;
+                        let unweighted =
+                            extract_optional_field(&mapping, "unweighted")?.unwrap_or(false);
                         Ok(DeleteRandomWordsOp { rate, unweighted })
                     })
                     .transpose()?;
@@ -293,17 +311,10 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .get_item("duplicate")?
                     .map(|value| -> PyResult<ReduplicateWordsOp> {
                         let mapping = value.downcast::<PyDict>()?;
-                        let rate = mapping
-                            .get_item("rate")?
-                            .ok_or_else(|| {
-                                PyValueError::new_err("rushmore_combo duplicate missing 'rate'")
-                            })?
-                            .extract()?;
-                        let unweighted = mapping
-                            .get_item("unweighted")?
-                            .map(|inner| inner.extract())
-                            .transpose()?
-                            .unwrap_or(false);
+                        let rate =
+                            extract_required_field(&mapping, "rushmore_combo duplicate", "rate")?;
+                        let unweighted =
+                            extract_optional_field(&mapping, "unweighted")?.unwrap_or(false);
                         Ok(ReduplicateWordsOp { rate, unweighted })
                     })
                     .transpose()?;
@@ -312,12 +323,7 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     .get_item("swap")?
                     .map(|value| -> PyResult<SwapAdjacentWordsOp> {
                         let mapping = value.downcast::<PyDict>()?;
-                        let rate = mapping
-                            .get_item("rate")?
-                            .ok_or_else(|| {
-                                PyValueError::new_err("rushmore_combo swap missing 'rate'")
-                            })?
-                            .extract()?;
+                        let rate = extract_required_field(&mapping, "rushmore_combo swap", "rate")?;
                         Ok(SwapAdjacentWordsOp { rate })
                     })
                     .transpose()?;
@@ -330,27 +336,12 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 })
             }
             "redact" => {
-                let replacement_char = dict
-                    .get_item("replacement_char")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("redact operation missing 'replacement_char'")
-                    })?
-                    .extract()?;
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("redact operation missing 'rate'"))?
-                    .extract()?;
-                let merge_adjacent = dict
-                    .get_item("merge_adjacent")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("redact operation missing 'merge_adjacent'")
-                    })?
-                    .extract()?;
-                let unweighted = dict
-                    .get_item("unweighted")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or(false);
+                let replacement_char =
+                    extract_required_field(&dict, "redact operation", "replacement_char")?;
+                let rate = extract_required_field(&dict, "redact operation", "rate")?;
+                let merge_adjacent =
+                    extract_required_field(&dict, "redact operation", "merge_adjacent")?;
+                let unweighted = extract_optional_field(&dict, "unweighted")?.unwrap_or(false);
                 Ok(PyGlitchOperation::Redact {
                     replacement_char,
                     rate,
@@ -359,84 +350,55 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 })
             }
             "ocr" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("ocr operation missing 'rate'"))?
-                    .extract()?;
+                let rate = extract_required_field(&dict, "ocr operation", "rate")?;
                 Ok(PyGlitchOperation::Ocr { rate })
             }
             "typo" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("typo operation missing \'rate\' field"))?
-                    .extract()?;
-                let layout_obj = dict.get_item("layout")?.ok_or_else(|| {
-                    PyValueError::new_err("typo operation missing \'layout\' field")
-                })?;
+                let rate =
+                    extract_required_field_with_field_suffix(&dict, "typo operation", "rate")?;
+                let layout_obj: Bound<'py, PyAny> =
+                    extract_required_field_with_field_suffix(&dict, "typo operation", "layout")?;
                 let layout_dict = layout_obj.downcast::<PyDict>()?;
                 let layout = cached_layout_vec(layout_dict)?;
                 Ok(PyGlitchOperation::Typo { rate, layout })
             }
+            "mimic" => {
+                let rate =
+                    extract_required_field_with_field_suffix(&dict, "mimic operation", "rate")?;
+                let classes = mim1c::parse_class_selection(dict.get_item("classes")?)?;
+                let banned = mim1c::parse_banned_characters(dict.get_item("banned_characters")?)?;
+                Ok(PyGlitchOperation::Mimic {
+                    rate,
+                    classes,
+                    banned,
+                })
+            }
             "zwj" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("zwj operation missing \'rate\' field"))?
-                    .extract()?;
-                let characters = dict
-                    .get_item("characters")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or_default();
+                let rate =
+                    extract_required_field_with_field_suffix(&dict, "zwj operation", "rate")?;
+                let characters = extract_optional_field(&dict, "characters")?.unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
             "ekkokin" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("ekkokin operation missing 'rate'"))?
-                    .extract()?;
-                let weighting = dict
-                    .get_item("weighting")?
-                    .map(|value| value.extract())
-                    .transpose()?
+                let rate = extract_required_field(&dict, "ekkokin operation", "rate")?;
+                let weighting = extract_optional_field(&dict, "weighting")?
                     .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
                 Ok(PyGlitchOperation::Ekkokin { rate, weighting })
             }
             "pedant" => {
-                let stone = dict
-                    .get_item("stone")?
-                    .ok_or_else(|| PyValueError::new_err("pedant operation missing 'stone'"))?
-                    .extract()?;
+                let stone = extract_required_field(&dict, "pedant operation", "stone")?;
                 Ok(PyGlitchOperation::Pedant { stone })
             }
             "apostrofae" | "quote_pairs" => Ok(PyGlitchOperation::QuotePairs),
             "hokey" => {
-                let rate = dict
-                    .get_item("rate")?
-                    .ok_or_else(|| PyValueError::new_err("hokey operation missing 'rate'"))?
-                    .extract()?;
-                let extension_min = dict
-                    .get_item("extension_min")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("hokey operation missing 'extension_min'")
-                    })?
-                    .extract()?;
-                let extension_max = dict
-                    .get_item("extension_max")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("hokey operation missing 'extension_max'")
-                    })?
-                    .extract()?;
-                let word_length_threshold = dict
-                    .get_item("word_length_threshold")?
-                    .ok_or_else(|| {
-                        PyValueError::new_err("hokey operation missing 'word_length_threshold'")
-                    })?
-                    .extract()?;
-                let base_p = dict
-                    .get_item("base_p")?
-                    .map(|value| value.extract())
-                    .transpose()?
-                    .unwrap_or(0.45);
+                let rate = extract_required_field(&dict, "hokey operation", "rate")?;
+                let extension_min =
+                    extract_required_field(&dict, "hokey operation", "extension_min")?;
+                let extension_max =
+                    extract_required_field(&dict, "hokey operation", "extension_max")?;
+                let word_length_threshold =
+                    extract_required_field(&dict, "hokey operation", "word_length_threshold")?;
+                let base_p = extract_optional_field(&dict, "base_p")?.unwrap_or(0.45);
                 Ok(PyGlitchOperation::Hokey {
                     rate,
                     extension_min,
@@ -452,7 +414,105 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
     }
 }
 
-fn apply_operation<'py, O>(
+impl PyGlitchOperation {
+    fn into_glitch_operation(self, seed: u64) -> PyResult<GlitchOperation> {
+        let operation = match self {
+            PyGlitchOperation::Reduplicate { rate, unweighted } => {
+                GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp { rate, unweighted })
+            }
+            PyGlitchOperation::Delete { rate, unweighted } => {
+                GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { rate, unweighted })
+            }
+            PyGlitchOperation::SwapAdjacent { rate } => {
+                GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
+            }
+            PyGlitchOperation::RushmoreCombo {
+                modes,
+                delete,
+                duplicate,
+                swap,
+            } => {
+                let rushmore_modes = modes
+                    .into_iter()
+                    .map(|mode| match mode.as_str() {
+                        "delete" => Ok(glitch_ops::RushmoreComboMode::Delete),
+                        "duplicate" => Ok(glitch_ops::RushmoreComboMode::Duplicate),
+                        "swap" => Ok(glitch_ops::RushmoreComboMode::Swap),
+                        other => Err(PyValueError::new_err(format!(
+                            "unsupported Rushmore mode: {other}"
+                        ))),
+                    })
+                    .collect::<Result<Vec<_>, PyErr>>()?;
+                GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
+                    rushmore_modes,
+                    delete,
+                    duplicate,
+                    swap,
+                ))
+            }
+            PyGlitchOperation::Redact {
+                replacement_char,
+                rate,
+                merge_adjacent,
+                unweighted,
+            } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
+                replacement_char,
+                rate,
+                merge_adjacent,
+                unweighted,
+            }),
+            PyGlitchOperation::Ocr { rate } => {
+                GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
+            }
+            PyGlitchOperation::Typo { rate, layout } => {
+                let layout_map: HashMap<String, Vec<String>> =
+                    layout.as_ref().iter().cloned().collect();
+                GlitchOperation::Typo(glitch_ops::TypoOp {
+                    rate,
+                    layout: layout_map,
+                })
+            }
+            PyGlitchOperation::Mimic {
+                rate,
+                classes,
+                banned,
+            } => GlitchOperation::Mimic(Mim1cOp::new(rate, classes, banned)),
+            PyGlitchOperation::ZeroWidth { rate, characters } => {
+                GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
+            }
+            PyGlitchOperation::Ekkokin { rate, weighting } => {
+                let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
+                    PyValueError::new_err(format!("unsupported weighting: {weighting}"))
+                })?;
+                GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
+            }
+            PyGlitchOperation::Pedant { stone } => {
+                let op = PedantOp::new(seed as i128, &stone)?;
+                GlitchOperation::Pedant(op)
+            }
+            PyGlitchOperation::QuotePairs => {
+                GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
+            }
+            PyGlitchOperation::Hokey {
+                rate,
+                extension_min,
+                extension_max,
+                word_length_threshold,
+                base_p,
+            } => GlitchOperation::Hokey(HokeyOp {
+                rate,
+                extension_min,
+                extension_max,
+                word_length_threshold,
+                base_p,
+            }),
+        };
+
+        Ok(operation)
+    }
+}
+
+pub(crate) fn apply_operation<'py, O>(
     text: &str,
     op: O,
     rng: &Bound<'py, PyAny>,
@@ -581,93 +641,9 @@ fn compose_glitchlings(
     let operations = descriptors
         .into_iter()
         .map(|descriptor| {
-            let operation = match descriptor.operation {
-                PyGlitchOperation::Reduplicate { rate, unweighted } => {
-                    GlitchOperation::Reduplicate(glitch_ops::ReduplicateWordsOp {
-                        rate,
-                        unweighted,
-                    })
-                }
-                PyGlitchOperation::Delete { rate, unweighted } => {
-                    GlitchOperation::Delete(glitch_ops::DeleteRandomWordsOp { rate, unweighted })
-                }
-                PyGlitchOperation::SwapAdjacent { rate } => {
-                    GlitchOperation::SwapAdjacent(glitch_ops::SwapAdjacentWordsOp { rate })
-                }
-                PyGlitchOperation::RushmoreCombo {
-                    modes,
-                    delete,
-                    duplicate,
-                    swap,
-                } => {
-                    let rushmore_modes = modes
-                        .into_iter()
-                        .map(|mode| match mode.as_str() {
-                            "delete" => Ok(glitch_ops::RushmoreComboMode::Delete),
-                            "duplicate" => Ok(glitch_ops::RushmoreComboMode::Duplicate),
-                            "swap" => Ok(glitch_ops::RushmoreComboMode::Swap),
-                            other => Err(PyValueError::new_err(format!(
-                                "unsupported Rushmore mode: {other}"
-                            ))),
-                        })
-                        .collect::<Result<Vec<_>, PyErr>>()?;
-                    GlitchOperation::RushmoreCombo(glitch_ops::RushmoreComboOp::new(
-                        rushmore_modes, delete, duplicate, swap,
-                    ))
-                }
-                PyGlitchOperation::Redact {
-                    replacement_char,
-                    rate,
-                    merge_adjacent,
-                    unweighted,
-                } => GlitchOperation::Redact(glitch_ops::RedactWordsOp {
-                    replacement_char,
-                    rate,
-                    merge_adjacent,
-                    unweighted,
-                }),
-                PyGlitchOperation::Ocr { rate } => {
-                    GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
-                }
-                PyGlitchOperation::Typo { rate, layout } => {
-                    let layout_map: HashMap<String, Vec<String>> =
-                        layout.as_ref().iter().cloned().collect();
-                    GlitchOperation::Typo(glitch_ops::TypoOp {
-                        rate,
-                        layout: layout_map,
-                    })
-                }
-                PyGlitchOperation::ZeroWidth { rate, characters } => {
-                    GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
-                }
-                PyGlitchOperation::Ekkokin { rate, weighting } => {
-                    let weighting =
-                        HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
-                            PyValueError::new_err(format!("unsupported weighting: {weighting}"))
-                        })?;
-                    GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
-                }
-                PyGlitchOperation::Pedant { stone } => {
-                    let op = PedantOp::new(descriptor.seed as i128, &stone)?;
-                    GlitchOperation::Pedant(op)
-                }
-                PyGlitchOperation::QuotePairs => {
-                    GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp::default())
-                }
-                PyGlitchOperation::Hokey {
-                    rate,
-                    extension_min,
-                    extension_max,
-                    word_length_threshold,
-                    base_p,
-                } => GlitchOperation::Hokey(HokeyOp {
-                    rate,
-                    extension_min,
-                    extension_max,
-                    word_length_threshold,
-                    base_p,
-                }),
-            };
+            let operation = descriptor
+                .operation
+                .into_glitch_operation(descriptor.seed)?;
             Ok(GlitchDescriptor {
                 name: descriptor.name,
                 seed: descriptor.seed,
@@ -685,6 +661,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
+    m.add_function(wrap_pyfunction!(mim1c::swap_homoglyphs, m)?)?;
     m.add_function(wrap_pyfunction!(ekkokin_homophones, m)?)?;
     m.add_function(wrap_pyfunction!(pedant_operation, m)?)?;
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;

@@ -1,10 +1,57 @@
+"""Rust-backed Mim1c glitchling that swaps characters for homoglyphs."""
+
+from __future__ import annotations
+
 import random
-from collections.abc import Collection
-from typing import Literal
+from collections.abc import Collection, Iterable
+from typing import Callable, Literal, cast
 
-from confusable_homoglyphs import confusables
+from ._rust_extensions import get_rust_operation
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-from .core import AttackOrder, AttackWave, Glitchling
+_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
+
+_DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
+
+
+def _normalise_classes(
+    value: object,
+) -> tuple[str, ...] | Literal["all"] | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        if value.lower() == "all":
+            return "all"
+        return (value,)
+    if isinstance(value, Iterable):
+        return tuple(str(item) for item in value)
+    raise TypeError("classes must be an iterable of strings or 'all'")
+
+
+def _normalise_banned(value: object) -> tuple[str, ...] | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return tuple(value)
+    if isinstance(value, Iterable):
+        return tuple(str(item) for item in value)
+    raise TypeError("banned_characters must be an iterable of strings")
+
+
+def _serialise_classes(
+    value: tuple[str, ...] | Literal["all"] | None,
+) -> list[str] | Literal["all"] | None:
+    if value is None:
+        return None
+    if value == "all":
+        return "all"
+    return list(value)
+
+
+def _serialise_banned(value: tuple[str, ...] | None) -> list[str] | None:
+    if value is None:
+        return None
+    return list(value)
 
 
 def swap_homoglyphs(
@@ -15,53 +62,27 @@ def swap_homoglyphs(
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
-    """Replace characters with visually confusable homoglyphs.
+    """Replace characters with visually confusable homoglyphs via the Rust engine."""
 
-    Parameters
-    ----------
-    - text: Input text.
-    - rate: Max proportion of eligible characters to replace (default 0.02).
-    - classes: Restrict replacements to these Unicode script classes (default
-      ["LATIN", "GREEK", "CYRILLIC"]). Use "all" to allow any.
-    - banned_characters: Characters that must never appear as replacements.
-    - seed: Optional seed if `rng` not provided.
-    - rng: Optional RNG; overrides seed.
-
-    Notes
-    -----
-    - Only replaces characters present in ``confusables.confusables_data`` with
-      single-codepoint alternatives.
-    - Maintains determinism by shuffling candidates and sampling via the provided RNG.
-
-    """
     effective_rate = 0.02 if rate is None else rate
+    effective_rng = rng if rng is not None else random.Random(seed)
 
-    if rng is None:
-        rng = random.Random(seed)
+    normalised_classes = _normalise_classes(classes)
+    normalised_banned = _normalise_banned(banned_characters)
 
-    if classes is None:
-        classes = ["LATIN", "GREEK", "CYRILLIC"]
+    if normalised_classes is None:
+        payload_classes: list[str] | Literal["all"] | None = list(_DEFAULT_CLASS_NAMES)
+    else:
+        payload_classes = _serialise_classes(normalised_classes)
+    payload_banned = _serialise_banned(normalised_banned)
 
-    target_chars = [char for char in text if char.isalnum()]
-    confusable_chars = [char for char in target_chars if char in confusables.confusables_data]
-    clamped_rate = max(0.0, effective_rate)
-    num_replacements = int(len(confusable_chars) * clamped_rate)
-    done = 0
-    rng.shuffle(confusable_chars)
-    banned_set = set(banned_characters or ())
-    for char in confusable_chars:
-        if done >= num_replacements:
-            break
-        options = [o["c"] for o in confusables.confusables_data[char] if len(o["c"]) == 1]
-        if classes != "all":
-            options = [opt for opt in options if confusables.alias(opt) in classes]
-        if banned_set:
-            options = [opt for opt in options if opt not in banned_set]
-        if not options:
-            continue
-        text = text.replace(char, rng.choice(options), 1)
-        done += 1
-    return text
+    return _MIM1C_RUST(
+        text,
+        rate=effective_rate,
+        classes=payload_classes,
+        banned_characters=payload_banned,
+        rng=effective_rng,
+    )
 
 
 class Mim1c(Glitchling):
@@ -76,6 +97,8 @@ class Mim1c(Glitchling):
         seed: int | None = None,
     ) -> None:
         effective_rate = 0.02 if rate is None else rate
+        normalised_classes = _normalise_classes(classes)
+        normalised_banned = _normalise_banned(banned_characters)
         super().__init__(
             name="Mim1c",
             corruption_function=swap_homoglyphs,
@@ -83,12 +106,39 @@ class Mim1c(Glitchling):
             order=AttackOrder.LAST,
             seed=seed,
             rate=effective_rate,
-            classes=classes,
-            banned_characters=banned_characters,
+            classes=normalised_classes,
+            banned_characters=normalised_banned,
         )
+
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        rate_value = self.kwargs.get("rate")
+        rate = 0.02 if rate_value is None else float(rate_value)
+
+        descriptor: dict[str, object] = {"type": "mimic", "rate": rate}
+
+        classes = self.kwargs.get("classes")
+        serialised_classes = _serialise_classes(classes)
+        if serialised_classes is not None:
+            descriptor["classes"] = serialised_classes
+
+        banned = self.kwargs.get("banned_characters")
+        serialised_banned = _serialise_banned(banned)
+        if serialised_banned:
+            descriptor["banned_characters"] = serialised_banned
+
+        return cast(PipelineOperationPayload, descriptor)
+
+    def set_param(self, key: str, value: object) -> None:
+        if key == "classes":
+            super().set_param(key, _normalise_classes(value))
+            return
+        if key == "banned_characters":
+            super().set_param(key, _normalise_banned(value))
+            return
+        super().set_param(key, value)
 
 
 mim1c = Mim1c()
 
 
-__all__ = ["Mim1c", "mim1c"]
+__all__ = ["Mim1c", "mim1c", "swap_homoglyphs"]

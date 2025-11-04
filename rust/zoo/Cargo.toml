@@ -17,9 +17,12 @@ smallvec = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
+rand = { workspace = true }
 
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"
 
 [build-dependencies]
 pyo3-build-config = { workspace = true }
+flate2 = "1"
+base64 = "0.21"

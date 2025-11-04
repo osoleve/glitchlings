@@ -1,11 +1,6 @@
 import pytest
 
 from glitchlings.zoo.pedant import Pedant, PedantBase, PedantStone
-from glitchlings.zoo.pedant.forms import Aetheria
-
-SAMPLE_TEXT = (
-    "It is I who am here. We have 10 waters or less. Please cooperate on these aesthetics."
-)
 
 
 def test_evolve_with_whom_stone():
@@ -42,8 +37,8 @@ def test_aetheria_ligature_handles_uppercase_pair():
 
 
 def test_aetheria_diaeresis_handles_title_case_pair():
-    form = Aetheria(seed=9)
-    assert form._apply_diaeresis("Oolong") == "Oölong"
+    pedant = PedantBase(seed=3).evolve(PedantStone.COEURITE)
+    assert pedant.move("Coordinate meeting") == "Coördinate meeting"
 
 
 def test_evolution_determinism_same_seed():

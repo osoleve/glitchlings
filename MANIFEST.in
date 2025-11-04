@@ -1,5 +1,5 @@
 recursive-include rust *.rs *.toml *.lock *.tsv
-recursive-include assets *.tsv *.json
+recursive-include assets *.tsv *.json *.gz *.b64
 recursive-include src/glitchlings/lexicon/data *.json
 include src/glitchlings/config.toml
 prune rust/target

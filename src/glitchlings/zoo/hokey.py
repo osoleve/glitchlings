@@ -3,39 +3,20 @@
 from __future__ import annotations
 
 import random
-from typing import Any
+from typing import Any, Callable, cast
 
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Gaggle
+from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
 
-_hokey_rust = get_rust_operation("hokey")
+StretchResult = str | tuple[str, list[StretchEvent]]
+HokeyRustCallable = Callable[[str, float, int, int, int, float, random.Random], StretchResult]
+
+_hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
 _ANALYZER = StretchabilityAnalyzer()
 _GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
-
-
-def _python_extend_vowels(
-    text: str,
-    *,
-    rate: float,
-    extension_min: int,
-    extension_max: int,
-    word_length_threshold: int,
-    base_p: float,
-    rng: random.Random,
-    return_trace: bool = False,
-) -> str | tuple[str, list[StretchEvent]]:
-    config = HokeyConfig(
-        rate=rate,
-        extension_min=extension_min,
-        extension_max=extension_max,
-        word_length_threshold=word_length_threshold,
-        base_p=base_p,
-    )
-    result, events = _GENERATOR.generate(text, rng=rng, config=config)
-    return (result, events) if return_trace else result
 
 
 def extend_vowels(
@@ -83,72 +64,53 @@ def extend_vowels(
         rng = random.Random(seed)
     base_probability = base_p if base_p is not None else 0.45
 
-    if return_trace or _hokey_rust is None:
-        return _python_extend_vowels(
-            text,
-            rate=rate,
-            extension_min=extension_min,
-            extension_max=extension_max,
-            word_length_threshold=word_length_threshold,
-            base_p=base_probability,
-            rng=rng,
-            return_trace=return_trace,
-        )
-
-    getstate = getattr(rng, "getstate", None)
-    setstate = getattr(rng, "setstate", None)
-    snapshot = None
-    if callable(getstate) and callable(setstate):
-        try:
-            snapshot = getstate()
-        except TypeError:
-            snapshot = None
-
-    try:
-        rust_result = _hokey_rust(
-            text,
-            rate,
-            extension_min,
-            extension_max,
-            word_length_threshold,
-            base_probability,
-            rng,
-        )
-    except (AttributeError, RuntimeError, TypeError, ValueError):
-        if snapshot is not None and callable(setstate):
-            try:
-                setstate(snapshot)
-            except (TypeError, ValueError):
-                pass
-        return _python_extend_vowels(
-            text,
-            rate=rate,
-            extension_min=extension_min,
-            extension_max=extension_max,
-            word_length_threshold=word_length_threshold,
-            base_p=base_probability,
-            rng=rng,
-            return_trace=return_trace,
-        )
-
-    if isinstance(rust_result, str):
-        return rust_result
-
-    if snapshot is not None and callable(setstate):
-        try:
-            setstate(snapshot)
-        except (TypeError, ValueError):
-            pass
-    return _python_extend_vowels(
-        text,
+    config = HokeyConfig(
         rate=rate,
         extension_min=extension_min,
         extension_max=extension_max,
-        word_length_threshold=word_length_threshold,
         base_p=base_probability,
-        rng=rng,
-        return_trace=return_trace,
+        word_length_threshold=word_length_threshold,
     )
+
+    trace_events: list[StretchEvent] | None = None
+    if return_trace:
+        try:
+            state = rng.getstate()
+        except AttributeError as exc:  # pragma: no cover - non-standard RNG usage
+            raise TypeError(
+                "Hokey tracing requires an RNG compatible with random.Random.getstate()",
+            ) from exc
+        trace_rng = random.Random()
+        trace_rng.setstate(state)
+        _, trace_events = _GENERATOR.generate(
+            text,
+            rng=trace_rng,
+            config=config,
+        )
+
+    result: StretchResult = _hokey_rust(
+        text,
+        rate,
+        extension_min,
+        extension_max,
+        word_length_threshold,
+        base_probability,
+        rng,
+    )
+
+    if isinstance(result, tuple):
+        output, events = result
+        if return_trace:
+            return output, events
+        return output
+
+    output = result
+
+    if return_trace:
+        assert trace_events is not None
+        return output, trace_events
+
+    return output
 
 
 class Hokey(GlitchlingBase):
@@ -185,15 +147,26 @@ class Hokey(GlitchlingBase):
             base_p=base_p,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        return {
-            "type": "hokey",
-            "rate": self.kwargs.get("rate", 0.3),
-            "extension_min": self.kwargs.get("extension_min", 2),
-            "extension_max": self.kwargs.get("extension_max", 5),
-            "word_length_threshold": self.kwargs.get("word_length_threshold", 6),
-            "base_p": self.kwargs.get("base_p", 0.45),
-        }
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        kwargs = self.kwargs
+        rate = kwargs.get("rate")
+        extension_min = kwargs.get("extension_min")
+        extension_max = kwargs.get("extension_max")
+        word_length_threshold = kwargs.get("word_length_threshold")
+        base_p = kwargs.get("base_p")
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "hokey",
+                "rate": 0.3 if rate is None else float(rate),
+                "extension_min": 2 if extension_min is None else int(extension_min),
+                "extension_max": 5 if extension_max is None else int(extension_max),
+                "word_length_threshold": 6
+                if word_length_threshold is None
+                else int(word_length_threshold),
+                "base_p": 0.45 if base_p is None else float(base_p),
+            },
+        )
 
     def reset_rng(self, seed: int | None = None) -> None:
         if seed is not None:

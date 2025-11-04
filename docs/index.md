@@ -13,8 +13,6 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Typogre](glitchlings/typogre.md)
    - [Apostrofae](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
-   - [Reduple](glitchlings/reduple.md)
-   - [Adjax](glitchlings/adjax.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
@@ -168,9 +166,9 @@ Configuration files are now validated against a JSON Schema before any glitchlin
 
 ## Rust pipeline acceleration
 
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. When the compiled extension is present, `Gaggle` automatically prefers this fast path.
+The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. The orchestrator now requires this compiled extension, so build the PyO3 crate before running Glitchlings.
 
-Parity with the pure-Python pipeline is asserted in `tests/test_rust_backed_glitchlings.py`.
+`tests/test_rust_backed_glitchlings.py` exercises the Rust-backed glitchlings to ensure the accelerated implementations remain stable.
 
 ## Glitchling reference
 
@@ -179,8 +177,6 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
 - [Apostrofae](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
-- [Reduple](glitchlings/reduple.md) - compatibility wrapper for Rushmore's duplication mode.
-- [Adjax](glitchlings/adjax.md) - compatibility wrapper for Rushmore's adjacent swap mode.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.

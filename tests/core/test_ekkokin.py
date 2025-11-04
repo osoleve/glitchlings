@@ -121,34 +121,3 @@ def test_substitute_homophones_preserves_source_casing(source: str) -> None:
         assert result[1:].islower()
     else:  # pragma: no cover - defensive guard for unexpected casing
         pytest.fail(f"Unhandled casing pattern in source word: {source}")
-
-
-def test_substitute_homophones_respects_explicit_rng() -> None:
-    text = "Allowed writers write about the heir."
-    rng = random.Random(99)
-
-    result = ekkokin_module.substitute_homophones(text, rate=1.0, rng=rng)
-    expected = ekkokin_module._python_substitute_homophones(
-        text,
-        rate=1.0,
-        rng=random.Random(99),
-    )
-
-    assert result == expected
-
-
-def test_substitute_homophones_clamps_rate_above_one() -> None:
-    text = "Allowed writers write about the heir."
-
-    result = ekkokin_module.substitute_homophones(
-        text,
-        rate=5.0,
-        rng=random.Random(2112),
-    )
-    expected = ekkokin_module._python_substitute_homophones(
-        text,
-        rate=1.0,
-        rng=random.Random(2112),
-    )
-
-    assert result == expected

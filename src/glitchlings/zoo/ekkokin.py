@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import math
 import random
-from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence, cast
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
 
 from ._rust_extensions import get_rust_operation
-from ._text_utils import WordToken, collect_word_tokens, split_preserving_whitespace
 from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -39,7 +38,10 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 
 _homophone_lookup = _build_lookup(_homophone_groups)
-_ekkokin_rust = get_rust_operation("ekkokin_homophones")
+_ekkokin_rust = cast(
+    Callable[[str, float, str, random.Random], str],
+    get_rust_operation("ekkokin_homophones"),
+)
 
 
 class _GlitchlingProtocol:
@@ -58,93 +60,6 @@ else:
     _GlitchlingBase = _GlitchlingRuntime
 
 
-def _apply_casing(template: str, candidate: str) -> str:
-    """Return ``candidate`` adjusted to mirror the casing pattern of ``template``."""
-
-    if not candidate:
-        return candidate
-    if template.isupper():
-        return candidate.upper()
-    if template.islower():
-        return candidate.lower()
-    if template[:1].isupper() and template[1:].islower():
-        return candidate.capitalize()
-    return candidate
-
-
-def _choose_alternative(
-    *,
-    group: Sequence[str],
-    source_word: str,
-    rng: random.Random,
-) -> str | None:
-    """Return a replacement for ``source_word`` drawn from ``group``."""
-
-    lowered = source_word.lower()
-    candidates = [candidate for candidate in group if candidate != lowered]
-    if not candidates:
-        return None
-    index = rng.randrange(len(candidates))
-    replacement = candidates[index]
-    return _apply_casing(source_word, replacement)
-
-
-def _python_substitute_homophones(
-    text: str,
-    *,
-    rate: float,
-    rng: random.Random,
-) -> str:
-    """Replace words in ``text`` with curated homophones."""
-
-    if not text:
-        return text
-
-    if math.isnan(rate):
-        return text
-
-    clamped_rate = max(0.0, min(1.0, rate))
-    if clamped_rate <= 0.0:
-        return text
-
-    tokens = split_preserving_whitespace(text)
-    word_tokens = collect_word_tokens(tokens)
-    if not word_tokens:
-        return text
-
-    mutated = False
-    for token in word_tokens:
-        replacement = _maybe_replace_token(token, clamped_rate, rng)
-        if replacement is None:
-            continue
-        tokens[token.index] = replacement
-        mutated = True
-
-    if not mutated:
-        return text
-    return "".join(tokens)
-
-
-def _maybe_replace_token(
-    token: WordToken,
-    rate: float,
-    rng: random.Random,
-) -> str | None:
-    lookup = _homophone_lookup.get(token.core.lower())
-    if lookup is None:
-        return None
-    if rng.random() >= rate:
-        return None
-    replacement_core = _choose_alternative(
-        group=lookup,
-        source_word=token.core,
-        rng=rng,
-    )
-    if replacement_core is None:
-        return None
-    return f"{token.prefix}{replacement_core}{token.suffix}"
-
-
 def substitute_homophones(
     text: str,
     rate: float | None = None,
@@ -158,16 +73,10 @@ def substitute_homophones(
     active_rng = rng if rng is not None else random.Random(seed)
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
-    if _ekkokin_rust is not None:
-        return cast(
-            str,
-            _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng),
-        )
-    return _python_substitute_homophones(
-        text,
-        rate=clamped_rate,
-        rng=active_rng,
-    )
+
+    return _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng)
+    
+
 
 
 class Ekkokin(_GlitchlingBase):
@@ -191,13 +100,12 @@ class Ekkokin(_GlitchlingBase):
         )
 
 
-def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object] | None:
-    rate = glitch.kwargs.get("rate")
-    if rate is None:
-        return None
+def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object]:
+    rate_value = glitch.kwargs.get("rate")
+    rate = _DEFAULT_RATE if rate_value is None else float(rate_value)
     return {
         "type": "ekkokin",
-        "rate": float(rate),
+        "rate": rate,
         "weighting": _DEFAULT_WEIGHTING,
     }
 
@@ -209,5 +117,4 @@ __all__ = [
     "Ekkokin",
     "ekkokin",
     "substitute_homophones",
-    "_python_substitute_homophones",
 ]

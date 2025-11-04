@@ -3,11 +3,12 @@
 Welcome! This repository corrals a roster of deterministic text-corruption "glitchlings" plus a CLI for orchestrating them. Treat this handbook as the default guidance for any work in the repo.
 
 ## Work Tracking
-1. Install the [Beads `bd` CLI](https://github.com/steveyegge/beads) in every environment before writing code. The project ships prebuilt binaries—download the latest release (e.g. `curl -L https://github.com/steveyegge/beads/releases/download/v0.20.1/beads_0.20.1_linux_amd64.tar.gz -o beads.tar.gz && tar -xzf beads.tar.gz`) and move the `bd` executable onto `$PATH` (for example, `install -m 0755 bd /usr/local/bin/bd`). Verify the install with `bd version`.
+1. Install the [Beads `bd` CLI](https://github.com/steveyegge/beads) in every environment before writing code. The project ships prebuilt binaries—download the latest release (e.g. `curl -L https://github.com/steveyegge/beads/releases/download/v0.20.1/beads_0.20.1_linux_amd64.tar.gz -o beads.tar.gz && tar -xzf beads.tar.gz`) and move the `bd` executable onto `$PATH` (for example, `install -m 0755 bd /usr/local/bin/bd`). Verify the install with `bd version`. If `bd` is missing from the environment, you are expected—and explicitly allowed—to install it.
 2. Run `bd quickstart` once after installation to review the workflow commands and confirm the CLI is operational.
 3. Bootstrap new clones with `bd init --quiet` from the repository root; this keeps `.beads/` synchronised and ready for the agent workflow.
 4. **Before starting any coding task, create or update a bead describing the scope, mark it `in_progress` while you work, and capture completion details in the same bead before finishing.** Use the CLI (`bd create`, `bd update`, `bd close`) instead of editing JSON by hand—beads are the source of truth for ongoing work.
-5. Keep `AGENTS.md` and `CLAUDE.md` under `.github/` with the Beads database tracked via `bd`; when migrating existing Markdown notes, port the relevant content into beads before retiring the files.
+5. Confirm the editable install succeeds with `pip install -e .[dev]` before making changes—this primes the tooling stack and validates that the repository builds cleanly.
+6. Keep `AGENTS.md` and `CLAUDE.md` under `.github/` with the Beads database tracked via `bd`; when migrating existing Markdown notes, port the relevant content into beads before retiring the files.
 
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
@@ -22,7 +23,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - **`src/glitchlings/dlc/prime/`** - Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).
 - **`benchmarks/`** - Performance harnesses (`pipeline_benchmark.py`, etc.) that exercise both the Python and Rust execution paths.
 - **`docs/`** - Field guide, development notes, release process, and per-glitchling reference pages. Changes to behaviour should update the relevant doc alongside code.
-- **`rust/`** - PyO3 crates backing the optional Rust extensions.
+- **`rust/`** - PyO3 crates that implement the required Rust backend.
   - `rust/zoo/` builds `glitchlings._zoo_rust` (fast paths for Typogre, Mim1c, Reduple, Rushmore, Redactyl, and Scannequin). Use `maturin develop -m rust/zoo/Cargo.toml` after touching Rust sources.
 - **`tests/`** - Pytest suite covering determinism, dataset integrations, CLI behaviour, Rust parity, and DLC hooks.
   - Highlights: `test_glitchling_core.py` (Gaggle orchestration and feature flags), `test_parameter_effects.py` (argument coverage), `test_benchmarks.py` (pipeline smoke tests), `test_prime_echo_chamber.py` (Prime DLC), and `test_rust_backed_glitchlings.py` (parity checks).
@@ -38,7 +39,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - Keep helper functions small and well-scoped; include docstrings that describe behaviour and note any determinism considerations.
 - When mutating token sequences, preserve whitespace and punctuation via separator-preserving regex splits (see `reduple.py`, `rushmore.py`, `redactyl.py`).
 - CLI work should continue the existing UX: validate inputs with `ArgumentParser.error`, keep deterministic output ordering, and gate optional behaviours behind explicit flags.
-- Rust fast paths must remain optional: guard imports with `try`/`except ImportError`, surface identical signatures, and fall back to the Python implementation when the extension is absent.
+- Treat Rust failures as fatal: the compiled backend must import cleanly, surface identical signatures, and stay in lockstep with the Python shims.
 
 ## Testing & Tooling
 - Run the full suite with `pytest` from the repository root.
@@ -58,4 +59,4 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 - The CLI lists built-in glitchlings (`glitchlings --list`) and can show diffs; update `BUILTIN_GLITCHLINGS` and help text when introducing new creatures.
 - Keep documentation synchronised: update `README.md`, `docs/index.md`, per-glitchling reference pages, and `MONSTER_MANUAL.md` when behaviours or defaults change.
 - When editing keyboard layouts or homoglyph mappings, ensure downstream consumers continue to work with lowercase keys (`util.KEYNEIGHBORS`).
-- Rust builds are optional--keep the project functional when extensions are absent (e.g., in CI or user installs without `maturin`).
+- Verify the Rust backend builds in every environment (CI, local, release) and fix import errors immediately—there is no supported Python-only mode anymore.

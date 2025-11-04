@@ -3,71 +3,13 @@
 from __future__ import annotations
 
 import random
-from functools import cache
-from typing import Any, Sequence, cast
+from typing import cast
 
 from ._rust_extensions import get_rust_operation
-from .assets import load_json
-from .core import AttackOrder, AttackWave, Gaggle, Glitchling
+from .core import AttackOrder, AttackWave, Gaggle, Glitchling, PipelineOperationPayload
 
-# Load Rust-accelerated operation if available
+# Load the mandatory Rust implementation
 _apostrofae_rust = get_rust_operation("apostrofae")
-
-
-@cache
-def _load_replacement_pairs() -> dict[str, list[tuple[str, str]]]:
-    """Load the curated mapping of straight quotes to fancy pairs."""
-
-    data: dict[str, list[Sequence[str]]] = load_json("apostrofae_pairs.json")
-
-    parsed: dict[str, list[tuple[str, str]]] = {}
-    for straight, replacements in data.items():
-        parsed[straight] = [(pair[0], pair[1]) for pair in replacements if len(pair) == 2]
-    return parsed
-
-
-def _find_quote_pairs(text: str) -> list[tuple[int, int, str]]:
-    """Return all balanced pairs of straight quotes in ``text``.
-
-    The search walks the string once, pairing sequential occurrences of each quote
-    glyph. Unmatched openers remain untouched so contractions (e.g. ``it's``)
-    survive unmodified.
-    """
-
-    stacks: dict[str, int | None] = {'"': None, "'": None, "`": None}
-    pairs: list[tuple[int, int, str]] = []
-
-    for index, ch in enumerate(text):
-        if ch not in stacks:
-            continue
-        start = stacks[ch]
-        if start is None:
-            stacks[ch] = index
-        else:
-            pairs.append((start, index, ch))
-            stacks[ch] = None
-
-    return pairs
-
-
-def _apostrofae_python(text: str, *, rng: random.Random) -> str:
-    """Python fallback that replaces paired straight quotes with fancy glyphs."""
-
-    pairs = _load_replacement_pairs()
-    candidates = _find_quote_pairs(text)
-    if not candidates:
-        return text
-
-    chars = list(text)
-    for start, end, glyph in candidates:
-        options = pairs.get(glyph)
-        if not options:
-            continue
-        left, right = rng.choice(options)
-        chars[start] = left
-        chars[end] = right
-    return "".join(chars)
-
 
 def smart_quotes(
     text: str,
@@ -82,10 +24,7 @@ def smart_quotes(
     if rng is None:
         rng = random.Random(seed)
 
-    if _apostrofae_rust is not None:
-        return cast(str, _apostrofae_rust(text, rng))
-
-    return _apostrofae_python(text, rng=rng)
+    return cast(str, _apostrofae_rust(text, rng))
 
 
 class Apostrofae(Glitchling):
@@ -101,8 +40,8 @@ class Apostrofae(Glitchling):
             seed=seed,
         )
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        return {"type": "apostrofae"}
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        return cast(PipelineOperationPayload, {"type": "apostrofae"})
 
     def reset_rng(self, seed: int | None = None) -> None:  # pragma: no cover - exercised indirectly
         if seed is not None:

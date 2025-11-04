@@ -71,7 +71,10 @@ impl PedantOp {
     pub fn new(seed: i128, stone_name: &str) -> Result<Self, PyErr> {
         let stone = PedantStone::try_from_name(stone_name)
             .ok_or_else(|| PyValueError::new_err(format!("Unknown pedant stone: {stone_name}")))?;
-        Ok(Self { root_seed: seed, stone })
+        Ok(Self {
+            root_seed: seed,
+            stone,
+        })
     }
 
     fn lineage(&self) -> [&'static str; 3] {
@@ -250,7 +253,11 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         return Ok(text.to_string());
     }
 
-    let seed = derive_seed(root_seed, lineage, &[ReprArg::Str("aetheria"), ReprArg::Str(text)]);
+    let seed = derive_seed(
+        root_seed,
+        lineage,
+        &[ReprArg::Str("aetheria"), ReprArg::Str(text)],
+    );
     let mut rng = PyRng::new(seed);
 
     let mut chosen: HashSet<usize> = HashSet::new();

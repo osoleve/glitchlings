@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
 
 use crate::ekkokin::EkkokinOp;
+use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
@@ -997,7 +998,7 @@ impl GlitchOp for TypoOp {
                                             scratch.extend(neighbors[choice].chars());
                                         }
                                         _ => {
-                                            // Match Python fallback that still advances RNG state.
+                                            // Maintain deterministic RNG advancement when no replacements are available.
                                             rng.rand_index(1)?;
                                             scratch.push(ch);
                                         }
@@ -1207,6 +1208,7 @@ pub enum GlitchOperation {
     Redact(RedactWordsOp),
     Ocr(OcrArtifactsOp),
     Typo(TypoOp),
+    Mimic(Mim1cOp),
     ZeroWidth(ZeroWidthOp),
     QuotePairs(QuotePairsOp),
     Hokey(crate::hokey::HokeyOp),
@@ -1224,6 +1226,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Redact(op) => op.apply(buffer, rng),
             GlitchOperation::Ocr(op) => op.apply(buffer, rng),
             GlitchOperation::Typo(op) => op.apply(buffer, rng),
+            GlitchOperation::Mimic(op) => op.apply(buffer, rng),
             GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
             GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
             GlitchOperation::Hokey(op) => op.apply(buffer, rng),

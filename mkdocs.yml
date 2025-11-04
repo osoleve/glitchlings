@@ -19,14 +19,12 @@ nav:
   - Development: development.md
   - Hokey Design Spec: hokey_design_spec.md
   - Performance:
-      - Summary: performance-comparison.md
       - Gallery Builder: glitchling-gallery.md
   - Glitchling Reference:
       - Typogre: glitchlings/typogre.md
       - Apostrofae: glitchlings/apostrofae.md
       - Hokey: glitchlings/hokey.md
       - Mim1c: glitchlings/mim1c.md
-      - Reduple: glitchlings/reduple.md
       - Rushmore: glitchlings/rushmore.md
       - Redactyl: glitchlings/redactyl.md
       - Jargoyle: glitchlings/jargoyle.md
@@ -35,9 +33,6 @@ nav:
       - Spectroll: glitchlings/spectroll.md
       - Scannequin: glitchlings/scannequin.md
       - Zeedub: glitchlings/zeedub.md
-      - Adjax: glitchlings/adjax.md
-  - API:
-      - Python Modules: api/index.md
   - Operations:
       - Keyboard Layouts: keyboard-layouts.md
 
