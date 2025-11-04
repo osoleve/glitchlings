@@ -2,10 +2,6 @@ import pytest
 
 from glitchlings.zoo.pedant import Pedant, PedantBase, PedantStone
 
-SAMPLE_TEXT = (
-    "It is I who am here. We have 10 waters or less. Please cooperate on these aesthetics."
-)
-
 
 def test_evolve_with_whom_stone():
     pedant = PedantBase(seed=42)
