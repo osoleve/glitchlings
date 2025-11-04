@@ -60,12 +60,6 @@ pytest
 
 The suite covers determinism guarantees, dataset integrations, and the compiled Rust implementation that now backs orchestration. Vector-backed lexicons ship with the repository so the Jargoyle tests run without external downloads, while optional WordNet checks are gated behind the legacy backend being available.
 
-Key regression guardrails live in:
-
-- `tests/test_glitchling_core.py` for `Gaggle` orchestration invariants.
-- `tests/test_cli.py` for CLI argument wiring and diff output.
-- `tests/test_rust_backed_glitchlings.py` to keep the Rust-backed glitchlings stable.
-
 ## Automated checks
 
 Run the shared quality gates before opening a pull request:
@@ -78,19 +72,6 @@ python -m mypy --config-file pyproject.toml
 pytest --maxfail=1 --disable-warnings -q
 ```
 
-## Rust acceleration
-
-Glitchlings ships PyO3 extensions that accelerate Typogre, Mim1c, Rushmore (including its duplication and swap modes), Redactyl, and Scannequin. Compile them with `maturin`; the Python interfaces require the resulting module at runtime:
-
-```bash
-# Compile the shared Rust crate (rerun after Rust or Python updates)
-maturin develop -m rust/zoo/Cargo.toml
-
-```
-
-`Gaggle` now requires the compiled fast path; build failures surface immediately when orchestration runs. Keep the extension up to date as you iterate so the Python interfaces continue to import the Rust operations successfully.
-
-
 ## Additional tips
 
 - Rebuild the Rust extension after editing files under `rust/zoo/`:
@@ -98,8 +79,3 @@ maturin develop -m rust/zoo/Cargo.toml
   ```bash
   maturin develop -m rust/zoo/Cargo.toml
   ```
-
-- Use `python -m glitchlings --help` to smoke-test CLI changes quickly.
-- Check `docs/index.md` for end-user guidance - keep it in sync with behaviour changes when you ship new glitchlings or orchestration features.
-- When a TestPyPI publish fails, re-trigger the "Build & Publish (TestPyPI)" GitHub Actions workflow or fast-forward `dev` to rerun the pipeline - see `docs/release-process.md` for the manual steps.
-- Validate YAML attack rosters with `glitchlings.config.ATTACK_CONFIG_SCHEMA` (or `load_attack_config`) so CI catches unsupported fields before they reach users. Every glitchling mapping must declare `name:` explicitly.
