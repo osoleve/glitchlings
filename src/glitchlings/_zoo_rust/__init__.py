@@ -5,9 +5,10 @@ from __future__ import annotations
 import sys
 from importlib import import_module, machinery, util
 from pathlib import Path
+from types import ModuleType
 
 
-def _load_local_extension() -> object:
+def _load_local_extension() -> ModuleType:
     """Load the compiled extension from the source tree if available."""
 
     package_dir = Path(__file__).resolve().parent
@@ -32,7 +33,7 @@ def _load_local_extension() -> object:
 
 
 try:
-    _module = import_module("_zoo_rust")
+    _module: ModuleType = import_module("_zoo_rust")
 except ModuleNotFoundError:
     _module = _load_local_extension()
 
