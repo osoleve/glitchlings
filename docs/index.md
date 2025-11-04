@@ -13,8 +13,6 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Typogre](glitchlings/typogre.md)
    - [Apostrofae](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
-   - [Reduple](glitchlings/reduple.md)
-   - [Adjax](glitchlings/adjax.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
