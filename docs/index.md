@@ -177,8 +177,6 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
 - [Apostrofae](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
-- [Reduple](glitchlings/reduple.md) - compatibility wrapper for Rushmore's duplication mode.
-- [Adjax](glitchlings/adjax.md) - compatibility wrapper for Rushmore's adjacent swap mode.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
