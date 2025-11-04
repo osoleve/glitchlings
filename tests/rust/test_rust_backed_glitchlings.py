@@ -1,4 +1,5 @@
 import importlib
+
 import pytest
 
 redactyl_module = importlib.import_module("glitchlings.zoo.redactyl")

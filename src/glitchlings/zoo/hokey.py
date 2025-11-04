@@ -104,7 +104,7 @@ def extend_vowels(
             return output, events
         return output
 
-    output = cast(str, result)
+    output = result
 
     if return_trace:
         assert trace_events is not None
