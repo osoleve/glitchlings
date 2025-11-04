@@ -110,12 +110,11 @@ class Mim1c(Glitchling):
             banned_characters=normalised_banned,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload | None:
-        rate = self.kwargs.get("rate")
-        if rate is None:
-            return None
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        rate_value = self.kwargs.get("rate")
+        rate = 0.02 if rate_value is None else float(rate_value)
 
-        descriptor: dict[str, object] = {"type": "mimic", "rate": float(rate)}
+        descriptor: dict[str, object] = {"type": "mimic", "rate": rate}
 
         classes = self.kwargs.get("classes")
         serialised_classes = _serialise_classes(classes)
