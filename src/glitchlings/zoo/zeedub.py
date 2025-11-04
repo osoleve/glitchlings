@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import Any, Callable, cast
+from typing import Callable, cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Glitchling
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
 _inject_zero_widths_rust = cast(
@@ -71,7 +71,7 @@ class Zeedub(Glitchling):
             characters=tuple(characters) if characters is not None else None,
         )
 
-    def pipeline_operation(self) -> dict[str, Any]:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         rate = self.kwargs.get("rate")
         if rate is None:
             message = "Zeedub is missing a configured zero-width insertion rate"
@@ -87,11 +87,14 @@ class Zeedub(Glitchling):
             message = "Zeedub requires at least one zero-width character for the pipeline"
             raise RuntimeError(message)
 
-        return {
-            "type": "zwj",
-            "rate": float(rate),
-            "characters": list(palette),
-        }
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "zwj",
+                "rate": float(rate),
+                "characters": list(palette),
+            },
+        )
 
 
 zeedub = Zeedub()

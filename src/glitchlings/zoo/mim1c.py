@@ -7,7 +7,7 @@ from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Glitchling
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
 
@@ -110,7 +110,7 @@ class Mim1c(Glitchling):
             banned_characters=normalised_banned,
         )
 
-    def pipeline_operation(self) -> dict[str, object]:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         rate = self.kwargs.get("rate")
         if rate is None:
             message = "Mim1c is missing a configured homoglyph substitution rate"
@@ -128,7 +128,7 @@ class Mim1c(Glitchling):
         if serialised_banned:
             descriptor["banned_characters"] = serialised_banned
 
-        return descriptor
+        return cast(PipelineOperationPayload, descriptor)
 
     def set_param(self, key: str, value: object) -> None:
         if key == "classes":

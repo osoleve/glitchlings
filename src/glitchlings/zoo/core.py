@@ -452,7 +452,7 @@ class Gaggle(Glitchling):
             if not isinstance(operation, Mapping):  # pragma: no cover - defensive
                 raise TypeError("Pipeline operations must be mappings")
             operation_payload = dict(operation)
-            operation_type = cast(object, operation_payload.get("type"))
+            operation_type = operation_payload.get("type")
             if not isinstance(operation_type, str):
                 message = f"Pipeline operation for {glitchling.name} is missing a string 'type'"
                 raise RuntimeError(message)

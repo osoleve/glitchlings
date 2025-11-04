@@ -1,8 +1,8 @@
 import random
-from typing import Any, cast
+from typing import cast
 
 from ._rust_extensions import get_rust_operation
-from .core import AttackOrder, AttackWave, Glitchling
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
 _ocr_artifacts_rust = get_rust_operation("ocr_artifacts")
@@ -51,12 +51,15 @@ class Scannequin(Glitchling):
             rate=effective_rate,
         )
 
-    def pipeline_operation(self) -> dict[str, Any]:
+    def pipeline_operation(self) -> PipelineOperationPayload:
         rate = self.kwargs.get("rate")
         if rate is None:
             message = "Scannequin is missing a configured OCR corruption rate"
             raise RuntimeError(message)
-        return {"type": "ocr", "rate": float(rate)}
+        return cast(
+            PipelineOperationPayload,
+            {"type": "ocr", "rate": float(rate)},
+        )
 
 
 scannequin = Scannequin()
