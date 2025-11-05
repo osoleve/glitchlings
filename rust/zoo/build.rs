@@ -1,7 +1,9 @@
+use base64::{engine::general_purpose, Engine as _};
+use flate2::read::GzDecoder;
 use std::env;
 use std::ffi::{OsStr, OsString};
-use std::fs;
-use std::io::{self, ErrorKind};
+use std::fs::{self, File};
+use std::io::{self, Cursor, ErrorKind, Read};
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -11,6 +13,8 @@ fn main() {
         .expect("failed to stage Apostrofae replacement table for compilation");
     stage_asset("ekkokin_homophones.json")
         .expect("failed to stage Ekkokin homophone table for compilation");
+    stage_compressed_asset("mim1c_homoglyphs.json.gz.b64", "mim1c_homoglyphs.json")
+        .expect("failed to stage Mim1c homoglyph table for compilation");
     stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
@@ -121,5 +125,41 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
 
     fs::create_dir_all(&out_dir)?;
     fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
+    Ok(())
+}
+
+fn stage_compressed_asset(asset_name: &str, output_name: &str) -> io::Result<()> {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
+
+    let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
+    if !canonical_repo_asset.exists() {
+        return Err(io::Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "missing asset {asset_name}; expected {}",
+                canonical_repo_asset.display()
+            ),
+        ));
+    }
+
+    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
+
+    fs::create_dir_all(&out_dir)?;
+    let mut encoded = String::new();
+    File::open(&canonical_repo_asset)?.read_to_string(&mut encoded)?;
+
+    let stripped = encoded
+        .chars()
+        .filter(|ch| !ch.is_whitespace())
+        .collect::<String>();
+
+    let decoded = general_purpose::STANDARD
+        .decode(stripped.as_bytes())
+        .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+
+    let mut decoder = GzDecoder::new(Cursor::new(decoded));
+    let mut output = File::create(out_dir.join(output_name))?;
+    io::copy(&mut decoder, &mut output)?;
     Ok(())
 }

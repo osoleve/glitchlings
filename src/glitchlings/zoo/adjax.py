@@ -7,7 +7,6 @@ from .rushmore import (
     Rushmore,
     RushmoreMode,
     _normalize_modes,
-    _python_swap_adjacent_words,
     swap_adjacent_words,
 )
 
@@ -54,4 +53,4 @@ class Adjax(Rushmore):
 adjax = Adjax()
 
 
-__all__ = ["Adjax", "adjax", "swap_adjacent_words", "_python_swap_adjacent_words"]
+__all__ = ["Adjax", "adjax", "swap_adjacent_words"]

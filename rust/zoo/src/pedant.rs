@@ -8,7 +8,7 @@ use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
-use crate::rng::PyRng;
+use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 
 #[derive(Debug, Clone, Copy)]
@@ -71,7 +71,10 @@ impl PedantOp {
     pub fn new(seed: i128, stone_name: &str) -> Result<Self, PyErr> {
         let stone = PedantStone::try_from_name(stone_name)
             .ok_or_else(|| PyValueError::new_err(format!("Unknown pedant stone: {stone_name}")))?;
-        Ok(Self { root_seed: seed, stone })
+        Ok(Self {
+            root_seed: seed,
+            stone,
+        })
     }
 
     fn lineage(&self) -> [&'static str; 3] {
@@ -234,7 +237,7 @@ fn coordinate_replacement(
             ReprArg::Int(start as i64),
         ],
     );
-    let mut rng = PyRng::new(seed);
+    let mut rng = DeterministicRng::new(seed);
     if rng.random() < 0.5 {
         Ok(apply_diaeresis(word))
     } else {
@@ -250,8 +253,12 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         return Ok(text.to_string());
     }
 
-    let seed = derive_seed(root_seed, lineage, &[ReprArg::Str("aetheria"), ReprArg::Str(text)]);
-    let mut rng = PyRng::new(seed);
+    let seed = derive_seed(
+        root_seed,
+        lineage,
+        &[ReprArg::Str("aetheria"), ReprArg::Str(text)],
+    );
+    let mut rng = DeterministicRng::new(seed);
 
     let mut chosen: HashSet<usize> = HashSet::new();
     for &pos in &matches {
@@ -260,7 +267,7 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         }
     }
     if chosen.is_empty() {
-        let index = rng.randrange(matches.len() as i64, None, 1)? as usize;
+        let index = rng.rand_index(matches.len())?;
         chosen.insert(matches[index]);
     }
 

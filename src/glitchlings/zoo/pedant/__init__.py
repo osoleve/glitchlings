@@ -1,16 +1,14 @@
-"""Pedant glitchling integrating grammar evolutions with optional Rust acceleration."""
+"""Pedant glitchling integrating grammar evolutions with Rust acceleration."""
 
 from __future__ import annotations
 
 import random
 from typing import Any, cast
 
-from .._rust_extensions import get_rust_operation
-from ..core import AttackOrder, AttackWave, Glitchling
-from .core import EVOLUTIONS, PedantBase
+from ..core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
+from .._rust_extensions import resolve_seed
+from .core import EVOLUTIONS, PedantBase, apply_pedant
 from .stones import STONES, PedantStone
-
-_PEDANT_RUST = get_rust_operation("pedant")
 
 
 def _coerce_stone(value: Any) -> PedantStone:
@@ -32,41 +30,27 @@ def pedant_transform(
     if pedant_stone not in EVOLUTIONS:
         raise ValueError(f"Unknown pedant stone: {stone!r}")
 
-    effective_rng = rng
-    if seed is not None:
-        effective_seed = int(seed)
-    else:
-        if effective_rng is None:
-            effective_rng = random.Random()
-        effective_seed = effective_rng.randrange(2**63)
+    effective_seed = resolve_seed(seed, rng)
 
-    if _PEDANT_RUST is not None:
-        return cast(
-            str,
-            _PEDANT_RUST(
-                text,
-                stone=pedant_stone.label,
-                seed=effective_seed,
-                rng=effective_rng,
-            ),
-        )
-
-    pedant = PedantBase(effective_seed)
-    evolved = pedant.evolve(pedant_stone)
-    return evolved.move(text)
+    return apply_pedant(
+        text,
+        stone=pedant_stone,
+        seed=effective_seed,
+    )
 
 
-def _build_pipeline_descriptor(glitch: Glitchling) -> dict[str, object] | None:
+def _build_pipeline_descriptor(glitch: Glitchling) -> PipelineOperationPayload:
     stone_value = glitch.kwargs.get("stone")
     if stone_value is None:
-        return None
+        message = "Pedant requires a stone to build the pipeline descriptor"
+        raise RuntimeError(message)
 
-    try:
-        pedant_stone = _coerce_stone(stone_value)
-    except ValueError:
-        return None
+    pedant_stone = _coerce_stone(stone_value)
 
-    return {"type": "pedant", "stone": pedant_stone.label}
+    return cast(
+        PipelineOperationPayload,
+        {"type": "pedant", "stone": pedant_stone.label},
+    )
 
 
 class Pedant(Glitchling):
