@@ -1,3 +1,4 @@
+from .auggie import Auggie
 from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
@@ -38,6 +39,7 @@ from .zoo import (
 )
 
 __all__ = [
+    "Auggie",
     "Typogre",
     "typogre",
     "Mim1c",
