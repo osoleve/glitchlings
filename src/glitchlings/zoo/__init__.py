@@ -5,15 +5,7 @@ from typing import Any
 
 from .adjax import Adjax, adjax
 from .apostrofae import Apostrofae, apostrofae
-from .core import (
-    Gaggle,
-    Glitchling,
-    is_rust_pipeline_enabled,
-    is_rust_pipeline_supported,
-    pipeline_feature_flag_enabled,
-    plan_glitchling_specs,
-    plan_glitchlings,
-)
+from .core import Gaggle, Glitchling, plan_glitchling_specs, plan_glitchlings
 from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
@@ -62,9 +54,6 @@ __all__ = [
     "Gaggle",
     "plan_glitchlings",
     "plan_glitchling_specs",
-    "is_rust_pipeline_enabled",
-    "is_rust_pipeline_supported",
-    "pipeline_feature_flag_enabled",
     "summon",
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",

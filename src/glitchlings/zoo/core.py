@@ -1,10 +1,9 @@
 """Core data structures used to model glitchlings and their interactions."""
 
 import inspect
-import logging
-import os
 import random
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
@@ -13,19 +12,6 @@ from ..compat import get_datasets_dataset, require_datasets
 from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
-
-# Load Rust-accelerated orchestration operations if available
-_compose_glitchlings_rust = get_rust_operation("compose_glitchlings")
-_plan_glitchlings_rust = get_rust_operation("plan_glitchlings")
-
-
-log = logging.getLogger(__name__)
-
-
-_PIPELINE_FEATURE_FLAG_ENV = "GLITCHLINGS_RUST_PIPELINE"
-_PIPELINE_ENABLE_VALUES = {"1", "true", "yes", "on"}
-_PIPELINE_DISABLE_VALUES = {"0", "false", "no", "off"}
-
 
 class PlanSpecification(TypedDict):
     name: str
@@ -39,156 +25,121 @@ Transcript = list[TranscriptTurn]
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
 
 
-def pipeline_feature_flag_enabled() -> bool:
-    """Return ``True`` when the environment does not explicitly disable the Rust pipeline."""
-    value = os.environ.get(_PIPELINE_FEATURE_FLAG_ENV)
-    if value is None:
-        return True
+class PipelineOperationPayload(TypedDict, total=False):
+    """Typed mapping describing a Rust pipeline operation."""
 
-    normalized = value.strip().lower()
-    if normalized in _PIPELINE_DISABLE_VALUES:
-        return False
-
-    if normalized in _PIPELINE_ENABLE_VALUES:
-        return True
-
-    return True
+    type: str
 
 
-def _pipeline_feature_flag_enabled() -> bool:
-    """Compatibility shim for legacy callers."""
-    return pipeline_feature_flag_enabled()
+class PipelineDescriptor(TypedDict):
+    """Typed mapping representing a glitchling's Rust pipeline descriptor."""
+
+    name: str
+    operation: PipelineOperationPayload
+    seed: int
 
 
-def is_rust_pipeline_supported() -> bool:
-    """Return ``True`` when the optional Rust extension is importable."""
-    return _compose_glitchlings_rust is not None
+@dataclass(slots=True)
+class NormalizedPlanSpec:
+    """Concrete representation of orchestration metadata consumed by Rust."""
+
+    name: str
+    scope: int
+    order: int
+
+    @classmethod
+    def from_glitchling(cls, glitchling: "Glitchling") -> "NormalizedPlanSpec":
+        return cls(glitchling.name, int(glitchling.level), int(glitchling.order))
+
+    @classmethod
+    def from_mapping(cls, mapping: Mapping[str, Any]) -> "NormalizedPlanSpec":
+        try:
+            name = str(mapping["name"])
+            scope_value = int(mapping["scope"])
+            order_value = int(mapping["order"])
+        except KeyError as exc:  # pragma: no cover - defensive guard
+            raise ValueError(f"Plan specification missing required field: {exc.args[0]}") from exc
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Plan specification fields must be coercible to integers") from exc
+
+        return cls(name, scope_value, order_value)
+
+    @classmethod
+    def from_entry(cls, entry: PlanEntry) -> "NormalizedPlanSpec":
+        if isinstance(entry, Glitchling):
+            return cls.from_glitchling(entry)
+        if not isinstance(entry, Mapping):
+            message = "plan_glitchlings expects Glitchling instances or mapping specifications"
+            raise TypeError(message)
+        return cls.from_mapping(entry)
+
+    def as_mapping(self) -> PlanSpecification:
+        return {"name": self.name, "scope": self.scope, "order": self.order}
 
 
-def is_rust_pipeline_enabled() -> bool:
-    """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-    return is_rust_pipeline_supported() and pipeline_feature_flag_enabled()
-
-
-def _spec_from_glitchling(glitchling: "Glitchling") -> PlanSpecification:
-    """Create a plan specification mapping from a glitchling instance."""
-    return {
-        "name": glitchling.name,
-        "scope": int(glitchling.level),
-        "order": int(glitchling.order),
-    }
-
-
-def _normalize_plan_entry(entry: PlanEntry) -> PlanSpecification:
-    """Convert a plan entry (glitchling or mapping) into a normalized specification."""
-    if isinstance(entry, Glitchling):
-        return _spec_from_glitchling(entry)
-
-    if not isinstance(entry, Mapping):
-        message = "plan_glitchlings expects Glitchling instances or mapping specifications"
-        raise TypeError(message)
-
-    try:
-        name = str(entry["name"])
-        scope_value = int(entry["scope"])
-        order_value = int(entry["order"])
-    except KeyError as exc:  # pragma: no cover - defensive guard
-        raise ValueError(f"Plan specification missing required field: {exc.args[0]}") from exc
-    except (TypeError, ValueError) as exc:
-        raise ValueError("Plan specification fields must be coercible to integers") from exc
-
-    return {"name": name, "scope": scope_value, "order": order_value}
-
-
-def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[PlanSpecification]:
+def _normalize_plan_entries(entries: Sequence[PlanEntry]) -> list[NormalizedPlanSpec]:
     """Normalize a collection of orchestration plan entries."""
-    return [_normalize_plan_entry(entry) for entry in entries]
+
+    return [NormalizedPlanSpec.from_entry(entry) for entry in entries]
 
 
-def _plan_glitchlings_python(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int,
-) -> list[tuple[int, int]]:
-    """Pure-Python fallback for orchestrating glitchlings in deterministic order."""
-    master_seed_int = int(master_seed)
-    planned: list[tuple[int, int, int, int, str]] = []
-    for index, spec in enumerate(specs):
-        name = str(spec["name"])
-        scope = int(spec["scope"])
-        order = int(spec["order"])
-        derived_seed = Gaggle.derive_seed(master_seed_int, name, index)
-        planned.append((index, derived_seed, scope, order, name))
+def _normalize_plan_specs(specs: Sequence[Mapping[str, Any]]) -> list[NormalizedPlanSpec]:
+    """Normalize raw plan specification mappings."""
 
-    planned.sort(key=lambda entry: (entry[2], entry[3], entry[4], entry[0]))
-    return [(index, seed) for index, seed, *_ in planned]
+    return [NormalizedPlanSpec.from_mapping(spec) for spec in specs]
 
 
 def _plan_glitchlings_with_rust(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int,
-) -> list[tuple[int, int]] | None:
-    """Attempt to obtain the orchestration plan from the compiled Rust module."""
-    if _plan_glitchlings_rust is None:
-        return None
-
+) -> list[tuple[int, int]]:
+    """Obtain the orchestration plan from the compiled Rust module."""
+    plan_glitchlings = get_rust_operation("plan_glitchlings")
     try:
-        plan = _plan_glitchlings_rust(specs, int(master_seed))
-    except (
-        TypeError,
-        ValueError,
-        RuntimeError,
-        AttributeError,
-    ):  # pragma: no cover - defer to Python fallback on failure
-        log.debug("Rust orchestration planning failed; falling back to Python plan", exc_info=True)
-        return None
+        plan = plan_glitchlings(specs, int(master_seed))
+    except (TypeError, ValueError, RuntimeError, AttributeError) as error:
+        message = "Rust orchestration planning failed"
+        raise RuntimeError(message) from error
 
     return [(int(index), int(seed)) for index, seed in plan]
-
-
-def _resolve_orchestration_plan(
-    specs: Sequence[PlanSpecification],
-    master_seed: int,
-    prefer_rust: bool,
-) -> list[tuple[int, int]]:
-    """Dispatch to the Rust planner when available, otherwise fall back to Python."""
-    if prefer_rust:
-        plan = _plan_glitchlings_with_rust(list(specs), master_seed)
-        if plan is not None:
-            return plan
-
-    return _plan_glitchlings_python(list(specs), master_seed)
 
 
 def plan_glitchling_specs(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int | None,
-    *,
-    prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
-    """Resolve orchestration order and seeds from glitchling specifications."""
+    """Resolve orchestration order and seeds from glitchling specifications.
+
+    Notes
+    -----
+    The Rust extension is required for orchestration.
+    """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
 
-    normalized_specs = [_normalize_plan_entry(spec) for spec in specs]
+    normalized_specs = [spec.as_mapping() for spec in _normalize_plan_specs(specs)]
     master_seed_int = int(master_seed)
-    return _resolve_orchestration_plan(normalized_specs, master_seed_int, prefer_rust)
+    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
 
 
 def plan_glitchlings(
     entries: Sequence[PlanEntry],
     master_seed: int | None,
-    *,
-    prefer_rust: bool = True,
 ) -> list[tuple[int, int]]:
-    """Normalize glitchling instances or specs and compute an orchestration plan."""
+    """Normalize glitchling instances or specs and compute an orchestration plan.
+
+    Notes
+    -----
+    The Rust extension is required for orchestration.
+    """
     if master_seed is None:
         message = "Gaggle orchestration requires a master seed"
         raise ValueError(message)
 
-    normalized_specs = _normalize_plan_entries(entries)
+    normalized_specs = [spec.as_mapping() for spec in _normalize_plan_entries(entries)]
     master_seed_int = int(master_seed)
-    return _resolve_orchestration_plan(normalized_specs, master_seed_int, prefer_rust)
+    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -266,7 +217,7 @@ class Glitchling:
         scope: AttackWave,
         order: AttackOrder = AttackOrder.NORMAL,
         seed: int | None = None,
-        pipeline_operation: Callable[["Glitchling"], dict[str, Any] | None] | None = None,
+        pipeline_operation: Callable[["Glitchling"], Mapping[str, Any] | None] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -316,13 +267,34 @@ class Glitchling:
             if target == canonical:
                 setattr(self, alias, value)
 
-    def pipeline_operation(self) -> dict[str, Any] | None:
-        """Return the Rust pipeline operation descriptor for this glitchling."""
+    def pipeline_operation(self) -> PipelineOperationPayload | None:
+        """Return the Rust pipeline descriptor or ``None`` when unavailable.
+
+        Glitchlings that cannot provide a compiled pipeline (for example the
+        lightweight helpers used in tests) should override this hook or supply
+        a ``pipeline_operation`` factory that returns ``None`` to indicate that
+        Python orchestration must be used instead. When a descriptor mapping is
+        returned it is validated and forwarded to the Rust pipeline.
+        """
+
         factory = self._pipeline_descriptor_factory
         if factory is None:
             return None
 
-        return factory(self)
+        descriptor = factory(self)
+        if descriptor is None:
+            return None
+
+        if not isinstance(descriptor, Mapping):  # pragma: no cover - defensive
+            raise TypeError("Pipeline descriptor factories must return a mapping or None")
+
+        payload = dict(descriptor)
+        payload_type = payload.get("type")
+        if not isinstance(payload_type, str):
+            message = f"Pipeline descriptor for {self.name} is missing a string 'type' field"
+            raise RuntimeError(message)
+
+        return cast(PipelineOperationPayload, payload)
 
     def _corruption_expects_rng(self) -> bool:
         """Return `True` when the corruption function accepts an rng keyword."""
@@ -423,6 +395,51 @@ class Glitchling:
         return cls(**filtered_kwargs)
 
 
+@dataclass(slots=True)
+class PipelineDescriptorModel:
+    """In-memory representation of a glitchling pipeline descriptor."""
+
+    name: str
+    seed: int
+    operation: PipelineOperationPayload
+
+    def as_mapping(self) -> PipelineDescriptor:
+        return {"name": self.name, "operation": self.operation, "seed": self.seed}
+
+
+def _build_pipeline_descriptor(
+    glitchling: "Glitchling",
+    *,
+    master_seed: int | None,
+) -> PipelineDescriptorModel | None:
+    """Materialise the Rust pipeline descriptor for ``glitchling`` when available."""
+
+    operation = glitchling.pipeline_operation()
+    if operation is None:
+        return None
+
+    if not isinstance(operation, Mapping):  # pragma: no cover - defensive
+        raise TypeError("Pipeline operations must be mappings or None")
+
+    operation_payload = dict(operation)
+    operation_type = operation_payload.get("type")
+    if not isinstance(operation_type, str):
+        message = f"Pipeline operation for {glitchling.name} is missing a string 'type'"
+        raise RuntimeError(message)
+
+    seed = glitchling.seed
+    if seed is None:
+        index = getattr(glitchling, "_gaggle_index", None)
+        if index is None or master_seed is None:
+            raise RuntimeError(
+                "Glitchling %s is missing deterministic seed configuration" % glitchling.name
+            )
+        seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
+
+    payload = cast(PipelineOperationPayload, operation_payload)
+    return PipelineDescriptorModel(glitchling.name, int(seed), payload)
+
+
 class Gaggle(Glitchling):
     """A collection of glitchlings executed in a deterministic order."""
 
@@ -498,72 +515,40 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
-    @staticmethod
-    def rust_pipeline_supported() -> bool:
-        """Return ``True`` when the compiled Rust pipeline is importable."""
-        return is_rust_pipeline_supported()
-
-    @staticmethod
-    def rust_pipeline_enabled() -> bool:
-        """Return ``True`` when the Rust pipeline is available and not explicitly disabled."""
-        return is_rust_pipeline_enabled()
-
-    def _pipeline_descriptors(self) -> list[dict[str, Any]] | None:
-        if not self.rust_pipeline_enabled():
-            return None
-
-        descriptors: list[dict[str, Any]] = []
+    def _pipeline_descriptors(self) -> tuple[list[PipelineDescriptor], list[Glitchling]]:
+        """Collect pipeline descriptors and track glitchlings missing them."""
+        descriptors: list[PipelineDescriptor] = []
+        missing: list[Glitchling] = []
+        master_seed = self.seed
         for glitchling in self.apply_order:
-            operation = glitchling.pipeline_operation()
-            if operation is None:
-                return None
+            descriptor = _build_pipeline_descriptor(glitchling, master_seed=master_seed)
+            if descriptor is None:
+                missing.append(glitchling)
+                continue
+            descriptors.append(descriptor.as_mapping())
 
-            seed = glitchling.seed
-            if seed is None:
-                index = getattr(glitchling, "_gaggle_index", None)
-                master_seed = self.seed
-                if index is None or master_seed is None:
-                    return None
-                seed = Gaggle.derive_seed(master_seed, glitchling.name, index)
-
-            descriptors.append(
-                {
-                    "name": glitchling.name,
-                    "operation": operation,
-                    "seed": int(seed),
-                }
-            )
-
-        return descriptors
+        return descriptors, missing
 
     def _corrupt_text(self, text: str) -> str:
         """Apply each glitchling to string input sequentially."""
         master_seed = self.seed
-        descriptors = self._pipeline_descriptors()
-        if (
-            master_seed is not None
-            and descriptors is not None
-            and _compose_glitchlings_rust is not None
-        ):
-            try:
-                return cast(str, _compose_glitchlings_rust(text, descriptors, master_seed))
-            except (
-                TypeError,
-                ValueError,
-                RuntimeError,
-                AttributeError,
-            ):  # pragma: no cover - fall back to Python execution
-                log.debug("Rust pipeline failed; falling back", exc_info=True)
+        descriptors, missing = self._pipeline_descriptors()
 
-        corrupted = text
-        for glitchling in self.apply_order:
-            next_value = glitchling.corrupt(corrupted)
-            if not isinstance(next_value, str):
-                message = "Glitchling pipeline produced non-string output for string input"
-                raise TypeError(message)
-            corrupted = next_value
+        if missing:
+            result = text
+            for glitchling in self.apply_order:
+                result = cast(str, glitchling.corrupt(result))
+            return result
 
-        return corrupted
+        if master_seed is None:
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
+
+        compose_glitchlings = get_rust_operation("compose_glitchlings")
+        try:
+            return cast(str, compose_glitchlings(text, descriptors, master_seed))
+        except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+            raise RuntimeError("Rust pipeline execution failed") from error
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially."""

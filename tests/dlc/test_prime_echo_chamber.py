@@ -6,6 +6,8 @@ import types
 
 import pytest
 
+pytest.importorskip("jellyfish")
+
 
 class _Rubric:
     def __init__(self, funcs, weights):
