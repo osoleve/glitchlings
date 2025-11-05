@@ -312,6 +312,10 @@ def rushmore_attack(
     if config is None:
         return text
 
+    mode_rng = rng
+    if mode_rng is None and seed is not None:
+        mode_rng = random.Random(resolve_seed(seed, None))
+
     result = text
     for mode in config.modes:
         if not config.has_mode(mode):
@@ -325,21 +329,21 @@ def rushmore_attack(
             result = delete_random_words(
                 result,
                 rate=rate_value,
-                seed=resolve_seed(None, rng),
+                rng=mode_rng,
                 unweighted=config.delete_unweighted,
             )
         elif mode is RushmoreMode.DUPLICATE:
             result = reduplicate_words(
                 result,
                 rate=rate_value,
-                seed=resolve_seed(None, rng),
+                rng=mode_rng,
                 unweighted=config.duplicate_unweighted,
             )
         else:
             result = swap_adjacent_words(
                 result,
                 rate=rate_value,
-                seed=resolve_seed(None, rng),
+                rng=mode_rng,
             )
 
     return result
