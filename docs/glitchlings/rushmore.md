@@ -10,4 +10,4 @@ Rushmore now bundles three word-level attacks—deletions, reduplications, and a
   - `rate` applies to every active mode unless you provide a per-mode override such as `duplicate_rate=0.02` or `swap_rate=0.4`.
   - Toggle `unweighted=True` to sample uniformly; override individual modes with `delete_unweighted` / `duplicate_unweighted` when you only want to change part of the attack.
   - The first word is still preserved during deletions—prepend a short throwaway sentence if you need removals deeper in the passage.
-  - Standalone `Reduple` and `Adjax` imports remain available for compatibility, but they now delegate to `Rushmore(modes='duplicate')` and `Rushmore(modes='swap')` under the hood.
+  - Standalone `Reduple` and `Adjax` glitchlings have been retired; use `Rushmore(modes='duplicate')` and `Rushmore(modes='swap')` to recreate their behaviour with the modern interface.

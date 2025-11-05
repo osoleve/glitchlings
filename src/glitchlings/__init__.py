@@ -1,7 +1,7 @@
+from .auggie import Auggie
 from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
-    Adjax,
     Apostrofae,
     Ekkokin,
     Gaggle,
@@ -11,14 +11,12 @@ from .zoo import (
     Mim1c,
     Pedant,
     Redactyl,
-    Reduple,
     Rushmore,
     RushmoreMode,
     Scannequin,
     Spectroll,
     Typogre,
     Zeedub,
-    adjax,
     apostrofae,
     ekkokin,
     hokey,
@@ -28,7 +26,6 @@ from .zoo import (
     plan_glitchling_specs,
     plan_glitchlings,
     redactyl,
-    reduple,
     rushmore,
     scannequin,
     spectroll,
@@ -38,14 +35,13 @@ from .zoo import (
 )
 
 __all__ = [
+    "Auggie",
     "Typogre",
     "typogre",
     "Mim1c",
     "mim1c",
     "Jargoyle",
     "jargoyle",
-    "Adjax",
-    "adjax",
     "Apostrofae",
     "apostrofae",
     "Ekkokin",
@@ -56,8 +52,6 @@ __all__ = [
     "pedant",
     "Redactyl",
     "redactyl",
-    "Reduple",
-    "reduple",
     "Rushmore",
     "rushmore",
     "RushmoreMode",

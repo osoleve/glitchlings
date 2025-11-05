@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import cast
 
-from glitchlings import adjax, mim1c, redactyl, reduple, rushmore, scannequin, typogre, zeedub
+from glitchlings import mim1c, redactyl, rushmore, scannequin, typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 
@@ -32,15 +32,6 @@ def test_mim1c_respects_banned_characters():
     banned = {"ａ"}
     out = cast(str, m("ａ"))
     assert not any(char in banned for char in out)
-
-
-def test_reduple_rate_increases_tokens():
-    text = "a b c d e f g h"
-    glitch = reduple.clone()
-    glitch.set_param("seed", 5)
-    glitch.set_param("rate", 0.5)
-    out = cast(str, glitch(text))
-    assert len(out.split()) >= len(text.split())
 
 
 def test_rushmore_rate_decreases_tokens():
@@ -88,22 +79,6 @@ def test_rushmore_preserves_leading_token_and_spacing():
             assert marker not in out
         assert out == out.strip()
 
-
-def test_adjax_full_rate_swaps_word_cores():
-    text = "Alpha, beta! Gamma delta"
-    glitch = adjax.clone()
-    glitch.set_param("seed", 11)
-    glitch.set_param("rate", 1.0)
-    out = cast(str, glitch(text))
-    assert out == "beta, Alpha! delta Gamma"
-
-def test_adjax_zero_rate_preserves_text():
-    text = "Leave punctuation intact, please."
-    glitch = adjax.clone()
-    glitch.set_param("seed", 7)
-    glitch.set_param("rate", 0.0)
-    out = cast(str, glitch(text))
-    assert out == text
 
 def test_redactyl_replacement_char_and_merge():
     text = "alpha beta gamma"

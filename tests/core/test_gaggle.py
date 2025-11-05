@@ -6,25 +6,25 @@ from glitchlings.zoo.core import Gaggle
 
 
 def test_gaggle_determinism(sample_text):
-    g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=777)
+    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=777)
     out1 = g1(sample_text)
-    g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=777)
+    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=777)
     out2 = g2(sample_text)
     assert out1 == out2
 
 
 def test_gaggle_seed_changes_output(sample_text):
-    g1 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=1)
+    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=1)
     out1 = g1(sample_text)
-    g2 = summon(["reduple", "mim1c", "typogre", "rushmore", "redactyl"], seed=2)
+    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=2)
     out2 = g2(sample_text)
     assert out1 != out2
 
 
 def test_gaggle_ordering_stable(sample_text):
     # When summoned by name, built-ins choose a stable order by scope, then order, then name
-    gaggle = summon(["typogre", "mim1c", "reduple", "rushmore"], seed=42)
-    expected = ["Reduple", "Rushmore", "Typogre", "Mim1c"]
+    gaggle = summon(["typogre", "mim1c", "rushmore", "redactyl"], seed=42)
+    expected = ["Redactyl", "Rushmore", "Typogre", "Mim1c"]
     assert [member.name for member in gaggle.apply_order] == expected
 
 

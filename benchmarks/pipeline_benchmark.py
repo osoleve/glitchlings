@@ -76,7 +76,7 @@ def _shuffle_mix_descriptors() -> list[Descriptor]:
     descriptors.insert(
         2,
         {
-            "name": "Adjax",
+            "name": "Rushmore-Swap",
             "operation": {"type": "swap_adjacent", "rate": 0.35},
         },
     )
@@ -87,7 +87,7 @@ def _aggressive_cleanup_descriptors() -> list[Descriptor]:
     return [
         _make_descriptor("Rushmore", rate=0.03),
         {
-            "name": "Adjax-Deep",
+            "name": "Rushmore-Swap-Deep",
             "operation": {"type": "swap_adjacent", "rate": 0.6},
         },
         {
@@ -109,7 +109,7 @@ def _stealth_noise_descriptors() -> list[Descriptor]:
         _make_descriptor("Typogre", rate=0.025),
         _make_descriptor("Zeedub", rate=0.035),
         {
-            "name": "Adjax-Lite",
+            "name": "Rushmore-Swap-Lite",
             "operation": {"type": "swap_adjacent", "rate": 0.25},
         },
         {

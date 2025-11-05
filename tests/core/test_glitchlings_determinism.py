@@ -4,12 +4,10 @@ from functools import partial
 from typing import cast
 
 from glitchlings import (
-    adjax,
     apostrofae,
     jargoyle,
     mim1c,
     redactyl,
-    reduple,
     rushmore,
     scannequin,
     typogre,
@@ -48,24 +46,10 @@ def test_jargoyle_determinism(sample_text):
     assert a == b
 
 
-def test_reduple_determinism(sample_text):
-    reduple.set_param("seed", 42)
-    reduple.set_param("rate", 0.05)
-    a, b = _twice(reduple, sample_text)
-    assert a == b
-
-
 def test_rushmore_determinism(sample_text):
     rushmore.set_param("seed", 42)
     rushmore.set_param("rate", 0.01)
     a, b = _twice(rushmore, sample_text)
-    assert a == b
-
-
-def test_adjax_determinism(sample_text):
-    adjax.set_param("seed", 42)
-    adjax.set_param("rate", 0.5)
-    a, b = _twice(adjax, sample_text)
     assert a == b
 
 

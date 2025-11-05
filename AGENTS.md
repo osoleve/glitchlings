@@ -17,7 +17,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
   - `main.py` implements the CLI: parser construction, text sourcing, glitchling summoning, and optional diff output.
 - **`src/glitchlings/zoo/`** - Core glitchling implementations.
   - `core.py` defines the `Glitchling` base class, `AttackWave`/`AttackOrder` enums, deterministic seed derivation, and the Rust pipeline bridge.
-  - `typogre.py`, `mim1c.py`, `reduple.py`, `rushmore.py`, `redactyl.py`, `jargoyle.py`, `scannequin.py`, and `zeedub.py` provide concrete glitchlings. Word-level agents accept the canonical `rate` parameter and expose the `unweighted` toggle.
+  - `typogre.py`, `mim1c.py`, `rushmore.py`, `redactyl.py`, `jargoyle.py`, `scannequin.py`, and `zeedub.py` provide concrete glitchlings. Word-level agents accept the canonical `rate` parameter and expose the `unweighted` toggle, with Rushmore covering duplication and adjacent swap modes.
 - **`src/glitchlings/util/`** - Shared helpers including `SAMPLE_TEXT`, keyboard-neighbour layouts, diff utilities, and rate parsing helpers.
 - **`src/glitchlings/lexicon/`** - Bundled synonym backends. The default config (`src/glitchlings/config.toml`) prioritises the shipped vector cache (`lexicon/data/default_vector_cache.json`), then optional graph caches, and finally WordNet when installed.
 - **`src/glitchlings/dlc/prime/`** - Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).
@@ -37,7 +37,7 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
   - Drive all randomness through the instance's `rng` (do not rely on module-level RNG state) to keep `Gaggle` runs deterministic.
   - Provide a `pipeline_operation` descriptor when the Rust pipeline can accelerate the behaviour; return `None` when only the Python path is valid.
 - Keep helper functions small and well-scoped; include docstrings that describe behaviour and note any determinism considerations.
-- When mutating token sequences, preserve whitespace and punctuation via separator-preserving regex splits (see `reduple.py`, `rushmore.py`, `redactyl.py`).
+- When mutating token sequences, preserve whitespace and punctuation via separator-preserving regex splits (see `rushmore.py`, `redactyl.py`).
 - CLI work should continue the existing UX: validate inputs with `ArgumentParser.error`, keep deterministic output ordering, and gate optional behaviours behind explicit flags.
 - Treat Rust failures as fatal: the compiled backend must import cleanly, surface identical signatures, and stay in lockstep with the Python shims.
 

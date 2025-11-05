@@ -40,12 +40,12 @@ def keyboard_layout(keyboard: str) -> Dict[str, List[str]]:
 
 
 OPERATION_MODULES: Dict[str, str] = {
-    "reduplicate": "Reduple",
+    "reduplicate": "Rushmore",
     "delete": "Rushmore",
     "redact": "Redactyl",
     "ocr": "Scannequin",
     "zwj": "Zeedub",
-    "swap_adjacent": "Adjax",
+    "swap_adjacent": "Rushmore",
     "typo": "Typogre",
     "hokey": "Hokey",
     "apostrofae": "Apostrofae",
@@ -66,7 +66,7 @@ def module_for_operation(op_type: str) -> ModuleType:
 
 BASE_DESCRIPTORS: List[Descriptor] = [
     {
-        "name": "Reduple",
+        "name": "Rushmore-Duplicate",
         "operation": {"type": "reduplicate", "rate": 0.01},
     },
     {"name": "Rushmore", "operation": {"type": "delete", "rate": 0.01}},
@@ -119,8 +119,7 @@ MASTER_SEED = 151
 SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "baseline": "Default six-glitch pipeline mirroring the public benchmark configuration.",
     "shuffle_mix": (
-        "Adds Rushmore's swap mode (formerly Adjax) and varies rates to stress "
-        "mixed workloads."
+        "Adds Rushmore's swap mode alongside deletion to stress mixed workloads."
     ),
     "aggressive_cleanup": "Heavy redaction and deletion pass to emulate worst-case sanitisation.",
     "stealth_noise": "Lightweight typo and zero-width noise focused on subtle obfuscations.",

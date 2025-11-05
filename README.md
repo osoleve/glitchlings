@@ -121,8 +121,6 @@ Apostrofae — scope: Character, order: normal
     Pedant — scope: Word, order: late
   Jargoyle — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
-     Adjax — scope: Word, order: normal
-   Reduple — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
  Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late
@@ -304,39 +302,19 @@ _Uh oh. The worst person you know just bought a thesaurus._
 >
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
-### Reduple
-
-_Did you say that or did I?_
-
-> _**Broken Record.**_ Reduple stutters through text by randomly reduplicating words. Like a nervous speaker, it creates natural repetitions that test a model's ability to handle redundancy without losing the thread. Reduple now delegates to `Rushmore(modes='duplicate')`, so reach for Rushmore directly when you want to compose duplication with deletions or swaps.
->
-> Args
->
-> - `rate (float)`: The maximum proportion of words to reduplicate (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
 ### Rushmore
 
 _I accidentally an entire word._
 
-> _**Hasty Omission.**_ The evil (?) twin of `reduple`, Rushmore moves with such frantic speed that it causes words to simply vanish from existence as it passes.
+> _**Tactical Scrambler.**_ Rushmore now orchestrates the full word-level triad—deletions, duplications, and adjacent swaps—that previously lived in separate glitchlings. Select the behaviours you need with the `modes` parameter (or pass `"all"`) and Rushmore executes them in a deterministic order while sharing one RNG.
 >
 > Args
 >
-> - `rate (float)`: The maximum proportion of words to delete (default: 0.01, 1%).
-> - `unweighted (bool)`: Sample words uniformly instead of favouring shorter tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
-### Adjax
-
-_Keep your hands and punctuation where I can see them._
-
-> _**Perfect Shuffle.**_ Adjax trades the cores of neighbouring words while leaving punctuation, casing, and surrounding whitespace untouched, turning fluent prose into locally scrambled tongue-twisters. Adjax is implemented via `Rushmore(modes='swap')`, so you can combine swaps with deletions or reduplications by switching to Rushmore directly.
->
-> Args
->
-> - `rate (float)`: Probability that each adjacent pair swaps cores (default: 0.5, 50%).
+> - `modes`: Choose which word-level attacks to enable. Accepts `"delete"`, `"duplicate"`, `"swap"`, any iterable of those tokens, a corresponding `RushmoreMode`, or the string `"all"`.
+> - `rate (float)`: Global rate applied when per-mode rates are unspecified (default: 0.01, 1%).
+> - `delete_rate`, `duplicate_rate`, `swap_rate (float)`: Optional per-mode overrides.
+> - `unweighted (bool)`: Apply uniform sampling to all modes (default: False).
+> - `delete_unweighted`, `duplicate_unweighted (bool | None)`: Per-mode overrides for weighting strategy.
 > - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Redactyl
