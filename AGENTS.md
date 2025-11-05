@@ -1,6 +1,4 @@
-# Glitchlings - Agent Handbook
-
-Welcome! This repository corrals a roster of deterministic text-corruption "glitchlings" plus a CLI for orchestrating them. Treat this handbook as the default guidance for any work in the repo.
+# Glitchlings - AGENTS.md
 
 ## Work Tracking
 1. Install the [Beads `bd` CLI](https://github.com/steveyegge/beads) in every environment before writing code. The project ships prebuilt binaries—download the latest release (e.g. `curl -L https://github.com/steveyegge/beads/releases/download/v0.20.1/beads_0.20.1_linux_amd64.tar.gz -o beads.tar.gz && tar -xzf beads.tar.gz`) and move the `bd` executable onto `$PATH` (for example, `install -m 0755 bd /usr/local/bin/bd`). Verify the install with `bd version`. If `bd` is missing from the environment, you are expected—and explicitly allowed—to install it.
@@ -8,7 +6,13 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 3. Bootstrap new clones with `bd init --quiet` from the repository root; this keeps `.beads/` synchronised and ready for the agent workflow.
 4. **Before starting any coding task, create or update a bead describing the scope, mark it `in_progress` while you work, and capture completion details in the same bead before finishing.** Use the CLI (`bd create`, `bd update`, `bd close`) instead of editing JSON by hand—beads are the source of truth for ongoing work.
 5. Confirm the editable install succeeds with `pip install -e .[dev]` before making changes—this primes the tooling stack and validates that the repository builds cleanly.
-6. Keep `AGENTS.md` and `CLAUDE.md` under `.github/` with the Beads database tracked via `bd`; when migrating existing Markdown notes, port the relevant content into beads before retiring the files.
+
+## Quality Gates
+After completing a task, always:
+1. Lint with `ruff`
+2. Type check `src/`  with `mypy`
+3. Build the project with `uv`
+4. Run tests with `pytest`
 
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
@@ -43,19 +47,13 @@ Welcome! This repository corrals a roster of deterministic text-corruption "glit
 
 ## Testing & Tooling
 - Run the full suite with `pytest` from the repository root.
-- Some tests rely on the NLTK WordNet corpus; if it is missing they skip automatically. Install it via `python -c "import nltk; nltk.download('wordnet')"` to exercise Jargoyle thoroughly.
-- Touching Rust-backed modules? Rerun `pytest tests/test_rust_backed_glitchlings.py` with and without the compiled extensions to keep both code paths healthy.
-- Pipeline or CLI changes should also cover `tests/test_glitchling_core.py`, `tests/test_benchmarks.py`, and `tests/test_cli.py`.
-- Optional extras (e.g., DLC) depend on `verifiers`. Install the `prime` extra (`pip install -e .[prime]`) when working in `src/glitchlings/dlc/` and run `tests/test_prime_echo_chamber.py` locally.
 
 ## Determinism Checklist
 - Expose configurable parameters via `set_param` so fixtures in `tests/test_glitchlings_determinism.py` can reset seeds predictably.
 - Derive RNGs from the enclosing context (`Gaggle.derive_seed`) instead of using global state.
 - When sampling subsets (e.g., replacements or deletions), stabilise candidate ordering before selecting to keep results reproducible.
-- Preserve signature parity between Python and Rust implementations so switching paths does not alter behaviour.
 
 ## Workflow Tips
-- Use `summon([...], seed=...)` for programmatic orchestration when reproducing tests or crafting examples.
 - The CLI lists built-in glitchlings (`glitchlings --list`) and can show diffs; update `BUILTIN_GLITCHLINGS` and help text when introducing new creatures.
 - Keep documentation synchronised: update `README.md`, `docs/index.md`, per-glitchling reference pages, and `MONSTER_MANUAL.md` when behaviours or defaults change.
 - When editing keyboard layouts or homoglyph mappings, ensure downstream consumers continue to work with lowercase keys (`util.KEYNEIGHBORS`).
