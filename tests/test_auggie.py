@@ -11,6 +11,7 @@ from glitchlings.zoo import (
     Apostrofae,
     Ekkokin,
     Gaggle,
+    Glitchling,
     Hokey,
     Jargoyle,
     Mim1c,
@@ -39,8 +40,8 @@ def _default_keyboard_name() -> str:
     raise RuntimeError("No keyboard layouts registered for Typogre tests")
 
 
-def _available_glitchling_cases() -> list[tuple[str, type, dict[str, object]]]:
-    cases: list[tuple[str, type, dict[str, object]]] = [
+def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str, object]]]:
+    cases: list[tuple[str, type[Glitchling], dict[str, object]]] = [
         (
             "typo",
             Typogre,
@@ -188,7 +189,7 @@ GLITCHLING_CASES = _available_glitchling_cases()
 
 @pytest.mark.parametrize("method_name, glitchling_cls, params", GLITCHLING_CASES)
 def test_auggie_builder_matches_glitchling_factory(
-    method_name: str, glitchling_cls: type, params: dict[str, object]
+    method_name: str, glitchling_cls: type[Glitchling], params: dict[str, object]
 ) -> None:
     auggie = Auggie(seed=101)
     builder = getattr(auggie, method_name)

@@ -6,28 +6,22 @@ from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
 from .lexicon import Lexicon
-from .zoo import (
-    Adjax,
-    Apostrofae,
-    Ekkokin,
-    Gaggle,
-    Glitchling,
-    Hokey,
-    Jargoyle,
-    Mim1c,
-    Pedant,
-    Redactyl,
-    Reduple,
-    Rushmore,
-    RushmoreMode,
-    Scannequin,
-    Spectroll,
-    Typogre,
-    Zeedub,
-)
-from .zoo.jargoyle import PartOfSpeechInput
+from .zoo.adjax import Adjax
+from .zoo.apostrofae import Apostrofae
+from .zoo.core import Gaggle, Glitchling
+from .zoo.ekkokin import Ekkokin
+from .zoo.hokey import Hokey
+from .zoo.jargoyle import Jargoyle, PartOfSpeechInput
+from .zoo.mim1c import Mim1c
+from .zoo.pedant import Pedant
 from .zoo.pedant.stones import PedantStone
-from .zoo.redactyl import FULL_BLOCK
+from .zoo.redactyl import FULL_BLOCK, Redactyl
+from .zoo.reduple import Reduple
+from .zoo.rushmore import Rushmore, RushmoreMode
+from .zoo.scannequin import Scannequin
+from .zoo.spectroll import Spectroll
+from .zoo.typogre import Typogre
+from .zoo.zeedub import Zeedub
 
 
 class Auggie(Gaggle):
