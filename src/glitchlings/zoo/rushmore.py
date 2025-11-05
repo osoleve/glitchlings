@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, unique
 from typing import Any, cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
 
@@ -242,13 +242,11 @@ def delete_random_words(
     """Delete random words from the input text."""
     effective_rate = 0.01 if rate is None else rate
 
-    if rng is None:
-        rng = random.Random(seed)
-
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
-    return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, rng))
+    seed_value = resolve_seed(seed, rng)
+    return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, seed_value))
 
 
 
@@ -264,13 +262,11 @@ def reduplicate_words(
     """Randomly reduplicate words in the text."""
     effective_rate = 0.01 if rate is None else rate
 
-    if rng is None:
-        rng = random.Random(seed)
-
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
 
-    return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, rng))
+    seed_value = resolve_seed(seed, rng)
+    return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, seed_value))
 
 
 def swap_adjacent_words(
@@ -283,10 +279,8 @@ def swap_adjacent_words(
     effective_rate = 0.5 if rate is None else rate
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
-    if rng is None:
-        rng = random.Random(seed)
-
-    return cast(str, _swap_adjacent_words_rust(text, clamped_rate, rng))
+    seed_value = resolve_seed(seed, rng)
+    return cast(str, _swap_adjacent_words_rust(text, clamped_rate, seed_value))
 
 
 def rushmore_attack(
@@ -304,9 +298,6 @@ def rushmore_attack(
     rng: random.Random | None = None,
 ) -> str:
     """Apply the configured Rushmore attack modes to ``text``."""
-    if rng is None:
-        rng = random.Random(seed)
-
     config = _resolve_rushmore_config(
         modes=modes,
         rate=rate,
@@ -334,18 +325,22 @@ def rushmore_attack(
             result = delete_random_words(
                 result,
                 rate=rate_value,
-                rng=rng,
+                seed=resolve_seed(None, rng),
                 unweighted=config.delete_unweighted,
             )
         elif mode is RushmoreMode.DUPLICATE:
             result = reduplicate_words(
                 result,
                 rate=rate_value,
-                rng=rng,
+                seed=resolve_seed(None, rng),
                 unweighted=config.duplicate_unweighted,
             )
         else:
-            result = swap_adjacent_words(result, rate=rate_value, rng=rng)
+            result = swap_adjacent_words(
+                result,
+                rate=rate_value,
+                seed=resolve_seed(None, rng),
+            )
 
     return result
 

@@ -232,31 +232,30 @@ pub fn parse_banned_characters(value: Option<Bound<'_, PyAny>>) -> PyResult<Vec<
     ))
 }
 
-#[pyfunction(name = "mim1c", signature = (text, rate=None, classes=None, banned_characters=None, rng=None))]
+#[pyfunction(name = "mim1c", signature = (text, rate=None, classes=None, banned_characters=None, seed=None))]
 pub(crate) fn swap_homoglyphs(
     text: &str,
     rate: Option<f64>,
     classes: Option<Bound<'_, PyAny>>,
     banned_characters: Option<Bound<'_, PyAny>>,
-    rng: Option<Bound<'_, PyAny>>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
-    let rng = rng.ok_or_else(|| PyValueError::new_err("Mim1c requires an RNG instance"))?;
     let rate = rate.unwrap_or(0.02);
     let classes = parse_class_selection(classes)?;
     let banned = parse_banned_characters(banned_characters)?;
     let op = Mim1cOp::new(rate, classes, banned);
-    crate::apply_operation(text, op, &rng).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rng::PyRng;
+    use crate::rng::DeterministicRng;
 
     #[test]
     fn replaces_expected_characters() {
         let mut buffer = TextBuffer::from_str("hello");
-        let mut rng = PyRng::new(42);
+        let mut rng = DeterministicRng::new(42);
         let op = Mim1cOp::new(1.0, ClassSelection::Default, Vec::new());
         op.apply(&mut buffer, &mut rng)
             .expect("mim1c operation succeeds");

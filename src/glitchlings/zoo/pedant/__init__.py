@@ -6,6 +6,7 @@ import random
 from typing import Any, cast
 
 from ..core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
+from .._rust_extensions import resolve_seed
 from .core import EVOLUTIONS, PedantBase, apply_pedant
 from .stones import STONES, PedantStone
 
@@ -29,21 +30,12 @@ def pedant_transform(
     if pedant_stone not in EVOLUTIONS:
         raise ValueError(f"Unknown pedant stone: {stone!r}")
 
-    effective_rng = rng
-    if seed is not None:
-        effective_seed = int(seed)
-        if effective_rng is None:
-            effective_rng = random.Random(seed)
-    else:
-        if effective_rng is None:
-            effective_rng = random.Random()
-        effective_seed = effective_rng.randrange(2**63)
+    effective_seed = resolve_seed(seed, rng)
 
     return apply_pedant(
         text,
         stone=pedant_stone,
         seed=effective_seed,
-        rng=effective_rng,
     )
 
 

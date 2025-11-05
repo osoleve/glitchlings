@@ -8,7 +8,7 @@ use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
-use crate::rng::PyRng;
+use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 
 #[derive(Debug, Clone, Copy)]
@@ -237,7 +237,7 @@ fn coordinate_replacement(
             ReprArg::Int(start as i64),
         ],
     );
-    let mut rng = PyRng::new(seed);
+    let mut rng = DeterministicRng::new(seed);
     if rng.random() < 0.5 {
         Ok(apply_diaeresis(word))
     } else {
@@ -258,7 +258,7 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         lineage,
         &[ReprArg::Str("aetheria"), ReprArg::Str(text)],
     );
-    let mut rng = PyRng::new(seed);
+    let mut rng = DeterministicRng::new(seed);
 
     let mut chosen: HashSet<usize> = HashSet::new();
     for &pos in &matches {
@@ -267,7 +267,7 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
         }
     }
     if chosen.is_empty() {
-        let index = rng.randrange(matches.len() as i64, None, 1)? as usize;
+        let index = rng.rand_index(matches.len())?;
         chosen.insert(matches[index]);
     }
 

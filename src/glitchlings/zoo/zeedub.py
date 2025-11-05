@@ -4,12 +4,12 @@ import random
 from collections.abc import Sequence
 from typing import Callable, cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
 _inject_zero_widths_rust = cast(
-    Callable[[str, float, list[str], random.Random], str],
+    Callable[[str, float, list[str], int | None], str],
     get_rust_operation("inject_zero_widths"),
 )
 
@@ -32,9 +32,6 @@ def insert_zero_widths(
     """Inject zero-width characters between non-space character pairs."""
     effective_rate = 0.02 if rate is None else rate
 
-    if rng is None:
-        rng = random.Random(seed)
-
     palette: Sequence[str] = (
         tuple(characters) if characters is not None else _DEFAULT_ZERO_WIDTH_CHARACTERS
     )
@@ -47,7 +44,8 @@ def insert_zero_widths(
     if clamped_rate == 0.0:
         return text
 
-    return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), rng)
+    seed_value = resolve_seed(seed, rng)
+    return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), seed_value)
 
 
 class Zeedub(Glitchling):

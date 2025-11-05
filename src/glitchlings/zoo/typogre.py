@@ -5,7 +5,7 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 
 from ..util import KEYNEIGHBORS
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _fatfinger_rust = get_rust_operation("fatfinger")
@@ -21,8 +21,6 @@ def fatfinger(
     """Introduce character-level "fat finger" edits with a Rust fast path."""
     effective_rate = 0.02 if rate is None else rate
 
-    if rng is None:
-        rng = random.Random(seed)
     if not text:
         return ""
 
@@ -33,14 +31,14 @@ def fatfinger(
     layout_mapping = layout if layout is not None else getattr(KEYNEIGHBORS, keyboard)
 
     return cast(
-            str,
-            _fatfinger_rust(
-                text,
-                max_change_rate=clamped_rate,
-                layout=layout_mapping,
-                rng=rng,
-            ),
-        )
+        str,
+        _fatfinger_rust(
+            text,
+            clamped_rate,
+            layout_mapping,
+            resolve_seed(seed, rng),
+        ),
+    )
 
 
 class Typogre(Glitchling):

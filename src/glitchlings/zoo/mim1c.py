@@ -6,7 +6,7 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
@@ -65,7 +65,6 @@ def swap_homoglyphs(
     """Replace characters with visually confusable homoglyphs via the Rust engine."""
 
     effective_rate = 0.02 if rate is None else rate
-    effective_rng = rng if rng is not None else random.Random(seed)
 
     normalised_classes = _normalise_classes(classes)
     normalised_banned = _normalise_banned(banned_characters)
@@ -78,10 +77,10 @@ def swap_homoglyphs(
 
     return _MIM1C_RUST(
         text,
-        rate=effective_rate,
-        classes=payload_classes,
-        banned_characters=payload_banned,
-        rng=effective_rng,
+        effective_rate,
+        payload_classes,
+        payload_banned,
+        resolve_seed(seed, rng),
     )
 
 

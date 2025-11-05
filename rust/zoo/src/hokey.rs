@@ -1,6 +1,4 @@
 use pyo3::prelude::*;
-use pyo3::types::PyAny;
-use pyo3::Bound;
 use regex::Regex;
 use serde::Deserialize;
 use std::cmp::Ordering;
@@ -745,7 +743,7 @@ fn contains_vowel(chars: &[char]) -> bool {
 }
 
 /// Python wrapper for the Hokey operation.
-#[pyfunction]
+#[pyfunction(signature = (text, rate, extension_min, extension_max, word_length_threshold, base_p, seed=None))]
 pub fn hokey(
     text: &str,
     rate: f64,
@@ -753,10 +751,8 @@ pub fn hokey(
     extension_max: i32,
     word_length_threshold: usize,
     base_p: f64,
-    rng: &Bound<'_, PyAny>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
-    use crate::PythonRngAdapter;
-
     let op = HokeyOp {
         rate,
         extension_min,
@@ -764,12 +760,5 @@ pub fn hokey(
         word_length_threshold,
         base_p,
     };
-
-    let mut buffer = TextBuffer::from_str(text);
-    let mut adapter = PythonRngAdapter::new(rng.clone());
-
-    op.apply(&mut buffer, &mut adapter)
-        .map_err(|err| err.into_pyerr())?;
-
-    Ok(buffer.to_string())
+    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
 }

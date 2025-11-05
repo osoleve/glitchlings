@@ -7,12 +7,12 @@ from typing import Any, Callable, cast
 
 from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
 from ..util.stretchability import StretchabilityAnalyzer
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
 
 StretchResult = str | tuple[str, list[StretchEvent]]
-HokeyRustCallable = Callable[[str, float, int, int, int, float, random.Random], StretchResult]
+HokeyRustCallable = Callable[[str, float, int, int, int, float, int | None], StretchResult]
 
 _hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
 _ANALYZER = StretchabilityAnalyzer()
@@ -60,8 +60,6 @@ def extend_vowels(
         empty_trace: list[StretchEvent] = []
         return (text, empty_trace) if return_trace else text
 
-    if rng is None:
-        rng = random.Random(seed)
     base_probability = base_p if base_p is not None else 0.45
 
     config = HokeyConfig(
@@ -72,16 +70,11 @@ def extend_vowels(
         word_length_threshold=word_length_threshold,
     )
 
+    seed_value = resolve_seed(seed, rng)
+
     trace_events: list[StretchEvent] | None = None
     if return_trace:
-        try:
-            state = rng.getstate()
-        except AttributeError as exc:  # pragma: no cover - non-standard RNG usage
-            raise TypeError(
-                "Hokey tracing requires an RNG compatible with random.Random.getstate()",
-            ) from exc
-        trace_rng = random.Random()
-        trace_rng.setstate(state)
+        trace_rng = random.Random(seed_value)
         _, trace_events = _GENERATOR.generate(
             text,
             rng=trace_rng,
@@ -95,7 +88,7 @@ def extend_vowels(
         extension_max,
         word_length_threshold,
         base_probability,
-        rng,
+        seed_value,
     )
 
     if isinstance(result, tuple):
