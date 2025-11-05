@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 import sys
 from importlib import import_module
 from types import ModuleType
@@ -60,6 +61,16 @@ def _build_missing_operation_error(name: str) -> RuntimeError:
     return RuntimeError(message.format(name=name))
 
 
+def resolve_seed(seed: int | None, rng: random.Random | None) -> int:
+    """Resolve a 64-bit seed using an optional RNG."""
+
+    if seed is not None:
+        return int(seed) & 0xFFFFFFFFFFFFFFFF
+    if rng is not None:
+        return rng.getrandbits(64)
+    return random.getrandbits(64)
+
+
 def get_rust_operation(operation_name: str) -> Callable[..., Any]:
     """Return a callable exported by :mod:`glitchlings._zoo_rust`.
 
@@ -98,4 +109,4 @@ def preload_operations(*operation_names: str) -> Mapping[str, Callable[..., Any]
     return {name: get_rust_operation(name) for name in operation_names}
 
 
-__all__ = ["RustExtensionImportError", "get_rust_operation", "preload_operations"]
+__all__ = ["RustExtensionImportError", "get_rust_operation", "preload_operations", "resolve_seed"]

@@ -10,11 +10,12 @@ mod text_buffer;
 mod typogre;
 mod zeedub;
 
-use glitch_ops::{GlitchOp, GlitchRng};
+use glitch_ops::GlitchOp;
 use pyo3::prelude::*;
-use pyo3::types::{PyAny, PyDict, PyList, PyModule};
+use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
+use rand::Rng;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -28,50 +29,11 @@ pub use hokey::HokeyOp;
 use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
-pub use rng::{PyRng, PyRngError};
+pub use rng::{DeterministicRng, RngError};
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
-struct PythonRngAdapter<'py> {
-    rng: Bound<'py, PyAny>,
-}
 
-impl<'py> PythonRngAdapter<'py> {
-    fn new(rng: Bound<'py, PyAny>) -> Self {
-        Self { rng }
-    }
-}
-
-impl<'py> GlitchRng for PythonRngAdapter<'py> {
-    fn random(&mut self) -> Result<f64, glitch_ops::GlitchOpError> {
-        self.rng
-            .call_method0("random")
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
-            .extract()
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)
-    }
-
-    fn rand_index(&mut self, upper: usize) -> Result<usize, glitch_ops::GlitchOpError> {
-        self.rng
-            .call_method1("randrange", (upper,))
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
-            .extract()
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)
-    }
-
-    fn sample_indices(
-        &mut self,
-        population: usize,
-        k: usize,
-    ) -> Result<Vec<usize>, glitch_ops::GlitchOpError> {
-        let py = self.rng.py();
-        let population_list = PyList::new(py, 0..population)
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
-            .unbind();
-        self.rng
-            .call_method1("sample", (population_list, k))
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)?
-            .extract()
-            .map_err(glitch_ops::GlitchOpError::from_pyerr)
-    }
+fn resolve_seed(seed: Option<u64>) -> u64 {
+    seed.unwrap_or_else(|| rand::thread_rng().gen())
 }
 
 #[derive(Debug)]
@@ -512,92 +474,87 @@ impl PyGlitchOperation {
     }
 }
 
-pub(crate) fn apply_operation<'py, O>(
+pub(crate) fn apply_operation<O>(
     text: &str,
     op: O,
-    rng: &Bound<'py, PyAny>,
+    seed: Option<u64>,
 ) -> Result<String, glitch_ops::GlitchOpError>
 where
     O: GlitchOp,
 {
     let mut buffer = TextBuffer::from_str(text);
-    let mut adapter = PythonRngAdapter::new(rng.clone());
-    op.apply(&mut buffer, &mut adapter)?;
+    let mut rng = DeterministicRng::new(resolve_seed(seed));
+    op.apply(&mut buffer, &mut rng)?;
     Ok(buffer.to_string())
 }
 
-#[pyfunction]
+#[pyfunction(signature = (text, rate, unweighted, seed=None))]
 fn reduplicate_words(
     text: &str,
     rate: f64,
     unweighted: bool,
-    rng: &Bound<'_, PyAny>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
     let op = ReduplicateWordsOp { rate, unweighted };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
+#[pyfunction(signature = (text, rate, unweighted, seed=None))]
 fn delete_random_words(
     text: &str,
     rate: f64,
     unweighted: bool,
-    rng: &Bound<'_, PyAny>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
     let op = DeleteRandomWordsOp { rate, unweighted };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
-fn swap_adjacent_words(text: &str, rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+#[pyfunction(signature = (text, rate, seed=None))]
+fn swap_adjacent_words(text: &str, rate: f64, seed: Option<u64>) -> PyResult<String> {
     let op = SwapAdjacentWordsOp { rate };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
+#[pyfunction(signature = (text, rate, weighting, seed=None))]
 fn ekkokin_homophones(
     text: &str,
     rate: f64,
     weighting: &str,
-    rng: &Bound<'_, PyAny>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
     let weighting = HomophoneWeighting::try_from_str(weighting)
         .ok_or_else(|| PyValueError::new_err(format!("unsupported weighting: {weighting}")))?;
     let op = EkkokinOp { rate, weighting };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction(name = "pedant", signature = (text, stone, seed, rng))]
-fn pedant_operation(
-    text: &str,
-    stone: &str,
-    seed: i128,
-    rng: &Bound<'_, PyAny>,
-) -> PyResult<String> {
+#[pyfunction(name = "pedant", signature = (text, stone, seed))]
+fn pedant_operation(text: &str, stone: &str, seed: i128) -> PyResult<String> {
     let op = PedantOp::new(seed, stone)?;
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, None).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
-fn apostrofae(text: &str, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+#[pyfunction(signature = (text, seed=None))]
+fn apostrofae(text: &str, seed: Option<u64>) -> PyResult<String> {
     let op = QuotePairsOp::default();
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
-fn ocr_artifacts(text: &str, rate: f64, rng: &Bound<'_, PyAny>) -> PyResult<String> {
+#[pyfunction(signature = (text, rate, seed=None))]
+fn ocr_artifacts(text: &str, rate: f64, seed: Option<u64>) -> PyResult<String> {
     let op = OcrArtifactsOp { rate };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
-#[pyfunction]
+#[pyfunction(signature = (text, replacement_char, rate, merge_adjacent, unweighted, seed=None))]
 fn redact_words(
     text: &str,
     replacement_char: &str,
     rate: f64,
     merge_adjacent: bool,
     unweighted: bool,
-    rng: &Bound<'_, PyAny>,
+    seed: Option<u64>,
 ) -> PyResult<String> {
     let op = RedactWordsOp {
         replacement_char: replacement_char.to_string(),
@@ -605,7 +562,7 @@ fn redact_words(
         merge_adjacent,
         unweighted,
     };
-    apply_operation(text, op, rng).map_err(glitch_ops::GlitchOpError::into_pyerr)
+    apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
 #[pyfunction]

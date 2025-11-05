@@ -1,7 +1,7 @@
 import random
 from typing import cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
 FULL_BLOCK = "█"
@@ -25,9 +25,6 @@ def redact_words(
     replacement = FULL_BLOCK if replacement_char is None else str(replacement_char)
     merge = False if merge_adjacent is None else bool(merge_adjacent)
 
-    if rng is None:
-        rng = random.Random(seed)
-
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
@@ -39,7 +36,7 @@ def redact_words(
             clamped_rate,
             merge,
             unweighted_flag,
-            rng,
+            resolve_seed(seed, rng),
         ),
     )
 

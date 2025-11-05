@@ -6,7 +6,7 @@ import math
 import random
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -39,7 +39,7 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 _homophone_lookup = _build_lookup(_homophone_groups)
 _ekkokin_rust = cast(
-    Callable[[str, float, str, random.Random], str],
+    Callable[[str, float, str, int | None], str],
     get_rust_operation("ekkokin_homophones"),
 )
 
@@ -70,11 +70,14 @@ def substitute_homophones(
 
     effective_rate = _DEFAULT_RATE if rate is None else rate
 
-    active_rng = rng if rng is not None else random.Random(seed)
-
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
 
-    return _ekkokin_rust(text, clamped_rate, _DEFAULT_WEIGHTING, active_rng)
+    return _ekkokin_rust(
+        text,
+        clamped_rate,
+        _DEFAULT_WEIGHTING,
+        resolve_seed(seed, rng),
+    )
     
 
 

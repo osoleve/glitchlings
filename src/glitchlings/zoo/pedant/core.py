@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import random
 from typing import Dict, Type, cast
 
 from .._rust_extensions import get_rust_operation
@@ -16,18 +15,15 @@ def apply_pedant(
     *,
     stone: PedantStone,
     seed: int,
-    rng: random.Random | None = None,
 ) -> str:
     """Apply a pedant transformation via the Rust extension."""
 
-    effective_rng = rng if rng is not None else random.Random(seed)
     return cast(
         str,
         _PEDANT_RUST(
             text,
             stone=stone.label,
             seed=int(seed),
-            rng=effective_rng,
         ),
     )
 
