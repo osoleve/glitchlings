@@ -39,19 +39,15 @@ class PedantEvolution:
         seed: int,
         *,
         stone: PedantStone | None = None,
-        fallback_seed: int | None = None,
     ) -> None:
         resolved_stone = stone or getattr(self, "stone", None)
         if resolved_stone is None:  # pragma: no cover - defensive guard
             raise ValueError("PedantEvolution requires a PedantStone")
         self.seed = int(seed)
         self.stone = resolved_stone
-        self._fallback_seed = fallback_seed
 
     def move(self, text: str) -> str:
         result = apply_pedant(text, stone=self.stone, seed=self.seed)
-        if result == text and self._fallback_seed is not None:
-            return apply_pedant(text, stone=self.stone, seed=int(self._fallback_seed))
         return result
 
 
@@ -72,7 +68,7 @@ class PedantBase:
         if form_cls is None:  # pragma: no cover - sanity guard
             raise KeyError(f"Unknown stone: {stone}")
         derived_seed = Gaggle.derive_seed(self.root_seed, pedant_stone.label, 0)
-        return form_cls(seed=int(derived_seed), fallback_seed=self.root_seed)
+        return form_cls(seed=int(derived_seed))
 
     def move(self, text: str) -> str:
         return text
