@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import cast
 
-from ._rust_extensions import get_rust_operation
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Gaggle, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
@@ -21,10 +21,8 @@ def smart_quotes(
     if not text:
         return text
 
-    if rng is None:
-        rng = random.Random(seed)
-
-    return cast(str, _apostrofae_rust(text, rng))
+    seed_value = resolve_seed(seed, rng)
+    return cast(str, _apostrofae_rust(text, seed_value))
 
 
 class Apostrofae(Glitchling):

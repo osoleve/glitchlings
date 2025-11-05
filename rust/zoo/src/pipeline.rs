@@ -2,7 +2,7 @@ use blake2::digest::consts::U8;
 use blake2::{Blake2s, Digest};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchOperation};
-use crate::rng::PyRng;
+use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 use pyo3::PyErr;
 
@@ -49,7 +49,7 @@ impl Pipeline {
 
     pub fn apply(&self, buffer: &mut TextBuffer) -> Result<(), PipelineError> {
         for descriptor in &self.descriptors {
-            let mut rng = PyRng::new(descriptor.seed);
+            let mut rng = DeterministicRng::new(descriptor.seed);
             descriptor
                 .operation
                 .apply(buffer, &mut rng)

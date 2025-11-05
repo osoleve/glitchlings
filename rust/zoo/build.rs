@@ -13,10 +13,7 @@ fn main() {
         .expect("failed to stage Apostrofae replacement table for compilation");
     stage_asset("ekkokin_homophones.json")
         .expect("failed to stage Ekkokin homophone table for compilation");
-    stage_compressed_asset(
-        "mim1c_homoglyphs.json.gz.b64",
-        "mim1c_homoglyphs.json",
-    )
+    stage_compressed_asset("mim1c_homoglyphs.json.gz.b64", "mim1c_homoglyphs.json")
         .expect("failed to stage Mim1c homoglyph table for compilation");
     stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
     pyo3_build_config::add_extension_module_link_args();
