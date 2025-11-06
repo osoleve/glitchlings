@@ -10,9 +10,13 @@ import pytest
 from glitchlings.compat import reset_optional_dependencies
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 def torch_stub() -> Iterable[type[Any]]:
-    """Install a lightweight torch stub that exposes ``DataLoader``."""
+    """Install a lightweight torch stub that exposes ``DataLoader``.
+    
+    This fixture is not autouse - tests that need it should explicitly request it
+    or set it as autouse in their local conftest.py.
+    """
     preserved = {
         name: sys.modules.get(name)
         for name in ("torch", "torch.utils", "torch.utils.data")
@@ -76,13 +80,5 @@ def _load_environment(_: str) -> _VerifierEnvironment:
     return _VerifierEnvironment()
 
 
-@pytest.fixture(autouse=True)
-def verifiers_stub() -> types.ModuleType:
-    """Install a verifiers stub module for Prime DLC tests."""
-    verifiers_module = types.ModuleType("verifiers")
-    verifiers_module.Environment = _VerifierEnvironment
-    verifiers_module.Rubric = _Rubric
-    verifiers_module.SingleTurnEnv = _SingleTurnEnv
-    verifiers_module.load_environment = _load_environment
-    sys.modules["verifiers"] = verifiers_module
-    return verifiers_module
+# Note: verifiers_stub classes are available in conftest.py but NOT automatically installed
+# Tests that need verifiers must set up sys.modules["verifiers"] themselves

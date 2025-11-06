@@ -16,6 +16,12 @@ def append_rng_token(text: str, *, rng: Random) -> str:
     return f"{text}-{rng.randint(0, 999)}"
 
 
+@pytest.fixture(autouse=True)
+def _use_torch_stub(torch_stub):
+    """Automatically use the torch_stub fixture for all tests in this file."""
+    pass
+
+
 @pytest.fixture()
 def pytorch_dlc() -> types.ModuleType:
     """Reload the PyTorch DLC module against the stub."""
