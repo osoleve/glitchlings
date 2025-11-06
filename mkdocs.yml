@@ -34,6 +34,7 @@ nav:
       - Scannequin: glitchlings/scannequin.md
       - Zeedub: glitchlings/zeedub.md
   - Operations:
+      - Gaggle Seed Derivation: gaggle-seed-derivation.md
       - Keyboard Layouts: keyboard-layouts.md
 
 plugins:
