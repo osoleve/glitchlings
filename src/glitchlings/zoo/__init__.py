@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .apostrofae import Apostrofae, apostrofae
 from .core import Gaggle, Glitchling, plan_glitchling_specs, plan_glitchlings
 from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
@@ -27,8 +26,6 @@ __all__ = [
     "jargoyle",
     "Ekkokin",
     "ekkokin",
-    "Apostrofae",
-    "apostrofae",
     "Hokey",
     "hokey",
     "Rushmore",
@@ -57,7 +54,7 @@ __all__ = [
 
 _HAS_JARGOYLE = _jargoyle_available()
 
-_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin, pedant]
+_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, hokey, mim1c, ekkokin, pedant]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
 _BUILTIN_GLITCHLING_LIST.extend([rushmore, redactyl, spectroll, scannequin, zeedub])
@@ -69,7 +66,6 @@ BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
 _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     typogre.name.lower(): Typogre,
     ekkokin.name.lower(): Ekkokin,
-    apostrofae.name.lower(): Apostrofae,
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
     pedant.name.lower(): Pedant,

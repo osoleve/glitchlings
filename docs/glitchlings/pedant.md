@@ -13,6 +13,8 @@ deterministic "cleanup" pass over the input text.
   - `Whom Stone` → **Whomst** forces `who` → `whom`.
   - `Fewerite` → **Fewerling** swaps `less` for `fewer` when the surrounding
     text references countable quantities.
+  - `Curlite` → **Apostrofae** polishes straight quotes into
+    typographic pairs.
   - `Subjunctite` → **Subjunic** corrects subjunctive phrases (`if I was` →
     `if I were`).
   - `Oxfordium` → **Commama** enforces serial commas in simple lists.
@@ -38,6 +40,9 @@ from glitchlings.zoo.pedant import PedantStone
 
 whomst = Pedant(stone=PedantStone.WHOM, seed=404)
 whomst("Who you gonna call?")  # "Whom you gonna call?"
+
+apostrofae = Pedant(stone=PedantStone.CURLITE, seed=404)
+apostrofae('"Mind the gap," she whispered.')
 
 metric = Pedant(stone="Metricite", seed=404)
 metric("The trail is 12 miles long.")  # "The trail is 19 kilometres long."

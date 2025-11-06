@@ -48,7 +48,6 @@ OPERATION_MODULES: Dict[str, str] = {
     "swap_adjacent": "Rushmore",
     "typo": "Typogre",
     "hokey": "Hokey",
-    "apostrofae": "Apostrofae",
     "pedant": "Pedant",
     "ekkokin": "Ekkokin",
     "rushmore_combo": "Rushmore",

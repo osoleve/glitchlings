@@ -7,7 +7,6 @@ from hypothesis import strategies as st
 from glitchlings.auggie import Auggie
 from glitchlings.util import KEYNEIGHBORS
 from glitchlings.zoo import (
-    Apostrofae,
     Ekkokin,
     Gaggle,
     Glitchling,
@@ -61,8 +60,8 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
         ),
         (
             "curly_quotes",
-            Apostrofae,
-            {"seed": 19},
+            Pedant,
+            {"stone": PedantStone.CURLITE, "seed": 19},
         ),
         (
             "stretch",
@@ -87,10 +86,7 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
         (
             "pedantry",
             Pedant,
-            {
-                "stone": PedantStone.OXFORDIUM,
-                "seed": 31,
-            },
+            {"stone": PedantStone.OXFORDIUM, "seed": 31},
         ),
         (
             "remix",
@@ -164,13 +160,21 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
 GLITCHLING_CASES = _available_glitchling_cases()
 
 
+_MANUAL_DEFAULTS: dict[str, dict[str, object]] = {
+    "curly_quotes": {"stone": PedantStone.CURLITE},
+}
+
+
 @pytest.mark.parametrize("method_name, glitchling_cls, params", GLITCHLING_CASES)
 def test_auggie_builder_matches_glitchling_factory(
     method_name: str, glitchling_cls: type[Glitchling], params: dict[str, object]
 ) -> None:
     auggie = Auggie(seed=101)
     builder = getattr(auggie, method_name)
-    result = builder(**params)
+    builder_kwargs = dict(params)
+    if method_name == "curly_quotes":
+        builder_kwargs.pop("stone", None)
+    result = builder(**builder_kwargs)
 
     assert result is auggie
     assert len(auggie._clones_by_index) == 1  # type: ignore[attr-defined]
@@ -214,7 +218,8 @@ def test_auggie_matches_gaggle_output(sequence: Sequence[str], text: str, seed: 
         _, glitchling_cls, _ = next(
             entry for entry in GLITCHLING_CASES if entry[0] == name
         )
-        manual_glitchlings.append(glitchling_cls())
+        manual_kwargs = dict(_MANUAL_DEFAULTS.get(name, {}))
+        manual_glitchlings.append(glitchling_cls(**manual_kwargs))
 
     manual = Gaggle(manual_glitchlings, seed=seed)
 

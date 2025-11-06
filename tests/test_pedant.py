@@ -25,6 +25,15 @@ def test_evolve_with_coeurite():
     assert "æ" in output
 
 
+def test_evolve_with_curlite():
+    pedant = PedantBase(seed=13)
+    evolved = pedant.evolve(PedantStone.CURLITE)
+    output = evolved.move('"Hello," they said.')
+    assert output != '"Hello," they said.'
+    assert '"' not in output
+    assert set(output) - set('"Hello," they said.')
+
+
 def test_aetheria_ligature_handles_title_case():
     pedant = PedantBase(seed=9).evolve(PedantStone.COEURITE)
     output = pedant.move("Aether lore beckons.")
@@ -70,6 +79,14 @@ def test_pedant_pipeline_descriptor_includes_stone_label():
     glitch = Pedant(stone=PedantStone.COEURITE, seed=5)
     descriptor = glitch.pipeline_operation()
     assert descriptor == {"type": "pedant", "stone": PedantStone.COEURITE.label}
+
+
+def test_pedant_accepts_curlite_string_identifier():
+    glitch = Pedant(stone="Curlite", seed=13)
+    output = glitch('"Hello," they said.')
+    assert output != '"Hello," they said.'
+    assert '"' not in output
+    assert set(output) - set('"Hello," they said.')
 
 
 def test_subjunic_corrects_subjunctive():

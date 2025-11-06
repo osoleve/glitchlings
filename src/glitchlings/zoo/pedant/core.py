@@ -83,6 +83,7 @@ EVOLUTIONS: Dict[PedantStone, Type[PedantEvolution]] = {}
 try:  # pragma: no cover - import resolution occurs at runtime
     from .forms import (
         Aetheria,
+        Apostrofae,
         Commama,
         Correctopus,
         Fewerling,
@@ -97,6 +98,7 @@ else:
         PedantStone.WHOM: Whomst,
         PedantStone.FEWERITE: Fewerling,
         PedantStone.COEURITE: Aetheria,
+        PedantStone.CURLITE: Apostrofae,
         PedantStone.SUBJUNCTITE: Subjunic,
         PedantStone.OXFORDIUM: Commama,
         PedantStone.ORTHOGONITE: Correctopus,

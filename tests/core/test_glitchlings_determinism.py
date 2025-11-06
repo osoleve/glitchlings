@@ -3,17 +3,10 @@ from __future__ import annotations
 from functools import partial
 from typing import cast
 
-from glitchlings import (
-    apostrofae,
-    jargoyle,
-    mim1c,
-    redactyl,
-    rushmore,
-    scannequin,
-    typogre,
-    zeedub,
-)
+from glitchlings import jargoyle, mim1c, redactyl, rushmore, scannequin, typogre, zeedub
 from glitchlings.zoo.core import AttackWave, Glitchling
+from glitchlings.zoo.pedant import Pedant
+from glitchlings.zoo.pedant.stones import PedantStone
 
 
 def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
@@ -75,8 +68,9 @@ def test_zeedub_determinism(sample_text):
 
 
 def test_apostrofae_determinism(sample_text):
-    apostrofae.set_param("seed", 42)
-    a, b = _twice(apostrofae, sample_text)
+    curlite = Pedant(stone=PedantStone.CURLITE)
+    curlite.set_param("seed", 42)
+    a, b = _twice(curlite, sample_text)
     assert a == b
 
 

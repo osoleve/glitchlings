@@ -194,14 +194,17 @@ _It looks like you're trying to paste some text. Can I help?_
 >
 > ---
 >
-> _**Smart Quotes.**_ Apostrofae replaces balanced straight quotation marks, apostrophes, and backticks with curated Unicode pairs, nudging text toward typeset polish while revealing formatting inconsistencies.
+> _**Smart Quotes.**_ Apostrofae replaces balanced straight quotation marks, apostrophes, and backticks with curated Unicode pairs once Pedant evolves with the Curlite stone. The effect nudges text toward typeset polish while revealing formatting inconsistencies.
 >
-> ### Apostrofae Args
+> ### Apostrofae (Curlite) Args
 >
+> - `stone (PedantStone | str)`: must be `PedantStone.CURLITE` or the string `"Curlite"` to unlock the Apostrofae form.
 > - `seed (int)`: Optional random seed for deterministic quote-pair sampling (default: 151).
 >
 > ```python
-> >>> from glitchlings import apostrofae
+> >>> from glitchlings import Pedant
+> >>> from glitchlings.zoo.pedant import PedantStone
+> >>> apostrofae = Pedant(stone=PedantStone.CURLITE, seed=151)
 > >>> print(apostrofae('"Mind the quotes," she said. `Okay,` he replied.'))
 > ```
 >

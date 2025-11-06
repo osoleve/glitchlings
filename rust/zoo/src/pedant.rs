@@ -7,7 +7,7 @@ use pyo3::PyErr;
 use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng, QuotePairsOp};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 
@@ -16,6 +16,7 @@ enum PedantStone {
     Whomst,
     Fewerling,
     Aetheria,
+    Apostrofae,
     Subjunic,
     Commama,
     Kiloa,
@@ -28,6 +29,7 @@ impl PedantStone {
             "Whom Stone" => Some(PedantStone::Whomst),
             "Fewerite" => Some(PedantStone::Fewerling),
             "Coeurite" => Some(PedantStone::Aetheria),
+            "Curlite" => Some(PedantStone::Apostrofae),
             "Subjunctite" => Some(PedantStone::Subjunic),
             "Oxfordium" => Some(PedantStone::Commama),
             "Orthogonite" => Some(PedantStone::Correctopus),
@@ -41,6 +43,7 @@ impl PedantStone {
             PedantStone::Whomst => "Whom Stone",
             PedantStone::Fewerling => "Fewerite",
             PedantStone::Aetheria => "Coeurite",
+            PedantStone::Apostrofae => "Curlite",
             PedantStone::Subjunic => "Subjunctite",
             PedantStone::Commama => "Oxfordium",
             PedantStone::Correctopus => "Orthogonite",
@@ -53,6 +56,7 @@ impl PedantStone {
             PedantStone::Whomst => "Whomst",
             PedantStone::Fewerling => "Fewerling",
             PedantStone::Aetheria => "Aetheria",
+            PedantStone::Apostrofae => "Apostrofae",
             PedantStone::Subjunic => "Subjunic",
             PedantStone::Commama => "Commama",
             PedantStone::Correctopus => "Correctopus",
@@ -94,6 +98,7 @@ impl GlitchOp for PedantOp {
             PedantStone::Whomst => apply_whomst(&original),
             PedantStone::Fewerling => apply_fewerling(&original),
             PedantStone::Aetheria => apply_aetheria(&original, self.root_seed, &lineage)?,
+            PedantStone::Apostrofae => apply_curlite(&original, self.root_seed, &lineage)?,
             PedantStone::Subjunic => apply_subjunic(&original),
             PedantStone::Commama => apply_commama(&original),
             PedantStone::Kiloa => apply_kiloa(&original),
@@ -189,6 +194,23 @@ fn apply_kiloa(text: &str) -> String {
             format!("{kilometres} {unit_text}")
         })
         .into_owned()
+}
+
+fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
+    if text.is_empty() {
+        return Ok(text.to_string());
+    }
+
+    let seed = derive_seed(
+        root_seed,
+        lineage,
+        &[ReprArg::Str("curlite"), ReprArg::Str(text)],
+    );
+    let mut rng = DeterministicRng::new(seed);
+    let mut buffer = TextBuffer::from_str(text);
+    let op = QuotePairsOp;
+    op.apply(&mut buffer, &mut rng)?;
+    Ok(buffer.to_string())
 }
 
 fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
