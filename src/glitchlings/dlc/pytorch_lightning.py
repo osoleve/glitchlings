@@ -27,9 +27,6 @@ def _glitch_datamodule(
     columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
     
-    # Ensure _GlitchedLightningDataModule inherits from LightningDataModule
-    _ensure_inheritance()
-    
     return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
@@ -136,21 +133,19 @@ class _GlitchedLightningDataModule:
         return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
 
-def _ensure_inheritance() -> None:
-    """Ensure _GlitchedLightningDataModule inherits from LightningDataModule.
+# Module initialization: set up inheritance from LightningDataModule if available
+def _setup_inheritance() -> None:
+    """Set up _GlitchedLightningDataModule to inherit from LightningDataModule.
     
-    This function dynamically sets the base class of _GlitchedLightningDataModule
-    to inherit from pytorch_lightning.LightningDataModule when available. This
-    ensures that isinstance(glitched, LightningDataModule) checks work correctly
-    and that the wrapper interoperates with Lightning APIs that require that type.
+    This function is called once at module import time to dynamically set the base
+    class of _GlitchedLightningDataModule to inherit from
+    pytorch_lightning.LightningDataModule when available. This ensures that
+    isinstance(glitched, LightningDataModule) checks work correctly and that the
+    wrapper interoperates with Lightning APIs that require that type.
     """
     datamodule_cls = get_pytorch_lightning_datamodule()
     if datamodule_cls is None:
         # If LightningDataModule is not available, keep as plain object
-        return
-    
-    # Check if we've already set up inheritance
-    if issubclass(_GlitchedLightningDataModule, datamodule_cls):
         return
     
     # Try to dynamically set __bases__ to inherit from LightningDataModule
@@ -169,6 +164,10 @@ def _ensure_inheritance() -> None:
         )
         # Update the module's global namespace
         globals()["_GlitchedLightningDataModule"] = replacement
+
+
+# Set up inheritance at module import time
+_setup_inheritance()
 
 
 __all__ = ["GlitchedLightningDataModule"]
