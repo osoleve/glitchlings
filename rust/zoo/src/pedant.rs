@@ -231,15 +231,14 @@ fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Strin
     let mut last = 0;
     for mat in COORDINATE_REGEX.find_iter(&intermediate) {
         coordinated.push_str(&intermediate[last..mat.start()]);
-        let replacement =
-            coordinate_replacement(
-                mat.as_str(),
-                mat.start(),
-                word_count,
-                &intermediate,
-                root_seed,
-                lineage,
-            )?;
+        let replacement = coordinate_replacement(
+            mat.as_str(),
+            mat.start(),
+            word_count,
+            &intermediate,
+            root_seed,
+            lineage,
+        )?;
         coordinated.push_str(&replacement);
         last = mat.end();
     }
