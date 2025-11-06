@@ -3,6 +3,8 @@ from __future__ import annotations
 from functools import partial
 from typing import cast
 
+import pytest
+
 from glitchlings import jargoyle, mim1c, redactyl, rushmore, scannequin, typogre, zeedub
 from glitchlings.zoo.core import AttackWave, Glitchling
 from glitchlings.zoo.pedant import Pedant
@@ -17,57 +19,33 @@ def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
     return out1, out2
 
 
-def test_typogre_determinism(sample_text):
-    typogre.set_param("seed", 42)
-    typogre.set_param("rate", 0.03)
-    a, b = _twice(typogre, sample_text)
-    assert a == b
-
-
-def test_mim1c_determinism(sample_text):
-    mim1c.set_param("seed", 42)
-    mim1c.set_param("rate", 0.03)
-    mim1c.set_param("classes", ["LATIN", "GREEK", "CYRILLIC"])  # explicit default
-    a, b = _twice(mim1c, sample_text)
-    assert a == b
-
-
-def test_jargoyle_determinism(sample_text):
-    jargoyle.set_param("seed", 42)
-    jargoyle.set_param("rate", 0.05)
-    a, b = _twice(jargoyle, sample_text)
-    assert a == b
-
-
-def test_rushmore_determinism(sample_text):
-    rushmore.set_param("seed", 42)
-    rushmore.set_param("rate", 0.01)
-    a, b = _twice(rushmore, sample_text)
-    assert a == b
-
-
-def test_redactyl_determinism(sample_text):
-    redactyl.set_param("seed", 42)
-    redactyl.set_param("rate", 0.05)
-    a, b = _twice(redactyl, sample_text)
-    assert a == b
-
-
-def test_scannequin_determinism(sample_text):
-    scannequin.set_param("seed", 42)
-    scannequin.set_param("rate", 0.03)
-    a, b = _twice(scannequin, sample_text)
-    assert a == b
-
-
-def test_zeedub_determinism(sample_text):
-    zeedub.set_param("seed", 42)
-    zeedub.set_param("rate", 0.03)
-    a, b = _twice(zeedub, sample_text)
+@pytest.mark.parametrize(
+    ("glitchling", "params"),
+    [
+        pytest.param(typogre, {"seed": 42, "rate": 0.03}, id="typogre"),
+        pytest.param(
+            mim1c,
+            {"seed": 42, "rate": 0.03, "classes": ["LATIN", "GREEK", "CYRILLIC"]},
+            id="mim1c",
+        ),
+        pytest.param(jargoyle, {"seed": 42, "rate": 0.05}, id="jargoyle"),
+        pytest.param(rushmore, {"seed": 42, "rate": 0.01}, id="rushmore"),
+        pytest.param(redactyl, {"seed": 42, "rate": 0.05}, id="redactyl"),
+        pytest.param(scannequin, {"seed": 42, "rate": 0.03}, id="scannequin"),
+        pytest.param(zeedub, {"seed": 42, "rate": 0.03}, id="zeedub"),
+    ],
+)
+def test_glitchling_is_deterministic(glitchling, params, sample_text):
+    """Test that each glitchling produces deterministic output with the same seed."""
+    for param, value in params.items():
+        glitchling.set_param(param, value)
+    
+    a, b = _twice(glitchling, sample_text, seed=params["seed"])
     assert a == b
 
 
 def test_apostrofae_determinism(sample_text):
+    """Test Pedant (Apostrofae) determinism separately due to special construction."""
     curlite = Pedant(stone=PedantStone.CURLITE)
     curlite.set_param("seed", 42)
     a, b = _twice(curlite, sample_text)
