@@ -24,7 +24,10 @@ MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.
 
 
 def build_parser(
-    *, include_subcommands: bool = False, exit_on_error: bool = True
+    *,
+    include_subcommands: bool = False,
+    exit_on_error: bool = True,
+    include_text: bool = True,
 ) -> argparse.ArgumentParser:
     """Create and configure the CLI argument parser.
 
@@ -39,11 +42,12 @@ def build_parser(
         ),
         exit_on_error=exit_on_error,
     )
-    parser.add_argument(
-        "text",
-        nargs="*",
-        help="Text to corrupt. If omitted, stdin is used or --sample provides fallback text.",
-    )
+    if include_text:
+        parser.add_argument(
+            "text",
+            nargs="*",
+            help="Text to corrupt. If omitted, stdin is used or --sample provides fallback text.",
+        )
     parser.add_argument(
         "-g",
         "--glitchling",
@@ -371,6 +375,20 @@ def run_build_lexicon(args: argparse.Namespace) -> int:
     return vector_main(vector_args)
 
 
+def _exit_code(exc: SystemExit) -> int:
+    """Normalize ``SystemExit.code`` to an integer suitable for returning."""
+
+    code = exc.code
+    if isinstance(code, int):
+        return code
+    if isinstance(code, str):
+        try:
+            return int(code)
+        except ValueError:
+            return 1
+    return 0 if code is None else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point for the ``glitchlings`` command line interface.
 
@@ -386,26 +404,41 @@ def main(argv: list[str] | None = None) -> int:
     else:
         raw_args = list(argv)
 
-    parser_with_subcommands = build_parser(include_subcommands=True, exit_on_error=False)
+    if any(arg in {"-h", "--help"} for arg in raw_args):
+        first_non_option = next((arg for arg in raw_args if not arg.startswith("-")), None)
+        if first_non_option is None:
+            help_parser = build_parser(include_subcommands=True)
+            help_parser.print_help()
+            return 0
 
-    subcommand_names: set[str] = set()
-    for action in parser_with_subcommands._actions:
-        if isinstance(action, argparse._SubParsersAction):
-            subcommand_names = set(action.choices.keys())
-            break
+    detector = argparse.ArgumentParser(
+        prog="glitchlings",
+        add_help=False,
+        exit_on_error=False,
+    )
+    subcommands = detector.add_subparsers(dest="command")
+    if hasattr(subcommands, "required"):
+        subcommands.required = False
+    add_build_lexicon_subparser(subcommands)
 
-    if raw_args and not raw_args[0].startswith("-") and raw_args[0] in subcommand_names:
-        args = parser_with_subcommands.parse_args(raw_args)
+    try:
+        candidate_args = detector.parse_args(raw_args)
+    except SystemExit as exc:
+        return _exit_code(exc)
+    except argparse.ArgumentError as exc:
+        action = exc.args[0] if exc.args else None
+        if action is not None and not isinstance(action, argparse._SubParsersAction):
+            message = exc.args[1] if len(exc.args) > 1 else str(exc)
+            detector.exit(2, f"{detector.prog}: error: {message}\n")
+    else:
         handler = cast(
             Callable[[argparse.Namespace], int] | None,
-            getattr(args, "handler", None),
+            getattr(candidate_args, "handler", None),
         )
         if handler is not None:
-            return handler(args)
-
-    if any(arg in {"-h", "--help"} for arg in raw_args):
-        parser_with_subcommands.parse_args(raw_args)
-        return 0
+            return handler(candidate_args)
+        if getattr(candidate_args, "command", None):
+            return 0
 
     parser = build_parser(include_subcommands=False)
     args = parser.parse_args(raw_args)
