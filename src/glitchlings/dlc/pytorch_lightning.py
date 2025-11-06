@@ -2,77 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping
 from typing import Any, cast
 
 from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, normalize_column_spec
-
-
-def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
-    """Apply glitchlings to the configured batch columns."""
-    if not isinstance(batch, Mapping):
-        return batch
-
-    if hasattr(batch, "copy"):
-        mutated = batch.copy()
-    else:
-        mutated = dict(batch)
-
-    missing = [column for column in columns if column not in mutated]
-    if missing:
-        missing_str = ", ".join(sorted(missing))
-        raise ValueError(f"Columns not found in batch: {missing_str}")
-
-    for column in columns:
-        mutated[column] = corrupt_text_value(mutated[column], gaggle)
-
-    return mutated
-
-
-def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any:
-    """Wrap a dataloader so yielded batches are corrupted lazily."""
-    if dataloader is None:
-        return None
-
-    if isinstance(dataloader, Mapping):
-        mapping_type = cast(type[Any], dataloader.__class__)
-        return mapping_type(
-            {key: _wrap_dataloader(value, columns, gaggle) for key, value in dataloader.items()}
-        )
-
-    if isinstance(dataloader, list):
-        return [_wrap_dataloader(value, columns, gaggle) for value in dataloader]
-
-    if isinstance(dataloader, tuple):
-        return tuple(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
-
-    if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
-        sequence_type = cast(type[Any], dataloader.__class__)
-        return sequence_type(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
-
-    return _GlitchedDataLoader(dataloader, columns, gaggle)
-
-
-class _GlitchedDataLoader:
-    """Proxy dataloader that glitches batches produced by the wrapped loader."""
-
-    def __init__(self, dataloader: Any, columns: list[str], gaggle: Gaggle) -> None:
-        self._dataloader = dataloader
-        self._columns = columns
-        self._gaggle = gaggle
-
-    def __iter__(self) -> Any:
-        for batch in self._dataloader:
-            yield _glitch_batch(batch, self._columns, self._gaggle)
-
-    def __len__(self) -> int:
-        return len(self._dataloader)
-
-    def __getattr__(self, attribute: str) -> Any:
-        return getattr(self._dataloader, attribute)
+from ._shared import normalize_column_spec, wrap_dataloader
 
 
 def _glitch_datamodule(
@@ -147,19 +83,19 @@ class _GlitchedLightningDataModule:
 
     def train_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.train_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def val_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.val_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def test_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.test_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def predict_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.predict_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
 
 def _ensure_datamodule_class() -> Any:

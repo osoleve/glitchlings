@@ -2,67 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Iterable, Iterator
 from typing import Any, cast
 
 from ..compat import get_torch_dataloader, require_torch
 from ..compat import torch as _torch_dependency
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, is_textual_candidate, normalize_column_spec
-
-
-def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
-    """Return ``batch`` with glitchlings applied to the specified ``targets``."""
-    if targets is None:
-        return corrupt_text_value(batch, gaggle)
-
-    if isinstance(batch, Mapping):
-        mutated = cast(MutableMapping[str, Any], dict(batch))
-        for key in targets:
-            if not isinstance(key, str):
-                raise TypeError("Mapping batches require string column names")
-            if key not in mutated:
-                raise ValueError(f"Column '{key}' not found in DataLoader batch")
-            mutated[key] = corrupt_text_value(mutated[key], gaggle)
-        return mutated
-
-    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
-        mutated_sequence = list(batch)
-        for index in targets:
-            if not isinstance(index, int):
-                raise TypeError("Sequence batches require integer column indices")
-            try:
-                mutated_sequence[index] = corrupt_text_value(mutated_sequence[index], gaggle)
-            except IndexError as exc:  # pragma: no cover - defensive
-                raise IndexError("Column index out of range for DataLoader batch") from exc
-        if isinstance(batch, tuple):
-            return tuple(mutated_sequence)
-        return mutated_sequence
-
-    raise TypeError("Unsupported DataLoader batch type for glitching")
-
-
-def _infer_targets(batch: Any) -> list[str | int] | None:
-    """Infer which fields should be glitched from a representative ``batch``."""
-    if isinstance(batch, Mapping):
-        inferred = [key for key, value in batch.items() if is_textual_candidate(value)]
-        if inferred:
-            return inferred
-        raise ValueError("Unable to infer which mapping columns contain text")
-
-    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
-        inferred_indices: list[str | int] = [
-            idx for idx, value in enumerate(batch) if is_textual_candidate(value)
-        ]
-        if inferred_indices:
-            return inferred_indices
-        raise ValueError("Unable to infer which sequence indices contain text")
-
-    if is_textual_candidate(batch):
-        return None
-
-    raise TypeError("Unsupported DataLoader batch type for glitching")
+from ._shared import corrupt_batch, infer_batch_targets, normalize_column_spec
 
 
 class _GlitchedDataLoader(Iterable[Any]):
@@ -85,7 +32,7 @@ class _GlitchedDataLoader(Iterable[Any]):
         self._gaggle.sort_glitchlings()
         for batch in self._dataloader:
             targets = self._resolve_columns(batch)
-            yield _apply_to_batch(batch, targets, self._gaggle)
+            yield corrupt_batch(batch, targets, self._gaggle)
 
     def __len__(self) -> int:
         return len(self._dataloader)
@@ -98,7 +45,7 @@ class _GlitchedDataLoader(Iterable[Any]):
             return self._explicit_columns
 
         if self._inferred_columns is _UNINITIALISED:
-            self._inferred_columns = _infer_targets(batch)
+            self._inferred_columns = infer_batch_targets(batch)
 
         return cast(list[str | int] | None, self._inferred_columns)
 

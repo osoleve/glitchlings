@@ -2,26 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from ..zoo.core import Gaggle, _is_transcript
-
-
-def resolve_environment(
-    env: Any,
-    *,
-    loader: Callable[[str], Any],
-    environment_type: type[Any],
-) -> Any:
-    """Return a fully-instantiated verifier environment."""
-    if isinstance(env, str):
-        env = loader(env)
-
-    if not isinstance(env, environment_type):
-        raise TypeError("Invalid environment type")
-
-    return env
 
 
 def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
@@ -144,10 +128,170 @@ def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
     return value
 
 
+def infer_batch_targets(batch: Any) -> list[str | int] | None:
+    """Infer which fields should be glitched from a representative batch.
+    
+    Args:
+        batch: A batch from a DataLoader (mapping, sequence, or textual value).
+    
+    Returns:
+        A list of column keys (strings) or indices (ints), or None if the batch
+        itself is textual content.
+    
+    Raises:
+        ValueError: If unable to infer textual columns/indices.
+        TypeError: If the batch type is unsupported.
+    """
+    if isinstance(batch, Mapping):
+        inferred = [key for key, value in batch.items() if is_textual_candidate(value)]
+        if inferred:
+            return inferred
+        raise ValueError("Unable to infer which mapping columns contain text")
+
+    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
+        inferred_indices: list[str | int] = [
+            idx for idx, value in enumerate(batch) if is_textual_candidate(value)
+        ]
+        if inferred_indices:
+            return inferred_indices
+        raise ValueError("Unable to infer which sequence indices contain text")
+
+    if is_textual_candidate(batch):
+        return None
+
+    raise TypeError("Unsupported DataLoader batch type for glitching")
+
+
+def corrupt_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
+    """Return batch with glitchlings applied to the specified targets.
+    
+    Args:
+        batch: The batch to corrupt (mapping, sequence, or textual value).
+        targets: List of column keys (strings) or indices (ints), or None to
+                 corrupt the entire batch as textual content.
+        gaggle: The gaggle of glitchlings to apply.
+    
+    Returns:
+        The corrupted batch, preserving the original type.
+    
+    Raises:
+        TypeError: If batch type is unsupported or targets are incompatible.
+        ValueError: If a specified target is not found in the batch.
+    """
+    if targets is None:
+        return corrupt_text_value(batch, gaggle)
+
+    if isinstance(batch, Mapping):
+        # Use copy() if available, otherwise dict()
+        if hasattr(batch, "copy"):
+            mutated = batch.copy()
+        else:
+            mutated = dict(batch)
+        
+        for key in targets:
+            if not isinstance(key, str):
+                raise TypeError("Mapping batches require string column names")
+            if key not in mutated:
+                raise ValueError(f"Column '{key}' not found in DataLoader batch")
+            mutated[key] = corrupt_text_value(mutated[key], gaggle)
+        return mutated
+
+    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
+        mutated_sequence = list(batch)
+        for index in targets:
+            if not isinstance(index, int):
+                raise TypeError("Sequence batches require integer column indices")
+            try:
+                mutated_sequence[index] = corrupt_text_value(mutated_sequence[index], gaggle)
+            except IndexError as exc:  # pragma: no cover - defensive
+                raise IndexError("Column index out of range for DataLoader batch") from exc
+        if isinstance(batch, tuple):
+            return tuple(mutated_sequence)
+        return mutated_sequence
+
+    raise TypeError("Unsupported DataLoader batch type for glitching")
+
+
+class BaseGlitchedDataLoader:
+    """Proxy dataloader that glitches batches produced by the wrapped loader.
+    
+    This class wraps a dataloader and applies glitchlings to specified columns
+    in each batch as it's yielded. It supports both mapping-based batches (dict-like)
+    and sequence-based batches (list/tuple-like).
+    """
+
+    def __init__(self, dataloader: Any, columns: list[str | int], gaggle: Gaggle) -> None:
+        """Initialize the glitched dataloader.
+        
+        Args:
+            dataloader: The underlying dataloader to wrap.
+            columns: List of column names (strings) or indices (ints) to corrupt.
+            gaggle: The gaggle of glitchlings to apply.
+        """
+        self._dataloader = dataloader
+        self._columns = columns
+        self._gaggle = gaggle
+
+    def __iter__(self) -> Any:
+        """Yield corrupted batches from the underlying dataloader."""
+        for batch in self._dataloader:
+            yield corrupt_batch(batch, self._columns, self._gaggle)
+
+    def __len__(self) -> int:
+        """Return the number of batches in the dataloader."""
+        return len(self._dataloader)
+
+    def __getattr__(self, attribute: str) -> Any:
+        """Proxy attribute access to the underlying dataloader."""
+        return getattr(self._dataloader, attribute)
+
+
+def wrap_dataloader(
+    dataloader: Any, columns: list[str | int], gaggle: Gaggle
+) -> Any:
+    """Wrap a dataloader (or nested structure) to apply glitchlings lazily.
+    
+    This function recursively wraps dataloaders in nested structures (mappings,
+    lists, tuples, etc.) so that all dataloaders in the structure will yield
+    corrupted batches.
+    
+    Args:
+        dataloader: The dataloader or nested structure to wrap.
+        columns: List of column names (strings) or indices (ints) to corrupt.
+        gaggle: The gaggle of glitchlings to apply.
+    
+    Returns:
+        The wrapped dataloader or structure, with the same type as the input.
+    """
+    if dataloader is None:
+        return None
+
+    if isinstance(dataloader, Mapping):
+        mapping_type = type(dataloader)
+        return mapping_type(
+            {key: wrap_dataloader(value, columns, gaggle) for key, value in dataloader.items()}
+        )
+
+    if isinstance(dataloader, list):
+        return [wrap_dataloader(value, columns, gaggle) for value in dataloader]
+
+    if isinstance(dataloader, tuple):
+        return tuple(wrap_dataloader(value, columns, gaggle) for value in dataloader)
+
+    if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
+        sequence_type = type(dataloader)
+        return sequence_type(wrap_dataloader(value, columns, gaggle) for value in dataloader)
+
+    return BaseGlitchedDataLoader(dataloader, columns, gaggle)
+
+
 __all__ = [
+    "BaseGlitchedDataLoader",
+    "corrupt_batch",
     "corrupt_text_value",
+    "infer_batch_targets",
     "is_textual_candidate",
     "normalize_column_spec",
     "resolve_columns",
-    "resolve_environment",
+    "wrap_dataloader",
 ]
