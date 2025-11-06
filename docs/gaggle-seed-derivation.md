@@ -19,7 +19,7 @@ The byte conversion helper retries for negative numbers until Python's `int.to_b
 
 ```mermaid
 flowchart TD
-    MasterSeed[Master seed (int)] -->|_int_to_bytes| SeedBytes[Master seed bytes]
+    MasterSeed['Master seed (int)'] -->|_int_to_bytes| SeedBytes[Master seed bytes]
     SeedBytes --> Hash[[blake2s digest (8 bytes)]]
     GlitchlingName[Glitchling name] -->|UTF-8 + "\x00"| Hash
     Index[Orchestration index] -->|_int_to_bytes + "\x00"| Hash
