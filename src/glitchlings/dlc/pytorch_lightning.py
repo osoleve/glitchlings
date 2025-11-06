@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
+from ..compat import get_pytorch_lightning_datamodule
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
 from ._shared import normalize_column_spec, wrap_dataloader
@@ -25,6 +26,10 @@ def _glitch_datamodule(
     # Lightning datamodules only support string column names (mapping keys)
     columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
+    
+    # Ensure _GlitchedLightningDataModule inherits from LightningDataModule
+    _ensure_inheritance()
+    
     return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
@@ -129,6 +134,41 @@ class _GlitchedLightningDataModule:
     def predict_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.predict_dataloader(*args, **kwargs)
         return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+
+
+def _ensure_inheritance() -> None:
+    """Ensure _GlitchedLightningDataModule inherits from LightningDataModule.
+    
+    This function dynamically sets the base class of _GlitchedLightningDataModule
+    to inherit from pytorch_lightning.LightningDataModule when available. This
+    ensures that isinstance(glitched, LightningDataModule) checks work correctly
+    and that the wrapper interoperates with Lightning APIs that require that type.
+    """
+    datamodule_cls = get_pytorch_lightning_datamodule()
+    if datamodule_cls is None:
+        # If LightningDataModule is not available, keep as plain object
+        return
+    
+    # Check if we've already set up inheritance
+    if issubclass(_GlitchedLightningDataModule, datamodule_cls):
+        return
+    
+    # Try to dynamically set __bases__ to inherit from LightningDataModule
+    try:
+        _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
+    except TypeError:
+        # If we can't modify __bases__ (e.g., due to __slots__), create a new class
+        namespace = {
+            name: value
+            for name, value in vars(_GlitchedLightningDataModule).items()
+            if name not in {"__dict__", "__weakref__"}
+        }
+        replacement = cast(
+            type[Any],
+            type("_GlitchedLightningDataModule", (datamodule_cls,), namespace),
+        )
+        # Update the module's global namespace
+        globals()["_GlitchedLightningDataModule"] = replacement
 
 
 __all__ = ["GlitchedLightningDataModule"]
