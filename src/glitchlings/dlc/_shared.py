@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from ..zoo.core import Gaggle, _is_transcript
 
@@ -267,7 +267,7 @@ def wrap_dataloader(
         return None
 
     if isinstance(dataloader, Mapping):
-        mapping_type = type(dataloader)
+        mapping_type = cast(type[Any], dataloader.__class__)
         return mapping_type(
             {key: wrap_dataloader(value, columns, gaggle) for key, value in dataloader.items()}
         )
@@ -279,7 +279,7 @@ def wrap_dataloader(
         return tuple(wrap_dataloader(value, columns, gaggle) for value in dataloader)
 
     if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
-        sequence_type = type(dataloader)
+        sequence_type = cast(type[Any], dataloader.__class__)
         return sequence_type(wrap_dataloader(value, columns, gaggle) for value in dataloader)
 
     return BaseGlitchedDataLoader(dataloader, columns, gaggle)

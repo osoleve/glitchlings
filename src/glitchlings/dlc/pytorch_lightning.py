@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
-from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
 from ._shared import normalize_column_spec, wrap_dataloader
@@ -132,60 +131,4 @@ class _GlitchedLightningDataModule:
         return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
 
-def _ensure_datamodule_class() -> Any:
-    """Return the Lightning ``LightningDataModule`` patched with ``.glitch``."""
-
-    datamodule_cls = get_pytorch_lightning_datamodule()
-    if datamodule_cls is None:  # pragma: no cover - dependency is optional
-        module = require_pytorch_lightning("pytorch_lightning is not installed")
-        datamodule_cls = getattr(module, "LightningDataModule", None)
-        if datamodule_cls is None:
-            raise ModuleNotFoundError("pytorch_lightning is not installed")
-
-    if getattr(datamodule_cls, "glitch", None) is None:
-
-        def glitch(
-            self: Any,
-            glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
-            *,
-            column: str | Sequence[str],
-            seed: int = 151,
-            **_: Any,
-        ) -> Any:
-            return _glitch_datamodule(self, glitchlings, column, seed=seed)
-
-        setattr(datamodule_cls, "glitch", glitch)
-
-    if not issubclass(_GlitchedLightningDataModule, datamodule_cls):
-        try:
-            _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
-        except TypeError:
-            namespace = {
-                name: value
-                for name, value in vars(_GlitchedLightningDataModule).items()
-                if name not in {"__dict__", "__weakref__"}
-            }
-            replacement = cast(
-                type[Any],
-                type("_GlitchedLightningDataModule", (datamodule_cls,), namespace),
-            )
-            globals()["_GlitchedLightningDataModule"] = replacement
-
-    return datamodule_cls
-
-
-def install() -> None:
-    """Monkeypatch ``LightningDataModule`` with ``.glitch``."""
-
-    _ensure_datamodule_class()
-
-
-LightningDataModule: type[Any] | None
-_LightningDataModuleAlias = get_pytorch_lightning_datamodule()
-if _LightningDataModuleAlias is not None:
-    LightningDataModule = _ensure_datamodule_class()
-else:  # pragma: no cover - optional dependency
-    LightningDataModule = None
-
-
-__all__ = ["GlitchedLightningDataModule", "LightningDataModule", "install"]
+__all__ = ["GlitchedLightningDataModule"]

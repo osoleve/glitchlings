@@ -29,20 +29,6 @@ vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
 _jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
 damerau_levenshtein_distance = _jellyfish.damerau_levenshtein_distance
 
-try:
-    from .huggingface import Dataset as _HuggingFaceDataset
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    _HuggingFaceDataset = None
-else:
-    if _HuggingFaceDataset is None:  # pragma: no cover - optional dependency
-        _HuggingFaceDataset = None
-
-Dataset: type[Any]
-if _HuggingFaceDataset is None:
-    Dataset = object
-else:
-    Dataset = _HuggingFaceDataset
-
 
 def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
     """Return a fully-instantiated verifier environment."""
