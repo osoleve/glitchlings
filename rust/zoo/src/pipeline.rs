@@ -170,7 +170,10 @@ mod tests {
 
     #[test]
     fn derive_seed_matches_python_reference() {
-        assert_eq!(derive_seed(151, "Rushmore-Duplicate", 0), 5788556628871228872);
+        assert_eq!(
+            derive_seed(151, "Rushmore-Duplicate", 0),
+            5788556628871228872
+        );
         assert_eq!(derive_seed(151, "Rushmore", 1), 15756123308692553544);
     }
 
