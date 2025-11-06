@@ -7,7 +7,7 @@ import difflib
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from . import SAMPLE_TEXT
 from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
@@ -411,34 +411,24 @@ def main(argv: list[str] | None = None) -> int:
             help_parser.print_help()
             return 0
 
-    detector = argparse.ArgumentParser(
-        prog="glitchlings",
-        add_help=False,
-        exit_on_error=False,
-    )
-    subcommands = detector.add_subparsers(dest="command")
-    if hasattr(subcommands, "required"):
-        subcommands.required = False
-    add_build_lexicon_subparser(subcommands)
+    first_non_option_index = None
+    first_non_option = None
+    for index, argument in enumerate(raw_args):
+        if argument == "--":
+            break
+        if argument.startswith("-"):
+            continue
+        first_non_option_index = index
+        first_non_option = argument
+        break
 
-    try:
-        candidate_args = detector.parse_args(raw_args)
-    except SystemExit as exc:
-        return _exit_code(exc)
-    except argparse.ArgumentError as exc:
-        action = exc.args[0] if exc.args else None
-        if action is not None and not isinstance(action, argparse._SubParsersAction):
-            message = exc.args[1] if len(exc.args) > 1 else str(exc)
-            detector.exit(2, f"{detector.prog}: error: {message}\n")
-    else:
-        handler = cast(
-            Callable[[argparse.Namespace], int] | None,
-            getattr(candidate_args, "handler", None),
-        )
-        if handler is not None:
-            return handler(candidate_args)
-        if getattr(candidate_args, "command", None):
-            return 0
+    if first_non_option_index is not None and first_non_option == "build-lexicon":
+        builder = build_lexicon_parser()
+        try:
+            subcommand_args = builder.parse_args(raw_args[first_non_option_index + 1 :])
+        except SystemExit as exc:
+            return _exit_code(exc)
+        return run_build_lexicon(subcommand_args)
 
     parser = build_parser(include_subcommands=False)
     args = parser.parse_args(raw_args)
