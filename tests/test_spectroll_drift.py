@@ -20,7 +20,7 @@ def test_drift_mode_varies_with_seed() -> None:
 
 @pytest.mark.parametrize(
     "seed,expected_counts",
-    [(3, Counter({"orange": 1, "purple": 1, "white": 1, "teal": 1}))],
+    [(3, Counter({"magenta": 1, "purple": 1, "lime": 1, "teal": 1}))],
 )
 def test_drift_mode_expected_palette(seed: int, expected_counts: Counter[str]) -> None:
     text = "red blue yellow green"
