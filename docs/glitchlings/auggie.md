@@ -43,7 +43,7 @@ auggie = (
     Auggie()
     .typo(rate=0.01, keyboard="DVORAK")
     .stretch(rate=0.4, extension_max=7)
-    .pedantry(stone=PedantStone.FUNNELITE)
+    .pedantry(stone=PedantStone.COEURITE)
     .remix(modes=["delete", "swap"], swap_rate=0.02)
     .redact(rate=0.05)
 )
