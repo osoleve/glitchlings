@@ -10,7 +10,6 @@ from ..compat import require_datasets, require_jellyfish, require_verifiers
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling, Mim1c, Typogre
 from ._shared import resolve_columns as _resolve_columns_shared
-from ._shared import resolve_environment as _resolve_environment_shared
 
 
 class VerifierEnvironment(Protocol):
@@ -30,29 +29,16 @@ vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
 _jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
 damerau_levenshtein_distance = _jellyfish.damerau_levenshtein_distance
 
-try:
-    from .huggingface import Dataset as _HuggingFaceDataset
-except ModuleNotFoundError:  # pragma: no cover - optional dependency
-    _HuggingFaceDataset = None
-else:
-    if _HuggingFaceDataset is None:  # pragma: no cover - optional dependency
-        _HuggingFaceDataset = None
-
-Dataset: type[Any]
-if _HuggingFaceDataset is None:
-    Dataset = object
-else:
-    Dataset = _HuggingFaceDataset
-
 
 def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
     """Return a fully-instantiated verifier environment."""
-    resolved = _resolve_environment_shared(
-        env,
-        loader=vf.load_environment,
-        environment_type=cast(type[Any], vf.Environment),
-    )
-    return cast(VerifierEnvironment, resolved)
+    if isinstance(env, str):
+        env = vf.load_environment(env)
+    
+    if not isinstance(env, cast(type[Any], vf.Environment)):
+        raise TypeError("Invalid environment type")
+    
+    return cast(VerifierEnvironment, env)
 
 
 def _resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:

@@ -1,7 +1,18 @@
-"""Optional DLC integrations for Glitchlings."""
+"""Optional DLC integrations for Glitchlings.
 
-from .huggingface import install as install_huggingface
-from .pytorch import install as install_pytorch
-from .pytorch_lightning import install as install_pytorch_lightning
+This module provides explicit wrapper classes for integrating glitchlings
+with popular ML frameworks:
 
-__all__ = ["install_huggingface", "install_pytorch", "install_pytorch_lightning"]
+- :class:`~glitchlings.dlc.huggingface.GlitchedDataset`: Wrap Hugging Face datasets
+- :class:`~glitchlings.dlc.pytorch.GlitchedDataLoader`: Wrap PyTorch data loaders  
+- :class:`~glitchlings.dlc.pytorch_lightning.GlitchedLightningDataModule`: Wrap
+  Lightning data modules
+
+Example:
+    >>> from glitchlings.dlc.huggingface import GlitchedDataset
+    >>> from datasets import Dataset
+    >>> dataset = Dataset.from_dict({"text": ["hello", "world"]})
+    >>> corrupted = GlitchedDataset(dataset, "typogre", column="text")
+"""
+
+__all__: list[str] = []

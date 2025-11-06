@@ -2,67 +2,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping, MutableMapping, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, cast
 
-from ..compat import get_torch_dataloader, require_torch
-from ..compat import torch as _torch_dependency
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, is_textual_candidate, normalize_column_spec
-
-
-def _apply_to_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
-    """Return ``batch`` with glitchlings applied to the specified ``targets``."""
-    if targets is None:
-        return corrupt_text_value(batch, gaggle)
-
-    if isinstance(batch, Mapping):
-        mutated = cast(MutableMapping[str, Any], dict(batch))
-        for key in targets:
-            if not isinstance(key, str):
-                raise TypeError("Mapping batches require string column names")
-            if key not in mutated:
-                raise ValueError(f"Column '{key}' not found in DataLoader batch")
-            mutated[key] = corrupt_text_value(mutated[key], gaggle)
-        return mutated
-
-    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
-        mutated_sequence = list(batch)
-        for index in targets:
-            if not isinstance(index, int):
-                raise TypeError("Sequence batches require integer column indices")
-            try:
-                mutated_sequence[index] = corrupt_text_value(mutated_sequence[index], gaggle)
-            except IndexError as exc:  # pragma: no cover - defensive
-                raise IndexError("Column index out of range for DataLoader batch") from exc
-        if isinstance(batch, tuple):
-            return tuple(mutated_sequence)
-        return mutated_sequence
-
-    raise TypeError("Unsupported DataLoader batch type for glitching")
-
-
-def _infer_targets(batch: Any) -> list[str | int] | None:
-    """Infer which fields should be glitched from a representative ``batch``."""
-    if isinstance(batch, Mapping):
-        inferred = [key for key, value in batch.items() if is_textual_candidate(value)]
-        if inferred:
-            return inferred
-        raise ValueError("Unable to infer which mapping columns contain text")
-
-    if isinstance(batch, Sequence) and not isinstance(batch, (bytes, bytearray, str)):
-        inferred_indices: list[str | int] = [
-            idx for idx, value in enumerate(batch) if is_textual_candidate(value)
-        ]
-        if inferred_indices:
-            return inferred_indices
-        raise ValueError("Unable to infer which sequence indices contain text")
-
-    if is_textual_candidate(batch):
-        return None
-
-    raise TypeError("Unsupported DataLoader batch type for glitching")
+from ._shared import corrupt_batch, infer_batch_targets, normalize_column_spec
 
 
 class _GlitchedDataLoader(Iterable[Any]):
@@ -85,7 +30,7 @@ class _GlitchedDataLoader(Iterable[Any]):
         self._gaggle.sort_glitchlings()
         for batch in self._dataloader:
             targets = self._resolve_columns(batch)
-            yield _apply_to_batch(batch, targets, self._gaggle)
+            yield corrupt_batch(batch, targets, self._gaggle)
 
     def __len__(self) -> int:
         return len(self._dataloader)
@@ -98,7 +43,7 @@ class _GlitchedDataLoader(Iterable[Any]):
             return self._explicit_columns
 
         if self._inferred_columns is _UNINITIALISED:
-            self._inferred_columns = _infer_targets(batch)
+            self._inferred_columns = infer_batch_targets(batch)
 
         return cast(list[str | int] | None, self._inferred_columns)
 
@@ -110,57 +55,44 @@ class _Sentinel:
 _UNINITIALISED = _Sentinel()
 
 
-def _ensure_dataloader_class() -> type[Any]:
-    """Return :class:`torch.utils.data.DataLoader` patched with ``.glitch``."""
-    dataloader_cls = get_torch_dataloader()
-    if dataloader_cls is None:
-        require_torch("torch is not installed; install glitchlings[torch]")
-        dataloader_cls = get_torch_dataloader()
-        if dataloader_cls is None:  # pragma: no cover - defensive
-            message = "torch.utils.data.DataLoader is not available"
-            error = _torch_dependency.error
-            if error is not None:
-                raise ModuleNotFoundError(message) from error
-            raise ModuleNotFoundError(message)
-
-    if getattr(dataloader_cls, "glitch", None) is None:
-
-        def glitch(
-            self: Any,
-            glitchlings: Iterable[str | Glitchling] | Glitchling | str | Gaggle,
-            *,
-            columns: str | int | Sequence[str | int] | None = None,
-            seed: int = 151,
-        ) -> _GlitchedDataLoader:
-            """Return a lazily glitched view of the loader's batches."""
-            gaggle = coerce_gaggle(glitchlings, seed=seed)
-            normalized = normalize_column_spec(columns)
-            return _GlitchedDataLoader(self, gaggle, columns=normalized)
-
-        setattr(dataloader_cls, "glitch", glitch)
-
-    return cast(type[Any], dataloader_cls)
-
-
-def _optional_dataloader_class() -> type[Any] | None:
-    """Return the PyTorch :class:`~torch.utils.data.DataLoader` when importable."""
-    dataloader_cls = get_torch_dataloader()
-    if dataloader_cls is None:
-        return None
-    return cast(type[Any], dataloader_cls)
-
-
-def install() -> None:
-    """Monkeypatch PyTorch's :class:`~torch.utils.data.DataLoader` with ``.glitch``."""
-    _ensure_dataloader_class()
+def GlitchedDataLoader(
+    dataloader: Any,
+    glitchlings: Iterable[str | Glitchling] | Glitchling | str | Gaggle,
+    *,
+    columns: str | int | Sequence[str | int] | None = None,
+    seed: int = 151,
+) -> _GlitchedDataLoader:
+    """Return a lazily glitched view of a PyTorch DataLoader's batches.
+    
+    This function wraps a PyTorch DataLoader to apply glitchlings to specified
+    columns (or auto-inferred text columns) in each batch as it's yielded.
+    
+    Args:
+        dataloader: The PyTorch DataLoader to wrap.
+        glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
+        columns: Column name(s) or index/indices to corrupt. Can be:
+                 - A single string column name (for dict-like batches)
+                 - A single integer index (for sequence-like batches)
+                 - A sequence of column names or indices
+                 - None to auto-infer text columns (default)
+        seed: RNG seed for deterministic corruption (default: 151).
+    
+    Returns:
+        A wrapped dataloader that yields corrupted batches.
+    
+    Example:
+        >>> from torch.utils.data import DataLoader
+        >>> from glitchlings.dlc.pytorch import GlitchedDataLoader
+        >>> dataset = [{"text": "hello", "label": 0}]
+        >>> loader = DataLoader(dataset)
+        >>> glitched = GlitchedDataLoader(loader, "typogre", columns="text")
+        >>> for batch in glitched:
+        ...     print(batch)
+        {'text': 'helo', 'label': 0}
+    """
+    gaggle = coerce_gaggle(glitchlings, seed=seed)
+    normalized = normalize_column_spec(columns)
+    return _GlitchedDataLoader(dataloader, gaggle, columns=normalized)
 
 
-DataLoader: type[Any] | None
-_DataLoaderAlias = _optional_dataloader_class()
-if _DataLoaderAlias is not None:
-    DataLoader = _ensure_dataloader_class()
-else:  # pragma: no cover - torch is an optional dependency
-    DataLoader = None
-
-
-__all__ = ["DataLoader", "install"]
+__all__ = ["GlitchedDataLoader"]

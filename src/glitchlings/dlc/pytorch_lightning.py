@@ -5,74 +5,10 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
-from ..compat import get_pytorch_lightning_datamodule, require_pytorch_lightning
+from ..compat import get_pytorch_lightning_datamodule
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
-from ._shared import corrupt_text_value, normalize_column_spec
-
-
-def _glitch_batch(batch: Any, columns: list[str], gaggle: Gaggle) -> Any:
-    """Apply glitchlings to the configured batch columns."""
-    if not isinstance(batch, Mapping):
-        return batch
-
-    if hasattr(batch, "copy"):
-        mutated = batch.copy()
-    else:
-        mutated = dict(batch)
-
-    missing = [column for column in columns if column not in mutated]
-    if missing:
-        missing_str = ", ".join(sorted(missing))
-        raise ValueError(f"Columns not found in batch: {missing_str}")
-
-    for column in columns:
-        mutated[column] = corrupt_text_value(mutated[column], gaggle)
-
-    return mutated
-
-
-def _wrap_dataloader(dataloader: Any, columns: list[str], gaggle: Gaggle) -> Any:
-    """Wrap a dataloader so yielded batches are corrupted lazily."""
-    if dataloader is None:
-        return None
-
-    if isinstance(dataloader, Mapping):
-        mapping_type = cast(type[Any], dataloader.__class__)
-        return mapping_type(
-            {key: _wrap_dataloader(value, columns, gaggle) for key, value in dataloader.items()}
-        )
-
-    if isinstance(dataloader, list):
-        return [_wrap_dataloader(value, columns, gaggle) for value in dataloader]
-
-    if isinstance(dataloader, tuple):
-        return tuple(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
-
-    if isinstance(dataloader, Sequence) and not isinstance(dataloader, (str, bytes, bytearray)):
-        sequence_type = cast(type[Any], dataloader.__class__)
-        return sequence_type(_wrap_dataloader(value, columns, gaggle) for value in dataloader)
-
-    return _GlitchedDataLoader(dataloader, columns, gaggle)
-
-
-class _GlitchedDataLoader:
-    """Proxy dataloader that glitches batches produced by the wrapped loader."""
-
-    def __init__(self, dataloader: Any, columns: list[str], gaggle: Gaggle) -> None:
-        self._dataloader = dataloader
-        self._columns = columns
-        self._gaggle = gaggle
-
-    def __iter__(self) -> Any:
-        for batch in self._dataloader:
-            yield _glitch_batch(batch, self._columns, self._gaggle)
-
-    def __len__(self) -> int:
-        return len(self._dataloader)
-
-    def __getattr__(self, attribute: str) -> Any:
-        return getattr(self._dataloader, attribute)
+from ._shared import normalize_column_spec, wrap_dataloader
 
 
 def _glitch_datamodule(
@@ -90,7 +26,42 @@ def _glitch_datamodule(
     # Lightning datamodules only support string column names (mapping keys)
     columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
+    
     return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
+
+
+def GlitchedLightningDataModule(
+    datamodule: Any,
+    glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
+    *,
+    column: str | Sequence[str],
+    seed: int = 151,
+) -> Any:
+    """Return a glitched wrapper around a PyTorch Lightning LightningDataModule.
+    
+    This function wraps a LightningDataModule to apply glitchlings to specified
+    columns in batches yielded by the module's dataloaders.
+    
+    Args:
+        datamodule: The LightningDataModule to wrap.
+        glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
+        column: The column name (string) or names (sequence of strings) to corrupt.
+        seed: RNG seed for deterministic corruption (default: 151).
+    
+    Returns:
+        A wrapped datamodule that yields corrupted batches from its dataloaders.
+    
+    Example:
+        >>> from pytorch_lightning import LightningDataModule
+        >>> from glitchlings.dlc.pytorch_lightning import GlitchedLightningDataModule
+        >>> class MyDataModule(LightningDataModule):
+        ...     def train_dataloader(self):
+        ...         return [{"text": "hello", "label": 0}]
+        >>> dm = MyDataModule()
+        >>> glitched = GlitchedLightningDataModule(dm, "typogre", column="text")
+        >>> batches = list(glitched.train_dataloader())
+    """
+    return _glitch_datamodule(datamodule, glitchlings, column, seed=seed)
 
 
 class _GlitchedLightningDataModule:
@@ -147,75 +118,56 @@ class _GlitchedLightningDataModule:
 
     def train_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.train_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def val_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.val_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def test_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.test_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
     def predict_dataloader(self, *args: Any, **kwargs: Any) -> Any:
         loader = self._glitch_base.predict_dataloader(*args, **kwargs)
-        return _wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
+        return wrap_dataloader(loader, self._glitch_columns, self._glitch_gaggle)
 
 
-def _ensure_datamodule_class() -> Any:
-    """Return the Lightning ``LightningDataModule`` patched with ``.glitch``."""
-
+# Module initialization: set up inheritance from LightningDataModule if available
+def _setup_inheritance() -> None:
+    """Set up _GlitchedLightningDataModule to inherit from LightningDataModule.
+    
+    This function is called once at module import time to dynamically set the base
+    class of _GlitchedLightningDataModule to inherit from
+    pytorch_lightning.LightningDataModule when available. This ensures that
+    isinstance(glitched, LightningDataModule) checks work correctly and that the
+    wrapper interoperates with Lightning APIs that require that type.
+    """
     datamodule_cls = get_pytorch_lightning_datamodule()
-    if datamodule_cls is None:  # pragma: no cover - dependency is optional
-        module = require_pytorch_lightning("pytorch_lightning is not installed")
-        datamodule_cls = getattr(module, "LightningDataModule", None)
-        if datamodule_cls is None:
-            raise ModuleNotFoundError("pytorch_lightning is not installed")
-
-    if getattr(datamodule_cls, "glitch", None) is None:
-
-        def glitch(
-            self: Any,
-            glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
-            *,
-            column: str | Sequence[str],
-            seed: int = 151,
-            **_: Any,
-        ) -> Any:
-            return _glitch_datamodule(self, glitchlings, column, seed=seed)
-
-        setattr(datamodule_cls, "glitch", glitch)
-
-    if not issubclass(_GlitchedLightningDataModule, datamodule_cls):
-        try:
-            _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
-        except TypeError:
-            namespace = {
-                name: value
-                for name, value in vars(_GlitchedLightningDataModule).items()
-                if name not in {"__dict__", "__weakref__"}
-            }
-            replacement = cast(
-                type[Any],
-                type("_GlitchedLightningDataModule", (datamodule_cls,), namespace),
-            )
-            globals()["_GlitchedLightningDataModule"] = replacement
-
-    return datamodule_cls
+    if datamodule_cls is None:
+        # If LightningDataModule is not available, keep as plain object
+        return
+    
+    # Try to dynamically set __bases__ to inherit from LightningDataModule
+    try:
+        _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)
+    except TypeError:
+        # If we can't modify __bases__ (e.g., due to __slots__), create a new class
+        namespace = {
+            name: value
+            for name, value in vars(_GlitchedLightningDataModule).items()
+            if name not in {"__dict__", "__weakref__"}
+        }
+        replacement = cast(
+            type[Any],
+            type("_GlitchedLightningDataModule", (datamodule_cls,), namespace),
+        )
+        # Update the module's global namespace
+        globals()["_GlitchedLightningDataModule"] = replacement
 
 
-def install() -> None:
-    """Monkeypatch ``LightningDataModule`` with ``.glitch``."""
-
-    _ensure_datamodule_class()
+# Set up inheritance at module import time
+_setup_inheritance()
 
 
-LightningDataModule: type[Any] | None
-_LightningDataModuleAlias = get_pytorch_lightning_datamodule()
-if _LightningDataModuleAlias is not None:
-    LightningDataModule = _ensure_datamodule_class()
-else:  # pragma: no cover - optional dependency
-    LightningDataModule = None
-
-
-__all__ = ["LightningDataModule", "install"]
+__all__ = ["GlitchedLightningDataModule"]
