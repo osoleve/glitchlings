@@ -29,6 +29,40 @@ def _glitch_datamodule(
     return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
+def GlitchedLightningDataModule(
+    datamodule: Any,
+    glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
+    *,
+    column: str | Sequence[str],
+    seed: int = 151,
+) -> Any:
+    """Return a glitched wrapper around a PyTorch Lightning LightningDataModule.
+    
+    This function wraps a LightningDataModule to apply glitchlings to specified
+    columns in batches yielded by the module's dataloaders.
+    
+    Args:
+        datamodule: The LightningDataModule to wrap.
+        glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
+        column: The column name (string) or names (sequence of strings) to corrupt.
+        seed: RNG seed for deterministic corruption (default: 151).
+    
+    Returns:
+        A wrapped datamodule that yields corrupted batches from its dataloaders.
+    
+    Example:
+        >>> from pytorch_lightning import LightningDataModule
+        >>> from glitchlings.dlc.pytorch_lightning import GlitchedLightningDataModule
+        >>> class MyDataModule(LightningDataModule):
+        ...     def train_dataloader(self):
+        ...         return [{"text": "hello", "label": 0}]
+        >>> dm = MyDataModule()
+        >>> glitched = GlitchedLightningDataModule(dm, "typogre", column="text")
+        >>> batches = list(glitched.train_dataloader())
+    """
+    return _glitch_datamodule(datamodule, glitchlings, column, seed=seed)
+
+
 class _GlitchedLightningDataModule:
     """Proxy wrapper around a LightningDataModule applying glitchlings to batches."""
 
@@ -154,4 +188,4 @@ else:  # pragma: no cover - optional dependency
     LightningDataModule = None
 
 
-__all__ = ["LightningDataModule", "install"]
+__all__ = ["GlitchedLightningDataModule", "LightningDataModule", "install"]

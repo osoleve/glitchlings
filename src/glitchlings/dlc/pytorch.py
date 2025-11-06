@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Sequence
 from typing import Any, cast
 
 from ..compat import get_torch_dataloader, require_torch
@@ -55,6 +55,46 @@ class _Sentinel:
 
 
 _UNINITIALISED = _Sentinel()
+
+
+def GlitchedDataLoader(
+    dataloader: Any,
+    glitchlings: Iterable[str | Glitchling] | Glitchling | str | Gaggle,
+    *,
+    columns: str | int | Sequence[str | int] | None = None,
+    seed: int = 151,
+) -> _GlitchedDataLoader:
+    """Return a lazily glitched view of a PyTorch DataLoader's batches.
+    
+    This function wraps a PyTorch DataLoader to apply glitchlings to specified
+    columns (or auto-inferred text columns) in each batch as it's yielded.
+    
+    Args:
+        dataloader: The PyTorch DataLoader to wrap.
+        glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
+        columns: Column name(s) or index/indices to corrupt. Can be:
+                 - A single string column name (for dict-like batches)
+                 - A single integer index (for sequence-like batches)
+                 - A sequence of column names or indices
+                 - None to auto-infer text columns (default)
+        seed: RNG seed for deterministic corruption (default: 151).
+    
+    Returns:
+        A wrapped dataloader that yields corrupted batches.
+    
+    Example:
+        >>> from torch.utils.data import DataLoader
+        >>> from glitchlings.dlc.pytorch import GlitchedDataLoader
+        >>> dataset = [{"text": "hello", "label": 0}]
+        >>> loader = DataLoader(dataset)
+        >>> glitched = GlitchedDataLoader(loader, "typogre", columns="text")
+        >>> for batch in glitched:
+        ...     print(batch)
+        {'text': 'helo', 'label': 0}
+    """
+    gaggle = coerce_gaggle(glitchlings, seed=seed)
+    normalized = normalize_column_spec(columns)
+    return _GlitchedDataLoader(dataloader, gaggle, columns=normalized)
 
 
 def _ensure_dataloader_class() -> type[Any]:
@@ -110,4 +150,4 @@ else:  # pragma: no cover - torch is an optional dependency
     DataLoader = None
 
 
-__all__ = ["DataLoader", "install"]
+__all__ = ["DataLoader", "GlitchedDataLoader", "install"]

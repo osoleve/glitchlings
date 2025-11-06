@@ -34,6 +34,38 @@ def _glitch_dataset(
     return gaggle.corrupt_dataset(dataset, columns)
 
 
+def GlitchedDataset(
+    dataset: Any,
+    glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
+    *,
+    column: str | Sequence[str],
+    seed: int = 151,
+) -> Any:
+    """Return a lazily corrupted copy of a Hugging Face dataset.
+    
+    This function applies glitchlings to the specified columns of a dataset,
+    returning a new dataset that lazily corrupts data as it's accessed.
+    
+    Args:
+        dataset: The Hugging Face Dataset to corrupt.
+        glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
+        column: The column name (string) or names (sequence of strings) to corrupt.
+        seed: RNG seed for deterministic corruption (default: 151).
+    
+    Returns:
+        A new dataset with the specified columns corrupted by the glitchlings.
+    
+    Example:
+        >>> from datasets import Dataset
+        >>> from glitchlings.dlc.huggingface import GlitchedDataset
+        >>> dataset = Dataset.from_dict({"text": ["hello", "world"]})
+        >>> corrupted = GlitchedDataset(dataset, "typogre", column="text")
+        >>> list(corrupted)
+        [{'text': 'helo'}, {'text': 'wrold'}]
+    """
+    return _glitch_dataset(dataset, glitchlings, column, seed=seed)
+
+
 def _ensure_dataset_class() -> Any:
     """Return the Hugging Face :class:`~datasets.Dataset` patched with ``.glitch``."""
     dataset_cls = get_datasets_dataset()
@@ -78,4 +110,4 @@ else:  # pragma: no cover - datasets is an install-time dependency
     Dataset = None
 
 
-__all__ = ["Dataset", "install"]
+__all__ = ["Dataset", "GlitchedDataset", "install"]
