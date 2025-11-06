@@ -99,9 +99,9 @@ extra = min(max_extra,
 4. Sample a stretch length using contextual intensity.
 5. Apply the stretch while maintaining Unicode boundaries and original casing.
 
-All randomness flows through the glitchling's RNG. The generator returns both the
-transformed text and a rich trace (feature scores, chosen sites, sampled lengths) for
-debugging.
+All randomness flows through the glitchling's RNG. The historical Python generator
+exposed trace data for debugging, but Hokey now relies on the compiled Rust pipeline
+for production execution and no longer surfaces trace events from Python.
 
 ## 7. Rust Fast Path
 The Rust implementation mirrors the Python pipeline:
@@ -109,8 +109,8 @@ The Rust implementation mirrors the Python pipeline:
 * Ported lexical prior and heuristic tables to `rust/zoo/src/hokey.rs`.
 * Implemented a deterministic scorer and negative-binomial sampler using the
   `rand` traits already available in the crate.
-* When traces are requested, the Python generator replays the same RNG sequence to
-  produce introspection data and asserts the Rust output remains in lockstep.
+* Trace replay now lives exclusively in Rust. The Python shim delegates all
+  generation to the compiled operation and provides no tracing hooks.
 
 When the PyO3 extension is available, Hokey uses the Rust path automatically.
 

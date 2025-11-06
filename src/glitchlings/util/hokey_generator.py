@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .stretch_locator import StretchSite, apply_stretch, find_stretch_site
-from .stretchability import RandomLike, StretchabilityAnalyzer, StretchabilityFeatures
+from .stretch_locator import apply_stretch, find_stretch_site
+from .stretchability import RandomLike, StretchabilityAnalyzer
 
 
 @dataclass(slots=True)
@@ -15,17 +15,6 @@ class HokeyConfig:
     extension_max: int = 5
     base_p: float = 0.45
     word_length_threshold: int = 6
-
-
-@dataclass(slots=True)
-class StretchEvent:
-    token_index: int
-    original: str
-    stretched: str
-    repeats: int
-    site: StretchSite
-    score: float
-    features: StretchabilityFeatures
 
 
 class NegativeBinomialSampler:
@@ -81,9 +70,9 @@ class HokeyGenerator:
         *,
         rng: RandomLike,
         config: HokeyConfig,
-    ) -> tuple[str, list[StretchEvent]]:
+    ) -> str:
         if not text:
-            return text, []
+            return text
 
         if config.base_p != self.sampler.base_p:
             self.sampler.base_p = config.base_p
@@ -92,10 +81,9 @@ class HokeyGenerator:
         candidates = self.analyzer.analyse_tokens(tokens)
         selected = self.analyzer.select_candidates(candidates, rate=config.rate, rng=rng)
         if not selected:
-            return text, []
+            return text
 
         token_strings = [token.text for token in tokens]
-        events: list[StretchEvent] = []
 
         for candidate in selected:
             token_idx = candidate.token.index
@@ -126,19 +114,8 @@ class HokeyGenerator:
 
             stretched_word = apply_stretch(original, site, repeats)
             token_strings[token_idx] = stretched_word
-            events.append(
-                StretchEvent(
-                    token_index=token_idx,
-                    original=original,
-                    stretched=stretched_word,
-                    repeats=repeats,
-                    site=site,
-                    score=candidate.score,
-                    features=candidate.features,
-                )
-            )
 
-        return "".join(token_strings), events
+        return "".join(token_strings)
 
 
-__all__ = ["HokeyGenerator", "HokeyConfig", "StretchEvent", "NegativeBinomialSampler"]
+__all__ = ["HokeyGenerator", "HokeyConfig", "NegativeBinomialSampler"]
