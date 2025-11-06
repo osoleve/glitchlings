@@ -7,7 +7,7 @@ import difflib
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
+from typing import Callable, cast
 
 from . import SAMPLE_TEXT
 from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
@@ -23,7 +23,9 @@ from .zoo import (
 MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.values())
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(
+    *, include_subcommands: bool = False, exit_on_error: bool = True
+) -> argparse.ArgumentParser:
     """Create and configure the CLI argument parser.
 
     Returns:
@@ -34,11 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
         description=(
             "Summon glitchlings to corrupt text. Provide input text as an argument, "
             "via --file, or pipe it on stdin."
-        )
+        ),
+        exit_on_error=exit_on_error,
     )
     parser.add_argument(
         "text",
-        nargs="?",
+        nargs="*",
         help="Text to corrupt. If omitted, stdin is used or --sample provides fallback text.",
     )
     parser.add_argument(
@@ -86,18 +89,18 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Load glitchlings from a YAML configuration file.",
     )
+
+    if include_subcommands:
+        subparsers = parser.add_subparsers(dest="command")
+        if hasattr(subparsers, "required"):
+            subparsers.required = False  # allow top-level invocation without subcommand
+        add_build_lexicon_subparser(subparsers)
+
     return parser
 
 
-def build_lexicon_parser() -> argparse.ArgumentParser:
-    """Create the ``build-lexicon`` subcommand parser with vector cache options."""
-    builder = argparse.ArgumentParser(
-        prog="glitchlings build-lexicon",
-        description=(
-            "Generate deterministic synonym caches using vector embeddings so "
-            "they can be distributed without bundling large models."
-        ),
-    )
+def _configure_build_lexicon_parser(builder: argparse.ArgumentParser) -> argparse.ArgumentParser:
+    """Attach ``build-lexicon`` options to ``builder`` and return it."""
     builder.add_argument(
         "--source",
         required=True,
@@ -158,6 +161,35 @@ def build_lexicon_parser() -> argparse.ArgumentParser:
     return builder
 
 
+def add_build_lexicon_subparser(
+    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> argparse.ArgumentParser:
+    """Create the ``build-lexicon`` subcommand parser with vector cache options."""
+    builder = subparsers.add_parser(
+        "build-lexicon",
+        description=(
+            "Generate deterministic synonym caches using vector embeddings so "
+            "they can be distributed without bundling large models."
+        ),
+        help="Generate synonym caches backed by vector embeddings.",
+    )
+    _configure_build_lexicon_parser(builder)
+    builder.set_defaults(handler=run_build_lexicon)
+    return builder
+
+
+def build_lexicon_parser() -> argparse.ArgumentParser:
+    """Standalone parser matching the ``build-lexicon`` subcommand."""
+    builder = argparse.ArgumentParser(
+        prog="glitchlings build-lexicon",
+        description=(
+            "Generate deterministic synonym caches using vector embeddings so "
+            "they can be distributed without bundling large models."
+        ),
+    )
+    return _configure_build_lexicon_parser(builder)
+
+
 def list_glitchlings() -> None:
     """Print information about the available built-in glitchlings."""
     for key in DEFAULT_GLITCHLING_NAMES:
@@ -191,8 +223,12 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
             reason = exc.strerror or str(exc)
             parser.error(f"Failed to read file {filename}: {reason}")
 
-    text_argument = cast(str | None, getattr(args, "text", None))
-    if text_argument:
+    text_argument = cast(str | list[str] | None, getattr(args, "text", None))
+    if isinstance(text_argument, list):
+        if text_argument:
+            return " ".join(text_argument)
+        text_argument = None
+    if isinstance(text_argument, str) and text_argument:
         return text_argument
 
     if not sys.stdin.isatty():
@@ -350,12 +386,28 @@ def main(argv: list[str] | None = None) -> int:
     else:
         raw_args = list(argv)
 
-    if raw_args and raw_args[0] == "build-lexicon":
-        builder = build_lexicon_parser()
-        args = builder.parse_args(raw_args[1:])
-        return run_build_lexicon(args)
+    parser_with_subcommands = build_parser(include_subcommands=True, exit_on_error=False)
 
-    parser = build_parser()
+    subcommand_names: set[str] = set()
+    for action in parser_with_subcommands._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            subcommand_names = set(action.choices.keys())
+            break
+
+    if raw_args and not raw_args[0].startswith("-") and raw_args[0] in subcommand_names:
+        args = parser_with_subcommands.parse_args(raw_args)
+        handler = cast(
+            Callable[[argparse.Namespace], int] | None,
+            getattr(args, "handler", None),
+        )
+        if handler is not None:
+            return handler(args)
+
+    if any(arg in {"-h", "--help"} for arg in raw_args):
+        parser_with_subcommands.parse_args(raw_args)
+        return 0
+
+    parser = build_parser(include_subcommands=False)
     args = parser.parse_args(raw_args)
     return run_cli(args, parser)
 
