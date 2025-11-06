@@ -1,12 +1,12 @@
-import random
-import re
+from __future__ import annotations
+
 from collections.abc import Iterable
-from dataclasses import dataclass
 from types import ModuleType
 from typing import Any, Literal, cast
 
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
+from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackWave, Glitchling
 
 _wordnet_module: ModuleType | None
@@ -68,15 +68,6 @@ NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]
 _VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
 
 
-def _split_token(token: str) -> tuple[str, str, str]:
-    """Split a token into leading punctuation, core word, and trailing punctuation."""
-    match = re.match(r"^(\W*)(.*?)(\W*)$", token)
-    if not match:
-        return "", token, ""
-    prefix, core, suffix = match.groups()
-    return prefix, core, suffix
-
-
 def _normalize_parts_of_speech(
     part_of_speech: PartOfSpeechInput,
 ) -> NormalizedPartsOfSpeech:
@@ -100,15 +91,7 @@ def _normalize_parts_of_speech(
     return tuple(normalized)
 
 
-@dataclass(frozen=True)
-class CandidateInfo:
-    """Metadata for a candidate token that may be replaced."""
-
-    prefix: str
-    core_word: str
-    suffix: str
-    part_of_speech: str | None
-    synonyms: list[str]
+_SUBSTITUTE_RANDOM_SYNONYMS = get_rust_operation("substitute_random_synonyms")
 
 
 def substitute_random_synonyms(
@@ -116,131 +99,54 @@ def substitute_random_synonyms(
     rate: float | None = None,
     part_of_speech: PartOfSpeechInput = "n",
     seed: int | None = None,
-    rng: random.Random | None = None,
+    rng: Any | None = None,
     *,
     lexicon: Lexicon | None = None,
 ) -> str:
-    """Replace words with random lexicon-driven synonyms.
+    """Replace words with random lexicon-driven synonyms."""
 
-    Parameters
-    ----------
-    - text: Input text.
-    - rate: Max proportion of candidate words to replace (default 0.01).
-    - part_of_speech: WordNet POS tag(s) to target. Accepts "n", "v", "a", "r",
-      any iterable of those tags, or "any" to include all four. Backends that do
-      not differentiate parts of speech simply ignore the setting.
-    - rng: Optional RNG instance used for deterministic sampling.
-    - seed: Optional seed if `rng` not provided.
-    - lexicon: Optional :class:`~glitchlings.lexicon.Lexicon` implementation to
-      supply synonyms. Defaults to the configured lexicon priority, typically the
-      packaged vector cache.
+    effective_rate = 0.1 if rate is None else float(rate)
 
-    Determinism
-    - Candidates collected in left-to-right order; no set() reordering.
-    - Replacement positions chosen via rng.sample.
-    - Synonyms sourced through the lexicon; the default backend derives
-      deterministic subsets per word and part-of-speech using the active seed.
+    if lexicon is not None and not isinstance(lexicon, Lexicon):
+        raise TypeError("lexicon must be a Lexicon instance or None")
 
-    """
-    effective_rate = 0.1 if rate is None else rate
-
-    active_rng: random.Random
-    if rng is not None:
-        active_rng = rng
-    else:
-        active_rng = random.Random(seed)
-
-    active_lexicon: Lexicon
+    active_lexicon = lexicon
     restore_lexicon_seed = False
     original_lexicon_seed: int | None = None
 
-    if lexicon is None:
+    if active_lexicon is None:
         active_lexicon = get_default_lexicon(seed=seed)
-    else:
-        active_lexicon = lexicon
-        if seed is not None:
+
+    if seed is not None and isinstance(active_lexicon, Lexicon):
+        if lexicon is not None:
             original_lexicon_seed = active_lexicon.seed
             if original_lexicon_seed != seed:
                 active_lexicon.reseed(seed)
                 restore_lexicon_seed = True
+        elif active_lexicon.seed != seed:
+            active_lexicon.reseed(seed)
+
+    if isinstance(active_lexicon, Lexicon):
+        lexicon_seed_repr = None if active_lexicon.seed is None else str(active_lexicon.seed)
+    else:
+        lexicon_seed_repr = None if seed is None else str(seed)
 
     try:
         target_pos = _normalize_parts_of_speech(part_of_speech)
-
-        # Split but keep whitespace separators so we can rebuild easily
-        tokens = re.split(r"(\s+)", text)
-
-        # Collect candidate word indices (even positions are words because separators are kept)
-        candidate_indices: list[int] = []
-        candidate_metadata: dict[int, CandidateInfo] = {}
-        for idx, tok in enumerate(tokens):
-            if idx % 2 != 0 or not tok or tok.isspace():
-                continue
-
-            prefix, core_word, suffix = _split_token(tok)
-            if not core_word:
-                continue
-
-            chosen_pos: str | None = None
-            synonyms: list[str] = []
-
-            for tag in target_pos:
-                if not active_lexicon.supports_pos(tag):
-                    continue
-                synonyms = active_lexicon.get_synonyms(core_word, pos=tag)
-                if synonyms:
-                    chosen_pos = tag
-                    break
-
-            if not synonyms and active_lexicon.supports_pos(None):
-                synonyms = active_lexicon.get_synonyms(core_word, pos=None)
-
-            if synonyms:
-                candidate_indices.append(idx)
-                candidate_metadata[idx] = CandidateInfo(
-                    prefix=prefix,
-                    core_word=core_word,
-                    suffix=suffix,
-                    part_of_speech=chosen_pos,
-                    synonyms=synonyms,
-                )
-
-        if not candidate_indices:
-            return text
-
-        clamped_rate = max(0.0, effective_rate)
-        if clamped_rate == 0.0:
-            return text
-
-        population = len(candidate_indices)
-        effective_fraction = min(clamped_rate, 1.0)
-        expected_replacements = population * effective_fraction
-        max_replacements = int(expected_replacements)
-        remainder = expected_replacements - max_replacements
-        if remainder > 0.0 and active_rng.random() < remainder:
-            max_replacements += 1
-        if clamped_rate >= 1.0:
-            max_replacements = population
-        max_replacements = min(population, max_replacements)
-        if max_replacements <= 0:
-            return text
-
-        # Choose which positions to replace deterministically via rng.sample
-        replace_positions = active_rng.sample(candidate_indices, k=max_replacements)
-        # Process in ascending order to avoid affecting later indices
-        replace_positions.sort()
-
-        for pos in replace_positions:
-            metadata = candidate_metadata[pos]
-            if not metadata.synonyms:
-                continue
-
-            replacement = active_rng.choice(metadata.synonyms)
-            tokens[pos] = f"{metadata.prefix}{replacement}{metadata.suffix}"
-
-        return "".join(tokens)
+        resolved_seed = resolve_seed(seed, rng)
+        return cast(
+            str,
+            _SUBSTITUTE_RANDOM_SYNONYMS(
+                text,
+                effective_rate,
+                list(target_pos),
+                resolved_seed,
+                active_lexicon,
+                lexicon_seed_repr,
+            ),
+        )
     finally:
-        if restore_lexicon_seed:
+        if restore_lexicon_seed and isinstance(active_lexicon, Lexicon):
             active_lexicon.reseed(original_lexicon_seed)
 
 
@@ -255,14 +161,26 @@ class Jargoyle(Glitchling):
         seed: int | None = None,
         lexicon: Lexicon | None = None,
     ) -> None:
-        self._owns_lexicon = lexicon is None
+        if lexicon is not None and not isinstance(lexicon, Lexicon):
+            raise TypeError("lexicon must be a Lexicon instance or None")
+
+        if lexicon is None:
+            prepared_lexicon = get_default_lexicon(seed=seed)
+            owns_lexicon = True
+            if not isinstance(prepared_lexicon, Lexicon):
+                message = "Default Jargoyle lexicon must be a Lexicon instance"
+                raise TypeError(message)
+        else:
+            prepared_lexicon = lexicon
+            owns_lexicon = False
+
+        self._owns_lexicon = owns_lexicon
         self._external_lexicon_original_seed = (
-            lexicon.seed if isinstance(lexicon, Lexicon) else None
+            None if owns_lexicon else prepared_lexicon.seed
         )
         self._initializing = True
         effective_rate = 0.01 if rate is None else rate
-        prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
-        if lexicon is not None and seed is not None:
+        if not owns_lexicon and seed is not None:
             prepared_lexicon.reseed(seed)
         try:
             super().__init__(
@@ -276,6 +194,14 @@ class Jargoyle(Glitchling):
             )
         finally:
             self._initializing = False
+
+        if getattr(self, "lexicon", None) is None:
+            previous_initializing = self._initializing
+            self._initializing = True
+            try:
+                self.set_param("lexicon", prepared_lexicon)
+            finally:
+                self._initializing = previous_initializing
 
     def set_param(self, key: str, value: Any) -> None:
         super().set_param(key, value)
@@ -293,7 +219,9 @@ class Jargoyle(Glitchling):
                         current_lexicon.reseed(self.seed)
                     else:
                         if hasattr(self, "_external_lexicon_original_seed"):
-                            original_seed = getattr(self, "_external_lexicon_original_seed", None)
+                            original_seed = getattr(
+                                self, "_external_lexicon_original_seed", None
+                            )
                             current_lexicon.reseed(original_seed)
         elif canonical == "lexicon" and isinstance(value, Lexicon):
             if getattr(self, "_initializing", False):
