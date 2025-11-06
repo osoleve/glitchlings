@@ -5,18 +5,13 @@ from __future__ import annotations
 import random
 from typing import Any, Callable, cast
 
-from ..util.hokey_generator import HokeyConfig, HokeyGenerator, StretchEvent
-from ..util.stretchability import StretchabilityAnalyzer
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
 
-StretchResult = str | tuple[str, list[StretchEvent]]
-HokeyRustCallable = Callable[[str, float, int, int, int, float, int | None], StretchResult]
+HokeyRustCallable = Callable[[str, float, int, int, int, float, int | None], str]
 
 _hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
-_ANALYZER = StretchabilityAnalyzer()
-_GENERATOR = HokeyGenerator(analyzer=_ANALYZER)
 
 
 def extend_vowels(
@@ -27,10 +22,8 @@ def extend_vowels(
     word_length_threshold: int = 6,
     seed: int | None = None,
     rng: random.Random | None = None,
-    *,
-    return_trace: bool = False,
     base_p: float | None = None,
-) -> str | tuple[str, list[StretchEvent]]:
+) -> str:
     """Extend expressive segments of words for emphasis.
 
     Parameters
@@ -50,38 +43,17 @@ def extend_vowels(
         Deterministic seed when ``rng`` is not supplied.
     rng : random.Random, optional
         Random number generator to drive sampling.
-    return_trace : bool, optional
-        When ``True`` also return the stretch events for introspection.
     base_p : float, optional
         Base probability for the negative-binomial sampler (heavier tails for smaller
         values). Defaults to ``0.45``.
     """
     if not text:
-        empty_trace: list[StretchEvent] = []
-        return (text, empty_trace) if return_trace else text
+        return text
 
     base_probability = base_p if base_p is not None else 0.45
 
-    config = HokeyConfig(
-        rate=rate,
-        extension_min=extension_min,
-        extension_max=extension_max,
-        base_p=base_probability,
-        word_length_threshold=word_length_threshold,
-    )
-
     seed_value = resolve_seed(seed, rng)
-
-    trace_events: list[StretchEvent] | None = None
-    if return_trace:
-        trace_rng = random.Random(seed_value)
-        _, trace_events = _GENERATOR.generate(
-            text,
-            rng=trace_rng,
-            config=config,
-        )
-
-    result: StretchResult = _hokey_rust(
+    return _hokey_rust(
         text,
         rate,
         extension_min,
@@ -90,20 +62,6 @@ def extend_vowels(
         base_probability,
         seed_value,
     )
-
-    if isinstance(result, tuple):
-        output, events = result
-        if return_trace:
-            return output, events
-        return output
-
-    output = result
-
-    if return_trace:
-        assert trace_events is not None
-        return output, trace_events
-
-    return output
 
 
 class Hokey(GlitchlingBase):
@@ -124,8 +82,7 @@ class Hokey(GlitchlingBase):
         self._master_seed: int | None = seed
 
         def _corruption_wrapper(text: str, **kwargs: Any) -> str:
-            result = extend_vowels(text, **kwargs)
-            return result if isinstance(result, str) else result[0]
+            return extend_vowels(text, **kwargs)
 
         super().__init__(
             name="Hokey",
