@@ -3,13 +3,10 @@ from __future__ import annotations
 import importlib
 import sys
 import types
-from collections.abc import Iterable
 from random import Random
-from typing import Any
 
 import pytest
 
-from glitchlings.compat import reset_optional_dependencies
 from glitchlings.zoo import Gaggle, Glitchling
 from glitchlings.zoo.core import AttackWave
 
@@ -20,48 +17,9 @@ def append_rng_token(text: str, *, rng: Random) -> str:
 
 
 @pytest.fixture(autouse=True)
-def torch_stub() -> Iterable[type[Any]]:
-    """Install a lightweight torch stub that exposes ``DataLoader``."""
-    preserved = {
-        name: sys.modules.get(name)
-        for name in ("torch", "torch.utils", "torch.utils.data")
-    }
-    for name in preserved:
-        sys.modules.pop(name, None)
-
-    torch_module = types.ModuleType("torch")
-    utils_module = types.ModuleType("torch.utils")
-    data_module = types.ModuleType("torch.utils.data")
-
-    class DummyDataLoader:
-        def __init__(self, dataset: list[Any]) -> None:
-            self.dataset = dataset
-            self.batch_size = None
-
-        def __iter__(self) -> Iterable[Any]:
-            return iter(self.dataset)
-
-        def __len__(self) -> int:
-            return len(self.dataset)
-
-    data_module.DataLoader = DummyDataLoader
-    utils_module.data = data_module
-    torch_module.utils = utils_module
-
-    sys.modules["torch"] = torch_module
-    sys.modules["torch.utils"] = utils_module
-    sys.modules["torch.utils.data"] = data_module
-
-    reset_optional_dependencies()
-
-    yield DummyDataLoader
-
-    for name, module in preserved.items():
-        if module is None:
-            sys.modules.pop(name, None)
-        else:
-            sys.modules[name] = module
-    reset_optional_dependencies()
+def _use_torch_stub(torch_stub):
+    """Automatically use the torch_stub fixture for all tests in this file."""
+    pass
 
 
 @pytest.fixture()

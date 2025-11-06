@@ -9,6 +9,7 @@ import pytest
 pytest.importorskip("jellyfish")
 
 
+# Set up verifiers stub at module level BEFORE importing prime
 class _Rubric:
     def __init__(self, funcs, weights):
         self.funcs = list(funcs)
@@ -19,6 +20,7 @@ class _SingleTurnEnv:
     def __init__(self, dataset=None, rubric=None):
         self.dataset = dataset
         self.rubric = rubric
+
 
 class _VerifierEnvironment:
     def __init__(self, dataset=None):
@@ -43,8 +45,6 @@ glitchlings_compat = importlib.import_module("glitchlings.compat")
 AttackWave = zoo_core.AttackWave
 Gaggle = zoo_core.Gaggle
 Glitchling = zoo_core.Glitchling
-
-
 
 
 class FakeDataset:

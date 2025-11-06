@@ -5,7 +5,6 @@ import json
 import sys
 import types
 from pathlib import Path
-from typing import Sequence
 
 import pytest
 
@@ -19,17 +18,6 @@ from glitchlings.lexicon.vector import (
     load_vector_source,
     main,
 )
-
-
-@pytest.fixture()
-def toy_embeddings() -> dict[str, list[float]]:
-    return {
-        "alpha": [1.0, 0.0],
-        "beta": [0.9, 0.1],
-        "epsilon": [0.8, 0.2],
-        "gamma": [0.0, 1.0],
-        "delta": [-1.0, 0.0],
-    }
 
 
 def test_vector_lexicon_precompute_and_sampling(toy_embeddings: dict[str, list[float]]) -> None:
@@ -227,6 +215,8 @@ def test_vector_lexicon_save_cache_requires_path(toy_embeddings: dict[str, list[
 
 
 def _fake_find_spec(monkeypatch, target: str) -> None:
+    """Helper to fake importlib.util.find_spec for a target module."""
+    import importlib.util
     original = importlib.util.find_spec
 
     def _patched(name: str, package: str | None = None):
@@ -238,6 +228,7 @@ def _fake_find_spec(monkeypatch, target: str) -> None:
 
 
 def _fake_import_module(monkeypatch, target: str, module: object) -> None:
+    """Helper to fake importlib.import_module for a target module."""
     original = importlib.import_module
 
     def _patched(name: str, package: str | None = None):
@@ -248,20 +239,10 @@ def _fake_import_module(monkeypatch, target: str, module: object) -> None:
     monkeypatch.setattr(importlib, "import_module", _patched)
 
 
-def test_load_spacy_language_uses_stubbed_module(monkeypatch) -> None:
-    monkeypatch.delitem(sys.modules, "spacy", raising=False)
-    stub_spacy = types.ModuleType("spacy")
-    calls: dict[str, str] = {}
-
-    def _load(name: str):
-        calls["model"] = name
-        return f"loaded:{name}"
-
-    stub_spacy.load = _load  # type: ignore[attr-defined]
-    monkeypatch.setitem(sys.modules, "spacy", stub_spacy)
-    _fake_find_spec(monkeypatch, "spacy")
-    _fake_import_module(monkeypatch, "spacy", stub_spacy)
-
+def test_load_spacy_language_uses_stubbed_module(mock_spacy_language) -> None:
+    stub_spacy, calls = mock_spacy_language
+    from glitchlings.lexicon.vector import _load_spacy_language
+    
     result = _load_spacy_language("stub-model")
     assert result == "loaded:stub-model"
     assert calls["model"] == "stub-model"
@@ -282,45 +263,8 @@ def test_load_spacy_language_requires_dependency(monkeypatch) -> None:
         _load_spacy_language("missing-model")
 
 
-def test_load_gensim_vectors_invokes_keyedvectors(monkeypatch, tmp_path: Path) -> None:
-    monkeypatch.delitem(sys.modules, "gensim", raising=False)
-    monkeypatch.delitem(sys.modules, "gensim.models", raising=False)
-    monkeypatch.delitem(sys.modules, "gensim.models.keyedvectors", raising=False)
-
-    fake_gensim = types.ModuleType("gensim")
-    fake_models = types.ModuleType("gensim.models")
-    fake_keyedvectors = types.ModuleType("gensim.models.keyedvectors")
-    kv_calls: dict[str, object] = {}
-    w2v_calls: list[dict[str, object]] = []
-
-    class FakeKeyedVectors:
-        @classmethod
-        def load(cls, path: str, *, mmap: str | None = None):
-            kv_calls["path"] = path
-            kv_calls["mmap"] = mmap
-            return "kv-loaded"
-
-        @classmethod
-        def load_word2vec_format(cls, path: str, *, binary: bool):
-            w2v_calls.append({"path": path, "binary": binary})
-            return f"w2v:{Path(path).suffix}"
-
-    fake_keyedvectors.KeyedVectors = FakeKeyedVectors  # type: ignore[attr-defined]
-
-    monkeypatch.setitem(sys.modules, "gensim", fake_gensim)
-    monkeypatch.setitem(sys.modules, "gensim.models", fake_models)
-    monkeypatch.setitem(sys.modules, "gensim.models.keyedvectors", fake_keyedvectors)
-
-    _fake_find_spec(monkeypatch, "gensim")
-
-    original_import = importlib.import_module
-
-    def _patched_import(name: str, package: str | None = None):
-        if name == "gensim.models.keyedvectors":
-            return fake_keyedvectors
-        return original_import(name, package)
-
-    monkeypatch.setattr(importlib, "import_module", _patched_import)
+def test_load_gensim_vectors_invokes_keyedvectors(mock_gensim_vectors, tmp_path: Path) -> None:
+    fake_keyedvectors, kv_calls, w2v_calls = mock_gensim_vectors
 
     kv_path = tmp_path / "vectors.kv"
     bin_path = tmp_path / "vectors.bin"
@@ -357,34 +301,10 @@ def test_load_gensim_vectors_requires_dependency(monkeypatch, tmp_path: Path) ->
         _load_gensim_vectors(tmp_path / "missing.bin")
 
 
-def test_build_sentence_transformer_embeddings_generates_vectors(monkeypatch) -> None:
-    monkeypatch.delitem(sys.modules, "sentence_transformers", raising=False)
-    stub_module = types.ModuleType("sentence_transformers")
-
-    class FakeModel:
-        def __init__(self, name: str) -> None:
-            self.name = name
-            stub_module.last_instance = self  # type: ignore[attr-defined]
-
-        def encode(
-            self,
-            tokens: Sequence[str],
-            *,
-            batch_size: int,
-            normalize_embeddings: bool,
-            convert_to_numpy: bool,
-        ) -> list[list[float]]:
-            stub_module.encode_call = {  # type: ignore[attr-defined]
-                "tokens": list(tokens),
-                "batch_size": batch_size,
-                "normalize": normalize_embeddings,
-                "convert": convert_to_numpy,
-            }
-            return [[1.0, 0.0], [0.0, 1.0]]
-
-    stub_module.SentenceTransformer = FakeModel  # type: ignore[attr-defined]
-    _fake_find_spec(monkeypatch, "sentence_transformers")
-    _fake_import_module(monkeypatch, "sentence_transformers", stub_module)
+def test_build_sentence_transformer_embeddings_generates_vectors(
+    mock_sentence_transformers,
+) -> None:
+    stub_module = mock_sentence_transformers
 
     embeddings = _build_sentence_transformer_embeddings(
         "sentence-transformers/all-mpnet-base-v2",

@@ -9,23 +9,13 @@ import pytest
 from glitchlings.lexicon.vector import VectorLexicon
 
 
-@pytest.fixture()
-def vector_embeddings() -> dict[str, list[float]]:
-    return {
-        "alpha": [1.0, 0.0],
-        "beta": [0.9, 0.1],
-        "gamma": [0.0, 1.0],
-        "delta": [-1.0, 0.0],
-    }
-
-
 def test_backend_cache_roundtrip(
     tmp_path: Path,
-    vector_embeddings: dict[str, list[float]],
+    shared_vector_embeddings: dict[str, list[float]],
 ) -> None:
     backend_cls: type[Any] = VectorLexicon
     kwargs: dict[str, Any] = {
-        "source": vector_embeddings,
+        "source": shared_vector_embeddings,
         "max_neighbors": 2,
         "min_similarity": 0.05,
     }
@@ -44,10 +34,10 @@ def test_backend_cache_roundtrip(
 
 
 def test_cache_checksum_verification(
-    tmp_path: Path, vector_embeddings: dict[str, list[float]]
+    tmp_path: Path, shared_vector_embeddings: dict[str, list[float]]
 ) -> None:
     cache_path = tmp_path / "vector_cache.json"
-    lexicon = VectorLexicon(source=vector_embeddings, max_neighbors=2, min_similarity=0.05)
+    lexicon = VectorLexicon(source=shared_vector_embeddings, max_neighbors=2, min_similarity=0.05)
     lexicon.precompute("alpha")
     lexicon.save_cache(cache_path)
 
