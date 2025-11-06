@@ -10,6 +10,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
 5. [Declarative attack configurations](#declarative-attack-configurations)
 6. [Glitchling reference](#glitchling-reference)
+   - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
    - [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
@@ -174,6 +175,7 @@ The refactored Rust pipeline batches compatible glitchlings in a single PyO3 cal
 
 Each glitchling subclasses the shared `Glitchling` base class and exposes the same interface: call the instance with text, adjust parameters via `set_param`, and rely on deterministic seeds. Dive into the dedicated pages below for signatures, behaviours, and usage tips:
 
+- [Auggie](glitchlings/auggie.md) - behaviour-driven assistant that assembles gaggles with helper methods.
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
 - [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
