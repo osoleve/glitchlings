@@ -94,9 +94,9 @@ impl GlitchOp for Mim1cOp {
             return Ok(());
         }
 
-        let mut targets: Vec<char> = original
-            .chars()
-            .filter(|ch| ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(ch))
+        let mut targets: Vec<(usize, char)> = original
+            .char_indices()
+            .filter(|(_, ch)| ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(ch))
             .collect();
 
         if targets.is_empty() {
@@ -119,14 +119,14 @@ impl GlitchOp for Mim1cOp {
             }
         }
 
-        let mut replacements = Vec::new();
+        let mut replacements: Vec<(usize, char)> = Vec::new();
         let mut available = targets.len();
         let requested = (targets.len() as f64 * rate).trunc() as usize;
         let mut attempts = 0usize;
 
         while attempts < requested && available > 0 {
             let idx = rng.rand_index(available)?;
-            let ch = targets.swap_remove(idx);
+            let (byte_index, ch) = targets.swap_remove(idx);
             available -= 1;
 
             let Some(options) = HOMOGLYPH_TABLE.get(&ch) else {
@@ -147,7 +147,7 @@ impl GlitchOp for Mim1cOp {
             }
 
             let choice = rng.rand_index(filtered.len())?;
-            replacements.push((ch, filtered.remove(choice).glyph));
+            replacements.push((byte_index, filtered.remove(choice).glyph));
             attempts += 1;
         }
 
@@ -156,11 +156,12 @@ impl GlitchOp for Mim1cOp {
         }
 
         let mut result = original.clone();
-        for (target, replacement) in replacements {
-            let needle = target.to_string();
-            if let Some(pos) = result.find(&needle) {
-                let end = pos + target.len_utf8();
-                result.replace_range(pos..end, &replacement.to_string());
+        replacements.sort_unstable_by_key(|(byte_index, _)| *byte_index);
+        for (byte_index, replacement) in replacements.into_iter().rev() {
+            if let Some(current_char) = result[byte_index..].chars().next() {
+                let end = byte_index + current_char.len_utf8();
+                let replacement_str = replacement.to_string();
+                result.replace_range(byte_index..end, &replacement_str);
             }
         }
 
@@ -252,6 +253,42 @@ mod tests {
     use super::*;
     use crate::rng::DeterministicRng;
 
+    struct ScriptedRng {
+        picks: Vec<usize>,
+        position: usize,
+    }
+
+    impl ScriptedRng {
+        fn new(picks: Vec<usize>) -> Self {
+            Self { picks, position: 0 }
+        }
+    }
+
+    impl GlitchRng for ScriptedRng {
+        fn random(&mut self) -> Result<f64, GlitchOpError> {
+            unreachable!("random should not be called in scripted tests")
+        }
+
+        fn rand_index(&mut self, upper: usize) -> Result<usize, GlitchOpError> {
+            let value = self
+                .picks
+                .get(self.position)
+                .copied()
+                .expect("scripted RNG ran out of values");
+            assert!(value < upper, "scripted pick {value} out of range {upper}");
+            self.position += 1;
+            Ok(value)
+        }
+
+        fn sample_indices(
+            &mut self,
+            _population: usize,
+            _k: usize,
+        ) -> Result<Vec<usize>, GlitchOpError> {
+            unreachable!("sample_indices should not be called in scripted tests")
+        }
+    }
+
     #[test]
     fn replaces_expected_characters() {
         let mut buffer = TextBuffer::from_str("hello");
@@ -260,5 +297,48 @@ mod tests {
         op.apply(&mut buffer, &mut rng)
             .expect("mim1c operation succeeds");
         assert_ne!(buffer.to_string(), "hello");
+    }
+
+    #[test]
+    fn repeated_characters_replace_only_selected_positions() {
+        assert!(HOMOGLYPH_TABLE.contains_key(&'o'));
+        let options = HOMOGLYPH_TABLE
+            .get(&'o')
+            .expect("homoglyph table should contain options for 'o'");
+        assert!(options.iter().any(|entry| entry.glyph != 'o'));
+
+        let original = "oooo";
+        let mut buffer = TextBuffer::from_str(original);
+        let mut rng = ScriptedRng::new(vec![2, 0]);
+        let op = Mim1cOp::new(0.3, ClassSelection::All, Vec::new());
+        op.apply(&mut buffer, &mut rng)
+            .expect("mim1c operation succeeds");
+
+        let result = buffer.to_string();
+        assert_ne!(result, original);
+
+        let targets: Vec<(usize, char)> = original
+            .char_indices()
+            .filter(|(_, ch)| ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(ch))
+            .collect();
+        assert!(
+            targets.len() > 2,
+            "expected at least three eligible targets"
+        );
+        let target_byte_index = targets[2].0;
+        let target_char_index = original[..target_byte_index].chars().count();
+
+        let original_chars: Vec<char> = original.chars().collect();
+        let result_chars: Vec<char> = result.chars().collect();
+        assert_eq!(original_chars.len(), result_chars.len());
+
+        let mut differences = Vec::new();
+        for (index, (orig, updated)) in original_chars.iter().zip(result_chars.iter()).enumerate() {
+            if orig != updated {
+                differences.push(index);
+            }
+        }
+
+        assert_eq!(differences, vec![target_char_index]);
     }
 }
