@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 
 import pytest
 
@@ -13,43 +14,46 @@ core_module = importlib.import_module("glitchlings.zoo.core")
 def test_hokey_extends_high_scoring_tokens():
     """Tokens with high lexical prior should be stretched when rate is high."""
     text = "wow that was so cool and so fun"
-    result, events = hokey_module.extend_vowels(
+    result = hokey_module.extend_vowels(
         text,
         rate=1.0,
         seed=123,
-        return_trace=True,
     )
 
     assert result != text
-    stretched_tokens = {event.original for event in events}
-    assert {"wow", "so", "cool"}.issubset(stretched_tokens)
+    assert "woww" in result
+    assert "sooo" in result
+    assert "cooo" in result
 
 
-def test_hokey_trace_reflects_output_changes():
-    """Returned trace matches the stretched surface form."""
+def test_hokey_output_contains_stretches():
+    """Stretched tokens should appear longer than their originals."""
     text = "she is so so happy!!!"
-    output, events = hokey_module.extend_vowels(text, rate=1.0, seed=7, return_trace=True)
+    output = hokey_module.extend_vowels(text, rate=1.0, seed=7)
 
-    for event in events:
-        assert event.stretched in output
-        assert len(event.stretched) > len(event.original)
-        assert event.repeats >= 2
-        assert event.site.category in {"vowel", "digraph", "coda", "cvce"}
+    original_tokens = re.findall(r"[A-Za-z]+", text)
+    stretched_tokens = re.findall(r"[A-Za-z]+", output)
+
+    assert len(original_tokens) == len(stretched_tokens)
+    assert any(
+        len(stretched) > len(original)
+        for stretched, original in zip(stretched_tokens, original_tokens)
+    )
+    assert any("oo" in token for token in stretched_tokens)
 
 
 def test_hokey_downweights_long_words():
     """Extremely long words should be ignored even with aggressive rate."""
     text = "hi there supercalifragilisticexpialidocious"
-    output, events = hokey_module.extend_vowels(
+    output = hokey_module.extend_vowels(
         text,
         rate=1.0,
         word_length_threshold=5,
         seed=11,
-        return_trace=True,
     )
 
     assert output != "hi there supercalifragilisticexpialidocious"
-    assert all("supercalifragilisticexpialidocious" not in event.stretched for event in events)
+    assert output.endswith("supercalifragilisticexpialidocious")
 
 
 def test_hokey_sentiment_amplifies_length():
@@ -57,35 +61,31 @@ def test_hokey_sentiment_amplifies_length():
     positive = "wow I am so happy and excited!!! she is so cool"
     negative = "ugh I am so tired and angry... she is so cool"
 
-    pos_output, pos_events = hokey_module.extend_vowels(
+    pos_output = hokey_module.extend_vowels(
         positive,
         rate=0.9,
         seed=99,
-        return_trace=True,
     )
-    neg_output, neg_events = hokey_module.extend_vowels(
+    neg_output = hokey_module.extend_vowels(
         negative,
         rate=0.9,
         seed=99,
-        return_trace=True,
     )
 
     assert neg_output != negative
 
-    # Find the stretch event corresponding to the final "so" token
-    assert any(event.original == "so" for event in pos_events)
-    assert any(event.original == "so" for event in neg_events)
-    pos_so = max(
-        (event for event in pos_events if event.original == "so"),
-        key=lambda event: event.token_index,
-    )
-    neg_so = max(
-        (event for event in neg_events if event.original == "so"),
-        key=lambda event: event.token_index,
-    )
+    pos_matches = list(re.finditer(r"hap+y+", pos_output.lower()))
+    neg_matches = list(re.finditer(r"angry+", neg_output.lower()))
+
+    assert pos_matches, "expected to find stretched 'happy' token"
+    assert neg_matches, "expected to find stretched 'angry' token"
+
+    pos_happy = max(len(match.group(0)) for match in pos_matches)
+    neg_angry = max(len(match.group(0)) for match in neg_matches)
 
     assert len(pos_output) > len(positive)
-    assert pos_so.repeats >= neg_so.repeats
+    assert pos_happy > len("happy")
+    assert pos_happy >= neg_angry
 
 
 def test_hokey_is_deterministic_with_seed():
@@ -100,10 +100,9 @@ def test_hokey_is_deterministic_with_seed():
 
 
 def test_hokey_handles_empty_text():
-    """Empty input returns an empty output and trace."""
-    output, events = hokey_module.extend_vowels("", return_trace=True)
+    """Empty input returns an empty output."""
+    output = hokey_module.extend_vowels("")
     assert output == ""
-    assert events == []
 
 
 def test_hokey_handles_text_without_vowels():

@@ -30,9 +30,8 @@ phonotactic cues, and nearby punctuation before sampling a heavy-tailed stretch 
   - `seed` (int, optional): Seed for deterministic behaviour.
 
 - **Usage tips**:
-  - Call `extend_vowels(..., return_trace=True)` to inspect the chosen stretch sites;
-    the generator replays the Python pipeline to provide events and verifies the Rust
-    output stays in sync.
+  - Hokey now relies exclusively on the compiled Rust pipeline; tracing data is no
+    longer available from the Python shim.
   - Lower `base_p` to produce occasional dramatic stretches while keeping most
     output moderate.
   - When combining with other character glitchlings, run Hokey first so later agents
@@ -50,15 +49,8 @@ phonotactic cues, and nearby punctuation before sampling a heavy-tailed stretch 
   hokey("This is so cool and fun!")
   # "This is sooo cooool and fuuun!"
 
-  # Inspect the trace
-  text, events = extend_vowels(
-      "wow that launch was so cool",
-      rate=0.9,
-      seed=7,
-      return_trace=True,
-  )
-  for event in events:
-      print(event.original, event.stretched, event.repeats, event.site.category)
+  # Apply Hokey directly from the functional helper
+  extend_vowels("wow that launch was so cool", rate=0.9, seed=7)
 
   # Heavier tails by lowering base_p
   dramatic = Hokey(rate=0.7, extension_min=3, extension_max=8, base_p=0.3, seed=99)
