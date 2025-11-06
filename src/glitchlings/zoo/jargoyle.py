@@ -190,7 +190,7 @@ class Jargoyle(Glitchling):
                 seed=seed,
                 rate=effective_rate,
                 part_of_speech=part_of_speech,
-                lexicon=prepared_lexicon,
+                lexicon=lexicon,
             )
         finally:
             self._initializing = False
