@@ -13,6 +13,8 @@ fn main() {
         .expect("failed to stage Apostrofae replacement table for compilation");
     stage_asset("ekkokin_homophones.json")
         .expect("failed to stage Ekkokin homophone table for compilation");
+    stage_lexicon_asset("default_vector_cache.json")
+        .expect("failed to stage Jargoyle vector cache for compilation");
     stage_compressed_asset("mim1c_homoglyphs.json.gz.b64", "mim1c_homoglyphs.json")
         .expect("failed to stage Mim1c homoglyph table for compilation");
     stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
@@ -111,6 +113,30 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
 
     let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
+    if !canonical_repo_asset.exists() {
+        return Err(io::Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "missing asset {asset_name}; expected {}",
+                canonical_repo_asset.display()
+            ),
+        ));
+    }
+
+    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
+
+    fs::create_dir_all(&out_dir)?;
+    fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
+    Ok(())
+}
+
+fn stage_lexicon_asset(asset_name: &str) -> io::Result<()> {
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
+
+    let canonical_repo_asset = manifest_dir
+        .join("../../src/glitchlings/lexicon/data")
+        .join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
