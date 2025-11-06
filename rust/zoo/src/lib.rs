@@ -1,6 +1,7 @@
 mod ekkokin;
 mod glitch_ops;
 mod hokey;
+mod jargoyle;
 mod mim1c;
 mod pedant;
 mod pipeline;
@@ -639,6 +640,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
+    m.add_function(wrap_pyfunction!(jargoyle::substitute_random_synonyms, m)?)?;
     m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
