@@ -161,7 +161,7 @@ class Jargoyle(Glitchling):
         seed: int | None = None,
         lexicon: Lexicon | None = None,
     ) -> None:
-        self._owns_lexicon = lexicon is None
+        self._owns_lexicon = False
         self._external_lexicon_original_seed = (
             lexicon.seed if isinstance(lexicon, Lexicon) else None
         )
@@ -178,7 +178,7 @@ class Jargoyle(Glitchling):
                 seed=seed,
                 rate=effective_rate,
                 part_of_speech=part_of_speech,
-                lexicon=prepared_lexicon,
+                lexicon=lexicon,
             )
         finally:
             self._initializing = False
