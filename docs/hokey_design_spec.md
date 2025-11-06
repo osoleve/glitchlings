@@ -59,7 +59,7 @@ Exclusion rules ensure we never stretch:
 * Tokens shorter than two alphabetic characters.
 
 ## 4. Stretch Site Identification
-`glitchlings.util.stretch_locator` parses candidate words into grapheme clusters and applies
+The Rust implementation parses candidate words into grapheme clusters and applies
 heuristics tailored to four frequent shape families:
 
 1. **Vowel-final tokens** – extend the final vowel nucleus (`too → tooo`).
@@ -91,17 +91,17 @@ extra = min(max_extra,
   global `extension_max` cap.
 
 ## 6. Generation Pipeline
-`glitchlings.util.hokey_generator` orchestrates the full flow:
+`rust/zoo/src/hokey.rs` orchestrates the full flow:
 
 1. Tokenise text with separator preservation.
-2. Score and filter candidates via `StretchabilityAnalyzer`.
+2. Score and filter candidates via the Rust stretchability analyser.
 3. For each selected candidate, locate the stretch site.
 4. Sample a stretch length using contextual intensity.
 5. Apply the stretch while maintaining Unicode boundaries and original casing.
 
 All randomness flows through the glitchling's RNG. The historical Python generator
-exposed trace data for debugging, but Hokey now relies on the compiled Rust pipeline
-for production execution and no longer surfaces trace events from Python.
+and helper modules have been removed; the Python shim now delegates directly to the
+compiled Rust pipeline and no longer surfaces trace events or intermediate data.
 
 ## 7. Rust Fast Path
 The Rust implementation mirrors the Python pipeline:
@@ -116,8 +116,8 @@ When the PyO3 extension is available, Hokey uses the Rust path automatically.
 
 ## 8. Testing Strategy
 
-* `tests/core/test_hokey.py` – Updated to validate clause-aware scoring, sentiment
-  effects, and deterministic site selection.
+* `tests/core/test_hokey.py` – Validates clause-aware scoring, sentiment
+  effects, and deterministic site selection via the Rust-backed shim.
 * `tests/rust/test_rust_backed_glitchlings.py` – Smoke coverage for the compiled
   extension and error propagation from Rust into Python.
 
