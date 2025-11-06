@@ -3,7 +3,6 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .adjax import Adjax, adjax
 from .apostrofae import Apostrofae, apostrofae
 from .core import Gaggle, Glitchling, plan_glitchling_specs, plan_glitchlings
 from .ekkokin import Ekkokin, ekkokin
@@ -13,7 +12,6 @@ from .jargoyle import dependencies_available as _jargoyle_available
 from .mim1c import Mim1c, mim1c
 from .pedant import Pedant, pedant
 from .redactyl import Redactyl, redactyl
-from .reduple import Reduple, reduple
 from .rushmore import Rushmore, RushmoreMode, rushmore
 from .scannequin import Scannequin, scannequin
 from .spectroll import Spectroll, spectroll
@@ -33,10 +31,6 @@ __all__ = [
     "apostrofae",
     "Hokey",
     "hokey",
-    "Adjax",
-    "adjax",
-    "Reduple",
-    "reduple",
     "Rushmore",
     "RushmoreMode",
     "rushmore",
@@ -66,7 +60,7 @@ _HAS_JARGOYLE = _jargoyle_available()
 _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, apostrofae, hokey, mim1c, ekkokin, pedant]
 if _HAS_JARGOYLE:
     _BUILTIN_GLITCHLING_LIST.append(jargoyle)
-_BUILTIN_GLITCHLING_LIST.extend([rushmore, adjax, reduple, redactyl, spectroll, scannequin, zeedub])
+_BUILTIN_GLITCHLING_LIST.extend([rushmore, redactyl, spectroll, scannequin, zeedub])
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     glitchling.name.lower(): glitchling for glitchling in _BUILTIN_GLITCHLING_LIST
@@ -79,8 +73,6 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
     pedant.name.lower(): Pedant,
-    adjax.name.lower(): Adjax,
-    reduple.name.lower(): Reduple,
     rushmore.name.lower(): Rushmore,
     redactyl.name.lower(): Redactyl,
     spectroll.name.lower(): Spectroll,

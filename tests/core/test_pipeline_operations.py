@@ -1,8 +1,6 @@
 import pytest
 
-from glitchlings.zoo.adjax import Adjax
 from glitchlings.zoo.redactyl import Redactyl
-from glitchlings.zoo.reduple import Reduple
 from glitchlings.zoo.rushmore import Rushmore
 from glitchlings.zoo.scannequin import Scannequin
 
@@ -56,25 +54,10 @@ from glitchlings.zoo.scannequin import Scannequin
             },
         ),
         (
-            lambda: Reduple(rate=0.25),
-            {
-                "type": "reduplicate",
-                "rate": 0.25,
-                "unweighted": False,
-            },
-        ),
-        (
             lambda: Scannequin(rate=0.12),
             {
                 "type": "ocr",
                 "rate": 0.12,
-            },
-        ),
-        (
-            lambda: Adjax(rate=0.6),
-            {
-                "type": "swap_adjacent",
-                "rate": 0.6,
             },
         ),
     ],
@@ -100,22 +83,8 @@ def test_pipeline_operations_emit_expected_descriptors(factory, expected):
             ),
         ),
         (
-            lambda: Reduple(rate=0.2),
-            lambda glitch: (
-                glitch.set_param("rate", None),
-                glitch.set_param("duplicate_rate", None),
-            ),
-        ),
-        (
             lambda: Scannequin(rate=0.18),
             lambda glitch: glitch.set_param("rate", None),
-        ),
-        (
-            lambda: Adjax(rate=0.4),
-            lambda glitch: (
-                glitch.set_param("rate", None),
-                glitch.set_param("swap_rate", None),
-            ),
         ),
     ],
 )

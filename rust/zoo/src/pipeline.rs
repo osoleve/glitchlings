@@ -170,7 +170,7 @@ mod tests {
 
     #[test]
     fn derive_seed_matches_python_reference() {
-        assert_eq!(derive_seed(151, "Reduple", 0), 14619582442299654959);
+        assert_eq!(derive_seed(151, "Rushmore-Duplicate", 0), 5788556628871228872);
         assert_eq!(derive_seed(151, "Rushmore", 1), 15756123308692553544);
     }
 
@@ -179,8 +179,8 @@ mod tests {
         let master_seed = 151i128;
         let descriptors = vec![
             GlitchDescriptor {
-                name: "Reduple".to_string(),
-                seed: derive_seed(master_seed, "Reduple", 0),
+                name: "Rushmore-Duplicate".to_string(),
+                seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                     rate: 1.0,
                     unweighted: false,
@@ -206,8 +206,8 @@ mod tests {
     fn pipeline_is_deterministic() {
         let master_seed = 999i128;
         let descriptors = vec![GlitchDescriptor {
-            name: "Reduple".to_string(),
-            seed: derive_seed(master_seed, "Reduple", 0),
+            name: "Rushmore-Duplicate".to_string(),
+            seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
             operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                 rate: 0.5,
                 unweighted: false,
@@ -224,8 +224,8 @@ mod tests {
         let master_seed = 404i128;
         let descriptors = vec![
             GlitchDescriptor {
-                name: "Reduple".to_string(),
-                seed: derive_seed(master_seed, "Reduple", 0),
+                name: "Rushmore-Duplicate".to_string(),
+                seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
                 operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
                     rate: 0.4,
                     unweighted: false,
@@ -265,8 +265,8 @@ mod tests {
     fn pipeline_swaps_adjacent_words() {
         let master_seed = 2025i128;
         let descriptors = vec![GlitchDescriptor {
-            name: "Adjax".to_string(),
-            seed: derive_seed(master_seed, "Adjax", 0),
+            name: "Rushmore-Swap".to_string(),
+            seed: derive_seed(master_seed, "Rushmore-Swap", 0),
             operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 1.0 }),
         }];
         let pipeline = Pipeline::new(master_seed, descriptors);
@@ -288,7 +288,7 @@ mod tests {
             },
             GagglePlanInput {
                 index: 1,
-                name: "Reduple".to_string(),
+                name: "Rushmore-Duplicate".to_string(),
                 scope: 4,
                 order: 3,
             },
@@ -313,7 +313,7 @@ mod tests {
             },
             GagglePlanEntry {
                 index: 1,
-                seed: derive_seed(master_seed, "Reduple", 1),
+                seed: derive_seed(master_seed, "Rushmore-Duplicate", 1),
             },
             GagglePlanEntry {
                 index: 3,

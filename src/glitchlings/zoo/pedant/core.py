@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Dict, Type, cast
 
 from .._rust_extensions import get_rust_operation
+from ..core import Gaggle
 from .stones import PedantStone
 
 _PEDANT_RUST = get_rust_operation("pedant")
@@ -33,7 +34,12 @@ class PedantEvolution:
 
     stone: PedantStone
 
-    def __init__(self, seed: int, *, stone: PedantStone | None = None) -> None:
+    def __init__(
+        self,
+        seed: int,
+        *,
+        stone: PedantStone | None = None,
+    ) -> None:
         resolved_stone = stone or getattr(self, "stone", None)
         if resolved_stone is None:  # pragma: no cover - defensive guard
             raise ValueError("PedantEvolution requires a PedantStone")
@@ -41,7 +47,8 @@ class PedantEvolution:
         self.stone = resolved_stone
 
     def move(self, text: str) -> str:
-        return apply_pedant(text, stone=self.stone, seed=self.seed)
+        result = apply_pedant(text, stone=self.stone, seed=self.seed)
+        return result
 
 
 class PedantBase:
@@ -60,7 +67,8 @@ class PedantBase:
         form_cls = EVOLUTIONS.get(pedant_stone)
         if form_cls is None:  # pragma: no cover - sanity guard
             raise KeyError(f"Unknown stone: {stone}")
-        return form_cls(seed=self.root_seed)
+        derived_seed = Gaggle.derive_seed(self.root_seed, pedant_stone.label, 0)
+        return form_cls(seed=int(derived_seed))
 
     def move(self, text: str) -> str:
         return text

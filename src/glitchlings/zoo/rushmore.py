@@ -32,11 +32,9 @@ _MODE_ALIASES: dict[str, RushmoreMode] = {
     "rushmore": RushmoreMode.DELETE,
     "duplicate": RushmoreMode.DUPLICATE,
     "reduplicate": RushmoreMode.DUPLICATE,
-    "reduple": RushmoreMode.DUPLICATE,
     "repeat": RushmoreMode.DUPLICATE,
     "swap": RushmoreMode.SWAP,
     "adjacent": RushmoreMode.SWAP,
-    "adjax": RushmoreMode.SWAP,
 }
 
 _DEFAULT_RATES: dict[RushmoreMode, float] = {

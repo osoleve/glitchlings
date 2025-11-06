@@ -203,12 +203,21 @@ fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Strin
         })
         .into_owned();
 
+    let word_count = intermediate.split_whitespace().count();
+
     let mut coordinated = String::with_capacity(intermediate.len());
     let mut last = 0;
     for mat in COORDINATE_REGEX.find_iter(&intermediate) {
         coordinated.push_str(&intermediate[last..mat.start()]);
         let replacement =
-            coordinate_replacement(mat.as_str(), mat.start(), &intermediate, root_seed, lineage)?;
+            coordinate_replacement(
+                mat.as_str(),
+                mat.start(),
+                word_count,
+                &intermediate,
+                root_seed,
+                lineage,
+            )?;
         coordinated.push_str(&replacement);
         last = mat.end();
     }
@@ -224,10 +233,15 @@ fn cooperate_replacement(word: &str) -> String {
 fn coordinate_replacement(
     word: &str,
     start: usize,
+    word_count: usize,
     text: &str,
     root_seed: i128,
     lineage: &[&str],
 ) -> Result<String, GlitchOpError> {
+    if word_count <= 2 && matches!(detect_casing(word), Casing::Title) {
+        return Ok(apply_diaeresis(word));
+    }
+
     let seed = derive_seed(
         root_seed,
         lineage,
