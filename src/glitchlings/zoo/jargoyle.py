@@ -114,17 +114,20 @@ def substitute_random_synonyms(
     restore_lexicon_seed = False
     original_lexicon_seed: int | None = None
 
-    if active_lexicon is not None:
-        if seed is not None:
+    if active_lexicon is None:
+        active_lexicon = get_default_lexicon(seed=seed)
+
+    if seed is not None and isinstance(active_lexicon, Lexicon):
+        if lexicon is not None:
             original_lexicon_seed = active_lexicon.seed
             if original_lexicon_seed != seed:
                 active_lexicon.reseed(seed)
                 restore_lexicon_seed = True
-        lexicon_seed_repr: str | None
-        if active_lexicon.seed is None:
-            lexicon_seed_repr = None
-        else:
-            lexicon_seed_repr = str(active_lexicon.seed)
+        elif active_lexicon.seed != seed:
+            active_lexicon.reseed(seed)
+
+    if isinstance(active_lexicon, Lexicon):
+        lexicon_seed_repr = None if active_lexicon.seed is None else str(active_lexicon.seed)
     else:
         lexicon_seed_repr = None if seed is None else str(seed)
 
@@ -143,7 +146,7 @@ def substitute_random_synonyms(
             ),
         )
     finally:
-        if restore_lexicon_seed and active_lexicon is not None:
+        if restore_lexicon_seed and isinstance(active_lexicon, Lexicon):
             active_lexicon.reseed(original_lexicon_seed)
 
 
@@ -158,14 +161,27 @@ class Jargoyle(Glitchling):
         seed: int | None = None,
         lexicon: Lexicon | None = None,
     ) -> None:
-        self._owns_lexicon = False
+        if lexicon is not None and not isinstance(lexicon, Lexicon):
+            raise TypeError("lexicon must be a Lexicon instance or None")
+
+        if lexicon is None:
+            prepared_lexicon = get_default_lexicon(seed=seed)
+            owns_lexicon = True
+            if not isinstance(prepared_lexicon, Lexicon):
+                message = "Default Jargoyle lexicon must be a Lexicon instance"
+                raise TypeError(message)
+        else:
+            prepared_lexicon = lexicon
+            owns_lexicon = False
+
+        self._owns_lexicon = owns_lexicon
         self._external_lexicon_original_seed = (
-            lexicon.seed if isinstance(lexicon, Lexicon) else None
+            None if owns_lexicon else prepared_lexicon.seed
         )
         self._initializing = True
         effective_rate = 0.01 if rate is None else rate
-        if isinstance(lexicon, Lexicon) and seed is not None:
-            lexicon.reseed(seed)
+        if not owns_lexicon and seed is not None:
+            prepared_lexicon.reseed(seed)
         try:
             super().__init__(
                 name="Jargoyle",
@@ -178,6 +194,14 @@ class Jargoyle(Glitchling):
             )
         finally:
             self._initializing = False
+
+        if getattr(self, "lexicon", None) is None:
+            previous_initializing = self._initializing
+            self._initializing = True
+            try:
+                self.set_param("lexicon", prepared_lexicon)
+            finally:
+                self._initializing = previous_initializing
 
     def set_param(self, key: str, value: Any) -> None:
         super().set_param(key, value)

@@ -38,6 +38,26 @@ def vector_lexicon(shared_vector_embeddings: dict[str, list[float]]) -> VectorLe
     return VectorLexicon(source=shared_vector_embeddings, max_neighbors=2, min_similarity=0.05)
 
 
+def test_jargoyle_constructor_uses_configured_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configured = TrackingLexicon(seed=777)
+    requested_seeds: list[int | None] = []
+
+    def _fake_default(seed: int | None = None) -> TrackingLexicon:
+        requested_seeds.append(seed)
+        return configured
+
+    monkeypatch.setattr(jargoyle_module, "get_default_lexicon", _fake_default)
+
+    glitch = jargoyle_module.Jargoyle(seed=123)
+
+    assert requested_seeds == [123]
+    assert glitch.lexicon is configured
+    assert getattr(glitch, "_owns_lexicon") is True
+    assert configured.seed == 123
+
+
 def test_jargoyle_multiple_pos_targets_change_words():
     text = "They sing happy songs."
     result = substitute_random_synonyms(
