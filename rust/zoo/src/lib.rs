@@ -6,6 +6,7 @@ mod pedant;
 mod pipeline;
 mod resources;
 mod rng;
+mod spectroll;
 mod text_buffer;
 mod typogre;
 mod zeedub;
@@ -30,6 +31,7 @@ use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{DeterministicRng, RngError};
+use spectroll::SpectrollMode;
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
 
 fn resolve_seed(seed: Option<u64>) -> u64 {
@@ -217,6 +219,9 @@ enum PyGlitchOperation {
         rate: f64,
         characters: Vec<String>,
     },
+    Spectroll {
+        mode: SpectrollMode,
+    },
     QuotePairs,
     Hokey {
         rate: f64,
@@ -341,6 +346,13 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 let characters = extract_optional_field(&dict, "characters")?.unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
+            "spectroll" => {
+                let mode =
+                    extract_optional_field(&dict, "mode")?.unwrap_or_else(|| "literal".to_string());
+                let parsed_mode = SpectrollMode::parse(&mode)
+                    .map_err(|message| PyValueError::new_err(message))?;
+                Ok(PyGlitchOperation::Spectroll { mode: parsed_mode })
+            }
             "ekkokin" => {
                 let rate = extract_required_field(&dict, "ekkokin operation", "rate")?;
                 let weighting = extract_optional_field(&dict, "weighting")?
@@ -441,6 +453,9 @@ impl PyGlitchOperation {
             } => GlitchOperation::Mimic(Mim1cOp::new(rate, classes, banned)),
             PyGlitchOperation::ZeroWidth { rate, characters } => {
                 GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
+            }
+            PyGlitchOperation::Spectroll { mode } => {
+                GlitchOperation::Spectroll(spectroll::SpectrollOp::new(mode))
             }
             PyGlitchOperation::Ekkokin { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
@@ -629,5 +644,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     m.add_function(wrap_pyfunction!(hokey::hokey, m)?)?;
+    m.add_function(wrap_pyfunction!(spectroll::swap_colors, m)?)?;
     Ok(())
 }
