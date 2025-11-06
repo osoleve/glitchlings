@@ -161,14 +161,26 @@ class Jargoyle(Glitchling):
         seed: int | None = None,
         lexicon: Lexicon | None = None,
     ) -> None:
-        self._owns_lexicon = False
+        if lexicon is not None and not isinstance(lexicon, Lexicon):
+            raise TypeError("lexicon must be a Lexicon instance or None")
+
+        if lexicon is None:
+            prepared_lexicon = get_default_lexicon(seed=seed)
+            owns_lexicon = True
+            if not isinstance(prepared_lexicon, Lexicon):
+                message = "Default Jargoyle lexicon must be a Lexicon instance"
+                raise TypeError(message)
+        else:
+            prepared_lexicon = lexicon
+            owns_lexicon = False
+
+        self._owns_lexicon = owns_lexicon
         self._external_lexicon_original_seed = (
-            lexicon.seed if isinstance(lexicon, Lexicon) else None
+            None if owns_lexicon else prepared_lexicon.seed
         )
         self._initializing = True
         effective_rate = 0.01 if rate is None else rate
-        prepared_lexicon = lexicon or get_default_lexicon(seed=seed)
-        if isinstance(lexicon, Lexicon) and seed is not None:
+        if not owns_lexicon and seed is not None:
             prepared_lexicon.reseed(seed)
         try:
             super().__init__(
