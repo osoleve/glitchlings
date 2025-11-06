@@ -12,6 +12,8 @@ substitute_random_synonyms = jargoyle_module.substitute_random_synonyms
 
 
 class TrackingLexicon(Lexicon):
+    """Lexicon implementation that tracks reseed calls for testing."""
+    
     def __init__(self, *, seed: int | None = None) -> None:
         super().__init__(seed=seed)
         self.reseed_calls: list[int | None] = []
@@ -32,14 +34,8 @@ def _clean_tokens(text: str) -> list[str]:
 
 
 @pytest.fixture()
-def vector_lexicon() -> VectorLexicon:
-    embeddings = {
-        "alpha": [1.0, 0.0],
-        "beta": [0.9, 0.1],
-        "gamma": [0.0, 1.0],
-        "delta": [-1.0, 0.0],
-    }
-    return VectorLexicon(source=embeddings, max_neighbors=2, min_similarity=0.05)
+def vector_lexicon(shared_vector_embeddings: dict[str, list[float]]) -> VectorLexicon:
+    return VectorLexicon(source=shared_vector_embeddings, max_neighbors=2, min_similarity=0.05)
 
 
 def test_jargoyle_constructor_uses_configured_default(

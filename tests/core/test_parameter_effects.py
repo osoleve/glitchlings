@@ -3,12 +3,13 @@ from __future__ import annotations
 import math
 from typing import cast
 
-from glitchlings import mim1c, redactyl, rushmore, scannequin, typogre, zeedub
+from glitchlings import typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 
-def test_mim1c_rate_bounds(sample_text):
-    m = mim1c.clone()
+def test_mim1c_rate_bounds(mim1c_instance, sample_text):
+    """Test that Mim1c respects rate parameter bounds."""
+    m = mim1c_instance
     m.set_param("seed", 7)
     m.set_param("rate", 0.02)
     out = cast(str, m(sample_text))
@@ -23,8 +24,9 @@ def test_mim1c_rate_bounds(sample_text):
     assert changed <= int(len(alnum) * 0.02) + 2  # slack for discrete rounding
 
 
-def test_mim1c_respects_banned_characters():
-    m = mim1c.clone()
+def test_mim1c_respects_banned_characters(mim1c_instance):
+    """Test that Mim1c respects banned_characters parameter."""
+    m = mim1c_instance
     m.set_param("seed", 2)
     m.set_param("rate", 1.0)
     m.set_param("banned_characters", ["ａ"])
@@ -34,22 +36,24 @@ def test_mim1c_respects_banned_characters():
     assert not any(char in banned for char in out)
 
 
-def test_rushmore_rate_decreases_tokens():
+def test_rushmore_rate_decreases_tokens(rushmore_instance):
+    """Test that Rushmore respects rate parameter for token deletion."""
     text = "a b c d e f g h"
-    glitch = rushmore.clone()
+    glitch = rushmore_instance
     glitch.set_param("seed", 5)
     glitch.set_param("rate", 0.5)
     out = cast(str, glitch(text))
     assert len(out.split()) <= len(text.split())
 
 
-def test_rushmore_max_deletion_cap():
+def test_rushmore_max_deletion_cap(rushmore_instance):
+    """Test that Rushmore respects maximum deletion cap."""
     text = "alpha beta gamma delta epsilon zeta eta theta"
     words = text.split()
     candidate_count = max(len(words) - 1, 0)
 
     for rate, seed in [(0.1, 3), (0.5, 11), (1.0, 17)]:
-        glitch = rushmore.clone()
+        glitch = rushmore_instance.clone()
         glitch.set_param("seed", seed)
         glitch.set_param("rate", rate)
         out = cast(str, glitch(text))
@@ -59,10 +63,11 @@ def test_rushmore_max_deletion_cap():
         assert removed <= allowed
 
 
-def test_rushmore_preserves_leading_token_and_spacing():
+def test_rushmore_preserves_leading_token_and_spacing(rushmore_instance):
+    """Test that Rushmore preserves the leading token and spacing."""
     text = "Alpha, beta; gamma: delta epsilon zeta"
     seeds = (0, 3, 11, 21)
-    template = rushmore.clone()
+    template = rushmore_instance
     template.set_param("rate", 1.0)
     words = text.split()
     for seed in seeds:
@@ -80,9 +85,10 @@ def test_rushmore_preserves_leading_token_and_spacing():
         assert out == out.strip()
 
 
-def test_redactyl_replacement_char_and_merge():
+def test_redactyl_replacement_char_and_merge(redactyl_instance):
+    """Test that Redactyl respects replacement_char and merge_adjacent parameters."""
     text = "alpha beta gamma"
-    glitch = redactyl.clone()
+    glitch = redactyl_instance
     glitch.set_param("seed", 2)
     glitch.set_param("rate", 1.0)
     glitch.set_param("replacement_char", "#")
@@ -91,17 +97,19 @@ def test_redactyl_replacement_char_and_merge():
     assert set(out) <= {"#", " "}
     assert "# #" not in out  # merged
 
-def test_scannequin_rate_increases_changes(sample_text):
+
+def test_scannequin_rate_increases_changes(scannequin_instance, sample_text):
+    """Test that Scannequin increases changes with higher rates."""
     # count character diffs vs original
     def diff_count(a: str, b: str) -> int:
         return sum(1 for x, y in zip(a, b) if x != y) + abs(len(a) - len(b))
 
-    low_glitch = scannequin.clone()
+    low_glitch = scannequin_instance.clone()
     low_glitch.set_param("seed", 7)
     low_glitch.set_param("rate", 0.005)
     low = cast(str, low_glitch(sample_text))
 
-    high_glitch = scannequin.clone()
+    high_glitch = scannequin_instance.clone()
     high_glitch.set_param("seed", 7)
     high_glitch.set_param("rate", 0.05)
     high = cast(str, high_glitch(sample_text))
