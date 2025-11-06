@@ -195,6 +195,14 @@ class Jargoyle(Glitchling):
         finally:
             self._initializing = False
 
+        if getattr(self, "lexicon", None) is None:
+            previous_initializing = self._initializing
+            self._initializing = True
+            try:
+                self.set_param("lexicon", prepared_lexicon)
+            finally:
+                self._initializing = previous_initializing
+
     def set_param(self, key: str, value: Any) -> None:
         super().set_param(key, value)
 
