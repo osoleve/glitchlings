@@ -6,35 +6,9 @@ import types
 
 import pytest
 
+from glitchlings.compat import reset_optional_dependencies
+
 pytest.importorskip("jellyfish")
-
-
-class _Rubric:
-    def __init__(self, funcs, weights):
-        self.funcs = list(funcs)
-        self.weights = list(weights)
-
-
-class _SingleTurnEnv:
-    def __init__(self, dataset=None, rubric=None):
-        self.dataset = dataset
-        self.rubric = rubric
-
-class _VerifierEnvironment:
-    def __init__(self, dataset=None):
-        self.dataset = dataset
-
-
-def _load_environment(_: str) -> _VerifierEnvironment:
-    return _VerifierEnvironment()
-
-
-verifiers_stub = types.ModuleType("verifiers")
-verifiers_stub.Environment = _VerifierEnvironment
-verifiers_stub.Rubric = _Rubric
-verifiers_stub.SingleTurnEnv = _SingleTurnEnv
-verifiers_stub.load_environment = _load_environment
-sys.modules["verifiers"] = verifiers_stub
 
 zoo_core = importlib.import_module("glitchlings.zoo.core")
 prime = importlib.import_module("glitchlings.dlc.prime")
@@ -43,8 +17,6 @@ glitchlings_compat = importlib.import_module("glitchlings.compat")
 AttackWave = zoo_core.AttackWave
 Gaggle = zoo_core.Gaggle
 Glitchling = zoo_core.Glitchling
-
-
 
 
 class FakeDataset:
