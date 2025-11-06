@@ -301,7 +301,9 @@ def test_load_gensim_vectors_requires_dependency(monkeypatch, tmp_path: Path) ->
         _load_gensim_vectors(tmp_path / "missing.bin")
 
 
-def test_build_sentence_transformer_embeddings_generates_vectors(mock_sentence_transformers) -> None:
+def test_build_sentence_transformer_embeddings_generates_vectors(
+    mock_sentence_transformers,
+) -> None:
     stub_module = mock_sentence_transformers
 
     embeddings = _build_sentence_transformer_embeddings(

@@ -6,8 +6,6 @@ import types
 
 import pytest
 
-from glitchlings.compat import reset_optional_dependencies
-
 pytest.importorskip("jellyfish")
 
 zoo_core = importlib.import_module("glitchlings.zoo.core")

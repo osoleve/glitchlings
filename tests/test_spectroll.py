@@ -1,6 +1,6 @@
-import pytest
-
 from collections import Counter
+
+import pytest
 
 from glitchlings.spectroll import swap_colors
 

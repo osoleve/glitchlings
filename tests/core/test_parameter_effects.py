@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 from typing import cast
 
-from glitchlings import mim1c, redactyl, rushmore, scannequin, typogre, zeedub
+from glitchlings import typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 
