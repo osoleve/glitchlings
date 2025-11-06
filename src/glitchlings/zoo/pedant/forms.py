@@ -27,6 +27,13 @@ class Aetheria(PedantEvolution):
     flavor = "Resurrects archaic ligatures and diacritics."
 
 
+class Apostrofae(PedantEvolution):
+    stone = PedantStone.CURLITE
+    name = "Apostrofae"
+    type = "Fairy"
+    flavor = "Curves quotes into typeset perfection."
+
+
 class Subjunic(PedantEvolution):
     stone = PedantStone.SUBJUNCTITE
     name = "Subjunic"
@@ -59,6 +66,7 @@ __all__ = [
     "Whomst",
     "Fewerling",
     "Aetheria",
+    "Apostrofae",
     "Subjunic",
     "Commama",
     "Kiloa",

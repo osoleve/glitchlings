@@ -21,6 +21,11 @@ class PedantStone(Enum):
     WHOM = Stone("Whom Stone", "Ghost", "Encourages object-pronoun precision.")
     FEWERITE = Stone("Fewerite", "Fairy", "Obsesses over countable quantities.")
     COEURITE = Stone("Coeurite", "Psychic", "Restores archaic ligatures to modern words.")
+    CURLITE = Stone(
+        "Curlite",
+        "Fairy",
+        "Coaches punctuation to embrace typographic curls.",
+    )
     SUBJUNCTITE = Stone("Subjunctite", "Psychic", "Demands contrary-to-fact phrasing.")
     OXFORDIUM = Stone("Oxfordium", "Steel", "Polishes serial comma usage.")
     ORTHOGONITE = Stone("Orthogonite", "Dragon", "Unlocks the legendary Correctopus.")

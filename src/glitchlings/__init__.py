@@ -2,7 +2,6 @@ from .auggie import Auggie
 from .config import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
-    Apostrofae,
     Ekkokin,
     Gaggle,
     Glitchling,
@@ -17,7 +16,6 @@ from .zoo import (
     Spectroll,
     Typogre,
     Zeedub,
-    apostrofae,
     ekkokin,
     hokey,
     jargoyle,
@@ -42,8 +40,6 @@ __all__ = [
     "mim1c",
     "Jargoyle",
     "jargoyle",
-    "Apostrofae",
-    "apostrofae",
     "Ekkokin",
     "ekkokin",
     "Hokey",

@@ -114,7 +114,6 @@ glitchlings --list
 
 ```text
    Typogre — scope: Character, order: early
-Apostrofae — scope: Character, order: normal
      Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
    Ekkokin — scope: Word, order: early

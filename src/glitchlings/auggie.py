@@ -6,7 +6,6 @@ from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
 from .lexicon import Lexicon
-from .zoo.apostrofae import Apostrofae
 from .zoo.core import Gaggle, Glitchling
 from .zoo.ekkokin import Ekkokin
 from .zoo.hokey import Hokey
@@ -90,9 +89,9 @@ class Auggie(Gaggle):
         )
 
     def curly_quotes(self, *, seed: int | None = None) -> "Auggie":
-        """Add :class:`Apostrofae` to smarten punctuation."""
+        """Add :class:`Pedant` evolved with Curlite to smarten punctuation."""
 
-        return self._enqueue(Apostrofae(seed=seed))
+        return self._enqueue(Pedant(stone=PedantStone.CURLITE, seed=seed))
 
     def stretch(
         self,
