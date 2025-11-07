@@ -600,8 +600,17 @@ impl GlitchOp for RedactWordsOp {
         }
 
         if self.merge_adjacent {
-            // Merge adjacent redacted words without reparsing
-            buffer.merge_repeated_char_words(&self.replacement_char);
+            // Merge adjacent redacted words across punctuation using regex
+            let text = buffer.to_string();
+            let regex = cached_merge_regex(&self.replacement_char)?;
+            let merged = regex
+                .replace_all(&text, |caps: &Captures| {
+                    let matched = caps.get(0).map_or("", |m| m.as_str());
+                    let repeat = matched.chars().count().saturating_sub(1);
+                    self.replacement_char.repeat(repeat)
+                })
+                .into_owned();
+            *buffer = TextBuffer::from_owned(merged);
         }
 
         Ok(())
