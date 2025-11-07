@@ -1226,6 +1226,8 @@ impl GlitchOp for TypoOp {
                                             if !scratch.is_empty() {
                                                 chars.splice(idx..idx + 1, scratch.iter().copied());
                                             }
+                                        } else {
+                                            rng.rand_index(1)?;
                                         }
                                     }
                                 }
