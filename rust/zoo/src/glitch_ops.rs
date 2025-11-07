@@ -1126,7 +1126,7 @@ impl TypoOp {
 
 impl GlitchOp for TypoOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let total_chars = buffer.total_chars();
+        let total_chars = buffer.char_len();
         if total_chars == 0 {
             return Ok(());
         }
