@@ -12,7 +12,6 @@ mod text_buffer;
 mod typogre;
 mod zeedub;
 
-use glitch_ops::GlitchOp;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
