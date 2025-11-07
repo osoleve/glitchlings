@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
-use regex::{Captures, Regex};
+use regex::Regex;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -10,7 +10,6 @@ use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
-    MULTIPLE_WHITESPACE, SPACE_BEFORE_PUNCTUATION,
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
@@ -1159,6 +1158,7 @@ impl GlitchOp for TypoOp {
                     // Character-level operations within Word segments only
                     let word_segments: Vec<(usize, &TextSegment)> = buffer
                         .segments()
+                        .iter()
                         .enumerate()
                         .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
                         .collect();
@@ -1242,6 +1242,7 @@ impl GlitchOp for TypoOp {
                     // Remove space from Separator segments
                     let sep_segments: Vec<(usize, &TextSegment)> = buffer
                         .segments()
+                        .iter()
                         .enumerate()
                         .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Separator))
                         .collect();
@@ -1266,6 +1267,7 @@ impl GlitchOp for TypoOp {
                     // Insert space into a Word segment (splitting it)
                     let word_segments: Vec<(usize, &TextSegment)> = buffer
                         .segments()
+                        .iter()
                         .enumerate()
                         .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
                         .collect();
@@ -1290,6 +1292,7 @@ impl GlitchOp for TypoOp {
                     // Collapse duplicate within Word segments
                     let word_segments: Vec<(usize, &TextSegment)> = buffer
                         .segments()
+                        .iter()
                         .enumerate()
                         .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
                         .collect();
@@ -1314,6 +1317,7 @@ impl GlitchOp for TypoOp {
                     // Repeat char within Word segments
                     let word_segments: Vec<(usize, &TextSegment)> = buffer
                         .segments()
+                        .iter()
                         .enumerate()
                         .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
                         .collect();
@@ -1344,7 +1348,7 @@ impl GlitchOp for TypoOp {
         }
 
         let mut result = String::new();
-        for (idx, segment) in buffer.segments().enumerate() {
+        for (idx, segment) in buffer.segments().iter().enumerate() {
             if let Some(modified_text) = segment_texts.get(&idx) {
                 result.push_str(modified_text);
             } else {
