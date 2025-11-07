@@ -12,7 +12,7 @@ After completing a task, always:
 1. Lint with `ruff`
 2. Type check `src/`  with `mypy`
 3. Build the project with `uv`
-4. Run tests with `pytest`
+4. Run tests with `pytest tests`
 
 ## Repository Tour
 - **`src/glitchlings/`** - Installable Python package.
