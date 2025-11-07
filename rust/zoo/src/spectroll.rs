@@ -288,8 +288,22 @@ impl GlitchOp for SpectrollOp {
 
             let text = segment.text();
 
-            // Check if this word segment matches a color pattern
-            if let Some(captures) = COLOR_PATTERN.captures(text) {
+            // Check if this word segment contains any color patterns
+            let matches: Vec<_> = COLOR_PATTERN.captures_iter(text).collect();
+            if matches.is_empty() {
+                continue;
+            }
+
+            // Build replacement text by iterating over all matches and splicing in replacements
+            let mut result = String::with_capacity(text.len());
+            let mut cursor = 0usize;
+
+            for captures in matches {
+                let matched = captures.get(0).expect("match with full capture");
+
+                // Preserve text before this match
+                result.push_str(&text[cursor..matched.start()]);
+
                 let base = captures.name("color").map(|m| m.as_str()).unwrap_or("");
                 let suffix = captures.name("suffix").map(|m| m.as_str()).unwrap_or("");
                 let canonical = base.to_ascii_lowercase();
@@ -302,9 +316,22 @@ impl GlitchOp for SpectrollOp {
                 if let Some(replacement_base) = replacement_base {
                     let adjusted = apply_case(base, replacement_base);
                     let suffix_fragment = harmonize_suffix(base, replacement_base, suffix);
-                    let replacement = format!("{adjusted}{suffix_fragment}");
-                    replacements.push((idx, replacement));
+                    result.push_str(&adjusted);
+                    result.push_str(&suffix_fragment);
+                } else {
+                    // No replacement found, keep original
+                    result.push_str(matched.as_str());
                 }
+
+                cursor = matched.end();
+            }
+
+            // Preserve text after the last match
+            result.push_str(&text[cursor..]);
+
+            // Only add to replacements if the text actually changed
+            if result != text {
+                replacements.push((idx, result));
             }
         }
 
