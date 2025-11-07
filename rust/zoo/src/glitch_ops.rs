@@ -608,15 +608,21 @@ pub struct OcrArtifactsOp {
 
 impl GlitchOp for OcrArtifactsOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
-        let mut candidates: Vec<(usize, usize, &'static [&'static str])> = Vec::new();
-        for &(src, choices) in confusion_table() {
-            for (start, _) in text.match_indices(src) {
-                candidates.push((start, start + src.len(), choices));
+        // Find candidates across all segments
+        // Track (segment_index, start_byte_in_segment, end_byte_in_segment, choices)
+        let mut candidates: Vec<(usize, usize, usize, &'static [&'static str])> = Vec::new();
+
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let seg_text = segment.text();
+            for &(src, choices) in confusion_table() {
+                for (start, _) in seg_text.match_indices(src) {
+                    candidates.push((seg_idx, start, start + src.len(), choices));
+                }
             }
         }
 
@@ -630,51 +636,73 @@ impl GlitchOp for OcrArtifactsOp {
         }
 
         let mut order: Vec<usize> = (0..candidates.len()).collect();
-        // We hand-roll Fisher–Yates instead of using helper utilities so the
-        // shuffle mirrors Python's `random.shuffle` exactly. The regression
-        // tests rely on this parity to keep the Rust and Python paths in lockstep.
+        // Hand-roll Fisher–Yates to mirror Python's random.shuffle for test parity
         for idx in (1..order.len()).rev() {
             let swap_with = rng.rand_index(idx + 1)?;
             order.swap(idx, swap_with);
         }
-        let mut chosen: Vec<(usize, usize, &'static str)> = Vec::new();
-        let mut occupied: Vec<(usize, usize)> = Vec::new();
+
+        let mut chosen: Vec<(usize, usize, usize, &'static str)> = Vec::new();
+        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> = std::collections::HashMap::new();
 
         for idx in order {
             if chosen.len() >= to_select {
                 break;
             }
-            let (start, end, choices) = candidates[idx];
+            let (seg_idx, start, end, choices) = candidates[idx];
             if choices.is_empty() {
                 continue;
             }
-            if occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
+
+            // Check for overlap within the same segment
+            let seg_occupied = occupied.entry(seg_idx).or_default();
+            if seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
                 continue;
             }
+
             let choice_idx = rng.rand_index(choices.len())?;
-            chosen.push((start, end, choices[choice_idx]));
-            occupied.push((start, end));
+            chosen.push((seg_idx, start, end, choices[choice_idx]));
+            seg_occupied.push((start, end));
         }
 
         if chosen.is_empty() {
             return Ok(());
         }
 
-        chosen.sort_by_key(|&(start, _, _)| start);
-        let mut output = String::with_capacity(text.len());
-        let mut cursor = 0usize;
-        for (start, end, replacement) in chosen {
-            if cursor < start {
-                output.push_str(&text[cursor..start]);
-            }
-            output.push_str(replacement);
-            cursor = end;
-        }
-        if cursor < text.len() {
-            output.push_str(&text[cursor..]);
+        // Group replacements by segment
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, &str)>> = std::collections::HashMap::new();
+        for (seg_idx, start, end, replacement) in chosen {
+            by_segment.entry(seg_idx).or_default().push((start, end, replacement));
         }
 
-        *buffer = TextBuffer::from_owned(output);
+        // Build segment replacements
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_replacements) in by_segment {
+            // Sort by start position
+            seg_replacements.sort_by_key(|&(start, _, _)| start);
+
+            let seg_text = segments[seg_idx].text();
+            let mut output = String::with_capacity(seg_text.len());
+            let mut cursor = 0usize;
+
+            for (start, end, replacement) in seg_replacements {
+                if cursor < start {
+                    output.push_str(&seg_text[cursor..start]);
+                }
+                output.push_str(replacement);
+                cursor = end;
+            }
+            if cursor < seg_text.len() {
+                output.push_str(&seg_text[cursor..]);
+            }
+
+            segment_replacements.push((seg_idx, output));
+        }
+
+        // Apply all segment replacements in bulk without reparsing
+        buffer.replace_segments_bulk(segment_replacements.into_iter());
+
         Ok(())
     }
 }
