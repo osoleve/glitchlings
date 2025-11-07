@@ -364,8 +364,16 @@ impl GlitchOp for DeleteRandomWordsOp {
             deletions += 1;
         }
 
-        // Normalize whitespace and punctuation spacing without reparsing
-        buffer.normalize();
+        // After replacements, we may have Word segments containing only punctuation.
+        // To properly handle spacing, we need to reparse to merge adjacent punctuation
+        // and apply proper separator normalization.
+        let mut joined = buffer.to_string();
+        joined = SPACE_BEFORE_PUNCTUATION
+            .replace_all(&joined, "$1")
+            .into_owned();
+        joined = MULTIPLE_WHITESPACE.replace_all(&joined, " ").into_owned();
+        let final_text = joined.trim().to_string();
+        *buffer = TextBuffer::from_owned(final_text);
         Ok(())
     }
 }
