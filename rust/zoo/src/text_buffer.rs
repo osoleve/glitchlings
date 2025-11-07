@@ -393,13 +393,17 @@ impl TextBuffer {
     where
         I: IntoIterator<Item = (usize, String)>,
     {
+        let mut replaced = false;
         for (segment_index, new_text) in replacements {
             if segment_index < self.segments.len() {
                 let kind = self.segments[segment_index].kind();
                 self.segments[segment_index] = TextSegment::new(new_text, kind);
+                replaced = true;
             }
         }
-        self.reindex();
+        if replaced {
+            self.reindex();
+        }
     }
 
     /// Merges adjacent word segments that consist entirely of the same repeated character,
