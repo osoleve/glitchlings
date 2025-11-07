@@ -89,15 +89,22 @@ impl Mim1cOp {
 
 impl GlitchOp for Mim1cOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let original = buffer.to_string();
-        if original.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
-        let mut targets: Vec<(usize, char)> = original
-            .char_indices()
-            .filter(|(_, ch)| ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(ch))
-            .collect();
+        // Collect all replaceable characters across all segments
+        // Track (segment_index, char_offset_in_segment, char)
+        let mut targets: Vec<(usize, usize, char)> = Vec::new();
+
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            for (byte_offset, ch) in segment.text().char_indices() {
+                if ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(&ch) {
+                    targets.push((seg_idx, byte_offset, ch));
+                }
+            }
+        }
 
         if targets.is_empty() {
             return Ok(());
@@ -119,14 +126,15 @@ impl GlitchOp for Mim1cOp {
             }
         }
 
-        let mut replacements: Vec<(usize, char)> = Vec::new();
+        // Select characters to replace
+        let mut replacements: Vec<(usize, usize, char)> = Vec::new();
         let mut available = targets.len();
         let requested = (targets.len() as f64 * rate).trunc() as usize;
         let mut attempts = 0usize;
 
         while attempts < requested && available > 0 {
             let idx = rng.rand_index(available)?;
-            let (byte_index, ch) = targets.swap_remove(idx);
+            let (seg_idx, char_offset, ch) = targets.swap_remove(idx);
             available -= 1;
 
             let Some(options) = HOMOGLYPH_TABLE.get(&ch) else {
@@ -147,7 +155,7 @@ impl GlitchOp for Mim1cOp {
             }
 
             let choice = rng.rand_index(filtered.len())?;
-            replacements.push((byte_index, filtered.remove(choice).glyph));
+            replacements.push((seg_idx, char_offset, filtered.remove(choice).glyph));
             attempts += 1;
         }
 
@@ -155,19 +163,35 @@ impl GlitchOp for Mim1cOp {
             return Ok(());
         }
 
-        let mut result = original.clone();
-        replacements.sort_unstable_by_key(|(byte_index, _)| *byte_index);
-        for (byte_index, replacement) in replacements.into_iter().rev() {
-            if let Some(current_char) = result[byte_index..].chars().next() {
-                let end = byte_index + current_char.len_utf8();
-                let replacement_str = replacement.to_string();
-                result.replace_range(byte_index..end, &replacement_str);
-            }
+        // Group replacements by segment
+        let mut by_segment: HashMap<usize, Vec<(usize, char)>> = HashMap::new();
+        for (seg_idx, char_offset, replacement_char) in replacements {
+            by_segment.entry(seg_idx).or_default().push((char_offset, replacement_char));
         }
 
-        if result != original {
-            *buffer = TextBuffer::from_owned(result);
+        // Build replacement map: segment_index -> modified_text
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_replacements) in by_segment {
+            // Sort by offset in reverse to replace from end to start
+            seg_replacements.sort_unstable_by_key(|(offset, _)| *offset);
+
+            let original_text = segments[seg_idx].text();
+            let mut modified = original_text.to_string();
+
+            for (char_offset, replacement_char) in seg_replacements.into_iter().rev() {
+                if let Some(current_char) = modified[char_offset..].chars().next() {
+                    let end = char_offset + current_char.len_utf8();
+                    let replacement_str = replacement_char.to_string();
+                    modified.replace_range(char_offset..end, &replacement_str);
+                }
+            }
+
+            segment_replacements.push((seg_idx, modified));
         }
+
+        // Apply all segment replacements in bulk without reparsing
+        buffer.replace_segments_bulk(segment_replacements.into_iter());
 
         Ok(())
     }

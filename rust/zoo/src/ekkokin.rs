@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
 use crate::resources::{
-    ekkokin_homophone_sets, is_whitespace_only, split_affixes, split_with_separators,
+    ekkokin_homophone_sets, is_whitespace_only, split_affixes,
 };
 use crate::text_buffer::TextBuffer;
 
@@ -147,8 +147,7 @@ fn choose_alternative(
 
 impl GlitchOp for EkkokinOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        if buffer.word_count() == 0 {
             return Ok(());
         }
 
@@ -161,10 +160,16 @@ impl GlitchOp for EkkokinOp {
             return Ok(());
         }
 
-        let mut tokens = split_with_separators(&text);
-        let mut mutated = false;
+        // Collect all replacements first to avoid index shifting during mutation
+        let mut replacements: Vec<(usize, String)> = Vec::new();
 
-        for token in tokens.iter_mut() {
+        for idx in 0..buffer.word_count() {
+            let segment = match buffer.word_segment(idx) {
+                Some(seg) => seg,
+                None => continue,
+            };
+
+            let token = segment.text();
             if token.is_empty() || is_whitespace_only(token) {
                 continue;
             }
@@ -189,13 +194,13 @@ impl GlitchOp for EkkokinOp {
                 None => continue,
             };
 
-            *token = format!("{prefix}{replacement_core}{suffix}");
-            mutated = true;
+            let replacement = format!("{prefix}{replacement_core}{suffix}");
+            replacements.push((idx, replacement));
         }
 
-        if mutated {
-            let updated = tokens.concat();
-            *buffer = TextBuffer::from_owned(updated);
+        // Apply all replacements using bulk update
+        if !replacements.is_empty() {
+            buffer.replace_words_bulk(replacements.into_iter())?;
         }
 
         Ok(())

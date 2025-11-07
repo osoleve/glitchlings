@@ -12,7 +12,6 @@ mod text_buffer;
 mod typogre;
 mod zeedub;
 
-use glitch_ops::GlitchOp;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
@@ -23,9 +22,9 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 use ekkokin::{EkkokinOp, HomophoneWeighting};
 pub use glitch_ops::{
-    DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
-    RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp, SwapAdjacentWordsOp,
-    TypoOp, ZeroWidthOp,
+    DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
+    QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
+    SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
 use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};

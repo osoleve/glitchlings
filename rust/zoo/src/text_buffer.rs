@@ -100,6 +100,7 @@ pub struct TextBuffer {
     segments: Vec<TextSegment>,
     spans: Vec<TextSpan>,
     word_segment_indices: Vec<usize>,
+    segment_to_word_index: Vec<Option<usize>>,
     total_chars: usize,
     total_bytes: usize,
 }
@@ -111,6 +112,7 @@ impl TextBuffer {
             segments: tokenise(&text),
             spans: Vec::new(),
             word_segment_indices: Vec::new(),
+            segment_to_word_index: Vec::new(),
             total_chars: 0,
             total_bytes: 0,
         };
@@ -149,6 +151,19 @@ impl TextBuffer {
             .get(word_index)
             .copied()
             .and_then(|segment_index| self.segments.get(segment_index))
+    }
+
+    /// Returns an iterator over all segments with their word index (if they are word segments).
+    ///
+    /// Each item is (segment_index, segment, word_index_option).
+    /// Word segments have Some(word_index), separator segments have None.
+    ///
+    /// Uses cached segment-to-word mapping built during reindex() for O(1) lookup.
+    pub fn segments_with_word_indices(&self) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> + '_ {
+        self.segments.iter().enumerate().map(|(seg_idx, segment)| {
+            let word_idx = self.segment_to_word_index.get(seg_idx).copied().flatten();
+            (seg_idx, segment, word_idx)
+        })
     }
 
     /// Replace the text for the given word index.
@@ -292,6 +307,183 @@ impl TextBuffer {
             .collect()
     }
 
+    /// Normalizes whitespace and punctuation spacing without reparsing.
+    ///
+    /// This method:
+    /// - Merges consecutive separator segments into single spaces
+    /// - Removes spaces before punctuation (.,:;)
+    /// - Trims leading/trailing whitespace
+    ///
+    /// This is more efficient than reparsing via `to_string()` + `from_owned()`.
+    pub fn normalize(&mut self) {
+        // First pass: identify segments to merge/modify
+        let mut normalized: Vec<TextSegment> = Vec::new();
+        let mut pending_separator = false;
+
+        for segment in &self.segments {
+            match segment.kind() {
+                SegmentKind::Separator => {
+                    // Mark that we have a separator pending
+                    pending_separator = true;
+                }
+                SegmentKind::Word => {
+                    let text = segment.text();
+
+                    // Check if word starts with punctuation that should not have space before
+                    let starts_with_punct = text
+                        .chars()
+                        .next()
+                        .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                        .unwrap_or(false);
+
+                    // Add separator if needed (but not before sentence punctuation)
+                    if pending_separator && !starts_with_punct && !normalized.is_empty() {
+                        normalized.push(TextSegment::new(" ".to_string(), SegmentKind::Separator));
+                    }
+                    pending_separator = false;
+
+                    // Add the word
+                    normalized.push(segment.clone());
+                }
+            }
+        }
+
+        // Trim: remove leading/trailing separators
+        // Remove leading separators efficiently
+        let start = normalized
+            .iter()
+            .take_while(|s| matches!(s.kind(), SegmentKind::Separator))
+            .count();
+        if start > 0 {
+            normalized.drain(0..start);
+        }
+        while normalized
+            .last()
+            .map(|s| matches!(s.kind(), SegmentKind::Separator))
+            .unwrap_or(false)
+        {
+            normalized.pop();
+        }
+
+        self.segments = normalized;
+        self.reindex();
+    }
+
+    /// Replaces the text of a specific segment while preserving its kind.
+    ///
+    /// This is useful for char-level operations that modify segment content
+    /// without changing whether it's a word or separator.
+    pub fn replace_segment(&mut self, segment_index: usize, new_text: String) {
+        if segment_index >= self.segments.len() {
+            return;
+        }
+
+        let kind = self.segments[segment_index].kind();
+        self.segments[segment_index] = TextSegment::new(new_text, kind);
+        self.reindex();
+    }
+
+    /// Replaces multiple segments in bulk.
+    ///
+    /// Takes an iterator of (segment_index, new_text) pairs.
+    /// More efficient than calling replace_segment repeatedly.
+    pub fn replace_segments_bulk<I>(&mut self, replacements: I)
+    where
+        I: IntoIterator<Item = (usize, String)>,
+    {
+        let mut replaced = false;
+        for (segment_index, new_text) in replacements {
+            if segment_index < self.segments.len() {
+                let kind = self.segments[segment_index].kind();
+                self.segments[segment_index] = TextSegment::new(new_text, kind);
+                replaced = true;
+            }
+        }
+        if replaced {
+            self.reindex();
+        }
+    }
+
+    /// Merges adjacent word segments that consist entirely of the same repeated character,
+    /// removing separators between them.
+    ///
+    /// This is used by RedactWordsOp to merge adjacent redacted words like "███ ███" into "██████".
+    pub fn merge_repeated_char_words(&mut self, repeated_char: &str) {
+        if self.segments.is_empty() || repeated_char.is_empty() {
+            return;
+        }
+
+        // Helper function to check if a word consists entirely of repeated copies of the token
+        let is_repeated_token = |text: &str| -> bool {
+            if text.is_empty() {
+                return false;
+            }
+            // Check if the word length is a multiple of the token length
+            if text.len() % repeated_char.len() != 0 {
+                return false;
+            }
+            // Check if the word consists of repeated copies of the token
+            text.as_bytes()
+                .chunks(repeated_char.len())
+                .all(|chunk| chunk == repeated_char.as_bytes())
+        };
+
+        let mut merged: Vec<TextSegment> = Vec::new();
+        let mut i = 0;
+
+        while i < self.segments.len() {
+            let segment = &self.segments[i];
+
+            if matches!(segment.kind(), SegmentKind::Word) {
+                let text = segment.text();
+
+                // Check if this word is composed of repeated tokens
+                if is_repeated_token(text) {
+                    // Count how many copies of the token we have
+                    let mut token_count = text.len() / repeated_char.len();
+
+                    // Look ahead for more repeated token words separated by separators
+                    let mut j = i + 1;
+                    while j < self.segments.len() {
+                        if matches!(self.segments[j].kind(), SegmentKind::Separator) {
+                            // Skip separator, check next word
+                            if j + 1 < self.segments.len() {
+                                let next_word = &self.segments[j + 1];
+                                if matches!(next_word.kind(), SegmentKind::Word) {
+                                    let next_text = next_word.text();
+                                    if is_repeated_token(next_text) {
+                                        // This is also a repeated token word - merge it
+                                        token_count += next_text.len() / repeated_char.len();
+                                        j += 2; // Skip separator and word
+                                        continue;
+                                    }
+                                }
+                            }
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Create merged word with total count
+                    let merged_text = repeated_char.repeat(token_count);
+                    merged.push(TextSegment::new(merged_text, SegmentKind::Word));
+
+                    // Skip to position j (we've consumed segments i..j)
+                    i = j;
+                    continue;
+                }
+            }
+
+            // Not a repeated token word - just add it
+            merged.push(segment.clone());
+            i += 1;
+        }
+
+        self.segments = merged;
+        self.reindex();
+    }
+
     fn char_to_byte_index(&self, char_index: usize) -> Option<usize> {
         if char_index > self.total_chars {
             return None;
@@ -313,6 +505,9 @@ impl TextBuffer {
     fn reindex(&mut self) {
         self.spans.clear();
         self.word_segment_indices.clear();
+        self.segment_to_word_index.clear();
+        self.segment_to_word_index.resize(self.segments.len(), None);
+
         let mut char_cursor = 0;
         let mut byte_cursor = 0;
         for (segment_index, segment) in self.segments.iter().enumerate() {
@@ -325,7 +520,9 @@ impl TextBuffer {
                 byte_range: byte_cursor..(byte_cursor + byte_len),
             };
             if matches!(segment.kind(), SegmentKind::Word) {
+                let word_index = self.word_segment_indices.len();
                 self.word_segment_indices.push(segment_index);
+                self.segment_to_word_index[segment_index] = Some(word_index);
             }
             self.spans.push(span);
             char_cursor += char_len;

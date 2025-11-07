@@ -341,7 +341,11 @@ impl GlitchOp for DeleteRandomWordsOp {
             .sum::<f64>()
             / (candidates.len() as f64);
 
+        // Collect deletion decisions
+        use std::collections::HashSet;
+        let mut delete_set: HashSet<usize> = HashSet::new();
         let mut deletions = 0usize;
+
         for candidate in candidates.into_iter() {
             if deletions >= allowed {
                 break;
@@ -359,17 +363,68 @@ impl GlitchOp for DeleteRandomWordsOp {
                 continue;
             }
 
-            let replacement = format!("{}{}", candidate.prefix.trim(), candidate.suffix.trim());
-            buffer.replace_word(candidate.index, &replacement)?;
+            delete_set.insert(candidate.index);
             deletions += 1;
         }
 
-        let mut joined = buffer.to_string();
-        joined = SPACE_BEFORE_PUNCTUATION
-            .replace_all(&joined, "$1")
-            .into_owned();
-        joined = MULTIPLE_WHITESPACE.replace_all(&joined, " ").into_owned();
-        let final_text = joined.trim().to_string();
+        // Build output string in a single pass with normalization
+        let mut result = String::new();
+        let mut needs_separator = false;
+
+        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
+            match segment.kind() {
+                SegmentKind::Word => {
+                    if let Some(word_idx) = word_idx_opt {
+                        if delete_set.contains(&word_idx) {
+                            // Word is deleted - emit only affixes
+                            let text = segment.text();
+                            let (prefix, _core, suffix) = split_affixes(text);
+                            let combined = format!("{}{}", prefix.trim(), suffix.trim());
+
+                            if !combined.is_empty() {
+                                // Check if we need space before this
+                                if needs_separator {
+                                    let starts_with_punct = combined.chars().next()
+                                        .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                                        .unwrap_or(false);
+                                    if !starts_with_punct {
+                                        result.push(' ');
+                                    }
+                                }
+                                result.push_str(&combined);
+                                needs_separator = true;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Word not deleted - emit with separator if needed
+                    let text = segment.text();
+                    if !text.is_empty() {
+                        if needs_separator {
+                            let starts_with_punct = text.chars().next()
+                                .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                                .unwrap_or(false);
+                            if !starts_with_punct {
+                                result.push(' ');
+                            }
+                        }
+                        result.push_str(text);
+                        needs_separator = true;
+                    }
+                }
+                SegmentKind::Separator => {
+                    // Mark that we need a separator before the next word
+                    // (actual separator will be added when we emit next word)
+                    let sep_text = segment.text();
+                    if sep_text.contains('\n') || !sep_text.trim().is_empty() {
+                        needs_separator = true;
+                    }
+                }
+            }
+        }
+
+        let final_text = result.trim().to_string();
         *buffer = TextBuffer::from_owned(final_text);
         Ok(())
     }
@@ -564,51 +619,118 @@ impl GlitchOp for RedactWordsOp {
             weighted_sample_without_replacement(rng, &weighted_indices, num_to_redact)?;
         selections.sort_unstable_by_key(|candidate_idx| candidates[*candidate_idx].index);
 
+        // Build map of word_index -> RedactCandidate for selected words
+        use std::collections::HashMap;
+        let mut redact_map: HashMap<usize, &RedactCandidate> = HashMap::new();
         for selection in selections {
             let candidate = &candidates[selection];
-            let Some(segment) = buffer.word_segment(candidate.index) else {
-                continue;
-            };
-            let text = segment.text();
-            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
-                && candidate.core_start <= candidate.core_end
-                && candidate.core_start <= text.len()
-            {
-                (candidate.core_start, candidate.core_end, candidate.repeat)
-            } else if let Some((start, end)) = affix_bounds(text) {
-                let repeat = text[start..end].chars().count();
-                if repeat == 0 {
-                    continue;
+            redact_map.insert(candidate.index, candidate);
+        }
+
+        // Build output string in a single pass
+        let mut result = String::new();
+        let mut pending_tokens = 0usize;
+        let mut pending_suffix = String::new();
+
+        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
+            match segment.kind() {
+                SegmentKind::Word => {
+                    // Check if this word should be redacted
+                    if let Some(word_idx) = word_idx_opt {
+                        if let Some(candidate) = redact_map.get(&word_idx) {
+                            let text = segment.text();
+
+                            // Re-validate bounds in case segment changed
+                            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
+                                && candidate.core_start <= candidate.core_end
+                                && candidate.core_start <= text.len()
+                            {
+                                (candidate.core_start, candidate.core_end, candidate.repeat)
+                            } else if let Some((start, end)) = affix_bounds(text) {
+                                let repeat = text[start..end].chars().count();
+                                if repeat == 0 {
+                                    // Can't redact - treat as non-redacted
+                                    if pending_tokens > 0 {
+                                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                                        result.push_str(&pending_suffix);
+                                        pending_tokens = 0;
+                                        pending_suffix.clear();
+                                    }
+                                    result.push_str(text);
+                                    continue;
+                                }
+                                (start, end, repeat)
+                            } else {
+                                // Can't redact - treat as non-redacted
+                                if pending_tokens > 0 {
+                                    result.push_str(&self.replacement_char.repeat(pending_tokens));
+                                    result.push_str(&pending_suffix);
+                                    pending_tokens = 0;
+                                    pending_suffix.clear();
+                                }
+                                result.push_str(text);
+                                continue;
+                            };
+
+                            let prefix = &text[..core_start];
+                            let suffix = &text[core_end..];
+
+                            if self.merge_adjacent {
+                                // Accumulate tokens for merging
+                                if pending_tokens == 0 {
+                                    // Start of new redaction block
+                                    result.push_str(prefix);
+                                }
+                                pending_tokens += repeat;
+                                pending_suffix = suffix.to_string();
+                            } else {
+                                // Not merging - emit immediately
+                                result.push_str(prefix);
+                                result.push_str(&self.replacement_char.repeat(repeat));
+                                result.push_str(suffix);
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Not redacted - flush any pending redaction first
+                    if pending_tokens > 0 {
+                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                        result.push_str(&pending_suffix);
+                        pending_tokens = 0;
+                        pending_suffix.clear();
+                    }
+                    result.push_str(segment.text());
                 }
-                (start, end, repeat)
-            } else {
-                continue;
-            };
+                SegmentKind::Separator => {
+                    if self.merge_adjacent && pending_tokens > 0 {
+                        // Check if this separator should be skipped (merged across)
+                        let sep_text = segment.text();
+                        // Skip if separator is only punctuation/whitespace (non-word characters)
+                        if sep_text.chars().all(|c| !c.is_alphanumeric() && c != '_') {
+                            continue; // Skip this separator - we're merging across it
+                        }
+                    }
 
-            let prefix = &text[..core_start];
-            let suffix = &text[core_end..];
-            let repeated = self.replacement_char.repeat(repeat);
-            let mut replacement =
-                String::with_capacity(prefix.len() + repeated.len() + suffix.len());
-            replacement.push_str(prefix);
-            replacement.push_str(&repeated);
-            replacement.push_str(suffix);
-            buffer.replace_word(candidate.index, &replacement)?;
+                    // Not merging or separator contains word characters - flush pending
+                    if pending_tokens > 0 {
+                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                        result.push_str(&pending_suffix);
+                        pending_tokens = 0;
+                        pending_suffix.clear();
+                    }
+                    result.push_str(segment.text());
+                }
+            }
         }
 
-        if self.merge_adjacent {
-            let text = buffer.to_string();
-            let regex = cached_merge_regex(&self.replacement_char)?;
-            let merged = regex
-                .replace_all(&text, |caps: &Captures| {
-                    let matched = caps.get(0).map_or("", |m| m.as_str());
-                    let repeat = matched.chars().count().saturating_sub(1);
-                    self.replacement_char.repeat(repeat)
-                })
-                .into_owned();
-            *buffer = TextBuffer::from_owned(merged);
+        // Flush any final pending redaction
+        if pending_tokens > 0 {
+            result.push_str(&self.replacement_char.repeat(pending_tokens));
+            result.push_str(&pending_suffix);
         }
 
+        *buffer = TextBuffer::from_owned(result);
         Ok(())
     }
 }
@@ -621,15 +743,21 @@ pub struct OcrArtifactsOp {
 
 impl GlitchOp for OcrArtifactsOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
-        let mut candidates: Vec<(usize, usize, &'static [&'static str])> = Vec::new();
-        for &(src, choices) in confusion_table() {
-            for (start, _) in text.match_indices(src) {
-                candidates.push((start, start + src.len(), choices));
+        // Find candidates across all segments
+        // Track (segment_index, start_byte_in_segment, end_byte_in_segment, choices)
+        let mut candidates: Vec<(usize, usize, usize, &'static [&'static str])> = Vec::new();
+
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let seg_text = segment.text();
+            for &(src, choices) in confusion_table() {
+                for (start, _) in seg_text.match_indices(src) {
+                    candidates.push((seg_idx, start, start + src.len(), choices));
+                }
             }
         }
 
@@ -643,51 +771,73 @@ impl GlitchOp for OcrArtifactsOp {
         }
 
         let mut order: Vec<usize> = (0..candidates.len()).collect();
-        // We hand-roll Fisher–Yates instead of using helper utilities so the
-        // shuffle mirrors Python's `random.shuffle` exactly. The regression
-        // tests rely on this parity to keep the Rust and Python paths in lockstep.
+        // Hand-roll Fisher–Yates to mirror Python's random.shuffle for test parity
         for idx in (1..order.len()).rev() {
             let swap_with = rng.rand_index(idx + 1)?;
             order.swap(idx, swap_with);
         }
-        let mut chosen: Vec<(usize, usize, &'static str)> = Vec::new();
-        let mut occupied: Vec<(usize, usize)> = Vec::new();
+
+        let mut chosen: Vec<(usize, usize, usize, &'static str)> = Vec::new();
+        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> = std::collections::HashMap::new();
 
         for idx in order {
             if chosen.len() >= to_select {
                 break;
             }
-            let (start, end, choices) = candidates[idx];
+            let (seg_idx, start, end, choices) = candidates[idx];
             if choices.is_empty() {
                 continue;
             }
-            if occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
+
+            // Check for overlap within the same segment
+            let seg_occupied = occupied.entry(seg_idx).or_default();
+            if seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
                 continue;
             }
+
             let choice_idx = rng.rand_index(choices.len())?;
-            chosen.push((start, end, choices[choice_idx]));
-            occupied.push((start, end));
+            chosen.push((seg_idx, start, end, choices[choice_idx]));
+            seg_occupied.push((start, end));
         }
 
         if chosen.is_empty() {
             return Ok(());
         }
 
-        chosen.sort_by_key(|&(start, _, _)| start);
-        let mut output = String::with_capacity(text.len());
-        let mut cursor = 0usize;
-        for (start, end, replacement) in chosen {
-            if cursor < start {
-                output.push_str(&text[cursor..start]);
-            }
-            output.push_str(replacement);
-            cursor = end;
-        }
-        if cursor < text.len() {
-            output.push_str(&text[cursor..]);
+        // Group replacements by segment
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, &str)>> = std::collections::HashMap::new();
+        for (seg_idx, start, end, replacement) in chosen {
+            by_segment.entry(seg_idx).or_default().push((start, end, replacement));
         }
 
-        *buffer = TextBuffer::from_owned(output);
+        // Build segment replacements
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_replacements) in by_segment {
+            // Sort by start position
+            seg_replacements.sort_by_key(|&(start, _, _)| start);
+
+            let seg_text = segments[seg_idx].text();
+            let mut output = String::with_capacity(seg_text.len());
+            let mut cursor = 0usize;
+
+            for (start, end, replacement) in seg_replacements {
+                if cursor < start {
+                    output.push_str(&seg_text[cursor..start]);
+                }
+                output.push_str(replacement);
+                cursor = end;
+            }
+            if cursor < seg_text.len() {
+                output.push_str(&seg_text[cursor..]);
+            }
+
+            segment_replacements.push((seg_idx, output));
+        }
+
+        // Apply all segment replacements in bulk without reparsing
+        buffer.replace_segments_bulk(segment_replacements.into_iter());
+
         Ok(())
     }
 }
@@ -710,20 +860,28 @@ impl GlitchOp for ZeroWidthOp {
             return Ok(());
         }
 
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
-        let chars: Vec<char> = text.chars().collect();
-        if chars.len() < 2 {
-            return Ok(());
-        }
+        // Collect insertion positions across all segments
+        // Track (segment_index, char_index_in_segment) for each insertion point
+        let mut positions: Vec<(usize, usize)> = Vec::new();
 
-        let mut positions: Vec<usize> = Vec::new();
-        for index in 0..(chars.len() - 1) {
-            if !chars[index].is_whitespace() && !chars[index + 1].is_whitespace() {
-                positions.push(index + 1);
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let text = segment.text();
+            let chars: Vec<char> = text.chars().collect();
+
+            if chars.len() < 2 {
+                continue;
+            }
+
+            for char_idx in 0..(chars.len() - 1) {
+                if !chars[char_idx].is_whitespace() && !chars[char_idx + 1].is_whitespace() {
+                    // Mark position after char_idx (before char_idx + 1)
+                    positions.push((seg_idx, char_idx + 1));
+                }
             }
         }
 
@@ -753,29 +911,59 @@ impl GlitchOp for ZeroWidthOp {
             return Ok(());
         }
 
+        // Sample positions to insert zero-width characters
         let mut index_samples = rng.sample_indices(total, count)?;
         index_samples.sort_unstable();
-        let chosen: Vec<usize> = index_samples
-            .into_iter()
-            .map(|sample| positions[sample])
-            .collect();
 
-        let mut result = String::with_capacity(text.len() + count);
-        let mut iter = chosen.into_iter();
-        let mut next = iter.next();
-
-        for (idx, ch) in chars.iter().enumerate() {
-            result.push(*ch);
-            if let Some(insert_pos) = next {
-                if insert_pos == idx + 1 {
-                    let palette_idx = rng.rand_index(palette.len())?;
-                    result.push_str(&palette[palette_idx]);
-                    next = iter.next();
-                }
-            }
+        // Collect (seg_idx, char_idx, zero_width_char) for selected positions
+        let mut insertions: Vec<(usize, usize, String)> = Vec::new();
+        for sample_idx in index_samples {
+            let (seg_idx, char_idx) = positions[sample_idx];
+            let palette_idx = rng.rand_index(palette.len())?;
+            insertions.push((seg_idx, char_idx, palette[palette_idx].clone()));
         }
 
-        *buffer = TextBuffer::from_owned(result);
+        // Group insertions by segment
+        use std::collections::HashMap;
+        let mut by_segment: HashMap<usize, Vec<(usize, String)>> = HashMap::new();
+        for (seg_idx, char_idx, zero_width) in insertions {
+            by_segment.entry(seg_idx).or_default().push((char_idx, zero_width));
+        }
+
+        // Build replacement text for each affected segment
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_insertions) in by_segment {
+            // Sort by char_idx in ascending order to build string left to right
+            seg_insertions.sort_unstable_by_key(|(char_idx, _)| *char_idx);
+
+            let original_text = segments[seg_idx].text();
+            let chars: Vec<char> = original_text.chars().collect();
+            let mut modified = String::with_capacity(original_text.len() + seg_insertions.len() * 5);
+
+            let mut prev_idx = 0;
+            for (char_idx, zero_width) in seg_insertions {
+                // Add characters from prev_idx up to (but not including) char_idx
+                for i in prev_idx..char_idx {
+                    modified.push(chars[i]);
+                }
+                // Insert zero-width character at char_idx
+                modified.push_str(&zero_width);
+                prev_idx = char_idx;
+            }
+            // Add remaining characters from prev_idx to end
+            for i in prev_idx..chars.len() {
+                modified.push(chars[i]);
+            }
+
+            segment_replacements.push((seg_idx, modified));
+        }
+
+        // Apply all segment replacements in bulk
+        if !segment_replacements.is_empty() {
+            buffer.replace_segments_bulk(segment_replacements.into_iter());
+        }
+
         Ok(())
     }
 }
@@ -1119,11 +1307,22 @@ impl QuotePairsOp {
 
 impl GlitchOp for QuotePairsOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
+        // Build mapping from global byte index to (segment_index, byte_offset_in_segment)
+        let mut byte_to_segment: Vec<(usize, usize)> = Vec::new(); // (seg_idx, byte_offset)
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let seg_text = segment.text();
+            for byte_offset in 0..seg_text.len() {
+                byte_to_segment.push((seg_idx, byte_offset));
+            }
+        }
+
+        // Build full text for quote pair detection (we need to find pairs across segments)
+        let text = buffer.to_string();
         let pairs = Self::collect_pairs(&text);
         if pairs.is_empty() {
             return Ok(());
@@ -1134,6 +1333,7 @@ impl GlitchOp for QuotePairsOp {
             return Ok(());
         }
 
+        // Collect replacements with global byte positions
         let mut replacements: Vec<Replacement> = Vec::with_capacity(pairs.len() * 2);
 
         for pair in pairs {
@@ -1163,30 +1363,54 @@ impl GlitchOp for QuotePairsOp {
             return Ok(());
         }
 
-        replacements.sort_by_key(|replacement| replacement.start);
-        let mut extra_capacity = 0usize;
-        for replacement in &replacements {
-            let span = replacement.end - replacement.start;
-            if replacement.value.len() > span {
-                extra_capacity += replacement.value.len() - span;
-            }
-        }
-
-        let mut result = String::with_capacity(text.len() + extra_capacity);
-        let mut cursor = 0usize;
+        // Group replacements by segment
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, String)>> = std::collections::HashMap::new();
 
         for replacement in replacements {
-            if cursor < replacement.start {
-                result.push_str(&text[cursor..replacement.start]);
+            if replacement.start < byte_to_segment.len() {
+                let (seg_idx, _) = byte_to_segment[replacement.start];
+                // Calculate byte offset within segment
+                let mut segment_byte_start = 0;
+                for i in 0..seg_idx {
+                    segment_byte_start += segments[i].text().len();
+                }
+                let byte_offset_in_seg = replacement.start - segment_byte_start;
+                let byte_end_in_seg = byte_offset_in_seg + (replacement.end - replacement.start);
+
+                by_segment
+                    .entry(seg_idx)
+                    .or_default()
+                    .push((byte_offset_in_seg, byte_end_in_seg, replacement.value));
             }
-            result.push_str(&replacement.value);
-            cursor = replacement.end;
-        }
-        if cursor < text.len() {
-            result.push_str(&text[cursor..]);
         }
 
-        *buffer = TextBuffer::from_owned(result);
+        // Build segment replacements
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_replacements) in by_segment {
+            seg_replacements.sort_by_key(|&(start, _, _)| start);
+
+            let seg_text = segments[seg_idx].text();
+            let mut result = String::with_capacity(seg_text.len());
+            let mut cursor = 0usize;
+
+            for (start, end, value) in seg_replacements {
+                if cursor < start {
+                    result.push_str(&seg_text[cursor..start]);
+                }
+                result.push_str(&value);
+                cursor = end;
+            }
+            if cursor < seg_text.len() {
+                result.push_str(&seg_text[cursor..]);
+            }
+
+            segment_replacements.push((seg_idx, result));
+        }
+
+        // Apply all segment replacements in bulk without reparsing
+        buffer.replace_segments_bulk(segment_replacements.into_iter());
+
         Ok(())
     }
 }
