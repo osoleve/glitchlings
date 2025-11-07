@@ -1,6 +1,6 @@
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
-use regex::{Captures, Regex};
+use regex::Regex;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 use std::sync::{Mutex, OnceLock};
@@ -10,11 +10,10 @@ use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
-    MULTIPLE_WHITESPACE, SPACE_BEFORE_PUNCTUATION,
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
-use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
+use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
 
 static MERGE_REGEX_CACHE: OnceLock<Mutex<HashMap<String, Regex>>> = OnceLock::new();
 
@@ -1126,8 +1125,8 @@ impl TypoOp {
 
 impl GlitchOp for TypoOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let total_chars = buffer.char_len();
+        if total_chars == 0 {
             return Ok(());
         }
 
@@ -1140,36 +1139,63 @@ impl GlitchOp for TypoOp {
             return Ok(());
         }
 
-        let mut chars: Vec<char> = text.chars().collect();
-        if chars.is_empty() {
-            return Ok(());
-        }
-
-        let max_changes = (chars.len() as f64 * clamped_rate).ceil() as usize;
+        let max_changes = (total_chars as f64 * clamped_rate).ceil() as usize;
         if max_changes == 0 {
             return Ok(());
         }
+
+        // Track modified segment texts
+        let mut segment_texts: HashMap<usize, String> = HashMap::new();
 
         const TOTAL_ACTIONS: usize = 8;
         let mut scratch = SmallVec::<[char; 4]>::new();
 
         for _ in 0..max_changes {
-            let action_idx = rng.rand_index(TOTAL_ACTIONS)? as u8;
-            match action_idx as usize {
+            let action_idx = rng.rand_index(TOTAL_ACTIONS)?;
+
+            match action_idx {
                 0 | 1 | 2 | 3 => {
+                    // Character-level operations within Word segments only
+                    let word_segments: Vec<(usize, &TextSegment)> = buffer
+                        .segments()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
+                        .collect();
+
+                    if word_segments.is_empty() {
+                        continue;
+                    }
+
+                    // Pick a random word segment
+                    let seg_choice = rng.rand_index(word_segments.len())?;
+                    let (seg_idx, segment) = word_segments[seg_choice];
+
+                    // Get current text (possibly modified)
+                    let current_text = segment_texts
+                        .get(&seg_idx)
+                        .map(|s| s.as_str())
+                        .unwrap_or_else(|| segment.text());
+
+                    let mut chars: Vec<char> = current_text.chars().collect();
+
+                    // Try to find an eligible index within this segment
                     if let Some(idx) = Self::draw_eligible_index(rng, &chars, 16)? {
                         match action_idx {
                             0 => {
+                                // Swap with next char
                                 if idx + 1 < chars.len() {
                                     chars.swap(idx, idx + 1);
                                 }
                             }
                             1 => {
+                                // Delete char
                                 if idx < chars.len() {
                                     chars.remove(idx);
                                 }
                             }
                             2 => {
+                                // Insert keyboard neighbor before char
                                 if idx < chars.len() {
                                     let ch = chars[idx];
                                     scratch.clear();
@@ -1190,41 +1216,147 @@ impl GlitchOp for TypoOp {
                                 }
                             }
                             3 => {
+                                // Replace with keyboard neighbor
                                 if idx < chars.len() {
                                     if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
-                                        if neighbors.is_empty() {
-                                            continue;
-                                        }
-                                        let choice = rng.rand_index(neighbors.len())?;
-                                        scratch.clear();
-                                        scratch.extend(neighbors[choice].chars());
-                                        if !scratch.is_empty() {
-                                            chars.splice(idx..idx + 1, scratch.iter().copied());
+                                        if !neighbors.is_empty() {
+                                            let choice = rng.rand_index(neighbors.len())?;
+                                            scratch.clear();
+                                            scratch.extend(neighbors[choice].chars());
+                                            if !scratch.is_empty() {
+                                                chars.splice(idx..idx + 1, scratch.iter().copied());
+                                            }
+                                        } else {
+                                            rng.rand_index(1)?;
                                         }
                                     }
                                 }
                             }
                             _ => {}
                         }
+
+                        segment_texts.insert(seg_idx, chars.into_iter().collect());
                     }
                 }
                 4 => {
+                    // Remove space from Separator segments
+                    let sep_segments: Vec<(usize, &TextSegment)> = buffer
+                        .segments()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Separator))
+                        .collect();
+
+                    if sep_segments.is_empty() {
+                        continue;
+                    }
+
+                    let seg_choice = rng.rand_index(sep_segments.len())?;
+                    let (seg_idx, segment) = sep_segments[seg_choice];
+
+                    let current_text = segment_texts
+                        .get(&seg_idx)
+                        .map(|s| s.as_str())
+                        .unwrap_or_else(|| segment.text());
+
+                    let mut chars: Vec<char> = current_text.chars().collect();
                     Self::remove_space(rng, &mut chars)?;
+                    segment_texts.insert(seg_idx, chars.into_iter().collect());
                 }
                 5 => {
+                    // Insert space into a Word segment (splitting it)
+                    let word_segments: Vec<(usize, &TextSegment)> = buffer
+                        .segments()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
+                        .collect();
+
+                    if word_segments.is_empty() {
+                        continue;
+                    }
+
+                    let seg_choice = rng.rand_index(word_segments.len())?;
+                    let (seg_idx, segment) = word_segments[seg_choice];
+
+                    let current_text = segment_texts
+                        .get(&seg_idx)
+                        .map(|s| s.as_str())
+                        .unwrap_or_else(|| segment.text());
+
+                    let mut chars: Vec<char> = current_text.chars().collect();
                     Self::insert_space(rng, &mut chars)?;
+                    segment_texts.insert(seg_idx, chars.into_iter().collect());
                 }
                 6 => {
+                    // Collapse duplicate within Word segments
+                    let word_segments: Vec<(usize, &TextSegment)> = buffer
+                        .segments()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
+                        .collect();
+
+                    if word_segments.is_empty() {
+                        continue;
+                    }
+
+                    let seg_choice = rng.rand_index(word_segments.len())?;
+                    let (seg_idx, segment) = word_segments[seg_choice];
+
+                    let current_text = segment_texts
+                        .get(&seg_idx)
+                        .map(|s| s.as_str())
+                        .unwrap_or_else(|| segment.text());
+
+                    let mut chars: Vec<char> = current_text.chars().collect();
                     Self::collapse_duplicate(rng, &mut chars)?;
+                    segment_texts.insert(seg_idx, chars.into_iter().collect());
                 }
                 7 => {
+                    // Repeat char within Word segments
+                    let word_segments: Vec<(usize, &TextSegment)> = buffer
+                        .segments()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
+                        .collect();
+
+                    if word_segments.is_empty() {
+                        continue;
+                    }
+
+                    let seg_choice = rng.rand_index(word_segments.len())?;
+                    let (seg_idx, segment) = word_segments[seg_choice];
+
+                    let current_text = segment_texts
+                        .get(&seg_idx)
+                        .map(|s| s.as_str())
+                        .unwrap_or_else(|| segment.text());
+
+                    let mut chars: Vec<char> = current_text.chars().collect();
                     Self::repeat_char(rng, &mut chars)?;
+                    segment_texts.insert(seg_idx, chars.into_iter().collect());
                 }
                 _ => unreachable!("action index out of range"),
             }
         }
 
-        *buffer = TextBuffer::from_owned(chars.into_iter().collect());
+        // Rebuild buffer from modified segments
+        if segment_texts.is_empty() {
+            return Ok(());
+        }
+
+        let mut result = String::new();
+        for (idx, segment) in buffer.segments().iter().enumerate() {
+            if let Some(modified_text) = segment_texts.get(&idx) {
+                result.push_str(modified_text);
+            } else {
+                result.push_str(segment.text());
+            }
+        }
+
+        *buffer = TextBuffer::from_owned(result);
         Ok(())
     }
 }

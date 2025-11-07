@@ -3,12 +3,12 @@
 ## Overview
 This document provides a comprehensive audit of all `GlitchOp` implementations in the rust/zoo crate, identifying which operations use direct buffer segment methods vs. those that reparse the buffer via `buffer.to_string()` + `TextBuffer::from_owned()`.
 
-**Audit Date:** 2025-11-07 (Updated after Milestones 1-6, Final)
+**Audit Date:** 2025-11-07 (Updated after Milestones 1-7, Final)
 **Goal:** Eliminate all `buffer.to_string()` / `TextBuffer::from_owned()` patterns within GlitchOp implementations to avoid redundant reparsing where architecturally feasible.
 
-**Status:** ✅ Milestones 1-6 Complete - 11 fully refactored, 3 require full-text operations
-**Fully Refactored:** 11/14 (79%)
-**Require Full-Text:** 3/14 (21%) - architectural constraints
+**Status:** ✅ Milestones 1-7 Complete - 12 fully refactored, 2 require full-text operations
+**Fully Refactored:** 12/14 (86%)
+**Require Full-Text:** 2/14 (14%) - architectural constraints
 
 ---
 
@@ -93,6 +93,19 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 **After:** Segment-based (seg_idx, char_idx) position tracking with bulk updates
 **Impact:** Eliminated ~10 lines of reparse code
 
+#### 11. TypoOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:1127-1354`
+**Status:** ✅ **REFACTORED** (Milestone 7)
+**Before:** Converted entire text to Vec<char>, applied mutations, rebuilt buffer
+**After:** Segment-based operations respecting word boundaries
+**Pattern:**
+- Character operations (swap, delete, keyboard typos, collapse, repeat) work within Word segments
+- Space removal operations target Separator segments
+- Space insertion operations target Word segments (will split on reparse)
+- Modified segments tracked in HashMap
+- Final reconstruction from modified segments only
+**Impact:** Eliminated full-text char array conversion, now respects segment boundaries
+
 ---
 
 ### 🟡 Requiring Full-Text Operations (Documented as Special Cases)
@@ -140,17 +153,6 @@ These operations require full-text operations due to their architectural charact
 **Pattern:** Multiple regex-based whole-text linguistic transformations (8 variants)
 **Rationale:** Applies context-aware linguistic transformations (whomst, fewerling, aetheria, apostrofae, subjunic, commama, kiloa, correctopus) that require seeing full text context for semantic correctness. These are legitimate linguistic operations, not redundant parsing.
 
-#### 14. TypoOp
-**Location:** `rust/zoo/src/glitch_ops.rs:836-1095`
-**Status:** 🟡 **DOCUMENTED AS SPECIAL CASE**
-**Reparse Locations:**
-- Line 994: `let text = buffer.to_string();`
-- Line 1008: `let mut chars: Vec<char> = text.chars().collect();`
-- Line 1092: `*buffer = TextBuffer::from_owned(chars.into_iter().collect());`
-
-**Pattern:** Vec<char> in-place mutations with 8 action types crossing segment boundaries
-**Rationale:** Operations fundamentally require flat character array with in-place mutations (swap chars, remove/insert spaces, repeat chars, collapse duplicates). These operations cross segment boundaries and modify separator structure itself, making segment-based operations architecturally incompatible.
-
 ---
 
 ## Summary Statistics
@@ -165,21 +167,21 @@ These operations require full-text operations due to their architectural charact
 **Total:** 14 GlitchOp implementations
 **Needing Refactoring:** 11 (79%)
 
-### After Milestones 1-6 (Final)
+### After Milestones 1-7 (Final)
 | Status | Count | Operations |
 |--------|-------|-----------|
-| ✅ No Reparse | 11 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, DeleteRandomWordsOp ⭐, RedactWordsOp ⭐, EkkokinOp ⭐, SpectrollOp ⭐, Mim1cOp ⭐, OcrArtifactsOp ⭐, QuotePairsOp ⭐, ZeroWidthOp ⭐ |
-| 🟡 Special Cases (Require Full-Text) | 3 | HokeyOp, PedantOp, TypoOp |
+| ✅ No Reparse | 12 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, DeleteRandomWordsOp ⭐, RedactWordsOp ⭐, EkkokinOp ⭐, SpectrollOp ⭐, Mim1cOp ⭐, OcrArtifactsOp ⭐, QuotePairsOp ⭐, ZeroWidthOp ⭐, TypoOp ⭐ |
+| 🟡 Special Cases (Require Full-Text) | 2 | HokeyOp, PedantOp |
 
 **Total:** 14 GlitchOp implementations
-**Fully Refactored:** 11 (79%)
-**Require Full-Text (Architectural Constraints):** 3 (21%)
+**Fully Refactored:** 12 (86%)
+**Require Full-Text (Architectural Constraints):** 2 (14%)
 
 ---
 
 ## Refactoring Priority
 
-### ✅ Completed (Milestones 2-6)
+### ✅ Completed (Milestones 2-7)
 1. ~~**DeleteRandomWordsOp**~~ - ✅ DONE: Single-pass reconstruction with on-the-fly punctuation spacing
 2. ~~**RedactWordsOp**~~ - ✅ DONE: Single-pass string reconstruction with on-the-fly merge_adjacent
 3. ~~**EkkokinOp**~~ - ✅ DONE: String-splitting converted to segment-based iteration
@@ -188,11 +190,11 @@ These operations require full-text operations due to their architectural charact
 6. ~~**OcrArtifactsOp**~~ - ✅ DONE: Segment-based confusion pattern matching
 7. ~~**QuotePairsOp**~~ - ✅ DONE: Global-to-segment position mapping
 8. ~~**ZeroWidthOp**~~ - ✅ DONE: Segment-based (seg_idx, char_idx) position tracking
+9. ~~**TypoOp**~~ - ✅ DONE: Segment-based operations respecting word boundaries
 
 ### 🟡 Special Cases (Documented as Requiring Full-Text Operations)
-9. **HokeyOp** - Custom regex tokenization with linguistic features (essential to operation semantics)
-10. **PedantOp** - Context-aware linguistic transformations (require full-text context)
-11. **TypoOp** - In-place char mutations crossing segment boundaries (architecturally incompatible)
+10. **HokeyOp** - Custom regex tokenization with linguistic features (essential to operation semantics)
+11. **PedantOp** - Context-aware linguistic transformations (require full-text context)
 
 ---
 
