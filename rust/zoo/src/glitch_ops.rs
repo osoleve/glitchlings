@@ -14,7 +14,7 @@ use crate::resources::{
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
-use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
+use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
 
 static MERGE_REGEX_CACHE: OnceLock<Mutex<HashMap<String, Regex>>> = OnceLock::new();
 
