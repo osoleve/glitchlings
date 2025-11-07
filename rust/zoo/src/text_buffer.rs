@@ -393,6 +393,21 @@ impl TextBuffer {
             return;
         }
 
+        // Helper function to check if a word consists entirely of repeated copies of the token
+        let is_repeated_token = |text: &str| -> bool {
+            if text.is_empty() {
+                return false;
+            }
+            // Check if the word length is a multiple of the token length
+            if text.len() % repeated_char.len() != 0 {
+                return false;
+            }
+            // Check if the word consists of repeated copies of the token
+            text.as_bytes()
+                .chunks(repeated_char.len())
+                .all(|chunk| chunk == repeated_char.as_bytes())
+        };
+
         let mut merged: Vec<TextSegment> = Vec::new();
         let mut i = 0;
 
@@ -402,12 +417,12 @@ impl TextBuffer {
             if matches!(segment.kind(), SegmentKind::Word) {
                 let text = segment.text();
 
-                // Check if this word is all repeated_char
-                if text.chars().all(|c| c.to_string() == repeated_char) {
-                    // Start accumulating repeated chars
-                    let mut total_count = text.chars().count();
+                // Check if this word is composed of repeated tokens
+                if is_repeated_token(text) {
+                    // Count how many copies of the token we have
+                    let mut token_count = text.len() / repeated_char.len();
 
-                    // Look ahead for more repeated char words separated by separators
+                    // Look ahead for more repeated token words separated by separators
                     let mut j = i + 1;
                     while j < self.segments.len() {
                         if matches!(self.segments[j].kind(), SegmentKind::Separator) {
@@ -416,9 +431,9 @@ impl TextBuffer {
                                 let next_word = &self.segments[j + 1];
                                 if matches!(next_word.kind(), SegmentKind::Word) {
                                     let next_text = next_word.text();
-                                    if next_text.chars().all(|c| c.to_string() == repeated_char) {
-                                        // This is also a repeated char word - merge it
-                                        total_count += next_text.chars().count();
+                                    if is_repeated_token(next_text) {
+                                        // This is also a repeated token word - merge it
+                                        token_count += next_text.len() / repeated_char.len();
                                         j += 2; // Skip separator and word
                                         continue;
                                     }
@@ -431,7 +446,7 @@ impl TextBuffer {
                     }
 
                     // Create merged word with total count
-                    let merged_text = repeated_char.repeat(total_count);
+                    let merged_text = repeated_char.repeat(token_count);
                     merged.push(TextSegment::new(merged_text, SegmentKind::Word));
 
                     // Skip to position j (we've consumed segments i..j)
@@ -440,7 +455,7 @@ impl TextBuffer {
                 }
             }
 
-            // Not a repeated char word - just add it
+            // Not a repeated token word - just add it
             merged.push(segment.clone());
             i += 1;
         }
