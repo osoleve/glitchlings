@@ -6,11 +6,10 @@
 /// 3. The buffer can be re-parsed from its string representation without loss
 
 use _zoo_rust::{
-    DeleteRandomWordsOp, DeterministicRng, GlitchOperation, OcrArtifactsOp,
+    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp,
     TextBuffer, TypoOp, ZeroWidthOp,
 };
-use _zoo_rust::glitch_ops::{GlitchOp, GlitchRng};
 
 /// Test corpus covering various text patterns
 const TEST_CORPUS: &[&str] = &[

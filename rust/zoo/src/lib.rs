@@ -23,9 +23,9 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 use ekkokin::{EkkokinOp, HomophoneWeighting};
 pub use glitch_ops::{
-    DeleteRandomWordsOp, GlitchOpError, GlitchOperation, OcrArtifactsOp, QuotePairsOp,
-    RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp, SwapAdjacentWordsOp,
-    TypoOp, ZeroWidthOp,
+    DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
+    QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
+    SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
 use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
