@@ -273,13 +273,46 @@ impl GlitchOp for SpectrollOp {
         buffer: &mut TextBuffer,
         rng: &mut dyn crate::glitch_ops::GlitchRng,
     ) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        let rng_option = match self.mode {
-            SpectrollMode::Literal => None,
-            SpectrollMode::Drift => Some(rng),
-        };
-        let updated = transform_text(&text, self.mode, rng_option)?;
-        *buffer = TextBuffer::from_owned(updated);
+        if buffer.word_count() == 0 {
+            return Ok(());
+        }
+
+        // Collect all replacements first to avoid index shifting
+        let mut replacements: Vec<(usize, String)> = Vec::new();
+
+        for idx in 0..buffer.word_count() {
+            let segment = match buffer.word_segment(idx) {
+                Some(seg) => seg,
+                None => continue,
+            };
+
+            let text = segment.text();
+
+            // Check if this word segment matches a color pattern
+            if let Some(captures) = COLOR_PATTERN.captures(text) {
+                let base = captures.name("color").map(|m| m.as_str()).unwrap_or("");
+                let suffix = captures.name("suffix").map(|m| m.as_str()).unwrap_or("");
+                let canonical = base.to_ascii_lowercase();
+
+                let replacement_base = match self.mode {
+                    SpectrollMode::Literal => canonical_replacement(&canonical),
+                    SpectrollMode::Drift => drift_replacement(&canonical, rng)?,
+                };
+
+                if let Some(replacement_base) = replacement_base {
+                    let adjusted = apply_case(base, replacement_base);
+                    let suffix_fragment = harmonize_suffix(base, replacement_base, suffix);
+                    let replacement = format!("{adjusted}{suffix_fragment}");
+                    replacements.push((idx, replacement));
+                }
+            }
+        }
+
+        // Apply all replacements using bulk update
+        if !replacements.is_empty() {
+            buffer.replace_words_bulk(replacements.into_iter())?;
+        }
+
         Ok(())
     }
 }

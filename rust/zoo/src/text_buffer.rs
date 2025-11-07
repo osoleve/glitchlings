@@ -353,6 +353,37 @@ impl TextBuffer {
         self.reindex();
     }
 
+    /// Replaces the text of a specific segment while preserving its kind.
+    ///
+    /// This is useful for char-level operations that modify segment content
+    /// without changing whether it's a word or separator.
+    pub fn replace_segment(&mut self, segment_index: usize, new_text: String) {
+        if segment_index >= self.segments.len() {
+            return;
+        }
+
+        let kind = self.segments[segment_index].kind();
+        self.segments[segment_index] = TextSegment::new(new_text, kind);
+        self.reindex();
+    }
+
+    /// Replaces multiple segments in bulk.
+    ///
+    /// Takes an iterator of (segment_index, new_text) pairs.
+    /// More efficient than calling replace_segment repeatedly.
+    pub fn replace_segments_bulk<I>(&mut self, replacements: I)
+    where
+        I: IntoIterator<Item = (usize, String)>,
+    {
+        for (segment_index, new_text) in replacements {
+            if segment_index < self.segments.len() {
+                let kind = self.segments[segment_index].kind();
+                self.segments[segment_index] = TextSegment::new(new_text, kind);
+            }
+        }
+        self.reindex();
+    }
+
     /// Merges adjacent word segments that consist entirely of the same repeated character,
     /// removing separators between them.
     ///
