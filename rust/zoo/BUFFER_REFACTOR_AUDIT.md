@@ -3,8 +3,10 @@
 ## Overview
 This document provides a comprehensive audit of all `GlitchOp` implementations in the rust/zoo crate, identifying which operations use direct buffer segment methods vs. those that reparse the buffer via `buffer.to_string()` + `TextBuffer::from_owned()`.
 
-**Audit Date:** 2025-11-07
+**Audit Date:** 2025-11-07 (Updated after Milestones 1-4)
 **Goal:** Eliminate all `buffer.to_string()` / `TextBuffer::from_owned()` patterns within GlitchOp implementations to avoid redundant reparsing.
+
+**Status:** ✅ Milestones 1-4 Complete - 6/14 operations refactored (43% complete)
 
 ---
 
@@ -14,76 +16,50 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 
 #### 1. ReduplicateWordsOp
 **Location:** `rust/zoo/src/glitch_ops.rs:207-285`
-**Status:** ✅ Good
+**Status:** ✅ Good (Original)
 **Pattern:** Uses `buffer.word_segment()`, `buffer.replace_word()`, `buffer.insert_word_after()`
 **Notes:** This is the canonical example of proper segment-based operations.
 
 #### 2. SwapAdjacentWordsOp
 **Location:** `rust/zoo/src/glitch_ops.rs:378-436`
-**Status:** ✅ Good
+**Status:** ✅ Good (Original)
 **Pattern:** Uses `buffer.word_segment()`, `buffer.replace_words_bulk()`
 **Notes:** Efficient bulk replacement pattern. Good example.
 
 #### 3. RushmoreComboOp
 **Location:** `rust/zoo/src/glitch_ops.rs:438-493`
-**Status:** ✅ Good
+**Status:** ✅ Good (Original)
 **Pattern:** Delegates to other ops
 **Notes:** No direct buffer manipulation, just orchestration.
 
----
+#### 4. DeleteRandomWordsOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:287-370`
+**Status:** ✅ **REFACTORED** (Milestone 2)
+**Before:** Lines 367-373 used regex-based reparsing for cleanup
+**After:** Now uses `buffer.normalize()` (line 368)
+**Impact:** Eliminated 7 lines of reparse code, no more `to_string()` + `from_owned()` round-trip
 
-### ⚠️ Using Segment Methods BUT with Cleanup Reparse
+#### 5. RedactWordsOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:495-605`
+**Status:** ✅ **REFACTORED** (Milestone 2)
+**Before:** Lines 595-605 used regex-based merging with reparse
+**After:** Now uses `buffer.merge_repeated_char_words()` (line 596)
+**Impact:** Eliminated conditional reparsing path, 10 lines of regex code removed
 
-#### 4. DeleteRandomWordsOp
-**Location:** `rust/zoo/src/glitch_ops.rs:287-376`
-**Status:** ⚠️ Needs Refactoring
-**Reparse Location:** Lines 367-373
-```rust
-let mut joined = buffer.to_string();
-joined = SPACE_BEFORE_PUNCTUATION.replace_all(&joined, "$1").into_owned();
-joined = MULTIPLE_WHITESPACE.replace_all(&joined, " ").into_owned();
-let final_text = joined.trim().to_string();
-*buffer = TextBuffer::from_owned(final_text);
-```
-**Pattern:** Uses segment methods for deletions, but reparsed for whitespace cleanup
-**Refactor Plan:** Implement cleanup logic directly on segments or create helper that doesn't require full reparse
-
-#### 5. RedactWordsOp
-**Location:** `rust/zoo/src/glitch_ops.rs:495-614`
-**Status:** ⚠️ Needs Refactoring
-**Reparse Location:** Lines 599-609
-```rust
-if self.merge_adjacent {
-    let text = buffer.to_string();
-    let regex = cached_merge_regex(&self.replacement_char)?;
-    let merged = regex.replace_all(&text, |caps: &Captures| { ... }).into_owned();
-    *buffer = TextBuffer::from_owned(merged);
-}
-```
-**Pattern:** Uses segment methods for redaction, but reparsed for merge_adjacent
-**Refactor Plan:** Implement merge_adjacent logic via segment traversal
+#### 6. EkkokinOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/ekkokin.rs:148-208`
+**Status:** ✅ **REFACTORED** (Milestone 4)
+**Before:** Lines 150-198 used `split_with_separators()` + `concat()` + reparse
+**After:** Now uses segment-based iteration with `buffer.word_segment()` and `buffer.replace_words_bulk()`
+**Impact:**
+- Eliminated split_with_separators pattern entirely
+- No more `to_string()` + `from_owned()` round-trip
+- Uses efficient bulk update for all replacements
+- Removed unused import
 
 ---
 
-### 🔴 Using Full String Reparse (split_with_separators pattern)
-
-#### 6. EkkokinOp
-**Location:** `rust/zoo/src/ekkokin.rs:148-203`
-**Status:** 🔴 High Priority - Needs Refactoring
-**Reparse Locations:**
-- Line 150: `let text = buffer.to_string();`
-- Line 164: `let mut tokens = split_with_separators(&text);`
-- Line 198: `*buffer = TextBuffer::from_owned(updated);`
-
-**Pattern:**
-```rust
-let text = buffer.to_string();
-let mut tokens = split_with_separators(&text);
-// ... mutate tokens ...
-let updated = tokens.concat();
-*buffer = TextBuffer::from_owned(updated);
-```
-**Refactor Plan:** Use `buffer.word_segments()` iterator + `replace_word()` for mutations
+### 🔴 Using Full String Reparse (Still Needs Refactoring)
 
 #### 7. HokeyOp
 **Location:** `rust/zoo/src/hokey.rs:574-628`
@@ -175,6 +151,7 @@ let updated = tokens.concat();
 
 ## Summary Statistics
 
+### Before Refactoring (Baseline)
 | Status | Count | Operations |
 |--------|-------|-----------|
 | ✅ Good | 3 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp |
@@ -184,22 +161,38 @@ let updated = tokens.concat();
 **Total:** 14 GlitchOp implementations
 **Needing Refactoring:** 11 (79%)
 
+### After Milestones 1-4 (Current)
+| Status | Count | Operations |
+|--------|-------|-----------|
+| ✅ No Reparse | 6 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, DeleteRandomWordsOp ⭐, RedactWordsOp ⭐, EkkokinOp ⭐ |
+| 🔴 Still Need Refactoring | 8 | HokeyOp, PedantOp, OcrArtifactsOp, ZeroWidthOp, TypoOp, QuotePairsOp, Mim1cOp, SpectrollOp |
+
+**Total:** 14 GlitchOp implementations
+**Refactored:** 6 (43%)
+**Remaining:** 8 (57%)
+
 ---
 
 ## Refactoring Priority
 
-### High Priority (Milestone 3-4)
-1. **DeleteRandomWordsOp** - Already mostly segment-based, just cleanup needed
-2. **EkkokinOp** - String-splitting pattern, straightforward to convert
-3. **HokeyOp** - Complex but important, custom tokenization
-4. **PedantOp** - Regex-based, may need special handling
+### ✅ Completed (Milestones 2-4)
+1. ~~**DeleteRandomWordsOp**~~ - ✅ DONE: Cleanup using `buffer.normalize()`
+2. ~~**RedactWordsOp**~~ - ✅ DONE: merge_adjacent using `buffer.merge_repeated_char_words()`
+3. ~~**EkkokinOp**~~ - ✅ DONE: String-splitting converted to segment-based iteration
 
-### Medium Priority (Milestone 4)
-5. **RedactWordsOp** - merge_adjacent logic needs segment-based solution
-6. **SpectrollOp** - Regex-based but simpler than Pedant
+### 🎯 Remaining High Priority (Milestone 4-5)
+4. **HokeyOp** - Complex custom tokenization, needs careful adaptation
+5. **PedantOp** - Multiple regex-based transforms, may need hybrid approach
 
-### Lower Priority (As needed)
-7. **OcrArtifactsOp**, **ZeroWidthOp**, **TypoOp**, **QuotePairsOp**, **Mim1cOp** - Char-level ops that may benefit from buffer enhancements
+### 🔶 Medium Priority (Milestone 6)
+6. **SpectrollOp** - Regex-based color word replacement
+7. **OcrArtifactsOp** - Byte-index-based character confusion
+
+### 🔸 Lower Priority (Milestone 6+)
+8. **ZeroWidthOp** - Char-level insertion
+9. **TypoOp** - Vec<char> manipulation
+10. **QuotePairsOp** - Char-index quote pair detection
+11. **Mim1cOp** - Byte-index character replacement
 
 ---
 
