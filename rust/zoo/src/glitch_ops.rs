@@ -417,7 +417,7 @@ impl GlitchOp for DeleteRandomWordsOp {
                     // Mark that we need a separator before the next word
                     // (actual separator will be added when we emit next word)
                     let sep_text = segment.text();
-                    if !sep_text.trim().is_empty() || sep_text.contains('\n') {
+                    if sep_text.contains('\n') || !sep_text.trim().is_empty() {
                         needs_separator = true;
                     }
                 }
