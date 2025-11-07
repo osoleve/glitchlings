@@ -364,13 +364,8 @@ impl GlitchOp for DeleteRandomWordsOp {
             deletions += 1;
         }
 
-        let mut joined = buffer.to_string();
-        joined = SPACE_BEFORE_PUNCTUATION
-            .replace_all(&joined, "$1")
-            .into_owned();
-        joined = MULTIPLE_WHITESPACE.replace_all(&joined, " ").into_owned();
-        let final_text = joined.trim().to_string();
-        *buffer = TextBuffer::from_owned(final_text);
+        // Normalize whitespace and punctuation spacing without reparsing
+        buffer.normalize();
         Ok(())
     }
 }
@@ -597,16 +592,8 @@ impl GlitchOp for RedactWordsOp {
         }
 
         if self.merge_adjacent {
-            let text = buffer.to_string();
-            let regex = cached_merge_regex(&self.replacement_char)?;
-            let merged = regex
-                .replace_all(&text, |caps: &Captures| {
-                    let matched = caps.get(0).map_or("", |m| m.as_str());
-                    let repeat = matched.chars().count().saturating_sub(1);
-                    self.replacement_char.repeat(repeat)
-                })
-                .into_owned();
-            *buffer = TextBuffer::from_owned(merged);
+            // Merge adjacent redacted words without reparsing
+            buffer.merge_repeated_char_words(&self.replacement_char);
         }
 
         Ok(())

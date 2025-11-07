@@ -292,6 +292,132 @@ impl TextBuffer {
             .collect()
     }
 
+    /// Normalizes whitespace and punctuation spacing without reparsing.
+    ///
+    /// This method:
+    /// - Merges consecutive separator segments into single spaces
+    /// - Removes spaces before punctuation (.,:;)
+    /// - Trims leading/trailing whitespace
+    ///
+    /// This is more efficient than reparsing via `to_string()` + `from_owned()`.
+    pub fn normalize(&mut self) {
+        // First pass: identify segments to merge/modify
+        let mut normalized: Vec<TextSegment> = Vec::new();
+        let mut pending_separator = false;
+
+        for segment in &self.segments {
+            match segment.kind() {
+                SegmentKind::Separator => {
+                    // Mark that we have a separator pending
+                    pending_separator = true;
+                }
+                SegmentKind::Word => {
+                    let text = segment.text();
+
+                    // Check if word starts with punctuation that should not have space before
+                    let starts_with_punct = text
+                        .chars()
+                        .next()
+                        .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                        .unwrap_or(false);
+
+                    // Add separator if needed (but not before sentence punctuation)
+                    if pending_separator && !starts_with_punct && !normalized.is_empty() {
+                        normalized.push(TextSegment::new(" ".to_string(), SegmentKind::Separator));
+                    }
+                    pending_separator = false;
+
+                    // Add the word
+                    normalized.push(segment.clone());
+                }
+            }
+        }
+
+        // Trim: remove leading/trailing separators
+        while normalized
+            .first()
+            .map(|s| matches!(s.kind(), SegmentKind::Separator))
+            .unwrap_or(false)
+        {
+            normalized.remove(0);
+        }
+        while normalized
+            .last()
+            .map(|s| matches!(s.kind(), SegmentKind::Separator))
+            .unwrap_or(false)
+        {
+            normalized.pop();
+        }
+
+        self.segments = normalized;
+        self.reindex();
+    }
+
+    /// Merges adjacent word segments that consist entirely of the same repeated character,
+    /// removing separators between them.
+    ///
+    /// This is used by RedactWordsOp to merge adjacent redacted words like "███ ███" into "██████".
+    pub fn merge_repeated_char_words(&mut self, repeated_char: &str) {
+        if self.segments.is_empty() || repeated_char.is_empty() {
+            return;
+        }
+
+        let mut merged: Vec<TextSegment> = Vec::new();
+        let mut i = 0;
+
+        while i < self.segments.len() {
+            let segment = &self.segments[i];
+
+            if matches!(segment.kind(), SegmentKind::Word) {
+                let text = segment.text();
+
+                // Check if this word is all repeated_char
+                if text.chars().all(|c| c.to_string() == repeated_char) {
+                    // Start accumulating repeated chars
+                    let mut total_count = text.chars().count();
+
+                    // Look ahead for more repeated char words separated by separators
+                    let mut j = i + 1;
+                    while j < self.segments.len() {
+                        if matches!(self.segments[j].kind(), SegmentKind::Separator) {
+                            // Skip separator, check next word
+                            if j + 1 < self.segments.len() {
+                                let next_word = &self.segments[j + 1];
+                                if matches!(next_word.kind(), SegmentKind::Word) {
+                                    let next_text = next_word.text();
+                                    if next_text.chars().all(|c| c.to_string() == repeated_char) {
+                                        // This is also a repeated char word - merge it
+                                        total_count += next_text.chars().count();
+                                        j += 2; // Skip separator and word
+                                        continue;
+                                    }
+                                }
+                            }
+                            break;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Create merged word with total count
+                    let merged_text = repeated_char.repeat(total_count);
+                    merged.push(TextSegment::new(merged_text, SegmentKind::Word));
+
+                    // Skip to position j (we've consumed segments i..j)
+                    i = j;
+                    continue;
+                }
+            }
+
+            // Not a repeated char word - just add it
+            merged.push(segment.clone());
+            i += 1;
+        }
+
+        self.segments = merged;
+        self.reindex();
+    }
+
     fn char_to_byte_index(&self, char_index: usize) -> Option<usize> {
         if char_index > self.total_chars {
             return None;
