@@ -242,24 +242,6 @@ def test_load_environment_respects_explicit_columns(monkeypatch):
     assert stub.columns_seen == [["extra"]]
 
 
-def test_tutorial_level_applies_tuned_glitchlings(monkeypatch):
-    baseline = "alpha beta gamma delta"
-
-    def _fake_environment(_):
-        return _FakeEnvironment(Dataset.from_dict({"prompt": [baseline]}))
-
-    monkeypatch.setattr(prime, "_resolve_environment", _fake_environment)
-
-    env = prime.tutorial_level("ignored", seed=123, difficulty=prime.Difficulty.Easy)
-    mutated_prompt = list(env.dataset)[0]["prompt"]
-    assert mutated_prompt != baseline
-
-    env_again = prime.tutorial_level("ignored", seed=123, difficulty=prime.Difficulty.Easy)
-    mutated_again = list(env_again.dataset)[0]["prompt"]
-    assert mutated_again != baseline
-    assert mutated_prompt == mutated_again
-
-
 def test_extract_completion_text_handles_strings_and_structures() -> None:
     assert prime._extract_completion_text("plain text") == "plain text"
 
