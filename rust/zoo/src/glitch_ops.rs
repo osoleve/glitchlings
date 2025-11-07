@@ -567,52 +567,118 @@ impl GlitchOp for RedactWordsOp {
             weighted_sample_without_replacement(rng, &weighted_indices, num_to_redact)?;
         selections.sort_unstable_by_key(|candidate_idx| candidates[*candidate_idx].index);
 
+        // Build map of word_index -> RedactCandidate for selected words
+        use std::collections::HashMap;
+        let mut redact_map: HashMap<usize, &RedactCandidate> = HashMap::new();
         for selection in selections {
             let candidate = &candidates[selection];
-            let Some(segment) = buffer.word_segment(candidate.index) else {
-                continue;
-            };
-            let text = segment.text();
-            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
-                && candidate.core_start <= candidate.core_end
-                && candidate.core_start <= text.len()
-            {
-                (candidate.core_start, candidate.core_end, candidate.repeat)
-            } else if let Some((start, end)) = affix_bounds(text) {
-                let repeat = text[start..end].chars().count();
-                if repeat == 0 {
-                    continue;
+            redact_map.insert(candidate.index, candidate);
+        }
+
+        // Build output string in a single pass
+        let mut result = String::new();
+        let mut pending_tokens = 0usize;
+        let mut pending_suffix = String::new();
+
+        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
+            match segment.kind() {
+                SegmentKind::Word => {
+                    // Check if this word should be redacted
+                    if let Some(word_idx) = word_idx_opt {
+                        if let Some(candidate) = redact_map.get(&word_idx) {
+                            let text = segment.text();
+
+                            // Re-validate bounds in case segment changed
+                            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
+                                && candidate.core_start <= candidate.core_end
+                                && candidate.core_start <= text.len()
+                            {
+                                (candidate.core_start, candidate.core_end, candidate.repeat)
+                            } else if let Some((start, end)) = affix_bounds(text) {
+                                let repeat = text[start..end].chars().count();
+                                if repeat == 0 {
+                                    // Can't redact - treat as non-redacted
+                                    if pending_tokens > 0 {
+                                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                                        result.push_str(&pending_suffix);
+                                        pending_tokens = 0;
+                                        pending_suffix.clear();
+                                    }
+                                    result.push_str(text);
+                                    continue;
+                                }
+                                (start, end, repeat)
+                            } else {
+                                // Can't redact - treat as non-redacted
+                                if pending_tokens > 0 {
+                                    result.push_str(&self.replacement_char.repeat(pending_tokens));
+                                    result.push_str(&pending_suffix);
+                                    pending_tokens = 0;
+                                    pending_suffix.clear();
+                                }
+                                result.push_str(text);
+                                continue;
+                            };
+
+                            let prefix = &text[..core_start];
+                            let suffix = &text[core_end..];
+
+                            if self.merge_adjacent {
+                                // Accumulate tokens for merging
+                                if pending_tokens == 0 {
+                                    // Start of new redaction block
+                                    result.push_str(prefix);
+                                }
+                                pending_tokens += repeat;
+                                pending_suffix = suffix.to_string();
+                            } else {
+                                // Not merging - emit immediately
+                                result.push_str(prefix);
+                                result.push_str(&self.replacement_char.repeat(repeat));
+                                result.push_str(suffix);
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Not redacted - flush any pending redaction first
+                    if pending_tokens > 0 {
+                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                        result.push_str(&pending_suffix);
+                        pending_tokens = 0;
+                        pending_suffix.clear();
+                    }
+                    result.push_str(segment.text());
                 }
-                (start, end, repeat)
-            } else {
-                continue;
-            };
+                SegmentKind::Separator => {
+                    if self.merge_adjacent && pending_tokens > 0 {
+                        // Check if this separator should be skipped (merged across)
+                        let sep_text = segment.text();
+                        // Skip if separator is only punctuation/whitespace (non-word characters)
+                        if sep_text.chars().all(|c| !c.is_alphanumeric() && c != '_') {
+                            continue; // Skip this separator - we're merging across it
+                        }
+                    }
 
-            let prefix = &text[..core_start];
-            let suffix = &text[core_end..];
-            let repeated = self.replacement_char.repeat(repeat);
-            let mut replacement =
-                String::with_capacity(prefix.len() + repeated.len() + suffix.len());
-            replacement.push_str(prefix);
-            replacement.push_str(&repeated);
-            replacement.push_str(suffix);
-            buffer.replace_word(candidate.index, &replacement)?;
+                    // Not merging or separator contains word characters - flush pending
+                    if pending_tokens > 0 {
+                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                        result.push_str(&pending_suffix);
+                        pending_tokens = 0;
+                        pending_suffix.clear();
+                    }
+                    result.push_str(segment.text());
+                }
+            }
         }
 
-        if self.merge_adjacent {
-            // Merge adjacent redacted words across punctuation using regex
-            let text = buffer.to_string();
-            let regex = cached_merge_regex(&self.replacement_char)?;
-            let merged = regex
-                .replace_all(&text, |caps: &Captures| {
-                    let matched = caps.get(0).map_or("", |m| m.as_str());
-                    let repeat = matched.chars().count().saturating_sub(1);
-                    self.replacement_char.repeat(repeat)
-                })
-                .into_owned();
-            *buffer = TextBuffer::from_owned(merged);
+        // Flush any final pending redaction
+        if pending_tokens > 0 {
+            result.push_str(&self.replacement_char.repeat(pending_tokens));
+            result.push_str(&pending_suffix);
         }
 
+        *buffer = TextBuffer::from_owned(result);
         Ok(())
     }
 }

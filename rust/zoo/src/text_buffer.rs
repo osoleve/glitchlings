@@ -151,6 +151,23 @@ impl TextBuffer {
             .and_then(|segment_index| self.segments.get(segment_index))
     }
 
+    /// Returns an iterator over all segments with their word index (if they are word segments).
+    ///
+    /// Each item is (segment_index, segment, word_index_option).
+    /// Word segments have Some(word_index), separator segments have None.
+    pub fn segments_with_word_indices(&self) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> {
+        // Build reverse map: segment_index -> word_index
+        let mut seg_to_word: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+        for (word_idx, &seg_idx) in self.word_segment_indices.iter().enumerate() {
+            seg_to_word.insert(seg_idx, word_idx);
+        }
+
+        self.segments.iter().enumerate().map(move |(seg_idx, segment)| {
+            let word_idx = seg_to_word.get(&seg_idx).copied();
+            (seg_idx, segment, word_idx)
+        })
+    }
+
     /// Replace the text for the given word index.
     pub fn replace_word(
         &mut self,

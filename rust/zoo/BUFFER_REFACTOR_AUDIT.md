@@ -6,9 +6,8 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 **Audit Date:** 2025-11-07 (Updated after Milestones 1-6, Final)
 **Goal:** Eliminate all `buffer.to_string()` / `TextBuffer::from_owned()` patterns within GlitchOp implementations to avoid redundant reparsing where architecturally feasible.
 
-**Status:** ✅ Milestones 1-6 Complete - 9 fully refactored, 1 partially refactored, 4 require full-text operations
-**Fully Refactored:** 9/14 (64%)
-**Partially Refactored:** 1/14 (7%) - RedactWordsOp when merge_adjacent=true
+**Status:** ✅ Milestones 1-6 Complete - 10 fully refactored, 4 require full-text operations
+**Fully Refactored:** 10/14 (71%)
 **Require Full-Text:** 4/14 (29%) - architectural constraints
 
 ---
@@ -35,12 +34,18 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 **Pattern:** Delegates to other ops
 **Notes:** No direct buffer manipulation, just orchestration.
 
-#### 4. RedactWordsOp (PARTIAL - merge_adjacent requires reparsing)
-**Location:** `rust/zoo/src/glitch_ops.rs:498-618`
-**Status:** 🟡 **PARTIALLY REFACTORED**
-**Refactored:** Word-level redaction uses segment-based operations
-**Still requires reparsing:** `merge_adjacent=true` uses regex to merge across punctuation
-**Rationale:** The merge operation matches pattern `token\W+token` (token + punctuation + token) and removes the punctuation between redacted words. Example: "███, ███" → "██████". This requires seeing the full string to properly detect and merge punctuation-separated redactions, which TextBuffer segmentation doesn't expose.
+#### 4. RedactWordsOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:507-684`
+**Status:** ✅ **FULLY REFACTORED** (Optimized in final pass)
+**Before:** Per-word `replace_word()` calls + regex-based merging with reparse
+**After:** Single-pass string reconstruction with on-the-fly merging
+**Pattern:**
+- Collects redaction decisions (HashMap of word_index → candidate)
+- Uses `segments_with_word_indices()` to iterate once through all segments
+- Tracks pending redaction tokens when merge_adjacent=true
+- Skips punctuation/whitespace separators between redacted words during merge
+- Builds final string in linear time without reparsing
+**Impact:** Eliminated all buffer mutations and reparsing - now O(n) linear scan
 
 #### 5. EkkokinOp ⭐ REFACTORED
 **Location:** `rust/zoo/src/ekkokin.rs:148-208`
@@ -154,13 +159,11 @@ These operations require full-text operations due to their architectural charact
 ### After Milestones 1-6 (Final)
 | Status | Count | Operations |
 |--------|-------|-----------|
-| ✅ No Reparse | 9 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, EkkokinOp ⭐, SpectrollOp ⭐, Mim1cOp ⭐, OcrArtifactsOp ⭐, QuotePairsOp ⭐, ZeroWidthOp ⭐ |
-| 🟡 Partial (Conditional Reparse) | 1 | RedactWordsOp (only when merge_adjacent=true) |
+| ✅ No Reparse | 10 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, RedactWordsOp ⭐, EkkokinOp ⭐, SpectrollOp ⭐, Mim1cOp ⭐, OcrArtifactsOp ⭐, QuotePairsOp ⭐, ZeroWidthOp ⭐ |
 | 🟡 Special Cases (Require Full-Text) | 4 | DeleteRandomWordsOp, HokeyOp, PedantOp, TypoOp |
 
 **Total:** 14 GlitchOp implementations
-**Fully Refactored:** 9 (64%)
-**Partially Refactored:** 1 (7%)
+**Fully Refactored:** 10 (71%)
 **Require Full-Text (Architectural Constraints):** 4 (29%)
 
 ---
@@ -168,15 +171,13 @@ These operations require full-text operations due to their architectural charact
 ## Refactoring Priority
 
 ### ✅ Completed (Milestones 2-6)
-1. ~~**EkkokinOp**~~ - ✅ DONE: String-splitting converted to segment-based iteration
-2. ~~**SpectrollOp**~~ - ✅ DONE: Segment-based with regex per segment, handles multiple matches
-3. ~~**Mim1cOp**~~ - ✅ DONE: Segment-based char-level replacements
-4. ~~**OcrArtifactsOp**~~ - ✅ DONE: Segment-based confusion pattern matching
-5. ~~**QuotePairsOp**~~ - ✅ DONE: Global-to-segment position mapping
-6. ~~**ZeroWidthOp**~~ - ✅ DONE: Segment-based (seg_idx, char_idx) position tracking
-
-### 🟡 Partially Refactored
-7. **RedactWordsOp** - Segment-based redaction, but merge_adjacent=true requires regex to merge across punctuation
+1. ~~**RedactWordsOp**~~ - ✅ DONE: Single-pass string reconstruction with on-the-fly merge_adjacent
+2. ~~**EkkokinOp**~~ - ✅ DONE: String-splitting converted to segment-based iteration
+3. ~~**SpectrollOp**~~ - ✅ DONE: Segment-based with regex per segment, handles multiple matches
+4. ~~**Mim1cOp**~~ - ✅ DONE: Segment-based char-level replacements
+5. ~~**OcrArtifactsOp**~~ - ✅ DONE: Segment-based confusion pattern matching
+6. ~~**QuotePairsOp**~~ - ✅ DONE: Global-to-segment position mapping
+7. ~~**ZeroWidthOp**~~ - ✅ DONE: Segment-based (seg_idx, char_idx) position tracking
 
 ### 🟡 Special Cases (Documented as Requiring Full-Text Operations)
 8. **DeleteRandomWordsOp** - Word core deletion creates punctuation-only segments requiring re-tokenization
