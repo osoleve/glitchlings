@@ -100,6 +100,7 @@ pub struct TextBuffer {
     segments: Vec<TextSegment>,
     spans: Vec<TextSpan>,
     word_segment_indices: Vec<usize>,
+    segment_to_word_index: Vec<Option<usize>>,
     total_chars: usize,
     total_bytes: usize,
 }
@@ -111,6 +112,7 @@ impl TextBuffer {
             segments: tokenise(&text),
             spans: Vec::new(),
             word_segment_indices: Vec::new(),
+            segment_to_word_index: Vec::new(),
             total_chars: 0,
             total_bytes: 0,
         };
@@ -155,15 +157,11 @@ impl TextBuffer {
     ///
     /// Each item is (segment_index, segment, word_index_option).
     /// Word segments have Some(word_index), separator segments have None.
-    pub fn segments_with_word_indices(&self) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> {
-        // Build reverse map: segment_index -> word_index
-        let mut seg_to_word: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
-        for (word_idx, &seg_idx) in self.word_segment_indices.iter().enumerate() {
-            seg_to_word.insert(seg_idx, word_idx);
-        }
-
-        self.segments.iter().enumerate().map(move |(seg_idx, segment)| {
-            let word_idx = seg_to_word.get(&seg_idx).copied();
+    ///
+    /// Uses cached segment-to-word mapping built during reindex() for O(1) lookup.
+    pub fn segments_with_word_indices(&self) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> + '_ {
+        self.segments.iter().enumerate().map(|(seg_idx, segment)| {
+            let word_idx = self.segment_to_word_index.get(seg_idx).copied().flatten();
             (seg_idx, segment, word_idx)
         })
     }
@@ -507,6 +505,9 @@ impl TextBuffer {
     fn reindex(&mut self) {
         self.spans.clear();
         self.word_segment_indices.clear();
+        self.segment_to_word_index.clear();
+        self.segment_to_word_index.resize(self.segments.len(), None);
+
         let mut char_cursor = 0;
         let mut byte_cursor = 0;
         for (segment_index, segment) in self.segments.iter().enumerate() {
@@ -519,7 +520,9 @@ impl TextBuffer {
                 byte_range: byte_cursor..(byte_cursor + byte_len),
             };
             if matches!(segment.kind(), SegmentKind::Word) {
+                let word_index = self.word_segment_indices.len();
                 self.word_segment_indices.push(segment_index);
+                self.segment_to_word_index[segment_index] = Some(word_index);
             }
             self.spans.push(span);
             char_cursor += char_len;
