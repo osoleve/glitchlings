@@ -1134,11 +1134,22 @@ impl QuotePairsOp {
 
 impl GlitchOp for QuotePairsOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
+        // Build mapping from global byte index to (segment_index, byte_offset_in_segment)
+        let mut byte_to_segment: Vec<(usize, usize)> = Vec::new(); // (seg_idx, byte_offset)
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let seg_text = segment.text();
+            for byte_offset in 0..seg_text.len() {
+                byte_to_segment.push((seg_idx, byte_offset));
+            }
+        }
+
+        // Build full text for quote pair detection (we need to find pairs across segments)
+        let text = buffer.to_string();
         let pairs = Self::collect_pairs(&text);
         if pairs.is_empty() {
             return Ok(());
@@ -1149,6 +1160,7 @@ impl GlitchOp for QuotePairsOp {
             return Ok(());
         }
 
+        // Collect replacements with global byte positions
         let mut replacements: Vec<Replacement> = Vec::with_capacity(pairs.len() * 2);
 
         for pair in pairs {
@@ -1178,30 +1190,54 @@ impl GlitchOp for QuotePairsOp {
             return Ok(());
         }
 
-        replacements.sort_by_key(|replacement| replacement.start);
-        let mut extra_capacity = 0usize;
-        for replacement in &replacements {
-            let span = replacement.end - replacement.start;
-            if replacement.value.len() > span {
-                extra_capacity += replacement.value.len() - span;
-            }
-        }
-
-        let mut result = String::with_capacity(text.len() + extra_capacity);
-        let mut cursor = 0usize;
+        // Group replacements by segment
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, String)>> = std::collections::HashMap::new();
 
         for replacement in replacements {
-            if cursor < replacement.start {
-                result.push_str(&text[cursor..replacement.start]);
+            if replacement.start < byte_to_segment.len() {
+                let (seg_idx, _) = byte_to_segment[replacement.start];
+                // Calculate byte offset within segment
+                let mut segment_byte_start = 0;
+                for i in 0..seg_idx {
+                    segment_byte_start += segments[i].text().len();
+                }
+                let byte_offset_in_seg = replacement.start - segment_byte_start;
+                let byte_end_in_seg = byte_offset_in_seg + (replacement.end - replacement.start);
+
+                by_segment
+                    .entry(seg_idx)
+                    .or_default()
+                    .push((byte_offset_in_seg, byte_end_in_seg, replacement.value));
             }
-            result.push_str(&replacement.value);
-            cursor = replacement.end;
-        }
-        if cursor < text.len() {
-            result.push_str(&text[cursor..]);
         }
 
-        *buffer = TextBuffer::from_owned(result);
+        // Build segment replacements
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_replacements) in by_segment {
+            seg_replacements.sort_by_key(|&(start, _, _)| start);
+
+            let seg_text = segments[seg_idx].text();
+            let mut result = String::with_capacity(seg_text.len());
+            let mut cursor = 0usize;
+
+            for (start, end, value) in seg_replacements {
+                if cursor < start {
+                    result.push_str(&seg_text[cursor..start]);
+                }
+                result.push_str(&value);
+                cursor = end;
+            }
+            if cursor < seg_text.len() {
+                result.push_str(&seg_text[cursor..]);
+            }
+
+            segment_replacements.push((seg_idx, result));
+        }
+
+        // Apply all segment replacements in bulk without reparsing
+        buffer.replace_segments_bulk(segment_replacements.into_iter());
+
         Ok(())
     }
 }
