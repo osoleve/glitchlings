@@ -99,9 +99,9 @@ impl GlitchOp for Mim1cOp {
         let mut targets: Vec<(usize, usize, char)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
-            for (char_offset, ch) in segment.text().char_indices() {
+            for (byte_offset, ch) in segment.text().char_indices() {
                 if ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(&ch) {
-                    targets.push((seg_idx, char_offset, ch));
+                    targets.push((seg_idx, byte_offset, ch));
                 }
             }
         }
