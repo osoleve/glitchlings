@@ -725,20 +725,28 @@ impl GlitchOp for ZeroWidthOp {
             return Ok(());
         }
 
-        let text = buffer.to_string();
-        if text.is_empty() {
+        let segments = buffer.segments();
+        if segments.is_empty() {
             return Ok(());
         }
 
-        let chars: Vec<char> = text.chars().collect();
-        if chars.len() < 2 {
-            return Ok(());
-        }
+        // Collect insertion positions across all segments
+        // Track (segment_index, char_index_in_segment) for each insertion point
+        let mut positions: Vec<(usize, usize)> = Vec::new();
 
-        let mut positions: Vec<usize> = Vec::new();
-        for index in 0..(chars.len() - 1) {
-            if !chars[index].is_whitespace() && !chars[index + 1].is_whitespace() {
-                positions.push(index + 1);
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            let text = segment.text();
+            let chars: Vec<char> = text.chars().collect();
+
+            if chars.len() < 2 {
+                continue;
+            }
+
+            for char_idx in 0..(chars.len() - 1) {
+                if !chars[char_idx].is_whitespace() && !chars[char_idx + 1].is_whitespace() {
+                    // Mark position after char_idx (before char_idx + 1)
+                    positions.push((seg_idx, char_idx + 1));
+                }
             }
         }
 
@@ -768,29 +776,59 @@ impl GlitchOp for ZeroWidthOp {
             return Ok(());
         }
 
+        // Sample positions to insert zero-width characters
         let mut index_samples = rng.sample_indices(total, count)?;
         index_samples.sort_unstable();
-        let chosen: Vec<usize> = index_samples
-            .into_iter()
-            .map(|sample| positions[sample])
-            .collect();
 
-        let mut result = String::with_capacity(text.len() + count);
-        let mut iter = chosen.into_iter();
-        let mut next = iter.next();
-
-        for (idx, ch) in chars.iter().enumerate() {
-            result.push(*ch);
-            if let Some(insert_pos) = next {
-                if insert_pos == idx + 1 {
-                    let palette_idx = rng.rand_index(palette.len())?;
-                    result.push_str(&palette[palette_idx]);
-                    next = iter.next();
-                }
-            }
+        // Collect (seg_idx, char_idx, zero_width_char) for selected positions
+        let mut insertions: Vec<(usize, usize, String)> = Vec::new();
+        for sample_idx in index_samples {
+            let (seg_idx, char_idx) = positions[sample_idx];
+            let palette_idx = rng.rand_index(palette.len())?;
+            insertions.push((seg_idx, char_idx, palette[palette_idx].clone()));
         }
 
-        *buffer = TextBuffer::from_owned(result);
+        // Group insertions by segment
+        use std::collections::HashMap;
+        let mut by_segment: HashMap<usize, Vec<(usize, String)>> = HashMap::new();
+        for (seg_idx, char_idx, zero_width) in insertions {
+            by_segment.entry(seg_idx).or_default().push((char_idx, zero_width));
+        }
+
+        // Build replacement text for each affected segment
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, mut seg_insertions) in by_segment {
+            // Sort by char_idx in ascending order to build string left to right
+            seg_insertions.sort_unstable_by_key(|(char_idx, _)| *char_idx);
+
+            let original_text = segments[seg_idx].text();
+            let chars: Vec<char> = original_text.chars().collect();
+            let mut modified = String::with_capacity(original_text.len() + seg_insertions.len() * 5);
+
+            let mut prev_idx = 0;
+            for (char_idx, zero_width) in seg_insertions {
+                // Add characters from prev_idx up to (but not including) char_idx
+                for i in prev_idx..char_idx {
+                    modified.push(chars[i]);
+                }
+                // Insert zero-width character at char_idx
+                modified.push_str(&zero_width);
+                prev_idx = char_idx;
+            }
+            // Add remaining characters from prev_idx to end
+            for i in prev_idx..chars.len() {
+                modified.push(chars[i]);
+            }
+
+            segment_replacements.push((seg_idx, modified));
+        }
+
+        // Apply all segment replacements in bulk
+        if !segment_replacements.is_empty() {
+            buffer.replace_segments_bulk(segment_replacements.into_iter());
+        }
+
         Ok(())
     }
 }

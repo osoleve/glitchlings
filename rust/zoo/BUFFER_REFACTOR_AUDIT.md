@@ -3,10 +3,11 @@
 ## Overview
 This document provides a comprehensive audit of all `GlitchOp` implementations in the rust/zoo crate, identifying which operations use direct buffer segment methods vs. those that reparse the buffer via `buffer.to_string()` + `TextBuffer::from_owned()`.
 
-**Audit Date:** 2025-11-07 (Updated after Milestones 1-4)
-**Goal:** Eliminate all `buffer.to_string()` / `TextBuffer::from_owned()` patterns within GlitchOp implementations to avoid redundant reparsing.
+**Audit Date:** 2025-11-07 (Updated after Milestones 1-6, Final)
+**Goal:** Eliminate all `buffer.to_string()` / `TextBuffer::from_owned()` patterns within GlitchOp implementations to avoid redundant reparsing where architecturally feasible.
 
-**Status:** ✅ Milestones 1-4 Complete - 6/14 operations refactored (43% complete)
+**Status:** ✅ Milestones 1-6 Complete - 11/14 operations refactored (79% complete)
+**Remaining:** 3 operations documented as requiring full-text operations due to architectural constraints
 
 ---
 
@@ -57,95 +58,78 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 - Uses efficient bulk update for all replacements
 - Removed unused import
 
+#### 7. SpectrollOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/spectroll.rs:270-318`
+**Status:** ✅ **REFACTORED** (Milestone 6)
+**Before:** Used regex on full text, rebuilt string with color replacements
+**After:** Segment-based iteration with regex per segment, uses `buffer.replace_words_bulk()`
+**Impact:** Eliminated 7 lines of reparse code
+
+#### 8. Mim1cOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/mim1c.rs:90-198`
+**Status:** ✅ **REFACTORED** (Milestone 6)
+**Before:** Converted to string, found char_indices, rebuilt with character replacements
+**After:** Segment-based with (seg_idx, char_offset, char) tracking, uses `buffer.replace_segments_bulk()`
+**Impact:** Eliminated 15 lines of reparse code
+
+#### 9. OcrArtifactsOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:614-713`
+**Status:** ✅ **REFACTORED** (Milestone 6)
+**Before:** Full text string matching for confusion patterns
+**After:** Segment-based pattern matching, groups replacements by segment
+**Impact:** Eliminated ~12 lines of reparse code, preserves Fisher-Yates shuffle
+
+#### 10. QuotePairsOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:1135-1243`
+**Status:** ✅ **REFACTORED** (Milestone 6)
+**Before:** Full text quote pair detection and replacement
+**After:** Global position mapping to segment positions, batch segment updates
+**Impact:** Eliminated ~10 lines of reparse code
+
+#### 11. ZeroWidthOp ⭐ REFACTORED
+**Location:** `rust/zoo/src/glitch_ops.rs:716-834`
+**Status:** ✅ **REFACTORED** (Milestone 6)
+**Before:** Full text char-level insertion tracking
+**After:** Segment-based (seg_idx, char_idx) position tracking with bulk updates
+**Impact:** Eliminated ~10 lines of reparse code
+
 ---
 
-### 🔴 Using Full String Reparse (Still Needs Refactoring)
+### 🟡 Requiring Full-Text Operations (Documented as Special Cases)
 
-#### 7. HokeyOp
+These operations require full-text operations due to their architectural characteristics and cannot be efficiently refactored to use segment-based operations without fundamentally changing their design.
+
+#### 12. HokeyOp
 **Location:** `rust/zoo/src/hokey.rs:574-628`
-**Status:** 🔴 High Priority - Needs Refactoring
+**Status:** 🟡 **DOCUMENTED AS SPECIAL CASE**
 **Reparse Locations:**
 - Line 576: `let text = buffer.to_string();`
-- Line 581: `let tokens = self.tokenise(&text);` (custom tokenizer)
-- Line 588: `let mut token_strings: Vec<String> = tokens.iter().map(...)`
+- Line 581: `let tokens = self.tokenise(&text);` (custom regex-based tokenizer)
 - Line 625: `*buffer = TextBuffer::from_owned(result);`
 
-**Pattern:** Custom tokenization and reconstruction
-**Refactor Plan:** Adapt to use buffer's word segmentation or enhance buffer with needed features
+**Pattern:** Custom regex tokenization with clause tracking, linguistic features, and metadata
+**Rationale:** Uses custom tokenization that differs from TextBuffer's segmentation, tracks clause boundaries, computes lexical/POS/sentiment/phonotactic features. The custom tokenization is essential to the operation's semantics, not redundant reparsing.
 
-#### 8. PedantOp
+#### 13. PedantOp
 **Location:** `rust/zoo/src/pedant.rs:89-114`
-**Status:** 🔴 Medium Priority - Needs Refactoring
+**Status:** 🟡 **DOCUMENTED AS SPECIAL CASE**
 **Reparse Locations:**
 - Line 95: `let original = buffer.to_string();`
 - Line 109: `*buffer = TextBuffer::from_owned(transformed);`
 
-**Pattern:** Uses regex-based transformations on entire text
-**Refactor Plan:** May need to keep string-based approach but document as exception, or implement regex over segments
+**Pattern:** Multiple regex-based whole-text linguistic transformations (8 variants)
+**Rationale:** Applies context-aware linguistic transformations (whomst, fewerling, aetheria, apostrofae, subjunic, commama, kiloa, correctopus) that require seeing full text context for semantic correctness. These are legitimate linguistic operations, not redundant parsing.
 
----
-
-### 🔴 Using Full Char-Level Reparse
-
-#### 9. OcrArtifactsOp
-**Location:** `rust/zoo/src/glitch_ops.rs:616-693`
-**Status:** 🔴 Needs Refactoring
+#### 14. TypoOp
+**Location:** `rust/zoo/src/glitch_ops.rs:836-1095`
+**Status:** 🟡 **DOCUMENTED AS SPECIAL CASE**
 **Reparse Locations:**
-- Line 624: `let text = buffer.to_string();`
-- Line 690: `*buffer = TextBuffer::from_owned(output);`
+- Line 994: `let text = buffer.to_string();`
+- Line 1008: `let mut chars: Vec<char> = text.chars().collect();`
+- Line 1092: `*buffer = TextBuffer::from_owned(chars.into_iter().collect());`
 
-**Pattern:** Char-level byte index matching and replacement
-**Refactor Plan:** Could use `buffer.replace_char_range()` or implement via segment traversal
-
-#### 10. ZeroWidthOp
-**Location:** `rust/zoo/src/glitch_ops.rs:695-781`
-**Status:** 🔴 Needs Refactoring
-**Reparse Locations:**
-- Line 713: `let text = buffer.to_string();`
-- Line 778: `*buffer = TextBuffer::from_owned(result);`
-
-**Pattern:** Char-level insertion between positions
-**Refactor Plan:** Use segment-based char position tracking
-
-#### 11. TypoOp
-**Location:** `rust/zoo/src/glitch_ops.rs:783-1042`
-**Status:** 🔴 Needs Refactoring
-**Reparse Locations:**
-- Line 941: `let text = buffer.to_string();`
-- Line 1039: `*buffer = TextBuffer::from_owned(chars.into_iter().collect());`
-
-**Pattern:** Vec<char> manipulation
-**Refactor Plan:** Complex - may benefit from buffer enhancement to support char-level ops
-
-#### 12. QuotePairsOp
-**Location:** `rust/zoo/src/glitch_ops.rs:1092-1192`
-**Status:** 🔴 Needs Refactoring
-**Reparse Locations:**
-- Line 1122: `let text = buffer.to_string();`
-- Line 1189: `*buffer = TextBuffer::from_owned(result);`
-
-**Pattern:** Char-index-based quote pair detection and replacement
-**Refactor Plan:** Can likely use segment traversal with quote tracking
-
-#### 13. Mim1cOp
-**Location:** `rust/zoo/src/mim1c.rs:90-173`
-**Status:** 🔴 Needs Refactoring
-**Reparse Locations:**
-- Line 92: `let original = buffer.to_string();`
-- Line 169: `*buffer = TextBuffer::from_owned(result);`
-
-**Pattern:** Byte-index-based character replacement
-**Refactor Plan:** Could use `buffer.replace_char_range()` for individual char replacements
-
-#### 14. SpectrollOp
-**Location:** `rust/zoo/src/spectroll.rs:270-285`
-**Status:** 🔴 Needs Refactoring
-**Reparse Locations:**
-- Line 276: `let text = buffer.to_string();`
-- Line 282: `*buffer = TextBuffer::from_owned(updated);`
-
-**Pattern:** Regex-based color word replacement
-**Refactor Plan:** Could use segment-based traversal with regex matching per segment
+**Pattern:** Vec<char> in-place mutations with 8 action types crossing segment boundaries
+**Rationale:** Operations fundamentally require flat character array with in-place mutations (swap chars, remove/insert spaces, repeat chars, collapse duplicates). These operations cross segment boundaries and modify separator structure itself, making segment-based operations architecturally incompatible.
 
 ---
 
@@ -161,38 +145,34 @@ This document provides a comprehensive audit of all `GlitchOp` implementations i
 **Total:** 14 GlitchOp implementations
 **Needing Refactoring:** 11 (79%)
 
-### After Milestones 1-4 (Current)
+### After Milestones 1-6 (Final)
 | Status | Count | Operations |
 |--------|-------|-----------|
-| ✅ No Reparse | 6 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, DeleteRandomWordsOp ⭐, RedactWordsOp ⭐, EkkokinOp ⭐ |
-| 🔴 Still Need Refactoring | 8 | HokeyOp, PedantOp, OcrArtifactsOp, ZeroWidthOp, TypoOp, QuotePairsOp, Mim1cOp, SpectrollOp |
+| ✅ No Reparse | 11 | ReduplicateWordsOp, SwapAdjacentWordsOp, RushmoreComboOp, DeleteRandomWordsOp ⭐, RedactWordsOp ⭐, EkkokinOp ⭐, SpectrollOp ⭐, Mim1cOp ⭐, OcrArtifactsOp ⭐, QuotePairsOp ⭐, ZeroWidthOp ⭐ |
+| 🟡 Special Cases (Require Full-Text) | 3 | HokeyOp, PedantOp, TypoOp |
 
 **Total:** 14 GlitchOp implementations
-**Refactored:** 6 (43%)
-**Remaining:** 8 (57%)
+**Successfully Refactored:** 11 (79%)
+**Special Cases (Architectural Constraints):** 3 (21%)
 
 ---
 
 ## Refactoring Priority
 
-### ✅ Completed (Milestones 2-4)
+### ✅ Completed (Milestones 2-6)
 1. ~~**DeleteRandomWordsOp**~~ - ✅ DONE: Cleanup using `buffer.normalize()`
 2. ~~**RedactWordsOp**~~ - ✅ DONE: merge_adjacent using `buffer.merge_repeated_char_words()`
 3. ~~**EkkokinOp**~~ - ✅ DONE: String-splitting converted to segment-based iteration
+4. ~~**SpectrollOp**~~ - ✅ DONE: Segment-based with regex per segment
+5. ~~**Mim1cOp**~~ - ✅ DONE: Segment-based char-level replacements
+6. ~~**OcrArtifactsOp**~~ - ✅ DONE: Segment-based confusion pattern matching
+7. ~~**QuotePairsOp**~~ - ✅ DONE: Global-to-segment position mapping
+8. ~~**ZeroWidthOp**~~ - ✅ DONE: Segment-based (seg_idx, char_idx) position tracking
 
-### 🎯 Remaining High Priority (Milestone 4-5)
-4. **HokeyOp** - Complex custom tokenization, needs careful adaptation
-5. **PedantOp** - Multiple regex-based transforms, may need hybrid approach
-
-### 🔶 Medium Priority (Milestone 6)
-6. **SpectrollOp** - Regex-based color word replacement
-7. **OcrArtifactsOp** - Byte-index-based character confusion
-
-### 🔸 Lower Priority (Milestone 6+)
-8. **ZeroWidthOp** - Char-level insertion
-9. **TypoOp** - Vec<char> manipulation
-10. **QuotePairsOp** - Char-index quote pair detection
-11. **Mim1cOp** - Byte-index character replacement
+### 🟡 Special Cases (Documented as Requiring Full-Text Operations)
+9. **HokeyOp** - Custom regex tokenization with linguistic features (essential to operation semantics)
+10. **PedantOp** - Context-aware linguistic transformations (require full-text context)
+11. **TypoOp** - In-place char mutations crossing segment boundaries (architecturally incompatible)
 
 ---
 
