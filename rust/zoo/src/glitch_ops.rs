@@ -341,7 +341,11 @@ impl GlitchOp for DeleteRandomWordsOp {
             .sum::<f64>()
             / (candidates.len() as f64);
 
+        // Collect deletion decisions
+        use std::collections::HashSet;
+        let mut delete_set: HashSet<usize> = HashSet::new();
         let mut deletions = 0usize;
+
         for candidate in candidates.into_iter() {
             if deletions >= allowed {
                 break;
@@ -359,20 +363,68 @@ impl GlitchOp for DeleteRandomWordsOp {
                 continue;
             }
 
-            let replacement = format!("{}{}", candidate.prefix.trim(), candidate.suffix.trim());
-            buffer.replace_word(candidate.index, &replacement)?;
+            delete_set.insert(candidate.index);
             deletions += 1;
         }
 
-        // After replacements, we may have Word segments containing only punctuation.
-        // To properly handle spacing, we need to reparse to merge adjacent punctuation
-        // and apply proper separator normalization.
-        let mut joined = buffer.to_string();
-        joined = SPACE_BEFORE_PUNCTUATION
-            .replace_all(&joined, "$1")
-            .into_owned();
-        joined = MULTIPLE_WHITESPACE.replace_all(&joined, " ").into_owned();
-        let final_text = joined.trim().to_string();
+        // Build output string in a single pass with normalization
+        let mut result = String::new();
+        let mut needs_separator = false;
+
+        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
+            match segment.kind() {
+                SegmentKind::Word => {
+                    if let Some(word_idx) = word_idx_opt {
+                        if delete_set.contains(&word_idx) {
+                            // Word is deleted - emit only affixes
+                            let text = segment.text();
+                            let (prefix, _core, suffix) = split_affixes(text);
+                            let combined = format!("{}{}", prefix.trim(), suffix.trim());
+
+                            if !combined.is_empty() {
+                                // Check if we need space before this
+                                if needs_separator {
+                                    let starts_with_punct = combined.chars().next()
+                                        .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                                        .unwrap_or(false);
+                                    if !starts_with_punct {
+                                        result.push(' ');
+                                    }
+                                }
+                                result.push_str(&combined);
+                                needs_separator = true;
+                            }
+                            continue;
+                        }
+                    }
+
+                    // Word not deleted - emit with separator if needed
+                    let text = segment.text();
+                    if !text.is_empty() {
+                        if needs_separator {
+                            let starts_with_punct = text.chars().next()
+                                .map(|c| matches!(c, '.' | ',' | ':' | ';'))
+                                .unwrap_or(false);
+                            if !starts_with_punct {
+                                result.push(' ');
+                            }
+                        }
+                        result.push_str(text);
+                        needs_separator = true;
+                    }
+                }
+                SegmentKind::Separator => {
+                    // Mark that we need a separator before the next word
+                    // (actual separator will be added when we emit next word)
+                    let sep_text = segment.text();
+                    if !sep_text.trim().is_empty() || sep_text.contains('\n') {
+                        needs_separator = true;
+                    }
+                }
+            }
+        }
+
+        let final_text = result.trim().to_string();
         *buffer = TextBuffer::from_owned(final_text);
         Ok(())
     }
