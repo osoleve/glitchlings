@@ -1205,6 +1205,7 @@ impl GlitchOp for TypoOp {
                                             scratch.extend(neighbors[choice].chars());
                                         }
                                         _ => {
+                                            // Maintain deterministic RNG advancement when no replacements are available.
                                             rng.rand_index(1)?;
                                             scratch.push(ch);
                                         }
