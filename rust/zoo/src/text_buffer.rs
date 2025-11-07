@@ -334,12 +334,13 @@ impl TextBuffer {
         }
 
         // Trim: remove leading/trailing separators
-        while normalized
-            .first()
-            .map(|s| matches!(s.kind(), SegmentKind::Separator))
-            .unwrap_or(false)
-        {
-            normalized.remove(0);
+        // Remove leading separators efficiently
+        let start = normalized
+            .iter()
+            .take_while(|s| matches!(s.kind(), SegmentKind::Separator))
+            .count();
+        if start > 0 {
+            normalized.drain(0..start);
         }
         while normalized
             .last()
