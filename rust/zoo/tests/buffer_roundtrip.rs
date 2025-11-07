@@ -5,12 +5,12 @@
 /// 2. The resulting buffer is in a valid state (can be converted to string)
 /// 3. The buffer can be re-parsed from its string representation without loss
 
-use zoo::{
+use _zoo_rust::{
     DeleteRandomWordsOp, DeterministicRng, GlitchOperation, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp,
     TextBuffer, TypoOp, ZeroWidthOp,
 };
-use zoo::glitch_ops::{GlitchOp, GlitchRng};
+use _zoo_rust::glitch_ops::{GlitchOp, GlitchRng};
 
 /// Test corpus covering various text patterns
 const TEST_CORPUS: &[&str] = &[
