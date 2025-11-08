@@ -207,6 +207,3 @@ When adding new tests:
 5. Mark tests appropriately based on their requirements
 6. Document test purpose clearly in docstrings
 
-## Questions?
-
-See `MIGRATION.md` for details on the refactoring effort and examples of best practices.
