@@ -8,14 +8,34 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
+
+# Add both src and project root to path for imports
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 # Import shared fixtures from the fixtures modules
 # These are now available to all tests via conftest.py
-from tests.fixtures.glitchlings import fresh_glitchling, sample_text
-from tests.fixtures.mocks import mock_foo, mock_bar
-from tests.fixtures.lexicon import lexicon_fixture
+from tests.fixtures.glitchlings import fresh_glitchling, sample_text  # noqa: E402
+from tests.fixtures.lexicon import (  # noqa: E402
+    MockLexicon,
+    TrackingLexicon,
+    shared_vector_embeddings,
+    simple_lexicon,
+    toy_embeddings,
+)
+from tests.fixtures.mocks import (  # noqa: E402
+    _load_environment,
+    _Rubric,
+    _SingleTurnEnv,
+    _VerifierEnvironment,
+    mock_gensim_vectors,
+    mock_module,
+    mock_sentence_transformers,
+    mock_spacy_language,
+    torch_stub,
+)
 
 try:
     importlib.import_module("pytest_cov")
