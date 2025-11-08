@@ -6,7 +6,7 @@ build = "build.rs"
 
 [lib]
 name = "_zoo_rust"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 pyo3 = { workspace = true }
@@ -19,6 +19,10 @@ serde_json = "1"
 sha2 = "0.10"
 rand = { workspace = true }
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+
 [package.metadata.maturin]
 module-name = "glitchlings._zoo_rust"
 
@@ -26,3 +30,7 @@ module-name = "glitchlings._zoo_rust"
 pyo3-build-config = { workspace = true }
 flate2 = "1"
 base64 = "0.21"
+
+[[bench]]
+name = "baseline_performance"
+harness = false
