@@ -13,9 +13,9 @@ if str(SRC) not in sys.path:
 
 # Import shared fixtures from the fixtures modules
 # These are now available to all tests via conftest.py
-from tests.fixtures.glitchlings import *  # noqa: F403
-from tests.fixtures.mocks import *  # noqa: F403
-from tests.fixtures.lexicon import *  # noqa: F403
+from tests.fixtures.glitchlings import fresh_glitchling, sample_text
+from tests.fixtures.mocks import mock_foo, mock_bar
+from tests.fixtures.lexicon import lexicon_fixture
 
 try:
     importlib.import_module("pytest_cov")
