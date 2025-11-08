@@ -23,7 +23,6 @@ tests/
 ├── cli/              # CLI tests
 ├── util/             # Utility function tests
 ├── conftest.py       # Root pytest configuration
-└── MIGRATION.md      # Refactoring progress tracker
 ```
 
 ## Running Tests
