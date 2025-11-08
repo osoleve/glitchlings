@@ -16,11 +16,23 @@ pub enum SegmentKind {
 pub struct TextSegment {
     kind: SegmentKind,
     text: String,
+    /// Cached count of Unicode characters (not bytes) in this segment.
+    /// Stored to avoid expensive .chars().count() during reindex.
+    char_len: usize,
+    /// Cached byte length of the text.
+    byte_len: usize,
 }
 
 impl TextSegment {
     fn new(text: String, kind: SegmentKind) -> Self {
-        Self { kind, text }
+        let char_len = text.chars().count();
+        let byte_len = text.len();
+        Self {
+            kind,
+            text,
+            char_len,
+            byte_len,
+        }
     }
 
     /// Creates a new segment and infers its kind from the content.
@@ -43,7 +55,19 @@ impl TextSegment {
         self.kind
     }
 
+    /// Returns the cached character count (Unicode scalar values).
+    fn char_len(&self) -> usize {
+        self.char_len
+    }
+
+    /// Returns the cached byte length.
+    fn byte_len(&self) -> usize {
+        self.byte_len
+    }
+
     fn set_text(&mut self, text: String, kind: SegmentKind) {
+        self.char_len = text.chars().count();
+        self.byte_len = text.len();
         self.text = text;
         self.kind = kind;
     }
@@ -523,8 +547,9 @@ impl TextBuffer {
         let mut char_cursor = 0;
         let mut byte_cursor = 0;
         for (segment_index, segment) in self.segments.iter().enumerate() {
-            let char_len = segment.text().chars().count();
-            let byte_len = segment.text().len();
+            // Use cached lengths instead of recomputing - major optimization!
+            let char_len = segment.char_len();
+            let byte_len = segment.byte_len();
             let span = TextSpan {
                 segment_index,
                 kind: segment.kind(),

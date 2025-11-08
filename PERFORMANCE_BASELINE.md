@@ -64,9 +64,9 @@
 | Optimization | Status | Before | After | Improvement |
 |--------------|--------|--------|-------|-------------|
 | #3: Eliminate per-edit reindexing | ✅ Complete | 11.77s | 6.46s | **45% faster (1.82× speedup)** |
+| #6: Make reindex() cheap | ✅ Complete | 6.46s | 5.52s | **14.5% faster (1.17× speedup)** |
 | #4: Bulk mutation APIs | Not started | - | - | - |
 | #5: Refactor GlitchOps to batch | Not started | - | - | - |
-| #6: Make reindex() cheap | Not started | - | - | - |
 | #7: Kill whole-buffer rebuilds | Not started | - | - | - |
 | #8: Zero-copy tokenization | Not started | - | - | - |
 | #9: Tokenizer hot path hygiene | Not started | - | - | - |
@@ -76,6 +76,13 @@
 - **Speedup achieved**: 1.82×
 - **Remaining to target**: Need 4.3× more to reach 1.5s goal
 - **Throughput**: 116.6 Kelem/s (+82% improvement)
+
+### After Optimization #6: Cached Segment Lengths
+- **500k mixed ops**: 5.52 seconds (was 6.46s, baseline 11.77s)
+- **This optimization**: 14.5% faster (1.17× speedup)
+- **Combined speedup**: 2.13× from baseline
+- **Remaining to target**: Need 3.7× more to reach 1.5s goal
+- **Throughput**: 136.5 Kelem/s (+17% from prev, +113% from baseline)
 
 ## Notes
 
