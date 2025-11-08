@@ -193,7 +193,6 @@ If you're updating existing tests:
 4. Add appropriate markers to test files
 5. Update imports to use centralized fixtures
 
-See `MIGRATION.md` for detailed progress and examples.
 
 ## Contributing
 
