@@ -48,21 +48,19 @@ pip install -U glitchlings
 > Glitchlings requires Python 3.10 or newer.
 
 ```python
-from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Rushmore
+from glitchlings import Auggie, SAMPLE_TEXT
 
-gaggle = Gaggle(
-    [
-        Rushmore(rate=0.02),
-        Rushmore(modes="duplicate", seed=404),
-        Mim1c(rate=0.02),
-        Typogre(rate=0.03),
-    ]
+auggie = (
+    Auggie(seed=404)
+    .typo(rate=0.015)
+    .confusable(rate=0.01)
+    .homophone(rate=0.02)
 )
 
-print(gaggle(SAMPLE_TEXT))
+print(auggie(SAMPLE_TEXT))
 ```
 
-> Onҽ m‎ھ‎rning, wһen Gregor Samƽa woke from trouble𝐝 𝑑reams, he found himself transformed in his bed into a horrible vermin‎٠‎ He l   lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightlh domed and divided by arches ino stiff sections. The bedding was adly able to cover it and and seemed ready to slide off any  moment. His many legxs, pitifully thin compared with the size of the the rest of him, waved about helplessly ashe looked looked.
+> One morning, when Gregor Samsa woke from troubld dreams, he found himself transformed in his bed into a horible vermin. He layed on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
 for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
