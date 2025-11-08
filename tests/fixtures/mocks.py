@@ -12,15 +12,15 @@ from typing import Any, Sequence
 import pytest
 
 __all__ = [
-    'mock_module',
-    'torch_stub',
-    'mock_spacy_language',
-    'mock_gensim_vectors',
-    'mock_sentence_transformers',
-    '_Rubric',
-    '_SingleTurnEnv',
-    '_VerifierEnvironment',
-    '_load_environment',
+    "mock_module",
+    "torch_stub",
+    "mock_spacy_language",
+    "mock_gensim_vectors",
+    "mock_sentence_transformers",
+    "_Rubric",
+    "_SingleTurnEnv",
+    "_VerifierEnvironment",
+    "_load_environment",
 ]
 
 @contextmanager
