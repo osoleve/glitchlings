@@ -1,7 +1,11 @@
+"""Determinism tests for all glitchlings.
+
+This module tests that each glitchling produces deterministic output
+when given the same seed, which is critical for reproducibility.
+"""
 from __future__ import annotations
 
 from functools import partial
-from typing import cast
 
 import pytest
 
@@ -9,14 +13,7 @@ from glitchlings import jargoyle, mim1c, redactyl, rushmore, scannequin, typogre
 from glitchlings.zoo.core import AttackWave, Glitchling
 from glitchlings.zoo.pedant import Pedant
 from glitchlings.zoo.pedant.stones import PedantStone
-
-
-def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
-    fn.reset_rng(seed)
-    out1 = cast(str, fn(text))
-    fn.reset_rng(seed)
-    out2 = cast(str, fn(text))
-    return out1, out2
+from tests.helpers.assertions import assert_deterministic
 
 
 @pytest.mark.parametrize(
@@ -37,19 +34,23 @@ def _twice(fn, text: str, seed: int = 42) -> tuple[str, str]:
 )
 def test_glitchling_is_deterministic(glitchling, params, sample_text):
     """Test that each glitchling produces deterministic output with the same seed."""
+    # Clone to avoid modifying the module-level instance
+    glitch = glitchling.clone()
+
+    # Apply all parameters
     for param, value in params.items():
-        glitchling.set_param(param, value)
-    
-    a, b = _twice(glitchling, sample_text, seed=params["seed"])
-    assert a == b
+        glitch.set_param(param, value)
+
+    # Use the shared assertion helper
+    seed = params["seed"]
+    assert_deterministic(glitch, sample_text, seed)
 
 
 def test_apostrofae_determinism(sample_text):
     """Test Pedant (Apostrofae) determinism separately due to special construction."""
     curlite = Pedant(stone=PedantStone.CURLITE)
     curlite.set_param("seed", 42)
-    a, b = _twice(curlite, sample_text)
-    assert a == b
+    assert_deterministic(curlite, sample_text, seed=42)
 
 
 def _partial_helper(text: str, *, rng) -> str:
