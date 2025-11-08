@@ -103,6 +103,9 @@ pub struct TextBuffer {
     segment_to_word_index: Vec<Option<usize>>,
     total_chars: usize,
     total_bytes: usize,
+    /// Tracks whether the buffer needs reindexing after mutations.
+    /// When true, metadata (spans, indices) may be out of sync with segments.
+    needs_reindex: bool,
 }
 
 impl TextBuffer {
@@ -115,6 +118,7 @@ impl TextBuffer {
             segment_to_word_index: Vec::new(),
             total_chars: 0,
             total_bytes: 0,
+            needs_reindex: false,
         };
         buffer.reindex();
         buffer
@@ -182,7 +186,7 @@ impl TextBuffer {
             .get_mut(segment_index)
             .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
         segment.set_text(replacement.to_string(), SegmentKind::Word);
-        self.reindex();
+        self.mark_dirty();
         Ok(())
     }
 
@@ -207,7 +211,7 @@ impl TextBuffer {
         }
 
         if applied_any {
-            self.reindex();
+            self.mark_dirty();
         }
         Ok(())
     }
@@ -223,7 +227,7 @@ impl TextBuffer {
             return Err(TextBufferError::InvalidWordIndex { index: word_index });
         }
         self.segments.remove(segment_index);
-        self.reindex();
+        self.mark_dirty();
         Ok(())
     }
 
@@ -257,7 +261,7 @@ impl TextBuffer {
             insert_at,
             TextSegment::new(word.to_string(), SegmentKind::Word),
         );
-        self.reindex();
+        self.mark_dirty();
         Ok(())
     }
 
@@ -366,7 +370,7 @@ impl TextBuffer {
         }
 
         self.segments = normalized;
-        self.reindex();
+        self.mark_dirty();
     }
 
     /// Replaces the text of a specific segment while preserving its kind.
@@ -380,7 +384,7 @@ impl TextBuffer {
 
         let kind = self.segments[segment_index].kind();
         self.segments[segment_index] = TextSegment::new(new_text, kind);
-        self.reindex();
+        self.mark_dirty();
     }
 
     /// Replaces multiple segments in bulk.
@@ -400,7 +404,7 @@ impl TextBuffer {
             }
         }
         if replaced {
-            self.reindex();
+            self.mark_dirty();
         }
     }
 
@@ -481,7 +485,7 @@ impl TextBuffer {
         }
 
         self.segments = merged;
-        self.reindex();
+        self.mark_dirty();
     }
 
     fn char_to_byte_index(&self, char_index: usize) -> Option<usize> {
@@ -500,6 +504,14 @@ impl TextBuffer {
             }
         }
         None
+    }
+
+    /// Reindexes the buffer if mutations have made metadata stale.
+    /// This is the public API that should be called after a batch of mutations.
+    pub fn reindex_if_needed(&mut self) {
+        if self.needs_reindex {
+            self.reindex();
+        }
     }
 
     fn reindex(&mut self) {
@@ -530,6 +542,12 @@ impl TextBuffer {
         }
         self.total_chars = char_cursor;
         self.total_bytes = byte_cursor;
+        self.needs_reindex = false;
+    }
+
+    /// Marks the buffer as needing reindexing after a mutation.
+    fn mark_dirty(&mut self) {
+        self.needs_reindex = true;
     }
 }
 
@@ -598,6 +616,7 @@ mod tests {
     fn replacing_words_updates_segments_and_metadata() {
         let mut buffer = TextBuffer::from_str("Hello world");
         buffer.replace_word(1, "galaxy").unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello galaxy");
         let spans = buffer.spans();
         assert_eq!(spans.len(), 3);
@@ -608,6 +627,7 @@ mod tests {
     fn deleting_words_removes_segments() {
         let mut buffer = TextBuffer::from_str("Hello brave world");
         buffer.delete_word(1).unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello  world");
         assert_eq!(buffer.word_count(), 2);
         assert_eq!(buffer.spans().len(), 4);
@@ -620,6 +640,7 @@ mod tests {
     fn inserting_words_preserves_separator_control() {
         let mut buffer = TextBuffer::from_str("Hello world");
         buffer.insert_word_after(0, "there", Some(", ")).unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello, there world");
         assert_eq!(buffer.word_count(), 3);
         assert_eq!(buffer.spans().len(), 5);

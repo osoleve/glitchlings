@@ -193,6 +193,7 @@ impl GlitchOp for Mim1cOp {
         // Apply all segment replacements in bulk without reparsing
         buffer.replace_segments_bulk(segment_replacements.into_iter());
 
+        buffer.reindex_if_needed();
         Ok(())
     }
 }

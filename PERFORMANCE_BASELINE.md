@@ -63,13 +63,19 @@
 
 | Optimization | Status | Before | After | Improvement |
 |--------------|--------|--------|-------|-------------|
-| #3: Eliminate per-edit reindexing | Not started | - | - | - |
+| #3: Eliminate per-edit reindexing | ✅ Complete | 11.77s | 6.46s | **45% faster (1.82× speedup)** |
 | #4: Bulk mutation APIs | Not started | - | - | - |
 | #5: Refactor GlitchOps to batch | Not started | - | - | - |
 | #6: Make reindex() cheap | Not started | - | - | - |
 | #7: Kill whole-buffer rebuilds | Not started | - | - | - |
 | #8: Zero-copy tokenization | Not started | - | - | - |
 | #9: Tokenizer hot path hygiene | Not started | - | - | - |
+
+### After Optimization #3: Deferred Reindexing
+- **500k mixed ops**: 6.46 seconds (was 11.77s)
+- **Speedup achieved**: 1.82×
+- **Remaining to target**: Need 4.3× more to reach 1.5s goal
+- **Throughput**: 116.6 Kelem/s (+82% improvement)
 
 ## Notes
 
