@@ -62,6 +62,23 @@ print(auggie(SAMPLE_TEXT))
 
 > One morning, when Gregor Samsa woke from troubld dreams, he found himself transformed in his bed into a horible vermin. He layed on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 
+**Or, the equivalent using `Gaggle` directly:**
+
+```python
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Ekkokin
+
+gaggle = Gaggle(
+    [
+        Typogre(rate=0.015),
+        Mim1c(rate=0.01),
+        Ekkokin(rate=0.02),
+    ],
+    seed=404
+)
+
+print(gaggle(SAMPLE_TEXT))
+```
+
 Consult the [Glitchlings Usage Guide](docs/index.md)
 for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
 integrations, and the autodetected Rust pipeline (enabled whenever the extension is present).
