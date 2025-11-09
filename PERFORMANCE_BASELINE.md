@@ -89,6 +89,14 @@
 - **🎉 TARGET ACHIEVED!** 1.24s < 1.5s target
 - **Throughput**: 607.5 Kelem/s (+345% from prev, +851% from baseline)
 
+### ✅ Final Performance (After Correctness Fix)
+- **500k mixed ops**: 1.31 seconds (baseline 11.77s)
+- **Final speedup**: **8.98× from baseline**
+- **🎉 TARGET EXCEEDED!** 1.31s < 1.5s target (13% under)
+- **Throughput**: 574 Kelem/s (+797% from baseline)
+- **Note**: Added critical reindex_if_needed() after bulk operations for correctness
+- Small regression from 1.24s is expected - subsequent ops now correctly process duplicated words
+
 ## Notes
 
 ### Current Known Bottlenecks
