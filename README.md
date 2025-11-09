@@ -81,7 +81,7 @@ print(gaggle(SAMPLE_TEXT))
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
 for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
-integrations, and the autodetected Rust pipeline (enabled whenever the extension is present).
+integrations, and the compiled Rust pipeline (always enabled).
 
 ## Motivation
 
