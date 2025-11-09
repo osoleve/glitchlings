@@ -28,8 +28,9 @@ def _import_rust_module() -> ModuleType:
 
     if module is None:
         message = (
-            "glitchlings._zoo_rust failed to import. Rebuild the project with "
-            "`pip install .` or `maturin develop` so the compiled extension is available."
+            "glitchlings._zoo_rust failed to import. Install glitchlings from its "
+            "prebuilt wheel or rebuild the project with `pip install .` or "
+            "`maturin develop` after installing the Rust toolchain."
         )
         raise RustExtensionImportError(message) from last_error
 

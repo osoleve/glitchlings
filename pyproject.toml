@@ -91,25 +91,31 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=69", "wheel", "setuptools-rust>=1.8.0"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.9,<2.0"]
+build-backend = "maturin"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-include-package-data = true
+[tool.maturin]
+python-source = "src"
+manifest-path = "rust/zoo/Cargo.toml"
+module-name = "glitchlings._zoo_rust"
+features = ["pyo3/extension-module"]
+include = [
+    "assets/**/*",
+    "MANIFEST.in",
+    "wiki_homophones.txt",
+]
 
-[tool.setuptools.package-data]
-"glitchlings" = ["config.toml", "assets/*.json", "assets/*.tsv"]
-"glitchlings.lexicon" = ["data/*.json"]
-
-[tool.setuptools.packages.find]
-where = ["src"]
-
-[[tool.setuptools-rust.ext-modules]]
-target = "glitchlings._zoo_rust"
-path = "rust/zoo/Cargo.toml"
-binding = "PyO3"
-debug = false
+[tool.maturin.sdist]
+include = [
+    "assets/**/*",
+    "MANIFEST.in",
+    "wiki_homophones.txt",
+    "rust/**/*",
+    "src/**/*",
+    "pyproject.toml",
+    "README.md",
+    "LICENSE",
+]
 
 
 [tool.pytest.ini_options]

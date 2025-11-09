@@ -13,114 +13,56 @@ permissions:
 jobs:
   build-windows:
     runs-on: windows-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Build Windows wheels
+        uses: PyO3/maturin-action@v1
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Pin Python for PyO3
-        shell: bash
-        run: echo "PYO3_PYTHON=$(python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
-
-      - name: Install build dependencies
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install build setuptools-rust
-
-      - name: Build distributions
-        shell: bash
-        run: python -m build --wheel
-
+          command: build
+          args: --release --out dist --find-interpreter
+          target: x86_64-pc-windows-msvc
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
-          name: dist-windows-${{ matrix.python-version }}
+          name: dist-windows
           path: dist/
 
   build-linux:
     runs-on: ubuntu-latest
-    container:
-      image: quay.io/pypa/manylinux_2_28_x86_64:latest
-    strategy:
-      matrix:
-        python-version: ['cp310-cp310', 'cp311-cp311', 'cp312-cp312', 'cp313-cp313']
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Build wheel
-        run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
-          /opt/python/${{ matrix.python-version }}/bin/pip install --upgrade pip build setuptools-rust
-          /opt/python/${{ matrix.python-version }}/bin/python -m build --wheel
-
-      - name: Repair wheel with auditwheel
-        run: |
-          auditwheel repair dist/*.whl -w dist-repaired
-          rm dist/*.whl
-          mv dist-repaired/* dist/
-
+      - name: Build manylinux wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          command: build
+          args: --release --out dist --find-interpreter
+          target: x86_64-unknown-linux-gnu
+          manylinux: 2_28
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
-          name: dist-linux-${{ matrix.python-version }}
+          name: dist-linux
           path: dist/
 
   build-macos:
     runs-on: macos-latest
-    strategy:
-      matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13']
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Build macOS universal wheels
+        uses: PyO3/maturin-action@v1
         with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-
-      - name: Pin Python for PyO3
-        shell: bash
-        run: echo "PYO3_PYTHON=$(python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
-
-      - name: Install build dependencies
-        shell: bash
-        run: |
-          python -m pip install --upgrade pip
-          pip install build setuptools-rust
-
-      - name: Build distributions
-        shell: bash
-        run: python -m build --wheel
-
+          command: build
+          args: --release --out dist --find-interpreter
+          target: universal2-apple-darwin
       - name: Upload distributions
         uses: actions/upload-artifact@v4
         with:
-          name: dist-macos-${{ matrix.python-version }}
+          name: dist-macos
           path: dist/
 
   publish:

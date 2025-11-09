@@ -28,7 +28,11 @@ def _load_local_extension() -> ModuleType:
             spec.loader.exec_module(module)
             return module
 
-    message = "Unable to locate the compiled glitchlings._zoo_rust extension."
+    message = (
+        "Unable to locate the compiled glitchlings._zoo_rust extension. "
+        "Install glitchlings from its prebuilt wheel or ensure the Rust toolchain "
+        "is available before building from source."
+    )
     raise ModuleNotFoundError(message)
 
 
