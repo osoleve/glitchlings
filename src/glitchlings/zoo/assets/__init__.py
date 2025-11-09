@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import sys
 from functools import cache
 from hashlib import blake2b
 from importlib import resources
-from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, TextIO, cast
+
+if sys.version_info >= (3, 11):
+    from importlib.resources.abc import Traversable
+else:
+    from importlib.abc import Traversable
 
 _DEFAULT_DIGEST_SIZE = 32
 
