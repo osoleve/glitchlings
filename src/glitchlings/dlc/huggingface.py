@@ -41,19 +41,19 @@ def GlitchedDataset(
     seed: int = 151,
 ) -> Any:
     """Return a lazily corrupted copy of a Hugging Face dataset.
-    
+
     This function applies glitchlings to the specified columns of a dataset,
     returning a new dataset that lazily corrupts data as it's accessed.
-    
+
     Args:
         dataset: The Hugging Face Dataset to corrupt.
         glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
         column: The column name (string) or names (sequence of strings) to corrupt.
         seed: RNG seed for deterministic corruption (default: 151).
-    
+
     Returns:
         A new dataset with the specified columns corrupted by the glitchlings.
-    
+
     Example:
         >>> from datasets import Dataset
         >>> from glitchlings.dlc.huggingface import GlitchedDataset

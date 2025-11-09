@@ -78,8 +78,6 @@ def substitute_homophones(
         _DEFAULT_WEIGHTING,
         resolve_seed(seed, rng),
     )
-    
-
 
 
 class Ekkokin(_GlitchlingBase):

@@ -13,6 +13,7 @@ from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
 
+
 class PlanSpecification(TypedDict):
     name: str
     scope: int

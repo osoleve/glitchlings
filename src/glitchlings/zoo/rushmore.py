@@ -230,6 +230,7 @@ _delete_random_words_rust = get_rust_operation("delete_random_words")
 _reduplicate_words_rust = get_rust_operation("reduplicate_words")
 _swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
 
+
 def delete_random_words(
     text: str,
     rate: float | None = None,
@@ -245,8 +246,6 @@ def delete_random_words(
 
     seed_value = resolve_seed(seed, rng)
     return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, seed_value))
-
-
 
 
 def reduplicate_words(

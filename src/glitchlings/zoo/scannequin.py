@@ -7,6 +7,7 @@ from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 # Load the mandatory Rust implementation
 _ocr_artifacts_rust = get_rust_operation("ocr_artifacts")
 
+
 def ocr_artifacts(
     text: str,
     rate: float | None = None,
@@ -25,8 +26,6 @@ def ocr_artifacts(
     clamped_rate = max(0.0, effective_rate)
 
     return cast(str, _ocr_artifacts_rust(text, clamped_rate, resolve_seed(seed, rng)))
-
-
 
 
 class Scannequin(Glitchling):

@@ -4,7 +4,7 @@ This module provides explicit wrapper classes for integrating glitchlings
 with popular ML frameworks:
 
 - :class:`~glitchlings.dlc.huggingface.GlitchedDataset`: Wrap Hugging Face datasets
-- :class:`~glitchlings.dlc.pytorch.GlitchedDataLoader`: Wrap PyTorch data loaders  
+- :class:`~glitchlings.dlc.pytorch.GlitchedDataLoader`: Wrap PyTorch data loaders
 - :class:`~glitchlings.dlc.pytorch_lightning.GlitchedLightningDataModule`: Wrap
   Lightning data modules
 

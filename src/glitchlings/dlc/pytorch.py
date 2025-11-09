@@ -63,10 +63,10 @@ def GlitchedDataLoader(
     seed: int = 151,
 ) -> _GlitchedDataLoader:
     """Return a lazily glitched view of a PyTorch DataLoader's batches.
-    
+
     This function wraps a PyTorch DataLoader to apply glitchlings to specified
     columns (or auto-inferred text columns) in each batch as it's yielded.
-    
+
     Args:
         dataloader: The PyTorch DataLoader to wrap.
         glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
@@ -76,10 +76,10 @@ def GlitchedDataLoader(
                  - A sequence of column names or indices
                  - None to auto-infer text columns (default)
         seed: RNG seed for deterministic corruption (default: 151).
-    
+
     Returns:
         A wrapped dataloader that yields corrupted batches.
-    
+
     Example:
         >>> from torch.utils.data import DataLoader
         >>> from glitchlings.dlc.pytorch import GlitchedDataLoader
