@@ -202,8 +202,8 @@ mod tests {
         ];
         let pipeline = Pipeline::new(master_seed, descriptors);
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
-        // Note: output changed after bulk API optimization (descending order processing)
-        assert_eq!(output, "█████ Guard the the vault vault");
+        // Note: output changed after fixing reindex bug - now subsequent ops see duplicated words
+        assert_eq!(output, "█████ Guard ███ the vault █████");
     }
 
     #[test]

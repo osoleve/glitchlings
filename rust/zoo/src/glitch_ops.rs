@@ -279,7 +279,7 @@ impl GlitchOp for ReduplicateWordsOp {
 
         // Apply all reduplications in a single bulk operation
         buffer.reduplicate_words_bulk(reduplications)?;
-
+        buffer.reindex_if_needed();
         Ok(())
     }
 }

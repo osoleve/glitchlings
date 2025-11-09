@@ -388,25 +388,22 @@ impl TextBuffer {
                 .copied()
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
 
-            if let Some(repl_text) = replacement {
-                // Replace with affixes or other text
-                if !repl_text.is_empty() {
-                    let segment = self
-                        .segments
-                        .get_mut(segment_index)
-                        .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-                    segment.set_text(repl_text, SegmentKind::Word);
-                } else {
-                    // Empty replacement = remove the segment
-                    if segment_index < self.segments.len() {
-                        self.segments.remove(segment_index);
-                    }
-                }
-            } else {
-                // No replacement = remove the segment
+            // Determine if we should remove or replace
+            let should_remove = replacement.as_ref().map_or(true, |s| s.is_empty());
+
+            if should_remove {
+                // Remove the segment entirely
                 if segment_index < self.segments.len() {
                     self.segments.remove(segment_index);
                 }
+            } else {
+                // Replace with the provided text
+                let repl_text = replacement.unwrap(); // Safe: we checked it's Some and not empty
+                let segment = self
+                    .segments
+                    .get_mut(segment_index)
+                    .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+                segment.set_text(repl_text, SegmentKind::Word);
             }
         }
 
