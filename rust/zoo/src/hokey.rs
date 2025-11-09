@@ -623,6 +623,7 @@ impl GlitchOp for HokeyOp {
 
         let result = token_strings.join("");
         *buffer = TextBuffer::from_owned(result);
+        buffer.reindex_if_needed();
         Ok(())
     }
 }

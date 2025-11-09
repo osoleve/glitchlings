@@ -203,6 +203,7 @@ impl GlitchOp for EkkokinOp {
             buffer.replace_words_bulk(replacements.into_iter())?;
         }
 
+        buffer.reindex_if_needed();
         Ok(())
     }
 }

@@ -16,11 +16,23 @@ pub enum SegmentKind {
 pub struct TextSegment {
     kind: SegmentKind,
     text: String,
+    /// Cached count of Unicode characters (not bytes) in this segment.
+    /// Stored to avoid expensive .chars().count() during reindex.
+    char_len: usize,
+    /// Cached byte length of the text.
+    byte_len: usize,
 }
 
 impl TextSegment {
     fn new(text: String, kind: SegmentKind) -> Self {
-        Self { kind, text }
+        let char_len = text.chars().count();
+        let byte_len = text.len();
+        Self {
+            kind,
+            text,
+            char_len,
+            byte_len,
+        }
     }
 
     /// Creates a new segment and infers its kind from the content.
@@ -43,7 +55,19 @@ impl TextSegment {
         self.kind
     }
 
+    /// Returns the cached character count (Unicode scalar values).
+    fn char_len(&self) -> usize {
+        self.char_len
+    }
+
+    /// Returns the cached byte length.
+    fn byte_len(&self) -> usize {
+        self.byte_len
+    }
+
     fn set_text(&mut self, text: String, kind: SegmentKind) {
+        self.char_len = text.chars().count();
+        self.byte_len = text.len();
         self.text = text;
         self.kind = kind;
     }
@@ -103,18 +127,26 @@ pub struct TextBuffer {
     segment_to_word_index: Vec<Option<usize>>,
     total_chars: usize,
     total_bytes: usize,
+    /// Tracks whether the buffer needs reindexing after mutations.
+    /// When true, metadata (spans, indices) may be out of sync with segments.
+    needs_reindex: bool,
 }
 
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
     pub fn from_owned(text: String) -> Self {
+        let segments = tokenise(&text);
+        let segment_count = segments.len();
+
+        // Pre-allocate vectors to avoid reallocations during reindex
         let mut buffer = Self {
-            segments: tokenise(&text),
-            spans: Vec::new(),
-            word_segment_indices: Vec::new(),
-            segment_to_word_index: Vec::new(),
+            segments,
+            spans: Vec::with_capacity(segment_count),
+            word_segment_indices: Vec::with_capacity(segment_count / 2), // ~half are words
+            segment_to_word_index: Vec::with_capacity(segment_count),
             total_chars: 0,
             total_bytes: 0,
+            needs_reindex: false,
         };
         buffer.reindex();
         buffer
@@ -182,7 +214,7 @@ impl TextBuffer {
             .get_mut(segment_index)
             .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
         segment.set_text(replacement.to_string(), SegmentKind::Word);
-        self.reindex();
+        self.mark_dirty();
         Ok(())
     }
 
@@ -207,7 +239,7 @@ impl TextBuffer {
         }
 
         if applied_any {
-            self.reindex();
+            self.mark_dirty();
         }
         Ok(())
     }
@@ -223,7 +255,7 @@ impl TextBuffer {
             return Err(TextBufferError::InvalidWordIndex { index: word_index });
         }
         self.segments.remove(segment_index);
-        self.reindex();
+        self.mark_dirty();
         Ok(())
     }
 
@@ -257,7 +289,125 @@ impl TextBuffer {
             insert_at,
             TextSegment::new(word.to_string(), SegmentKind::Word),
         );
-        self.reindex();
+        self.mark_dirty();
+        Ok(())
+    }
+
+    /// Applies multiple word reduplications in a single pass.
+    ///
+    /// Each reduplication consists of:
+    /// - word_index: the index of the word to reduplicate
+    /// - first_replacement: the text to replace the original word with
+    /// - second_word: the duplicated word to insert after
+    /// - separator: optional separator between the two words
+    ///
+    /// Processes in descending index order to avoid index shifting.
+    /// Only reindexes once at the end.
+    pub fn reduplicate_words_bulk<I>(
+        &mut self,
+        reduplications: I,
+    ) -> Result<(), TextBufferError>
+    where
+        I: IntoIterator<Item = (usize, String, String, Option<String>)>,
+    {
+        // Ensure indices are fresh before we start
+        self.reindex_if_needed();
+
+        // Collect and sort in descending order by word_index
+        let mut ops: Vec<_> = reduplications.into_iter().collect();
+        if ops.is_empty() {
+            return Ok(());
+        }
+        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+
+        for (word_index, first_replacement, second_word, separator) in ops {
+            // Get segment index for this word
+            let segment_index = self
+                .word_segment_indices
+                .get(word_index)
+                .copied()
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+
+            // Replace the original word
+            let segment = self
+                .segments
+                .get_mut(segment_index)
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+            segment.set_text(first_replacement, SegmentKind::Word);
+
+            // Insert separator and second word
+            let mut insert_at = segment_index + 1;
+            if let Some(sep) = separator {
+                if !sep.is_empty() {
+                    self.segments.insert(
+                        insert_at,
+                        TextSegment::new(sep, SegmentKind::Separator),
+                    );
+                    insert_at += 1;
+                }
+            }
+            self.segments.insert(
+                insert_at,
+                TextSegment::new(second_word, SegmentKind::Word),
+            );
+        }
+
+        self.mark_dirty();
+        Ok(())
+    }
+
+    /// Deletes multiple words in a single pass.
+    ///
+    /// Takes an iterator of (word_index, optional_replacement) pairs.
+    /// If replacement is Some, replaces the word with that text (e.g., affixes only).
+    /// If replacement is None, removes the word segment entirely.
+    ///
+    /// Processes in descending index order to avoid index shifting.
+    /// Only reindexes once at the end.
+    pub fn delete_words_bulk<I>(
+        &mut self,
+        deletions: I,
+    ) -> Result<(), TextBufferError>
+    where
+        I: IntoIterator<Item = (usize, Option<String>)>,
+    {
+        // Ensure indices are fresh before we start
+        self.reindex_if_needed();
+
+        // Collect and sort in descending order by word_index
+        let mut ops: Vec<_> = deletions.into_iter().collect();
+        if ops.is_empty() {
+            return Ok(());
+        }
+        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+
+        for (word_index, replacement) in ops {
+            let segment_index = self
+                .word_segment_indices
+                .get(word_index)
+                .copied()
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+
+            // Determine if we should remove or replace
+            let should_remove = replacement.as_ref().map_or(true, |s| s.is_empty());
+
+            if should_remove {
+                // Remove the segment entirely
+                if segment_index < self.segments.len() {
+                    self.segments.remove(segment_index);
+                }
+            } else {
+                // Replace with the provided text
+                let repl_text = replacement.unwrap(); // Safe: we checked it's Some and not empty
+                let segment = self
+                    .segments
+                    .get_mut(segment_index)
+                    .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+                segment.set_text(repl_text, SegmentKind::Word);
+            }
+        }
+
+        self.mark_dirty();
         Ok(())
     }
 
@@ -366,7 +516,7 @@ impl TextBuffer {
         }
 
         self.segments = normalized;
-        self.reindex();
+        self.mark_dirty();
     }
 
     /// Replaces the text of a specific segment while preserving its kind.
@@ -380,7 +530,7 @@ impl TextBuffer {
 
         let kind = self.segments[segment_index].kind();
         self.segments[segment_index] = TextSegment::new(new_text, kind);
-        self.reindex();
+        self.mark_dirty();
     }
 
     /// Replaces multiple segments in bulk.
@@ -400,7 +550,7 @@ impl TextBuffer {
             }
         }
         if replaced {
-            self.reindex();
+            self.mark_dirty();
         }
     }
 
@@ -481,7 +631,7 @@ impl TextBuffer {
         }
 
         self.segments = merged;
-        self.reindex();
+        self.mark_dirty();
     }
 
     fn char_to_byte_index(&self, char_index: usize) -> Option<usize> {
@@ -502,6 +652,14 @@ impl TextBuffer {
         None
     }
 
+    /// Reindexes the buffer if mutations have made metadata stale.
+    /// This is the public API that should be called after a batch of mutations.
+    pub fn reindex_if_needed(&mut self) {
+        if self.needs_reindex {
+            self.reindex();
+        }
+    }
+
     fn reindex(&mut self) {
         self.spans.clear();
         self.word_segment_indices.clear();
@@ -511,8 +669,9 @@ impl TextBuffer {
         let mut char_cursor = 0;
         let mut byte_cursor = 0;
         for (segment_index, segment) in self.segments.iter().enumerate() {
-            let char_len = segment.text().chars().count();
-            let byte_len = segment.text().len();
+            // Use cached lengths instead of recomputing - major optimization!
+            let char_len = segment.char_len();
+            let byte_len = segment.byte_len();
             let span = TextSpan {
                 segment_index,
                 kind: segment.kind(),
@@ -530,6 +689,12 @@ impl TextBuffer {
         }
         self.total_chars = char_cursor;
         self.total_bytes = byte_cursor;
+        self.needs_reindex = false;
+    }
+
+    /// Marks the buffer as needing reindexing after a mutation.
+    fn mark_dirty(&mut self) {
+        self.needs_reindex = true;
     }
 }
 
@@ -598,6 +763,7 @@ mod tests {
     fn replacing_words_updates_segments_and_metadata() {
         let mut buffer = TextBuffer::from_str("Hello world");
         buffer.replace_word(1, "galaxy").unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello galaxy");
         let spans = buffer.spans();
         assert_eq!(spans.len(), 3);
@@ -608,6 +774,7 @@ mod tests {
     fn deleting_words_removes_segments() {
         let mut buffer = TextBuffer::from_str("Hello brave world");
         buffer.delete_word(1).unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello  world");
         assert_eq!(buffer.word_count(), 2);
         assert_eq!(buffer.spans().len(), 4);
@@ -620,6 +787,7 @@ mod tests {
     fn inserting_words_preserves_separator_control() {
         let mut buffer = TextBuffer::from_str("Hello world");
         buffer.insert_word_after(0, "there", Some(", ")).unwrap();
+        buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello, there world");
         assert_eq!(buffer.word_count(), 3);
         assert_eq!(buffer.spans().len(), 5);
