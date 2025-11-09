@@ -1,0 +1,232 @@
+name: Build and Publish (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'Environment name (pypi or testpypi)'
+      repository-url:
+        required: true
+        type: string
+        description: 'PyPI repository URL'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[all]
+      - name: Ruff
+        run: ruff check src
+      - name: Black
+        run: black --check --diff src
+      - name: Mypy
+        run: python -m mypy src
+      - name: Pytest
+        run: pytest
+
+  build-sdist:
+    needs: quality-gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: 'pip'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/zoo
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build setuptools-rust
+
+      - name: Build source distribution
+        run: python -m build --sdist
+
+      - name: Upload source distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-sdist
+          path: dist/
+
+  build-windows:
+    needs: quality-gates
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/zoo
+
+      - name: Pin Python for PyO3
+        shell: bash
+        run: echo "PYO3_PYTHON=$(python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install build setuptools-rust
+
+      - name: Build distributions
+        shell: bash
+        run: python -m build --wheel
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-windows-${{ matrix.python-version }}
+          path: dist/
+
+  build-linux:
+    needs: quality-gates
+    runs-on: ubuntu-latest
+    container:
+      image: quay.io/pypa/manylinux_2_28_x86_64:latest
+    strategy:
+      matrix:
+        python-version: ['cp310-cp310', 'cp311-cp311', 'cp312-cp312', 'cp313-cp313']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/zoo
+
+      - name: Build wheel
+        run: |
+          export PATH="$HOME/.cargo/bin:$PATH"
+          /opt/python/${{ matrix.python-version }}/bin/pip install --upgrade pip build setuptools-rust
+          /opt/python/${{ matrix.python-version }}/bin/python -m build --wheel
+
+      - name: Repair wheel with auditwheel
+        run: |
+          auditwheel repair dist/*.whl -w dist-repaired
+          rm dist/*.whl
+          mv dist-repaired/* dist/
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-linux-${{ matrix.python-version }}
+          path: dist/
+
+  build-macos:
+    needs: quality-gates
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12', '3.13']
+        runner: ['macos-13', 'macos-14']  # macos-13 is Intel, macos-14 is ARM64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust/zoo
+
+      - name: Pin Python for PyO3
+        shell: bash
+        run: echo "PYO3_PYTHON=$(python -c 'import sys; print(sys.executable)')" >> "$GITHUB_ENV"
+
+      - name: Install build dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          pip install build setuptools-rust
+
+      - name: Build distributions
+        shell: bash
+        run: python -m build --wheel
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-macos-${{ matrix.runner }}-${{ matrix.python-version }}
+          path: dist/
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: [build-sdist, build-windows, build-linux, build-macos]
+    environment:
+      name: ${{ inputs.environment }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: ${{ inputs.repository-url }}
+          packages-dir: dist
+          user: __token__
+          skip-existing: true
