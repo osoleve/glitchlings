@@ -257,7 +257,8 @@ impl GlitchOp for ReduplicateWordsOp {
             .sum::<f64>()
             / (candidates.len() as f64);
 
-        let mut offset = 0usize;
+        // Collect all reduplications to apply in bulk
+        let mut reduplications = Vec::new();
         for candidate in candidates.into_iter() {
             let probability = if effective_rate >= 1.0 {
                 1.0
@@ -271,15 +272,13 @@ impl GlitchOp for ReduplicateWordsOp {
                 continue;
             }
 
-            let target = candidate.index + offset;
             let first = format!("{}{}", candidate.prefix, candidate.core);
             let second = format!("{}{}", candidate.core, candidate.suffix);
-            buffer.replace_word(target, &first)?;
-            buffer.insert_word_after(target, &second, Some(" "))?;
-            // Reindex after each mutation pair so indices stay valid for next iteration
-            buffer.reindex_if_needed();
-            offset += 1;
+            reduplications.push((candidate.index, first, second, Some(" ".to_string())));
         }
+
+        // Apply all reduplications in a single bulk operation
+        buffer.reduplicate_words_bulk(reduplications)?;
 
         Ok(())
     }

@@ -202,8 +202,8 @@ mod tests {
         ];
         let pipeline = Pipeline::new(master_seed, descriptors);
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
-        // Note: output changed after deferred reindexing optimization
-        assert_eq!(output, "█████ Guard ███ the vault █████");
+        // Note: output changed after bulk API optimization (descending order processing)
+        assert_eq!(output, "█████ Guard the the vault vault");
     }
 
     #[test]

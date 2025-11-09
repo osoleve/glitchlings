@@ -289,6 +289,69 @@ impl TextBuffer {
         Ok(())
     }
 
+    /// Applies multiple word reduplications in a single pass.
+    ///
+    /// Each reduplication consists of:
+    /// - word_index: the index of the word to reduplicate
+    /// - first_replacement: the text to replace the original word with
+    /// - second_word: the duplicated word to insert after
+    /// - separator: optional separator between the two words
+    ///
+    /// Processes in descending index order to avoid index shifting.
+    /// Only reindexes once at the end.
+    pub fn reduplicate_words_bulk<I>(
+        &mut self,
+        reduplications: I,
+    ) -> Result<(), TextBufferError>
+    where
+        I: IntoIterator<Item = (usize, String, String, Option<String>)>,
+    {
+        // Ensure indices are fresh before we start
+        self.reindex_if_needed();
+
+        // Collect and sort in descending order by word_index
+        let mut ops: Vec<_> = reduplications.into_iter().collect();
+        if ops.is_empty() {
+            return Ok(());
+        }
+        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+
+        for (word_index, first_replacement, second_word, separator) in ops {
+            // Get segment index for this word
+            let segment_index = self
+                .word_segment_indices
+                .get(word_index)
+                .copied()
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+
+            // Replace the original word
+            let segment = self
+                .segments
+                .get_mut(segment_index)
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+            segment.set_text(first_replacement, SegmentKind::Word);
+
+            // Insert separator and second word
+            let mut insert_at = segment_index + 1;
+            if let Some(sep) = separator {
+                if !sep.is_empty() {
+                    self.segments.insert(
+                        insert_at,
+                        TextSegment::new(sep, SegmentKind::Separator),
+                    );
+                    insert_at += 1;
+                }
+            }
+            self.segments.insert(
+                insert_at,
+                TextSegment::new(second_word, SegmentKind::Word),
+            );
+        }
+
+        self.mark_dirty();
+        Ok(())
+    }
+
     /// Replaces the provided character range with new text.
     pub fn replace_char_range(
         &mut self,
