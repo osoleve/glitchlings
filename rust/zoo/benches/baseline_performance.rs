@@ -184,7 +184,7 @@ fn bench_heavy_delete(c: &mut Criterion) {
                     let mut buffer = TextBuffer::from_str(black_box(text));
                     let mut rng = DeterministicRng::new(42);
 
-                    // Heavy delete - this will call reindex many times
+                    // Heavy delete - with deferred reindexing, reindex() is now called only once at the end via reindex_if_needed()
                     let op = DeleteRandomWordsOp {
                         rate: 0.2, // 20% of words
                         unweighted: false,
