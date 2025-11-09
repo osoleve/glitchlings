@@ -124,6 +124,7 @@ fn bench_reindex(c: &mut Criterion) {
                     if word_count > 0 {
                         let word = buffer.word_segment(0).map(|s| s.text().to_string()).unwrap_or_default();
                         let _ = buffer.replace_word(0, &word);
+                        buffer.reindex_if_needed();
                     }
                     black_box(buffer);
                 });
