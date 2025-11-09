@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import random
 from collections.abc import Collection, Iterable
+from functools import cache
 from typing import Callable, Literal, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
+
+@cache
+def _mim1c_rust() -> Callable[..., str]:
+    """Return the compiled Mim1c operation, importing it lazily."""
+
+    return cast(
+        Callable[..., str],
+        get_rust_operation("mim1c"),
+    )
 
 _DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
@@ -75,7 +84,8 @@ def swap_homoglyphs(
         payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
 
-    return _MIM1C_RUST(
+    operation = _mim1c_rust()
+    return operation(
         text,
         effective_rate,
         payload_classes,

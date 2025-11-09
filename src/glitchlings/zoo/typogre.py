@@ -2,13 +2,22 @@ from __future__ import annotations
 
 import random
 from collections.abc import Mapping, Sequence
-from typing import cast
+from functools import cache
+from typing import Callable, cast
 
 from ..util import KEYNEIGHBORS
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-_fatfinger_rust = get_rust_operation("fatfinger")
+
+@cache
+def _fatfinger_rust() -> Callable[[str, float, Mapping[str, Sequence[str]], int], str]:
+    """Return the compiled fatfinger operation, importing it on demand."""
+
+    return cast(
+        Callable[[str, float, Mapping[str, Sequence[str]], int], str],
+        get_rust_operation("fatfinger"),
+    )
 
 def fatfinger(
     text: str,
@@ -30,14 +39,12 @@ def fatfinger(
 
     layout_mapping = layout if layout is not None else getattr(KEYNEIGHBORS, keyboard)
 
-    return cast(
-        str,
-        _fatfinger_rust(
-            text,
-            clamped_rate,
-            layout_mapping,
-            resolve_seed(seed, rng),
-        ),
+    operation = _fatfinger_rust()
+    return operation(
+        text,
+        clamped_rate,
+        layout_mapping,
+        resolve_seed(seed, rng),
     )
 
 

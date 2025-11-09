@@ -1,13 +1,21 @@
 import random
-from typing import cast
+from functools import cache
+from typing import Callable, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
 FULL_BLOCK = "█"
 
-# Load the mandatory Rust implementation
-_redact_words_rust = get_rust_operation("redact_words")
+
+@cache
+def _redact_words_rust() -> Callable[[str, str, float, bool, bool, int], str]:
+    """Return the compiled Redactyl operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, str, float, bool, bool, int], str],
+        get_rust_operation("redact_words"),
+    )
 
 def redact_words(
     text: str,
@@ -28,16 +36,14 @@ def redact_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
-    return cast(
-        str,
-        _redact_words_rust(
-            text,
-            replacement,
-            clamped_rate,
-            merge,
-            unweighted_flag,
-            resolve_seed(seed, rng),
-        ),
+    operation = _redact_words_rust()
+    return operation(
+        text,
+        replacement,
+        clamped_rate,
+        merge,
+        unweighted_flag,
+        resolve_seed(seed, rng),
     )
 
 

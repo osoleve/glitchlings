@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Dict, Type, cast
+from functools import cache
+from typing import Callable, Dict, Type, cast
 
 from .._rust_extensions import get_rust_operation
 from ..core import Gaggle
 from .stones import PedantStone
 
-_PEDANT_RUST = get_rust_operation("pedant")
+
+@cache
+def _pedant_rust() -> Callable[..., str]:
+    """Return the compiled Pedant operation, importing it lazily."""
+
+    return cast(Callable[..., str], get_rust_operation("pedant"))
 
 
 def apply_pedant(
@@ -19,13 +25,11 @@ def apply_pedant(
 ) -> str:
     """Apply a pedant transformation via the Rust extension."""
 
-    return cast(
-        str,
-        _PEDANT_RUST(
-            text,
-            stone=stone.label,
-            seed=int(seed),
-        ),
+    operation = _pedant_rust()
+    return operation(
+        text,
+        stone=stone.label,
+        seed=int(seed),
     )
 
 

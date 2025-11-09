@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
+from functools import cache
 from typing import Callable, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-# Load the mandatory Rust implementation
-_inject_zero_widths_rust = cast(
-    Callable[[str, float, list[str], int | None], str],
-    get_rust_operation("inject_zero_widths"),
-)
+
+@cache
+def _inject_zero_widths_rust() -> Callable[[str, float, list[str], int | None], str]:
+    """Return the compiled Zeedub operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, float, list[str], int | None], str],
+        get_rust_operation("inject_zero_widths"),
+    )
 
 _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE
@@ -45,7 +50,8 @@ def insert_zero_widths(
         return text
 
     seed_value = resolve_seed(seed, rng)
-    return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), seed_value)
+    operation = _inject_zero_widths_rust()
+    return operation(text, clamped_rate, list(cleaned_palette), seed_value)
 
 
 class Zeedub(Glitchling):

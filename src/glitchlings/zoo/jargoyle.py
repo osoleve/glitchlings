@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from functools import cache
 from types import ModuleType
-from typing import Any, Literal, cast
+from typing import Any, Callable, Literal, cast
 
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackWave, Glitchling
+
+SynonymOperation = Callable[[str, float, list[str], int | None, Lexicon | None, str | None], str]
 
 _wordnet_module: ModuleType | None
 
@@ -91,7 +94,12 @@ def _normalize_parts_of_speech(
     return tuple(normalized)
 
 
-_SUBSTITUTE_RANDOM_SYNONYMS = get_rust_operation("substitute_random_synonyms")
+
+@cache
+def _substitute_random_synonyms_rust() -> SynonymOperation:
+    """Return the compiled synonym substitution operation, importing it lazily."""
+
+    return cast(SynonymOperation, get_rust_operation("substitute_random_synonyms"))
 
 
 def substitute_random_synonyms(
@@ -134,16 +142,14 @@ def substitute_random_synonyms(
     try:
         target_pos = _normalize_parts_of_speech(part_of_speech)
         resolved_seed = resolve_seed(seed, rng)
-        return cast(
-            str,
-            _SUBSTITUTE_RANDOM_SYNONYMS(
-                text,
-                effective_rate,
-                list(target_pos),
-                resolved_seed,
-                active_lexicon,
-                lexicon_seed_repr,
-            ),
+        operation = _substitute_random_synonyms_rust()
+        return operation(
+            text,
+            effective_rate,
+            list(target_pos),
+            resolved_seed,
+            active_lexicon,
+            lexicon_seed_repr,
         )
     finally:
         if restore_lexicon_seed and isinstance(active_lexicon, Lexicon):

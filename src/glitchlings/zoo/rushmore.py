@@ -5,7 +5,8 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum, unique
-from typing import Any, cast
+from functools import cache
+from typing import Any, Callable, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from ._text_utils import WordToken
@@ -225,10 +226,34 @@ def _resolve_rushmore_config(
     )
 
 
-# Load the mandatory Rust operations
-_delete_random_words_rust = get_rust_operation("delete_random_words")
-_reduplicate_words_rust = get_rust_operation("reduplicate_words")
-_swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
+@cache
+def _delete_random_words_rust() -> Callable[[str, float, bool, int], str]:
+    """Return the compiled delete operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, float, bool, int], str],
+        get_rust_operation("delete_random_words"),
+    )
+
+
+@cache
+def _reduplicate_words_rust() -> Callable[[str, float, bool, int], str]:
+    """Return the compiled reduplication operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, float, bool, int], str],
+        get_rust_operation("reduplicate_words"),
+    )
+
+
+@cache
+def _swap_adjacent_words_rust() -> Callable[[str, float, int], str]:
+    """Return the compiled swap operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, float, int], str],
+        get_rust_operation("swap_adjacent_words"),
+    )
 
 def delete_random_words(
     text: str,
@@ -244,7 +269,8 @@ def delete_random_words(
     unweighted_flag = bool(unweighted)
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, seed_value))
+    operation = _delete_random_words_rust()
+    return operation(text, clamped_rate, unweighted_flag, seed_value)
 
 
 
@@ -264,7 +290,8 @@ def reduplicate_words(
     unweighted_flag = bool(unweighted)
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, seed_value))
+    operation = _reduplicate_words_rust()
+    return operation(text, clamped_rate, unweighted_flag, seed_value)
 
 
 def swap_adjacent_words(
@@ -278,7 +305,8 @@ def swap_adjacent_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _swap_adjacent_words_rust(text, clamped_rate, seed_value))
+    operation = _swap_adjacent_words_rust()
+    return operation(text, clamped_rate, seed_value)
 
 
 def rushmore_attack(

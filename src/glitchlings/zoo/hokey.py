@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from functools import cache
 from typing import Any, Callable, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
@@ -11,7 +12,15 @@ from .core import Glitchling as GlitchlingBase
 
 HokeyRustCallable = Callable[[str, float, int, int, int, float, int | None], str]
 
-_hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
+
+@cache
+def _hokey_rust() -> HokeyRustCallable:
+    """Return the compiled Hokey operation, importing it lazily."""
+
+    return cast(
+        HokeyRustCallable,
+        get_rust_operation("hokey"),
+    )
 
 
 def extend_vowels(
@@ -53,7 +62,8 @@ def extend_vowels(
     base_probability = base_p if base_p is not None else 0.45
 
     seed_value = resolve_seed(seed, rng)
-    return _hokey_rust(
+    operation = _hokey_rust()
+    return operation(
         text,
         rate,
         extension_min,

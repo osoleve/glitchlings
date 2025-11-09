@@ -1,11 +1,19 @@
 import random
-from typing import cast
+from functools import cache
+from typing import Callable, cast
 
 from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-# Load the mandatory Rust implementation
-_ocr_artifacts_rust = get_rust_operation("ocr_artifacts")
+
+@cache
+def _ocr_artifacts_rust() -> Callable[[str, float, int], str]:
+    """Return the compiled Scannequin operation, importing it lazily."""
+
+    return cast(
+        Callable[[str, float, int], str],
+        get_rust_operation("ocr_artifacts"),
+    )
 
 def ocr_artifacts(
     text: str,
@@ -24,7 +32,8 @@ def ocr_artifacts(
 
     clamped_rate = max(0.0, effective_rate)
 
-    return cast(str, _ocr_artifacts_rust(text, clamped_rate, resolve_seed(seed, rng)))
+    operation = _ocr_artifacts_rust()
+    return operation(text, clamped_rate, resolve_seed(seed, rng))
 
 
 
