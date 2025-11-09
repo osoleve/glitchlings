@@ -50,7 +50,6 @@ glitchlings = "glitchlings.main:main"
 
 [project.optional-dependencies]
 all = [
-    "black>=24.4.0",
     "hypothesis>=6.140.0",
     "interrogate>=1.5.0",
     "jellyfish>=1.2.0",
@@ -83,7 +82,6 @@ dev = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings-python>=1.10.0",
     "interrogate>=1.5.0",
-    "black>=24.4.0",
     "isort>=5.13.0",
     "ruff>=0.6.0",
     "mypy>=1.8.0",
@@ -137,10 +135,6 @@ exclude = [
     "benchmarks",
 ]
 
-[tool.black]
-line-length = 100
-target-version = ["py310"]
-
 [tool.isort]
 profile = "black"
 line_length = 100
@@ -151,6 +145,11 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
 
 [tool.mypy]
 python_version = "3.10"
