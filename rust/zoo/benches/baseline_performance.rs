@@ -151,7 +151,7 @@ fn bench_heavy_replace(c: &mut Criterion) {
                     let mut buffer = TextBuffer::from_str(black_box(text));
                     let mut rng = DeterministicRng::new(42);
 
-                    // Heavy reduplicate - this will call reindex many times
+                    // Heavy reduplicate - with deferred reindexing, reindex() is now called only once at the end via reindex_if_needed()
                     let op = ReduplicateWordsOp {
                         rate: 0.2, // 20% of words
                         unweighted: false,
