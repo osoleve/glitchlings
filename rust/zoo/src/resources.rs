@@ -100,7 +100,9 @@ fn is_word_char(c: char) -> bool {
 
 /// Splits text into alternating word and separator segments while retaining the separators.
 pub fn split_with_separators(text: &str) -> Vec<String> {
-    let mut tokens: Vec<String> = Vec::new();
+    // Estimate capacity: roughly one token per 6 characters (average word + separator)
+    let estimated_tokens = (text.len() / 6).max(16);
+    let mut tokens: Vec<String> = Vec::with_capacity(estimated_tokens);
     let mut last = 0;
     let mut iter = text.char_indices().peekable();
 

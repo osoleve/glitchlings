@@ -135,11 +135,15 @@ pub struct TextBuffer {
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
     pub fn from_owned(text: String) -> Self {
+        let segments = tokenise(&text);
+        let segment_count = segments.len();
+
+        // Pre-allocate vectors to avoid reallocations during reindex
         let mut buffer = Self {
-            segments: tokenise(&text),
-            spans: Vec::new(),
-            word_segment_indices: Vec::new(),
-            segment_to_word_index: Vec::new(),
+            segments,
+            spans: Vec::with_capacity(segment_count),
+            word_segment_indices: Vec::with_capacity(segment_count / 2), // ~half are words
+            segment_to_word_index: Vec::with_capacity(segment_count),
             total_chars: 0,
             total_bytes: 0,
             needs_reindex: false,
@@ -346,6 +350,64 @@ impl TextBuffer {
                 insert_at,
                 TextSegment::new(second_word, SegmentKind::Word),
             );
+        }
+
+        self.mark_dirty();
+        Ok(())
+    }
+
+    /// Deletes multiple words in a single pass.
+    ///
+    /// Takes an iterator of (word_index, optional_replacement) pairs.
+    /// If replacement is Some, replaces the word with that text (e.g., affixes only).
+    /// If replacement is None, removes the word segment entirely.
+    ///
+    /// Processes in descending index order to avoid index shifting.
+    /// Only reindexes once at the end.
+    pub fn delete_words_bulk<I>(
+        &mut self,
+        deletions: I,
+    ) -> Result<(), TextBufferError>
+    where
+        I: IntoIterator<Item = (usize, Option<String>)>,
+    {
+        // Ensure indices are fresh before we start
+        self.reindex_if_needed();
+
+        // Collect and sort in descending order by word_index
+        let mut ops: Vec<_> = deletions.into_iter().collect();
+        if ops.is_empty() {
+            return Ok(());
+        }
+        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+
+        for (word_index, replacement) in ops {
+            let segment_index = self
+                .word_segment_indices
+                .get(word_index)
+                .copied()
+                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+
+            if let Some(repl_text) = replacement {
+                // Replace with affixes or other text
+                if !repl_text.is_empty() {
+                    let segment = self
+                        .segments
+                        .get_mut(segment_index)
+                        .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
+                    segment.set_text(repl_text, SegmentKind::Word);
+                } else {
+                    // Empty replacement = remove the segment
+                    if segment_index < self.segments.len() {
+                        self.segments.remove(segment_index);
+                    }
+                }
+            } else {
+                // No replacement = remove the segment
+                if segment_index < self.segments.len() {
+                    self.segments.remove(segment_index);
+                }
+            }
         }
 
         self.mark_dirty();

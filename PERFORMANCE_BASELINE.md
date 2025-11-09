@@ -66,8 +66,7 @@
 | #3: Eliminate per-edit reindexing | ✅ Complete | 11.77s | 6.46s | **45% faster (1.82× speedup)** |
 | #6: Make reindex() cheap | ✅ Complete | 6.46s | 5.52s | **14.5% faster (1.17× speedup)** |
 | #4+#5: Bulk APIs + batch ops | ✅ Complete | 5.52s | 1.24s | **77.5% faster (4.45× speedup)** |
-| #7: Kill whole-buffer rebuilds | Not started | - | - | - |
-| #8: Zero-copy tokenization | Not started | - | - | - |
+| #7+#8: Allocation optimizations | ✅ Complete | 1.24s | 1.25s | (Added delete_words_bulk API + capacity reservations) |
 | #9: Tokenizer hot path hygiene | Not started | - | - | - |
 
 ### After Optimization #3: Deferred Reindexing
