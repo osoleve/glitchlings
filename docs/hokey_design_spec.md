@@ -103,7 +103,7 @@ All randomness flows through the glitchling's RNG. The historical Python generat
 and helper modules have been removed; the Python shim now delegates directly to the
 compiled Rust pipeline and no longer surfaces trace events or intermediate data.
 
-## 7. Rust Fast Path
+## 7. Rust Implementation
 The Rust implementation mirrors the Python pipeline:
 
 * Ported lexical prior and heuristic tables to `rust/zoo/src/hokey.rs`.
@@ -112,7 +112,7 @@ The Rust implementation mirrors the Python pipeline:
 * Trace replay now lives exclusively in Rust. The Python shim delegates all
   generation to the compiled operation and provides no tracing hooks.
 
-When the PyO3 extension is available, Hokey uses the Rust path automatically.
+Hokey relies exclusively on the compiled Rust pipeline.
 
 ## 8. Testing Strategy
 

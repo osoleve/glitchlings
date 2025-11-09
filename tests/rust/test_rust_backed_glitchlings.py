@@ -105,7 +105,7 @@ def test_redactyl_pipeline_requires_complete_parameters():
     assert descriptor is None
 
 
-def test_redactyl_python_fallback_coerces_optional_parameters():
+def test_redactyl_rust_backend_coerces_optional_parameters():
     glitch = redactyl_module.Redactyl(
         replacement_char="*",
         rate=0.5,
