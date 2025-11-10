@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from functools import cache
 from hashlib import blake2b
 from importlib import resources
