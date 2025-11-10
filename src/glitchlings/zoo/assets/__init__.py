@@ -8,10 +8,10 @@ from importlib import resources
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, TextIO, cast
 
-if sys.version_info >= (3, 11):
-    from importlib.resources.abc import Traversable
-else:
-    from importlib.abc import Traversable
+try:
+    from importlib.resources.abc import Traversable  # Python 3.9+
+except ImportError:
+    from importlib_resources.abc import Traversable  # Backport for Python <3.9
 
 _DEFAULT_DIGEST_SIZE = 32
 
