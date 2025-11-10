@@ -175,9 +175,7 @@ class Jargoyle(Glitchling):
             owns_lexicon = False
 
         self._owns_lexicon = owns_lexicon
-        self._external_lexicon_original_seed = (
-            None if owns_lexicon else prepared_lexicon.seed
-        )
+        self._external_lexicon_original_seed = None if owns_lexicon else prepared_lexicon.seed
         self._initializing = True
         effective_rate = 0.01 if rate is None else rate
         if not owns_lexicon and seed is not None:
@@ -219,9 +217,7 @@ class Jargoyle(Glitchling):
                         current_lexicon.reseed(self.seed)
                     else:
                         if hasattr(self, "_external_lexicon_original_seed"):
-                            original_seed = getattr(
-                                self, "_external_lexicon_original_seed", None
-                            )
+                            original_seed = getattr(self, "_external_lexicon_original_seed", None)
                             current_lexicon.reseed(original_seed)
         elif canonical == "lexicon" and isinstance(value, Lexicon):
             if getattr(self, "_initializing", False):

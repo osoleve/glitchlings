@@ -10,6 +10,7 @@ from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _fatfinger_rust = get_rust_operation("fatfinger")
 
+
 def fatfinger(
     text: str,
     rate: float | None = None,

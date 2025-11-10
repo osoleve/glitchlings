@@ -9,6 +9,7 @@ FULL_BLOCK = "█"
 # Load the mandatory Rust implementation
 _redact_words_rust = get_rust_operation("redact_words")
 
+
 def redact_words(
     text: str,
     replacement_char: str | None = FULL_BLOCK,
@@ -70,11 +71,7 @@ class Redactyl(Glitchling):
         rate_value = self.kwargs.get("rate")
         merge_value = self.kwargs.get("merge_adjacent")
 
-        if (
-            replacement_char_value is None
-            or rate_value is None
-            or merge_value is None
-        ):
+        if replacement_char_value is None or rate_value is None or merge_value is None:
             return None
 
         replacement_char = str(replacement_char_value)

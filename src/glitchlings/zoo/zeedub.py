@@ -21,6 +21,7 @@ _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
     "\u2060",  # WORD JOINER
 )
 
+
 def insert_zero_widths(
     text: str,
     rate: float | None = None,

@@ -26,7 +26,7 @@ def _glitch_datamodule(
     # Lightning datamodules only support string column names (mapping keys)
     columns_str = cast(list[str], columns)
     gaggle = coerce_gaggle(glitchlings, seed=seed)
-    
+
     return _GlitchedLightningDataModule(datamodule, columns_str, gaggle)
 
 
@@ -38,19 +38,19 @@ def GlitchedLightningDataModule(
     seed: int = 151,
 ) -> Any:
     """Return a glitched wrapper around a PyTorch Lightning LightningDataModule.
-    
+
     This function wraps a LightningDataModule to apply glitchlings to specified
     columns in batches yielded by the module's dataloaders.
-    
+
     Args:
         datamodule: The LightningDataModule to wrap.
         glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
         column: The column name (string) or names (sequence of strings) to corrupt.
         seed: RNG seed for deterministic corruption (default: 151).
-    
+
     Returns:
         A wrapped datamodule that yields corrupted batches from its dataloaders.
-    
+
     Example:
         >>> from pytorch_lightning import LightningDataModule
         >>> from glitchlings.dlc.pytorch_lightning import GlitchedLightningDataModule
@@ -136,7 +136,7 @@ class _GlitchedLightningDataModule:
 # Module initialization: set up inheritance from LightningDataModule if available
 def _setup_inheritance() -> None:
     """Set up _GlitchedLightningDataModule to inherit from LightningDataModule.
-    
+
     This function is called once at module import time to dynamically set the base
     class of _GlitchedLightningDataModule to inherit from
     pytorch_lightning.LightningDataModule when available. This ensures that
@@ -147,7 +147,7 @@ def _setup_inheritance() -> None:
     if datamodule_cls is None:
         # If LightningDataModule is not available, keep as plain object
         return
-    
+
     # Try to dynamically set __bases__ to inherit from LightningDataModule
     try:
         _GlitchedLightningDataModule.__bases__ = (datamodule_cls,)

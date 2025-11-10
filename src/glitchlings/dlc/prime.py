@@ -34,10 +34,10 @@ def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
     """Return a fully-instantiated verifier environment."""
     if isinstance(env, str):
         env = vf.load_environment(env)
-    
+
     if not isinstance(env, cast(type[Any], vf.Environment)):
         raise TypeError("Invalid environment type")
-    
+
     return cast(VerifierEnvironment, env)
 
 

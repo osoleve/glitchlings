@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import json
+import sys
 from functools import cache
 from hashlib import blake2b
 from importlib import resources
-from importlib.resources.abc import Traversable
 from pathlib import Path
 from typing import Any, BinaryIO, Iterable, TextIO, cast
+
+try:
+    from importlib.resources.abc import Traversable  # Python 3.9+
+except ImportError:
+    from importlib_resources.abc import Traversable  # Backport for Python <3.9
 
 _DEFAULT_DIGEST_SIZE = 32
 
@@ -41,7 +46,7 @@ def _asset(name: str) -> Traversable:
 def read_text(name: str, *, encoding: str = "utf-8") -> str:
     """Return the decoded contents of a bundled text asset."""
 
-    return cast(str, _asset(name).read_text(encoding=encoding))
+    return _asset(name).read_text(encoding=encoding)
 
 
 def open_text(name: str, *, encoding: str = "utf-8") -> TextIO:

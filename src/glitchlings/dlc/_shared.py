@@ -130,14 +130,14 @@ def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
 
 def infer_batch_targets(batch: Any) -> list[str | int] | None:
     """Infer which fields should be glitched from a representative batch.
-    
+
     Args:
         batch: A batch from a DataLoader (mapping, sequence, or textual value).
-    
+
     Returns:
         A list of column keys (strings) or indices (ints), or None if the batch
         itself is textual content.
-    
+
     Raises:
         ValueError: If unable to infer textual columns/indices.
         TypeError: If the batch type is unsupported.
@@ -164,16 +164,16 @@ def infer_batch_targets(batch: Any) -> list[str | int] | None:
 
 def corrupt_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -> Any:
     """Return batch with glitchlings applied to the specified targets.
-    
+
     Args:
         batch: The batch to corrupt (mapping, sequence, or textual value).
         targets: List of column keys (strings) or indices (ints), or None to
                  corrupt the entire batch as textual content.
         gaggle: The gaggle of glitchlings to apply.
-    
+
     Returns:
         The corrupted batch, preserving the original type.
-    
+
     Raises:
         TypeError: If batch type is unsupported or targets are incompatible.
         ValueError: If a specified target is not found in the batch.
@@ -187,7 +187,7 @@ def corrupt_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -
             mutated = batch.copy()
         else:
             mutated = dict(batch)
-        
+
         for key in targets:
             if not isinstance(key, str):
                 raise TypeError("Mapping batches require string column names")
@@ -214,7 +214,7 @@ def corrupt_batch(batch: Any, targets: list[str | int] | None, gaggle: Gaggle) -
 
 class BaseGlitchedDataLoader:
     """Proxy dataloader that glitches batches produced by the wrapped loader.
-    
+
     This class wraps a dataloader and applies glitchlings to specified columns
     in each batch as it's yielded. It supports both mapping-based batches (dict-like)
     and sequence-based batches (list/tuple-like).
@@ -222,7 +222,7 @@ class BaseGlitchedDataLoader:
 
     def __init__(self, dataloader: Any, columns: list[str | int], gaggle: Gaggle) -> None:
         """Initialize the glitched dataloader.
-        
+
         Args:
             dataloader: The underlying dataloader to wrap.
             columns: List of column names (strings) or indices (ints) to corrupt.
@@ -246,20 +246,18 @@ class BaseGlitchedDataLoader:
         return getattr(self._dataloader, attribute)
 
 
-def wrap_dataloader(
-    dataloader: Any, columns: list[str | int], gaggle: Gaggle
-) -> Any:
+def wrap_dataloader(dataloader: Any, columns: list[str | int], gaggle: Gaggle) -> Any:
     """Wrap a dataloader (or nested structure) to apply glitchlings lazily.
-    
+
     This function recursively wraps dataloaders in nested structures (mappings,
     lists, tuples, etc.) so that all dataloaders in the structure will yield
     corrupted batches.
-    
+
     Args:
         dataloader: The dataloader or nested structure to wrap.
         columns: List of column names (strings) or indices (ints) to corrupt.
         gaggle: The gaggle of glitchlings to apply.
-    
+
     Returns:
         The wrapped dataloader or structure, with the same type as the input.
     """
