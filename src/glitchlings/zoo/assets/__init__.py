@@ -46,7 +46,7 @@ def _asset(name: str) -> Traversable:
 def read_text(name: str, *, encoding: str = "utf-8") -> str:
     """Return the decoded contents of a bundled text asset."""
 
-    return cast(str, _asset(name).read_text(encoding=encoding))
+    return _asset(name).read_text(encoding=encoding)
 
 
 def open_text(name: str, *, encoding: str = "utf-8") -> TextIO:
