@@ -24,12 +24,15 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: 'pip'
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install ".[dev]"
+        run: uv pip install --system ".[dev]"
 
       - name: Ensure CLI examples are current
         run: |
@@ -37,5 +40,4 @@ jobs:
           git diff --exit-code README.md
 
       - name: Build MkDocs site
-        run: |
-          mkdocs build --strict --config-file mkdocs.yml
+        run: mkdocs build --strict --config-file mkdocs.yml
