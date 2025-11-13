@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import hashlib
 from abc import abstractmethod
-from typing import Protocol, Sequence
+from typing import Any, Protocol, Sequence
 
 
 class TokenizerAdapter(Protocol):
@@ -198,7 +198,7 @@ def create_huggingface_adapter(model_name: str) -> TokenizerAdapter:
     class HuggingFaceAdapter:
         """Adapter for HuggingFace tokenizers."""
 
-        def __init__(self, hf_tokenizer, model_id: str):
+        def __init__(self, hf_tokenizer: Any, model_id: str) -> None:
             self._tokenizer = hf_tokenizer
             self._model_id = model_id
 
@@ -206,7 +206,7 @@ def create_huggingface_adapter(model_name: str) -> TokenizerAdapter:
             """Encode text using HuggingFace tokenizer."""
             if not text:
                 return []
-            return self._tokenizer.encode(text, add_special_tokens=False)
+            return list(self._tokenizer.encode(text, add_special_tokens=False))
 
         @property
         def name(self) -> str:
@@ -261,7 +261,7 @@ def create_tiktoken_adapter(encoding_name: str = "cl100k_base") -> TokenizerAdap
     class TiktokenAdapter:
         """Adapter for OpenAI tiktoken."""
 
-        def __init__(self, enc, enc_name: str):
+        def __init__(self, enc: Any, enc_name: str) -> None:
             self._encoding = enc
             self._encoding_name = enc_name
 
@@ -269,7 +269,7 @@ def create_tiktoken_adapter(encoding_name: str = "cl100k_base") -> TokenizerAdap
             """Encode text using tiktoken."""
             if not text:
                 return []
-            return self._encoding.encode(text)
+            return list(self._encoding.encode(text))
 
         @property
         def name(self) -> str:
@@ -282,7 +282,7 @@ def create_tiktoken_adapter(encoding_name: str = "cl100k_base") -> TokenizerAdap
 
             Note: tiktoken has a large vocab (~100k for cl100k_base)
             """
-            return self._encoding.n_vocab
+            return int(self._encoding.n_vocab)
 
         def vocab_hash(self) -> str:
             """Compute vocabulary hash.

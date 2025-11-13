@@ -124,7 +124,7 @@ def load_config_yaml(config_path: str | Path) -> list[FigureConfig]:
         ...     render_figure(config, observations)
     """
     try:
-        import yaml
+        import yaml  # type: ignore[import-untyped]
     except ImportError as e:
         raise ImportError(
             "PyYAML required for YAML config loading. Install with: pip install pyyaml"
@@ -270,7 +270,11 @@ def render_figure(
             raise ValueError("Must provide either observations or data_source")
 
         # Load from Parquet
-        observations = load_observations_from_parquet(config.data_source, config.filters)
+        if isinstance(config.data_source, (str, Path)):
+            observations = load_observations_from_parquet(config.data_source, config.filters)
+        else:
+            # data_source is already a sequence of observations
+            observations = config.data_source
     else:
         # Apply filters to provided observations
         if config.filters:
