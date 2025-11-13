@@ -79,6 +79,10 @@ metrics = [
     "pyarrow>=14.0.0",
     "scipy>=1.10.0",
 ]
+metrics-tokenizers = [
+    "transformers>=4.35.0",
+    "tiktoken>=0.5.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
