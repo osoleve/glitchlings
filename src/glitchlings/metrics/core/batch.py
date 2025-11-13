@@ -5,7 +5,6 @@ Provides streaming batch processing with Parquet output and run manifests.
 
 from __future__ import annotations
 
-import json
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -310,7 +309,7 @@ def process_and_write(
         seed=seed,
     )
 
-    manifest_path = writer.write_manifest(manifest)
+    writer.write_manifest(manifest)
 
     return parquet_path, manifest
 

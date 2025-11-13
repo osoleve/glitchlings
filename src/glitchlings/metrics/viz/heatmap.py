@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 from ..core.schema import Observation
-from .aggregate import aggregate_observations, pivot_for_heatmap
+from .aggregate import pivot_for_heatmap
 
 
 def create_heatmap(
@@ -114,11 +114,6 @@ def _create_heatmap_matplotlib(
     except ImportError:
         use_seaborn = False
 
-    # Aggregate data by row and column keys
-    grouped = aggregate_observations(
-        observations, group_by=[row_key, col_key], metrics=[metric]
-    )
-
     # Pivot to 2D matrix
     heatmap_data = pivot_for_heatmap(observations, row_key, col_key, metric, aggregation)
 
@@ -166,7 +161,7 @@ def _create_heatmap_matplotlib(
                 for j in range(len(col_labels)):
                     value = values[i, j]
                     if not np.isnan(value):
-                        text = ax.text(
+                        ax.text(
                             j,
                             i,
                             f"{value:.3f}",
@@ -278,7 +273,10 @@ def _create_heatmap_plotly(
             text=values if annotate else None,
             texttemplate="%{text:.3f}" if annotate else None,
             textfont={"size": 10},
-            hovertemplate=f"{row_key}: %{{y}}<br>{col_key}: %{{x}}<br>{metric}: %{{z:.3f}}<extra></extra>",
+            hovertemplate=(
+                f"{row_key}: %{{y}}<br>{col_key}: %{{x}}<br>"
+                f"{metric}: %{{z:.3f}}<extra></extra>"
+            ),
             zmin=0,
             zmax=1,
         )

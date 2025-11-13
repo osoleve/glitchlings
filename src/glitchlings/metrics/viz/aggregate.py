@@ -7,25 +7,44 @@ for visualization.
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Sequence, Union
 
 import numpy as np
 
+from ..core.schema import Observation
+
+
+def _get_attr(obs: Union[dict, Observation], key: str) -> Any:
+    """Get attribute from observation (dict or Observation object)."""
+    if isinstance(obs, dict):
+        return obs[key]
+    return getattr(obs, key)
+
+
+def _get_metric(obs: Union[dict, Observation], metric_key: str) -> float:
+    """Get metric value from observation."""
+    if isinstance(obs, dict):
+        return obs[metric_key]
+    # For Observation objects, metrics are in the metrics dict
+    # Strip "metric_" prefix if present
+    clean_key = metric_key.replace("metric_", "")
+    return obs.metrics[clean_key]
+
 
 def aggregate_observations(
-    observations: Iterable[dict[str, Any]],
+    observations: Iterable[Union[dict[str, Any], Observation]],
     group_by: Sequence[str],
     metrics: Sequence[str] | None = None,
-) -> dict[tuple, dict[str, dict[str, float]]]:
+) -> list[dict[str, Any]]:
     """Aggregate observations by grouping keys.
 
     Args:
-        observations: Iterable of observation dicts
+        observations: Iterable of observation dicts or Observation objects
         group_by: Keys to group by (e.g., ["glitchling_id", "tokenizer_id"])
-        metrics: Metric keys to aggregate (None = all metrics)
+        metrics: Metric keys to aggregate (None = all metrics from Observation.metrics)
 
     Returns:
-        Nested dict: {group_key: {metric: {stat: value}}}
+        List of dicts with group keys and aggregated metrics
 
     Example:
         >>> obs = [
@@ -33,54 +52,67 @@ def aggregate_observations(
         ...     {"glitchling_id": "g1", "tokenizer_id": "t1", "metric_ned.value": 0.6},
         ... ]
         >>> result = aggregate_observations(obs, ["glitchling_id"], ["metric_ned.value"])
-        >>> result[("g1",)]["metric_ned.value"]["median"]
+        >>> result[0]["metric_ned.value"]["median"]
         0.55
     """
     # Group observations
-    groups: dict[tuple, list[dict]] = defaultdict(list)
+    groups: dict[tuple, list] = defaultdict(list)
 
     for obs in observations:
-        key = tuple(obs[k] for k in group_by)
+        key = tuple(_get_attr(obs, k) for k in group_by)
         groups[key].append(obs)
 
     # Aggregate each group
-    aggregated = {}
+    results = []
 
     for group_key, group_obs in groups.items():
-        group_stats = {}
+        group_result = dict(zip(group_by, group_key))
+        group_result["count"] = len(group_obs)
 
         # Identify metrics to aggregate
         if metrics is None:
-            # Find all metric columns
+            # Find all metrics from first Observation
             sample = group_obs[0]
-            metric_keys = [k for k in sample.keys() if k.startswith("metric_")]
+            if isinstance(sample, dict):
+                metric_keys = [k for k in sample.keys() if k.startswith("metric_")]
+            else:
+                # For Observation objects, get from metrics dict
+                metric_keys = [f"metric_{k}" for k in sample.metrics.keys()]
         else:
-            metric_keys = metrics
+            metric_keys = list(metrics)
 
         # Compute stats for each metric
         for metric in metric_keys:
-            values = [obs.get(metric) for obs in group_obs if obs.get(metric) is not None]
+            try:
+                values = [
+                    _get_metric(obs, metric)
+                    for obs in group_obs
+                ]
+                values = [v for v in values if v is not None and np.isfinite(v)]
 
-            if not values:
+                if not values:
+                    continue
+
+                values_arr = np.array(values, dtype=float)
+
+                group_result[metric] = {
+                    "mean": float(np.mean(values_arr)),
+                    "median": float(np.median(values_arr)),
+                    "std": float(np.std(values_arr)),
+                    "min": float(np.min(values_arr)),
+                    "max": float(np.max(values_arr)),
+                    "q1": float(np.percentile(values_arr, 25)),
+                    "q3": float(np.percentile(values_arr, 75)),
+                    "iqr": float(np.percentile(values_arr, 75) - np.percentile(values_arr, 25)),
+                    "n": len(values_arr),
+                }
+            except (KeyError, AttributeError):
+                # Metric not found in this observation
                 continue
 
-            values = np.array(values, dtype=float)
+        results.append(group_result)
 
-            group_stats[metric] = {
-                "mean": float(np.mean(values)),
-                "median": float(np.median(values)),
-                "std": float(np.std(values)),
-                "min": float(np.min(values)),
-                "max": float(np.max(values)),
-                "q25": float(np.percentile(values, 25)),
-                "q75": float(np.percentile(values, 75)),
-                "iqr": float(np.percentile(values, 75) - np.percentile(values, 25)),
-                "n": len(values),
-            }
-
-        aggregated[group_key] = group_stats
-
-    return aggregated
+    return results
 
 
 def compute_percentile_ranks(
@@ -234,7 +266,9 @@ def pivot_for_heatmap(
         ...     {"glitchling_id": "g1", "tokenizer_id": "t1", "metric_ned.value": 0.5},
         ...     {"glitchling_id": "g1", "tokenizer_id": "t2", "metric_ned.value": 0.6},
         ... ]
-        >>> rows, cols, matrix = pivot_for_heatmap(obs, "glitchling_id", "tokenizer_id", "metric_ned.value")
+        >>> result = pivot_for_heatmap(
+        ...     obs, "glitchling_id", "tokenizer_id", "metric_ned.value"
+        ... )
         >>> matrix.shape
         (1, 2)
     """

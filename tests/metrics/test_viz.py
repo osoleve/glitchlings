@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 import tempfile
 from pathlib import Path
 
@@ -15,6 +16,21 @@ from glitchlings.metrics.viz import (
     normalize_metrics,
     pivot_for_heatmap,
 )
+
+
+def _has_matplotlib():
+    """Check if matplotlib is installed."""
+    return importlib.util.find_spec("matplotlib") is not None
+
+
+def _has_plotly():
+    """Check if plotly is installed."""
+    return importlib.util.find_spec("plotly") is not None
+
+
+def _has_umap():
+    """Check if umap-learn is installed."""
+    return importlib.util.find_spec("umap") is not None
 
 
 @pytest.fixture
@@ -244,7 +260,7 @@ def test_create_sparklines(sample_observations):
 
 def test_config_load_and_render():
     """Test config loading and rendering."""
-    from glitchlings.metrics.viz import FigureConfig, render_figure
+    from glitchlings.metrics.viz import FigureConfig
 
     # Create config
     config = FigureConfig(
@@ -252,24 +268,6 @@ def test_config_load_and_render():
         title="Test Radar",
         params={"backend": "matplotlib"},
     )
-
-    # Create minimal observations
-    observations = [
-        Observation(
-            run_id="test",
-            observation_id=f"obs_{i}",
-            input_id=f"input_{i}",
-            input_type="test",
-            glitchling_id="test_glitch",
-            tokenizer_id="test_tok",
-            tokens_before=[1, 2, 3],
-            tokens_after=[1, 2, 3],
-            m=3,
-            n=3,
-            metrics={"ned.value": 0.5, "lcsr.value": 0.8},
-        )
-        for i in range(5)
-    ]
 
     # Test config dict conversion
     config_dict = config.to_dict()
@@ -280,33 +278,6 @@ def test_config_load_and_render():
     loaded_config = FigureConfig.from_dict(config_dict)
     assert loaded_config.figure_type == "radar"
     assert loaded_config.title == "Test Radar"
-
-
-def _has_matplotlib():
-    """Check if matplotlib is installed."""
-    try:
-        import matplotlib
-        return True
-    except ImportError:
-        return False
-
-
-def _has_plotly():
-    """Check if plotly is installed."""
-    try:
-        import plotly
-        return True
-    except ImportError:
-        return False
-
-
-def _has_umap():
-    """Check if umap-learn is installed."""
-    try:
-        import umap
-        return True
-    except ImportError:
-        return False
 
 
 if __name__ == "__main__":

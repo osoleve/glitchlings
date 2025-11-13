@@ -548,7 +548,10 @@ def _create_length_sensitivity_plotly(
                     name=group,
                     line=dict(width=2.5),
                     marker=dict(size=6),
-                    hovertemplate=f"{group}<br>Length: %{{x:.0f}}<br>{metric}: %{{y:.3f}}<extra></extra>",
+                    hovertemplate=(
+                        f"{group}<br>Length: %{{x:.0f}}<br>"
+                        f"{metric}: %{{y:.3f}}<extra></extra>"
+                    ),
                 )
             )
 

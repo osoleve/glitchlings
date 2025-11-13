@@ -244,7 +244,7 @@ def _plot_embedding_matplotlib(
 
     # Plot each group
     for label in unique_labels:
-        mask = np.array([l == label for l in color_labels])
+        mask = np.array([lbl == label for lbl in color_labels])
         ax.scatter(
             embedding[mask, 0],
             embedding[mask, 1],
@@ -308,7 +308,7 @@ def _plot_embedding_plotly(
     # Plot each group
     unique_labels = sorted(set(color_labels))
     for label in unique_labels:
-        mask = np.array([l == label for l in color_labels])
+        mask = np.array([lbl == label for lbl in color_labels])
         indices = np.where(mask)[0]
 
         fig.add_trace(
@@ -438,7 +438,7 @@ def _create_lens_comparison_matplotlib(
 
             # Plot
             for label in unique_labels:
-                mask = np.array([l == label for l in color_labels])
+                mask = np.array([lbl == label for lbl in color_labels])
                 ax.scatter(
                     embedding[mask, 0],
                     embedding[mask, 1],
@@ -523,7 +523,7 @@ def _create_lens_comparison_plotly(
 
             # Add traces
             for label in unique_labels:
-                mask = np.array([l == label for l in color_labels])
+                mask = np.array([lbl == label for lbl in color_labels])
                 fig.add_trace(
                     go.Scatter(
                         x=embedding[mask, 0],

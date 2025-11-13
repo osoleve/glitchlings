@@ -9,7 +9,6 @@ from __future__ import annotations
 from typing import Any, Mapping, Sequence
 
 from ..core.align import (
-    damerau_levenshtein_distance,
     kendall_tau_distance,
     longest_common_subsequence,
 )

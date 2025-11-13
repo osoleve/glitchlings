@@ -107,7 +107,6 @@ def _create_radar_matplotlib(
     # Close the plot
     values += values[:1]
     angles += angles[:1]
-    labels_closed = labels + [labels[0]]
 
     # Create figure
     fig, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(projection="polar"))

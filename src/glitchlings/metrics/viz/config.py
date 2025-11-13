@@ -41,7 +41,8 @@ class FigureConfig:
     """Configuration for a single figure.
 
     Attributes:
-        figure_type: Type of figure ("radar", "heatmap", "embedding", "sparklines", "length_sensitivity")
+        figure_type: Type of figure ("radar", "heatmap", "embedding",
+            "sparklines", "length_sensitivity")
         title: Figure title
         data_source: Path to Parquet file or list of observations
         filters: Dict of attribute filters (e.g., {"glitchling_id": "typogre"})

@@ -104,7 +104,7 @@ def test_performance_individual_metrics() -> None:
 
     # Find slowest metrics
     timings.sort(key=lambda x: x[1], reverse=True)
-    print(f"\n  Slowest metrics:")
+    print("\n  Slowest metrics:")
     for metric_id, time_ms in timings[:3]:
         print(f"    {metric_id:12s} : {time_ms:.2f} ms")
 

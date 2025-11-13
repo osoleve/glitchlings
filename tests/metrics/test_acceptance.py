@@ -222,6 +222,7 @@ def test_metric_registry_missing_dependency() -> None:
 
     def metric_needs_lm(before, after, context):
         lm = context["lm"]  # Requires "lm" key
+        _ = lm  # Use the lm value
         return {"value": 0.5}
 
     registry = MetricRegistry()
