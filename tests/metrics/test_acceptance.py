@@ -87,6 +87,9 @@ def test_invariant_identity(registry: MetricRegistry) -> None:
 
             # For retention/match rate metrics, expect 1.0 (not 0.0)
             if "lcsr" in metric_key or "pmr" in metric_key:
+                # Skip empty sequences - retention is undefined
+                if len(seq) == 0:
+                    continue
                 assert value == pytest.approx(1.0, abs=1e-6), (
                     f"Identity invariant failed for retention metric: "
                     f"{metric_key} = {value} (expected 1.0) on {seq}"
@@ -113,10 +116,23 @@ def test_invariant_bounds(registry: MetricRegistry) -> None:
         results = registry.compute_all(before, after, {})
 
         for metric_key, value in results.items():
-            # Skip unbounded metrics
+            # Skip unbounded metrics and sub-metrics (only check .value metrics)
             if any(
                 unbounded in metric_key
-                for unbounded in ["lr.ratio", "lr.delta", "h_delta", "c_delta"]
+                for unbounded in [
+                    "lr.ratio",
+                    "lr.delta",
+                    "h_delta",
+                    "c_delta",
+                    ".before",
+                    ".after",
+                    ".num_spans",
+                    ".mean_span_length",
+                    ".merges",
+                    ".splits",
+                    ".before_size",
+                    ".after_size",
+                ]
             ):
                 continue
 

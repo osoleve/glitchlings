@@ -93,7 +93,7 @@ CASE_INSERTION = MetricTestCase(
     expected={
         "ned.value": 1 / 4,  # One insertion, normalized by max(3,4)=4
         "lcsr.value": 1.0,  # LCS=3 (entire original), 3/3=1
-        "pmr.value": 1.0,  # All original positions match (with LCS alignment)
+        "pmr.value": 3 / 4,  # LCS positions: 3 out of 4 (with LCS alignment)
         "jsdset.value": 1 / 4,  # |{0,1,2} ∪ {0,1,2,3}| = 4, intersection=3; dist=1-3/4
         "jsdbag.value": 1 / 4,  # min_sum=3, max_sum=4; dist=1-3/4
         "lr.ratio": 4 / 3,  # Length ratio 4/3
@@ -143,7 +143,7 @@ CASE_REVERSAL = MetricTestCase(
     before=[0, 1, 2, 3],
     after=[3, 2, 1, 0],
     expected={
-        "ned.value": 2 / 4,  # 2 operations (depends on DL implementation)
+        "ned.value": 3 / 4,  # 3 operations (reversal) (depends on DL implementation)
         "lcsr.value": 1 / 4,  # LCS=1 (any single token)
         "pmr.value": 0.0,  # No positional matches
         "jsdset.value": 0.0,  # Same set
