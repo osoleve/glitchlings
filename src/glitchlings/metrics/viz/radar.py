@@ -75,7 +75,7 @@ def _create_radar_matplotlib(
     reference_stats: dict[str, dict[str, float]] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create radar chart using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -145,7 +145,7 @@ def _create_radar_plotly(
     reference_stats: dict[str, dict[str, float]] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create interactive radar chart using plotly."""
     try:
         import plotly.graph_objects as go
@@ -250,7 +250,7 @@ def _create_multi_radar_matplotlib(
     reference_stats: dict[str, dict[str, float]] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create multi-glitchling radar chart using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -320,7 +320,7 @@ def _create_multi_radar_plotly(
     reference_stats: dict[str, dict[str, float]] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create interactive multi-glitchling radar chart using plotly."""
     try:
         import plotly.graph_objects as go

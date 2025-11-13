@@ -113,7 +113,7 @@ def _prepare_metric_matrix(
     """
     # Get all metric names if not specified
     if metrics is None:
-        all_metrics = set()
+        all_metrics: set[str] = set()
         for obs in observations:
             all_metrics.update(obs.metrics.keys())
         metrics = sorted(all_metrics)
@@ -212,7 +212,7 @@ def _compute_embedding(
     else:
         raise ValueError(f"Unknown method: {method}. Use 'umap' or 'tsne'")
 
-    return embedding
+    return np.asarray(embedding)
 
 
 def _plot_embedding_matplotlib(
@@ -222,7 +222,7 @@ def _plot_embedding_matplotlib(
     color_by: str,
     title: str,
     output_path: str | Path | None,
-):
+) -> Any:
     """Plot embedding using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -273,7 +273,7 @@ def _plot_embedding_plotly(
     metric_names: list[str],
     title: str,
     output_path: str | Path | None,
-):
+) -> Any:
     """Plot embedding using plotly with interactive hover."""
     try:
         import plotly.graph_objects as go
@@ -398,7 +398,7 @@ def _create_lens_comparison_matplotlib(
     color_by: str,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create lens comparison using matplotlib subplots."""
     try:
         import matplotlib.pyplot as plt
@@ -477,7 +477,7 @@ def _create_lens_comparison_plotly(
     color_by: str,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create lens comparison using plotly subplots."""
     try:
         import plotly.graph_objects as go

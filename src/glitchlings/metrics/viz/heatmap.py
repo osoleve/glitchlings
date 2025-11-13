@@ -95,7 +95,7 @@ def _create_heatmap_matplotlib(
     output_path: str | Path | None,
     cmap: str,
     annotate: bool,
-):
+) -> Any:
     """Create heatmap using matplotlib/seaborn."""
     try:
         import matplotlib.pyplot as plt
@@ -190,7 +190,15 @@ def _create_heatmap_matplotlib(
     return fig
 
 
-def _add_iqr_glyphs(ax, observations, row_key, col_key, metric, row_labels, col_labels):
+def _add_iqr_glyphs(
+    ax: Any,
+    observations: Sequence[Observation],
+    row_key: str,
+    col_key: str,
+    metric: str,
+    row_labels: list[Any],
+    col_labels: list[Any],
+) -> None:
     """Add IQR uncertainty glyphs to heatmap cells."""
     import numpy as np
 
@@ -215,7 +223,8 @@ def _add_iqr_glyphs(ax, observations, row_key, col_key, metric, row_labels, col_
                 continue
 
             # Compute IQR
-            q1, q3 = np.percentile(values, [25, 75])
+            percentiles = np.percentile(values, [25, 75])
+            q1, q3 = float(percentiles[0]), float(percentiles[1])
             iqr = q3 - q1
 
             # Draw error bars if IQR is significant
@@ -240,7 +249,7 @@ def _create_heatmap_plotly(
     output_path: str | Path | None,
     cmap: str,
     annotate: bool,
-):
+) -> Any:
     """Create interactive heatmap using plotly."""
     try:
         import plotly.graph_objects as go
@@ -346,7 +355,7 @@ def _create_multi_heatmap_matplotlib(
     aggregation: str,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create multi-metric heatmap grid using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -451,7 +460,7 @@ def _create_multi_heatmap_plotly(
     aggregation: str,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create multi-metric heatmap grid using plotly subplots."""
     try:
         import plotly.graph_objects as go

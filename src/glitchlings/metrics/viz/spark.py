@@ -144,7 +144,7 @@ def _create_sparklines_matplotlib(
     length_bins: int | Sequence[int] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create sparklines using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -231,7 +231,7 @@ def _create_sparklines_plotly(
     length_bins: int | Sequence[int] | None,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create interactive sparklines using plotly."""
     try:
         import plotly.graph_objects as go
@@ -377,7 +377,7 @@ def _create_length_sensitivity_matplotlib(
     show_confidence: bool,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create length sensitivity plot using matplotlib."""
     try:
         import matplotlib.pyplot as plt
@@ -479,7 +479,7 @@ def _create_length_sensitivity_plotly(
     show_confidence: bool,
     title: str | None,
     output_path: str | Path | None,
-):
+) -> Any:
     """Create length sensitivity plot using plotly."""
     try:
         import plotly.graph_objects as go
