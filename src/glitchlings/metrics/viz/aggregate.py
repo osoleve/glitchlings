@@ -243,23 +243,23 @@ def normalize_metrics(
 
 
 def pivot_for_heatmap(
-    observations: Iterable[dict[str, Any]],
+    observations: Iterable[Union[dict[str, Any], Observation]],
     row_key: str,
     col_key: str,
     metric: str,
     aggregation: str = "median",
-) -> tuple[list[str], list[str], np.ndarray]:
+) -> dict[str, Any]:
     """Pivot observations into a 2D array for heatmap visualization.
 
     Args:
-        observations: Iterable of observation dicts
+        observations: Iterable of observation dicts or Observation objects
         row_key: Key for rows (e.g., "glitchling_id")
         col_key: Key for columns (e.g., "tokenizer_id")
         metric: Metric to visualize
         aggregation: Aggregation method ("median", "mean", "max", etc.)
 
     Returns:
-        Tuple of (row_labels, col_labels, matrix)
+        Dict with "row_labels", "col_labels", and "values" (2D numpy array)
 
     Example:
         >>> obs = [
@@ -269,26 +269,32 @@ def pivot_for_heatmap(
         >>> result = pivot_for_heatmap(
         ...     obs, "glitchling_id", "tokenizer_id", "metric_ned.value"
         ... )
-        >>> matrix.shape
+        >>> result["values"].shape
         (1, 2)
     """
     # Group by (row, col)
     grouped = aggregate_observations(observations, [row_key, col_key], [metric])
 
     # Extract unique row/col labels
-    rows = sorted({k[0] for k in grouped.keys()})
-    cols = sorted({k[1] for k in grouped.keys()})
+    rows = sorted({result[row_key] for result in grouped})
+    cols = sorted({result[col_key] for result in grouped})
 
     # Build matrix
     matrix = np.full((len(rows), len(cols)), np.nan)
 
-    for (row_val, col_val), stats in grouped.items():
-        if metric in stats:
+    for result in grouped:
+        row_val = result[row_key]
+        col_val = result[col_key]
+        if metric in result:
             row_idx = rows.index(row_val)
             col_idx = cols.index(col_val)
-            matrix[row_idx, col_idx] = stats[metric].get(aggregation, np.nan)
+            matrix[row_idx, col_idx] = result[metric].get(aggregation, np.nan)
 
-    return rows, cols, matrix
+    return {
+        "row_labels": rows,
+        "col_labels": cols,
+        "values": matrix,
+    }
 
 
 __all__ = [
