@@ -133,7 +133,7 @@ def jensen_shannon_divergence(
         return {"value": 0.0}
 
     # Smoothed distributions
-    def make_dist(counts: Counter, length: int) -> dict[int, float]:
+    def make_dist(counts: Counter[int], length: int) -> dict[int, float]:
         smoothed_total = length + epsilon * vocab_size
         return {t: (counts.get(t, 0) + epsilon) / smoothed_total for t in vocab}
 

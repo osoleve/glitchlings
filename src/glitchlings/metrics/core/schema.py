@@ -139,7 +139,7 @@ class Observation:
         Returns:
             Dictionary suitable for Parquet/JSON serialization
         """
-        result = {
+        result: dict[str, Any] = {
             "run_id": self.run_id,
             "observation_id": self.observation_id,
             "input_id": self.input_id,

@@ -14,21 +14,21 @@ import numpy as np
 from ..core.schema import Observation
 
 
-def _get_attr(obs: Union[dict, Observation], key: str) -> Any:
+def _get_attr(obs: Union[dict[str, Any], Observation], key: str) -> Any:
     """Get attribute from observation (dict or Observation object)."""
     if isinstance(obs, dict):
         return obs[key]
     return getattr(obs, key)
 
 
-def _get_metric(obs: Union[dict, Observation], metric_key: str) -> float:
+def _get_metric(obs: Union[dict[str, Any], Observation], metric_key: str) -> float:
     """Get metric value from observation."""
     if isinstance(obs, dict):
-        return obs[metric_key]
+        return float(obs[metric_key])
     # For Observation objects, metrics are in the metrics dict
     # Strip "metric_" prefix if present
     clean_key = metric_key.replace("metric_", "")
-    return obs.metrics[clean_key]
+    return float(obs.metrics[clean_key])
 
 
 def aggregate_observations(
@@ -56,7 +56,7 @@ def aggregate_observations(
         0.55
     """
     # Group observations
-    groups: dict[tuple, list] = defaultdict(list)
+    groups: dict[tuple[Any, ...], list[Union[dict[str, Any], Observation]]] = defaultdict(list)
 
     for obs in observations:
         key = tuple(_get_attr(obs, k) for k in group_by)
