@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Sequence
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..core.schema import Observation
 
@@ -64,7 +65,7 @@ def create_sparklines(
 def _bin_observations_by_length(
     observations: Sequence[Observation],
     bins: int | Sequence[int] | None,
-) -> tuple[np.ndarray, np.ndarray]:
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """Bin observations by sequence length.
 
     Args:
@@ -100,9 +101,9 @@ def _aggregate_by_length_bins(
     metric: str,
     group_value: str,
     group_by: str,
-    bin_centers: np.ndarray,
-    bin_assignments: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray]:
+    bin_centers: NDArray[Any],
+    bin_assignments: NDArray[Any],
+) -> tuple[NDArray[Any], NDArray[Any]]:
     """Aggregate metric values by length bins for one group.
 
     Returns:

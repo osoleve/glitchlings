@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Sequence, cast
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ..core.schema import Observation
 
@@ -105,7 +106,7 @@ def _prepare_metric_matrix(
     observations: Sequence[Observation],
     metrics: Sequence[str] | None,
     metric_weights: dict[str, float] | None,
-) -> tuple[np.ndarray, list[str], list[Observation]]:
+) -> tuple[NDArray[Any], list[str], list[Observation]]:
     """Extract metric matrix from observations.
 
     Returns:
@@ -147,10 +148,10 @@ def _prepare_metric_matrix(
 
 
 def _compute_embedding(
-    metric_matrix: np.ndarray,
+    metric_matrix: NDArray[Any],
     method: str,
     kwargs: dict[str, Any],
-) -> np.ndarray:
+) -> NDArray[Any]:
     """Compute 2D embedding using UMAP or t-SNE.
 
     Args:
@@ -212,11 +213,11 @@ def _compute_embedding(
     else:
         raise ValueError(f"Unknown method: {method}. Use 'umap' or 'tsne'")
 
-    return cast(np.ndarray, embedding)
+    return cast(NDArray[Any], embedding)
 
 
 def _plot_embedding_matplotlib(
-    embedding: np.ndarray,
+    embedding: NDArray[Any],
     color_labels: list[str],
     observations: list[Observation],
     color_by: str,
@@ -266,7 +267,7 @@ def _plot_embedding_matplotlib(
 
 
 def _plot_embedding_plotly(
-    embedding: np.ndarray,
+    embedding: NDArray[Any],
     color_labels: list[str],
     observations: list[Observation],
     color_by: str,
