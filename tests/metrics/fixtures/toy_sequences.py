@@ -50,14 +50,14 @@ CASE_TRANSPOSITION = MetricTestCase(
         "jsdset.value": 0.0,  # Same set {0,1,2}
         "jsdbag.value": 0.0,  # Same multiset counts
         # Distributional metrics
-        "cosdist": 0.0,  # Same frequency vector [1,1,1]
-        "jsdiv": 0.0,  # Identical distributions
-        "h_delta": 0.0,  # Same entropy (uniform)
+        "cosdist.value": 0.0,  # Same frequency vector [1,1,1]
+        "jsdiv.value": 0.0,  # Identical distributions
+        "h_delta.delta": 0.0,  # Same entropy (uniform)
         # Structural metrics
         "rord.value": 0.0,  # LCS tokens [0,1] or [0,2] both preserve order
         # Length metrics
         "lr.ratio": 1.0,  # Length ratio 3/3
-        "lr_delta": 0.0,  # |1 - 3/3|
+        "lr.delta": 0.0,  # |1 - 3/3|
     },
     notes="Single transposition: [a,b,c] → [a,c,b]. RORD=0 because LCS preserves order.",
 )
@@ -74,12 +74,12 @@ CASE_IDENTITY = MetricTestCase(
         "pmr.value": 1.0,
         "jsdset.value": 0.0,
         "jsdbag.value": 0.0,
-        "cosdist": 0.0,
-        "jsdiv": 0.0,
-        "h_delta": 0.0,
+        "cosdist.value": 0.0,
+        "jsdiv.value": 0.0,
+        "h_delta.delta": 0.0,
         "rord.value": 0.0,
         "lr.ratio": 1.0,
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     notes="Identity sequence (no change)",
 )
@@ -97,7 +97,7 @@ CASE_INSERTION = MetricTestCase(
         "jsdset.value": 1 / 4,  # |{0,1,2} ∪ {0,1,2,3}| = 4, intersection=3; dist=1-3/4
         "jsdbag.value": 1 / 4,  # min_sum=3, max_sum=4; dist=1-3/4
         "lr.ratio": 4 / 3,  # Length ratio 4/3
-        "lr_delta": 1 / 3,  # |1 - 4/3|
+        "lr.delta": 1 / 3,  # |1 - 4/3|
         # Note: Other metrics would need actual computation
         # For now, we'll test core metrics only
     },
@@ -115,7 +115,7 @@ CASE_DELETION = MetricTestCase(
         "lcsr.value": 3 / 4,  # LCS=3, original length=4
         "pmr.value": 3 / 4,  # 3 out of 4 positions match
         "lr.ratio": 3 / 4,  # Length ratio 3/4
-        "lr_delta": 1 / 4,  # |1 - 3/4|
+        "lr.delta": 1 / 4,  # |1 - 3/4|
     },
     notes="Single deletion at end: [a,b,c,d] → [a,b,c]",
 )
@@ -131,7 +131,7 @@ CASE_SUBSTITUTION = MetricTestCase(
         "lcsr.value": 2 / 3,  # LCS=2 ([0,2]), original=3
         "pmr.value": 2 / 3,  # 2 out of 3 match (positions 0 and 2)
         "lr.ratio": 1.0,  # Same length
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     notes="Single substitution: [a,b,c] → [a,x,c]",
 )
@@ -150,7 +150,7 @@ CASE_REVERSAL = MetricTestCase(
         "jsdbag.value": 0.0,  # Same counts
         "rord.value": 1.0,  # All C(4,2)=6 pairs inverted
         "lr.ratio": 1.0,  # Same length
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     notes="Complete reversal: [a,b,c,d] → [d,c,b,a]",
 )
@@ -164,7 +164,7 @@ CASE_EMPTY_IDENTITY = MetricTestCase(
     expected={
         "ned.value": 0.0,  # By convention
         "lr.ratio": 1.0,  # Define 0/0 as 1.0
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     tolerance=1e-6,
     notes="Empty sequences (identity)",
@@ -195,7 +195,7 @@ CASE_SINGLE_IDENTITY = MetricTestCase(
         "lcsr.value": 1.0,
         "pmr.value": 1.0,
         "lr.ratio": 1.0,
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     notes="Single token identity",
 )
@@ -213,7 +213,7 @@ CASE_ZERO_OVERLAP = MetricTestCase(
         "jsdset.value": 1.0,  # No set overlap; dist=1.0
         "jsdbag.value": 1.0,  # No bag overlap
         "lr.ratio": 1.0,  # Same length
-        "lr_delta": 0.0,
+        "lr.delta": 0.0,
     },
     notes="Zero vocabulary overlap: [a,b,c] → [x,y,z]",
 )

@@ -129,10 +129,7 @@ def _prepare_metric_matrix(
 
             # Apply weights if provided
             if metric_weights:
-                row = [
-                    val * metric_weights.get(m, 1.0)
-                    for val, m in zip(row, metrics)
-                ]
+                row = [val * metric_weights.get(m, 1.0) for val, m in zip(row, metrics)]
 
             rows.append(row)
             valid_obs.append(obs)
@@ -169,8 +166,7 @@ def _compute_embedding(
             import umap
         except ImportError as e:
             raise ImportError(
-                "umap-learn required for UMAP embeddings. "
-                "Install with: pip install umap-learn"
+                "umap-learn required for UMAP embeddings. Install with: pip install umap-learn"
             ) from e
 
         # Default UMAP parameters
@@ -193,8 +189,7 @@ def _compute_embedding(
             from sklearn.manifold import TSNE
         except ImportError as e:
             raise ImportError(
-                "scikit-learn required for t-SNE embeddings. "
-                "Install with: pip install scikit-learn"
+                "scikit-learn required for t-SNE embeddings. Install with: pip install scikit-learn"
             ) from e
 
         # Default t-SNE parameters
@@ -414,9 +409,7 @@ def _create_lens_comparison_matplotlib(
     n_cols = min(3, n_lenses)
     n_rows = (n_lenses + n_cols - 1) // n_cols
 
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False)
 
     for idx, (lens_name, metrics) in enumerate(metric_lenses.items()):
         row_idx = idx // n_cols
@@ -425,9 +418,7 @@ def _create_lens_comparison_matplotlib(
 
         try:
             # Compute embedding for this lens
-            metric_matrix, _, valid_obs = _prepare_metric_matrix(
-                observations, metrics, None
-            )
+            metric_matrix, _, valid_obs = _prepare_metric_matrix(observations, metrics, None)
             embedding = _compute_embedding(metric_matrix, method, {"random_state": 42})
 
             # Extract colors
@@ -512,9 +503,7 @@ def _create_lens_comparison_plotly(
 
         try:
             # Compute embedding
-            metric_matrix, _, valid_obs = _prepare_metric_matrix(
-                observations, metrics, None
-            )
+            metric_matrix, _, valid_obs = _prepare_metric_matrix(observations, metrics, None)
             embedding = _compute_embedding(metric_matrix, method, {"random_state": 42})
 
             # Extract colors

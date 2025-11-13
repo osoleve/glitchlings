@@ -101,9 +101,7 @@ class BatchProcessor:
                 tokens_after = list(tokenizer.encode(text_after))
 
                 # Compute metrics
-                metrics = self.registry.compute_all(
-                    tokens_before, tokens_after, self.context
-                )
+                metrics = self.registry.compute_all(tokens_before, tokens_after, self.context)
 
                 # Create observation
                 observation = Observation(
@@ -286,9 +284,7 @@ def process_and_write(
 
     # Write observations
     writer = ParquetWriter(output_dir)
-    parquet_path = writer.write(
-        observations_list, partition_by=partition_by, include_tokens=False
-    )
+    parquet_path = writer.write(observations_list, partition_by=partition_by, include_tokens=False)
 
     # Create and write manifest
     tokenizer_names = [tok.name for tok in tokenizers]

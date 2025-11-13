@@ -190,8 +190,7 @@ def create_huggingface_adapter(model_name: str) -> TokenizerAdapter:
         from transformers import AutoTokenizer
     except ImportError as e:
         raise ImportError(
-            "HuggingFace transformers not installed. "
-            "Install with: pip install transformers"
+            "HuggingFace transformers not installed. Install with: pip install transformers"
         ) from e
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -255,9 +254,7 @@ def create_tiktoken_adapter(encoding_name: str = "cl100k_base") -> TokenizerAdap
     try:
         import tiktoken
     except ImportError as e:
-        raise ImportError(
-            "tiktoken not installed. Install with: pip install tiktoken"
-        ) from e
+        raise ImportError("tiktoken not installed. Install with: pip install tiktoken") from e
 
     encoding = tiktoken.get_encoding(encoding_name)
 

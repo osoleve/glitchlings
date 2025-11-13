@@ -110,9 +110,7 @@ def _aggregate_by_length_bins(
     """
     # Filter observations for this group
     group_obs_indices = [
-        i
-        for i, obs in enumerate(observations)
-        if str(getattr(obs, group_by)) == group_value
+        i for i, obs in enumerate(observations) if str(getattr(obs, group_by)) == group_value
     ]
 
     if not group_obs_indices:
@@ -157,9 +155,7 @@ def _create_sparklines_matplotlib(
     groups = sorted(set(str(getattr(obs, group_by)) for obs in observations))
 
     # Bin observations by length
-    bin_centers, bin_assignments = _bin_observations_by_length(
-        observations, length_bins
-    )
+    bin_centers, bin_assignments = _bin_observations_by_length(observations, length_bins)
 
     n_groups = len(groups)
     n_metrics = len(metrics)
@@ -247,18 +243,14 @@ def _create_sparklines_plotly(
     groups = sorted(set(str(getattr(obs, group_by)) for obs in observations))
 
     # Bin observations by length
-    bin_centers, bin_assignments = _bin_observations_by_length(
-        observations, length_bins
-    )
+    bin_centers, bin_assignments = _bin_observations_by_length(observations, length_bins)
 
     n_groups = len(groups)
     n_metrics = len(metrics)
 
     # Create subplot grid
     subplot_titles = [
-        f"{metric.replace('metric_', '').replace('.value', '')}"
-        if row_idx == 0
-        else ""
+        f"{metric.replace('metric_', '').replace('.value', '')}" if row_idx == 0 else ""
         for row_idx in range(n_groups)
         for metric in metrics
     ]
@@ -396,9 +388,7 @@ def _create_length_sensitivity_matplotlib(
     groups = sorted(set(str(getattr(obs, group_by)) for obs in observations))
 
     # Bin observations
-    bin_centers, bin_assignments = _bin_observations_by_length(
-        observations, length_bins
-    )
+    bin_centers, bin_assignments = _bin_observations_by_length(observations, length_bins)
 
     # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -500,9 +490,7 @@ def _create_length_sensitivity_plotly(
     groups = sorted(set(str(getattr(obs, group_by)) for obs in observations))
 
     # Bin observations
-    bin_centers, bin_assignments = _bin_observations_by_length(
-        observations, length_bins
-    )
+    bin_centers, bin_assignments = _bin_observations_by_length(observations, length_bins)
 
     fig = go.Figure()
 
@@ -549,8 +537,7 @@ def _create_length_sensitivity_plotly(
                     line=dict(width=2.5),
                     marker=dict(size=6),
                     hovertemplate=(
-                        f"{group}<br>Length: %{{x:.0f}}<br>"
-                        f"{metric}: %{{y:.3f}}<extra></extra>"
+                        f"{group}<br>Length: %{{x:.0f}}<br>{metric}: %{{y:.3f}}<extra></extra>"
                     ),
                 )
             )

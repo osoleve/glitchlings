@@ -127,8 +127,7 @@ def load_config_yaml(config_path: str | Path) -> list[FigureConfig]:
         import yaml
     except ImportError as e:
         raise ImportError(
-            "PyYAML required for YAML config loading. "
-            "Install with: pip install pyyaml"
+            "PyYAML required for YAML config loading. Install with: pip install pyyaml"
         ) from e
 
     config_path = Path(config_path)
@@ -185,8 +184,7 @@ def load_observations_from_parquet(
         import pandas as pd
     except ImportError as e:
         raise ImportError(
-            "pandas required for Parquet loading. "
-            "Install with: pip install 'glitchlings[metrics]'"
+            "pandas required for Parquet loading. Install with: pip install 'glitchlings[metrics]'"
         ) from e
 
     # Load Parquet
@@ -206,9 +204,7 @@ def load_observations_from_parquet(
     for _, row in df.iterrows():
         # Extract metrics (columns starting with "metric_")
         metrics = {
-            col.replace("metric_", ""): row[col]
-            for col in df.columns
-            if col.startswith("metric_")
+            col.replace("metric_", ""): row[col] for col in df.columns if col.startswith("metric_")
         }
 
         # Extract context (columns starting with "context_")
@@ -274,9 +270,7 @@ def render_figure(
             raise ValueError("Must provide either observations or data_source")
 
         # Load from Parquet
-        observations = load_observations_from_parquet(
-            config.data_source, config.filters
-        )
+        observations = load_observations_from_parquet(config.data_source, config.filters)
     else:
         # Apply filters to provided observations
         if config.filters:
@@ -429,9 +423,7 @@ def render_config_file(
     elif config_path.suffix == ".json":
         configs = load_config_json(config_path)
     else:
-        raise ValueError(
-            f"Unknown config format: {config_path.suffix}. Use .yaml or .json"
-        )
+        raise ValueError(f"Unknown config format: {config_path.suffix}. Use .yaml or .json")
 
     # Render each figure
     figures = []

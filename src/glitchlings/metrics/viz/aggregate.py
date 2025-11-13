@@ -84,10 +84,7 @@ def aggregate_observations(
         # Compute stats for each metric
         for metric in metric_keys:
             try:
-                values = [
-                    _get_metric(obs, metric)
-                    for obs in group_obs
-                ]
+                values = [_get_metric(obs, metric) for obs in group_obs]
                 values = [v for v in values if v is not None and np.isfinite(v)]
 
                 if not values:
@@ -95,7 +92,10 @@ def aggregate_observations(
 
                 values_arr = np.array(values, dtype=float)
 
-                group_result[metric] = {
+                # Ensure key has "metric_" prefix for consistency
+                result_key = metric if metric.startswith("metric_") else f"metric_{metric}"
+
+                group_result[result_key] = {
                     "mean": float(np.mean(values_arr)),
                     "median": float(np.median(values_arr)),
                     "std": float(np.std(values_arr)),
@@ -103,7 +103,9 @@ def aggregate_observations(
                     "max": float(np.max(values_arr)),
                     "q1": float(np.percentile(values_arr, 25)),
                     "q3": float(np.percentile(values_arr, 75)),
-                    "iqr": float(np.percentile(values_arr, 75) - np.percentile(values_arr, 25)),
+                    "iqr": float(
+                        np.percentile(values_arr, 75) - np.percentile(values_arr, 25)
+                    ),
                     "n": len(values_arr),
                 }
             except (KeyError, AttributeError):
@@ -285,10 +287,12 @@ def pivot_for_heatmap(
     for result in grouped:
         row_val = result[row_key]
         col_val = result[col_key]
-        if metric in result:
+        # Check for metric with or without "metric_" prefix
+        metric_key = metric if metric in result else f"metric_{metric}"
+        if metric_key in result:
             row_idx = rows.index(row_val)
             col_idx = cols.index(col_val)
-            matrix[row_idx, col_idx] = result[metric].get(aggregation, np.nan)
+            matrix[row_idx, col_idx] = result[metric_key].get(aggregation, np.nan)
 
     return {
         "row_labels": rows,

@@ -102,8 +102,7 @@ def _create_heatmap_matplotlib(
         import numpy as np
     except ImportError as e:
         raise ImportError(
-            "matplotlib required for heatmaps. "
-            "Install with: pip install matplotlib"
+            "matplotlib required for heatmaps. Install with: pip install matplotlib"
         ) from e
 
     # Try to use seaborn if available (better defaults)
@@ -202,8 +201,7 @@ def _add_iqr_glyphs(ax, observations, row_key, col_key, metric, row_labels, col_
             cell_obs = [
                 obs
                 for obs in observations
-                if getattr(obs, row_key) == row_val
-                and getattr(obs, col_key) == col_val
+                if getattr(obs, row_key) == row_val and getattr(obs, col_key) == col_val
             ]
 
             if len(cell_obs) < 2:
@@ -248,8 +246,7 @@ def _create_heatmap_plotly(
         import plotly.graph_objects as go
     except ImportError as e:
         raise ImportError(
-            "plotly required for interactive heatmaps. "
-            "Install with: pip install plotly"
+            "plotly required for interactive heatmaps. Install with: pip install plotly"
         ) from e
 
     # Pivot to 2D matrix
@@ -274,8 +271,7 @@ def _create_heatmap_plotly(
             texttemplate="%{text:.3f}" if annotate else None,
             textfont={"size": 10},
             hovertemplate=(
-                f"{row_key}: %{{y}}<br>{col_key}: %{{x}}<br>"
-                f"{metric}: %{{z:.3f}}<extra></extra>"
+                f"{row_key}: %{{y}}<br>{col_key}: %{{x}}<br>{metric}: %{{z:.3f}}<extra></extra>"
             ),
             zmin=0,
             zmax=1,
@@ -369,9 +365,7 @@ def _create_multi_heatmap_matplotlib(
     n_cols = min(3, n_metrics)
     n_rows = (n_metrics + n_cols - 1) // n_cols
 
-    fig, axes = plt.subplots(
-        n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False
-    )
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 5 * n_rows), squeeze=False)
 
     for idx, metric in enumerate(metrics):
         row_idx = idx // n_cols
@@ -379,9 +373,7 @@ def _create_multi_heatmap_matplotlib(
         ax = axes[row_idx, col_idx]
 
         # Pivot data
-        heatmap_data = pivot_for_heatmap(
-            observations, row_key, col_key, metric, aggregation
-        )
+        heatmap_data = pivot_for_heatmap(observations, row_key, col_key, metric, aggregation)
 
         if heatmap_data["values"].size == 0:
             ax.text(0.5, 0.5, "No data", ha="center", va="center")
@@ -486,9 +478,7 @@ def _create_multi_heatmap_plotly(
         col_idx = idx % n_cols + 1
 
         # Pivot data
-        heatmap_data = pivot_for_heatmap(
-            observations, row_key, col_key, metric, aggregation
-        )
+        heatmap_data = pivot_for_heatmap(observations, row_key, col_key, metric, aggregation)
 
         if heatmap_data["values"].size == 0:
             continue

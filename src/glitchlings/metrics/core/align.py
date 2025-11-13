@@ -14,9 +14,7 @@ from __future__ import annotations
 from typing import Sequence, Tuple
 
 
-def damerau_levenshtein_distance(
-    seq1: Sequence[int], seq2: Sequence[int]
-) -> Tuple[int, float]:
+def damerau_levenshtein_distance(seq1: Sequence[int], seq2: Sequence[int]) -> Tuple[int, float]:
     """Compute Damerau-Levenshtein distance with transpositions.
 
     The DL distance measures the minimum number of operations to transform

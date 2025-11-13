@@ -125,9 +125,7 @@ class Observation:
             )
 
         if self.tokens_after_hash is None:
-            tokens_bytes = b"".join(
-                t.to_bytes(4, "little", signed=True) for t in self.tokens_after
-            )
+            tokens_bytes = b"".join(t.to_bytes(4, "little", signed=True) for t in self.tokens_after)
             object.__setattr__(
                 self, "tokens_after_hash", hashlib.sha256(tokens_bytes).hexdigest()[:16]
             )

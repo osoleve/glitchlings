@@ -81,8 +81,7 @@ def _create_radar_matplotlib(
         import matplotlib.pyplot as plt
     except ImportError as e:
         raise ImportError(
-            "matplotlib required for radar charts. "
-            "Install with: pip install matplotlib"
+            "matplotlib required for radar charts. Install with: pip install matplotlib"
         ) from e
 
     # Normalize metrics
@@ -152,8 +151,7 @@ def _create_radar_plotly(
         import plotly.graph_objects as go
     except ImportError as e:
         raise ImportError(
-            "plotly required for interactive radar charts. "
-            "Install with: pip install plotly"
+            "plotly required for interactive radar charts. Install with: pip install plotly"
         ) from e
 
     # Normalize metrics
