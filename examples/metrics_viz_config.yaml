@@ -1,0 +1,99 @@
+# Example visualization configuration
+# Run with: python -c "from glitchlings.metrics.viz import render_config_file; render_config_file('examples/metrics_viz_config.yaml')"
+
+figures:
+  # Radar chart showing transformation fingerprint
+  - type: radar
+    title: "Glitchling Transformation Fingerprint"
+    data_source: "results/metrics_run.parquet"  # Path to Parquet file
+    filters:
+      glitchling_id: "typogre"  # Optional: filter to specific glitchling
+    params:
+      backend: "matplotlib"
+      normalization: "percentile"
+      output_path: "figures/radar_fingerprint.png"
+
+  # Multi-glitchling radar comparison
+  - type: radar
+    title: "Comparing Multiple Glitchlings"
+    data_source: "results/metrics_run.parquet"
+    filters:
+      glitchling_id: ["typogre", "ekkokin", "swapling"]  # Multiple glitchlings
+    params:
+      backend: "plotly"
+      normalization: "percentile"
+      output_path: "figures/radar_comparison.html"
+
+  # Heatmap of metric values
+  - type: heatmap
+    title: "Edit Distance Across Tokenizers"
+    data_source: "results/metrics_run.parquet"
+    params:
+      metric: "ned.value"
+      row_key: "glitchling_id"
+      col_key: "tokenizer_id"
+      aggregation: "median"
+      backend: "matplotlib"
+      show_iqr: true
+      output_path: "figures/ned_heatmap.png"
+
+  # Multi-metric heatmap grid
+  - type: multi_metric_heatmap
+    title: "Key Metrics Overview"
+    data_source: "results/metrics_run.parquet"
+    params:
+      metrics: ["ned.value", "lcsr.value", "jsdiv.value", "rord.value"]
+      row_key: "glitchling_id"
+      col_key: "tokenizer_id"
+      aggregation: "median"
+      backend: "plotly"
+      output_path: "figures/multi_metric_heatmap.html"
+
+  # UMAP embedding
+  - type: embedding
+    title: "Glitchling Behavior Space (UMAP)"
+    data_source: "results/metrics_run.parquet"
+    params:
+      method: "umap"
+      color_by: "glitchling_id"
+      backend: "plotly"
+      n_neighbors: 15
+      min_dist: 0.1
+      output_path: "figures/umap_embedding.html"
+
+  # Metric lens comparison
+  - type: metric_lens
+    title: "Different Views of Glitchling Space"
+    data_source: "results/metrics_run.parquet"
+    params:
+      metric_lenses:
+        "Edit Distance": ["ned.value", "lcsr.value", "pmr.value"]
+        "Distribution": ["jsdiv.value", "cosdist.value"]
+        "Structure": ["rord.value", "spi.value", "msi.value"]
+      method: "umap"
+      color_by: "glitchling_id"
+      backend: "plotly"
+      output_path: "figures/metric_lens_comparison.html"
+
+  # Sparklines showing trends
+  - type: sparklines
+    title: "Metric Trends by Input Length"
+    data_source: "results/metrics_run.parquet"
+    params:
+      metrics: ["ned.value", "lcsr.value", "jsdiv.value"]
+      group_by: "glitchling_id"
+      length_bins: 10
+      backend: "matplotlib"
+      output_path: "figures/sparklines.png"
+
+  # Length sensitivity plot
+  - type: length_sensitivity
+    title: "Edit Distance Sensitivity to Length"
+    data_source: "results/metrics_run.parquet"
+    params:
+      metric: "ned.value"
+      group_by: "glitchling_id"
+      length_bins: 15
+      show_confidence: true
+      backend: "plotly"
+      output_path: "figures/length_sensitivity.html"

@@ -83,6 +83,14 @@ metrics-tokenizers = [
     "transformers>=4.35.0",
     "tiktoken>=0.5.0",
 ]
+metrics-viz = [
+    "matplotlib>=3.7.0",
+    "plotly>=5.18.0",
+    "seaborn>=0.13.0",
+    "umap-learn>=0.5.5",
+    "scikit-learn>=1.3.0",
+    "pyyaml>=6.0.0",
+]
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
