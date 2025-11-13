@@ -103,13 +103,13 @@ def test_compute_percentile_ranks(sample_observations):
 
     assert len(result) == len(sample_observations)
 
-    for obs_data in result:
-        assert "metric_ned.value" in obs_data
-        assert "metric_lcsr.value" in obs_data
+    for obs_data in result.values():
+        assert "ned.value" in obs_data
+        assert "lcsr.value" in obs_data
 
         # Percentiles should be in [0, 100]
-        assert 0 <= obs_data["metric_ned.value"] <= 100
-        assert 0 <= obs_data["metric_lcsr.value"] <= 100
+        assert 0 <= obs_data["ned.value"] <= 100
+        assert 0 <= obs_data["lcsr.value"] <= 100
 
 
 def test_normalize_metrics():
@@ -184,6 +184,7 @@ def test_pivot_different_aggregations(sample_observations):
 
 # Visualization function tests (require matplotlib/plotly)
 
+
 @pytest.mark.skipif(
     not _has_matplotlib(),
     reason="matplotlib not installed",
@@ -197,9 +198,7 @@ def test_create_radar_chart(sample_observations):
     agg = aggregate_observations(typogre_obs, group_by=["glitchling_id"])
 
     metrics = {
-        k.replace("metric_", ""): v["mean"]
-        for k, v in agg[0].items()
-        if k.startswith("metric_")
+        k.replace("metric_", ""): v["mean"] for k, v in agg[0].items() if k.startswith("metric_")
     }
 
     with tempfile.TemporaryDirectory() as tmpdir:

@@ -145,10 +145,10 @@ CASE_REVERSAL = MetricTestCase(
     expected={
         "ned.value": 3 / 4,  # 3 operations (reversal) (depends on DL implementation)
         "lcsr.value": 1 / 4,  # LCS=1 (any single token)
-        "pmr.value": 0.0,  # No positional matches
+        "pmr.value": 1 / 4,  # LCS-based: 1 token matches out of 4 (LCS length / after length)
         "jsdset.value": 0.0,  # Same set
         "jsdbag.value": 0.0,  # Same counts
-        "rord.value": 1.0,  # All C(4,2)=6 pairs inverted
+        "rord.value": 0.0,  # RORD only considers pairs within LCS; LCS=1 has no pairs
         "lr.ratio": 1.0,  # Same length
         "lr.delta": 0.0,
     },

@@ -103,9 +103,7 @@ def aggregate_observations(
                     "max": float(np.max(values_arr)),
                     "q1": float(np.percentile(values_arr, 25)),
                     "q3": float(np.percentile(values_arr, 75)),
-                    "iqr": float(
-                        np.percentile(values_arr, 75) - np.percentile(values_arr, 25)
-                    ),
+                    "iqr": float(np.percentile(values_arr, 75) - np.percentile(values_arr, 25)),
                     "n": len(values_arr),
                 }
             except (KeyError, AttributeError):
@@ -118,12 +116,12 @@ def aggregate_observations(
 
 
 def compute_percentile_ranks(
-    observations: Iterable[dict[str, Any]], metrics: Sequence[str]
+    observations: Iterable[Union[dict[str, Any], Observation]], metrics: Sequence[str]
 ) -> dict[str, dict[str, float]]:
     """Compute percentile ranks for metrics across all observations.
 
     Args:
-        observations: Iterable of observation dicts
+        observations: Iterable of observation dicts or Observation objects
         metrics: Metric keys to rank
 
     Returns:
@@ -149,19 +147,35 @@ def compute_percentile_ranks(
 
     for obs in obs_list:
         for metric in metrics:
-            val = obs.get(metric)
-            if val is not None:
-                metric_values[metric].append(val)
+            try:
+                val = _get_metric(obs, metric)
+                if val is not None:
+                    metric_values[metric].append(val)
+            except (KeyError, AttributeError):
+                # Metric not found in this observation
+                continue
 
     # Compute percentile ranks
     ranks = {}
 
     for obs in obs_list:
-        obs_id = obs.get("observation_id", obs.get("input_id", "unknown"))
+        # Get observation ID
+        try:
+            obs_id = _get_attr(obs, "observation_id")
+        except (KeyError, AttributeError):
+            try:
+                obs_id = _get_attr(obs, "input_id")
+            except (KeyError, AttributeError):
+                obs_id = "unknown"
+
         obs_ranks = {}
 
         for metric in metrics:
-            val = obs.get(metric)
+            try:
+                val = _get_metric(obs, metric)
+            except (KeyError, AttributeError):
+                continue
+
             if val is None:
                 continue
 

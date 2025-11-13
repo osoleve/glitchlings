@@ -47,8 +47,7 @@ def test_metric_acceptance(registry: MetricRegistry, case) -> None:
             actual = results.get(f"{base_metric}.{suffix}")
 
         assert actual is not None, (
-            f"{case.name}: Metric {metric_key!r} not computed. "
-            f"Available: {sorted(results.keys())}"
+            f"{case.name}: Metric {metric_key!r} not computed. Available: {sorted(results.keys())}"
         )
 
         if math.isfinite(expected) and math.isfinite(actual):
@@ -79,10 +78,7 @@ def test_invariant_identity(registry: MetricRegistry) -> None:
 
         for metric_key, value in results.items():
             # Skip non-distance metrics
-            if any(
-                skip in metric_key
-                for skip in ["lr.ratio", "lr.delta", "h_delta", "c_delta"]
-            ):
+            if any(skip in metric_key for skip in ["lr.ratio", "lr.delta", "h_delta", "c_delta"]):
                 continue
 
             # For retention/match rate metrics, expect 1.0 (not 0.0)
@@ -137,8 +133,7 @@ def test_invariant_bounds(registry: MetricRegistry) -> None:
                 continue
 
             assert 0.0 <= value <= 1.0, (
-                f"Bounds violation: {metric_key} = {value} "
-                f"for {before} → {after} (expected [0,1])"
+                f"Bounds violation: {metric_key} = {value} for {before} → {after} (expected [0,1])"
             )
 
 
@@ -162,9 +157,7 @@ def test_invariant_symmetry(registry: MetricRegistry) -> None:
                 forward_val = result_forward[key]
                 backward_val = result_backward.get(key)
 
-                assert backward_val is not None, (
-                    f"Symmetry test: {key} missing in backward result"
-                )
+                assert backward_val is not None, f"Symmetry test: {key} missing in backward result"
 
                 assert forward_val == pytest.approx(backward_val, abs=1e-6), (
                     f"Symmetry violation: {metric_id}.{key} "
@@ -242,11 +235,7 @@ def test_metric_registry_missing_dependency() -> None:
         return {"value": 0.5}
 
     registry = MetricRegistry()
-    registry.register(
-        MetricSpec(
-            id="ppl", name="Perplexity", fn=metric_needs_lm, requires=["lm"]
-        )
-    )
+    registry.register(MetricSpec(id="ppl", name="Perplexity", fn=metric_needs_lm, requires=["lm"]))
 
     # Should raise KeyError when computing without context
     with pytest.raises(KeyError, match="requires context key 'lm'"):
