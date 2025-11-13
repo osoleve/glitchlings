@@ -118,7 +118,7 @@ def _aggregate_by_length_bins(
 
     # Aggregate by bin
     n_bins = len(bin_centers)
-    bin_values = [[] for _ in range(n_bins)]
+    bin_values: list[list[float]] = [[] for _ in range(n_bins)]
 
     for i in group_obs_indices:
         obs = observations[i]
@@ -129,9 +129,9 @@ def _aggregate_by_length_bins(
     # Compute median for each bin
     x_vals = []
     y_vals = []
-    for bin_idx, values in enumerate(bin_values):
+    for bin_idx_iter, values in enumerate(bin_values):
         if values:
-            x_vals.append(bin_centers[bin_idx])
+            x_vals.append(bin_centers[bin_idx_iter])
             y_vals.append(np.median(values))
 
     return np.array(x_vals), np.array(y_vals)
@@ -408,7 +408,7 @@ def _create_length_sensitivity_matplotlib(
 
         # Aggregate by bin
         n_bins = len(bin_centers)
-        bin_data = [[] for _ in range(n_bins)]
+        bin_data: list[list[float]] = [[] for _ in range(n_bins)]
 
         for i, obs in group_obs:
             bin_idx = bin_assignments[i]
@@ -420,9 +420,9 @@ def _create_length_sensitivity_matplotlib(
         q1_vals = []
         q3_vals = []
 
-        for bin_idx, values in enumerate(bin_data):
+        for bin_idx_iter, values in enumerate(bin_data):
             if len(values) >= 2:
-                x_vals.append(bin_centers[bin_idx])
+                x_vals.append(bin_centers[bin_idx_iter])
                 medians.append(np.median(values))
                 q1_vals.append(np.percentile(values, 25))
                 q3_vals.append(np.percentile(values, 75))
@@ -507,7 +507,7 @@ def _create_length_sensitivity_plotly(
 
         # Aggregate by bin
         n_bins = len(bin_centers)
-        bin_data = [[] for _ in range(n_bins)]
+        bin_data: list[list[float]] = [[] for _ in range(n_bins)]
 
         for i, obs in group_obs:
             bin_idx = bin_assignments[i]
@@ -519,9 +519,9 @@ def _create_length_sensitivity_plotly(
         q1_vals = []
         q3_vals = []
 
-        for bin_idx, values in enumerate(bin_data):
+        for bin_idx_iter, values in enumerate(bin_data):
             if len(values) >= 2:
-                x_vals.append(bin_centers[bin_idx])
+                x_vals.append(bin_centers[bin_idx_iter])
                 medians.append(np.median(values))
                 q1_vals.append(np.percentile(values, 25))
                 q3_vals.append(np.percentile(values, 75))
@@ -546,8 +546,8 @@ def _create_length_sensitivity_plotly(
             if show_confidence:
                 fig.add_trace(
                     go.Scatter(
-                        x=x_vals.tolist() + x_vals.tolist()[::-1],
-                        y=q3_vals.tolist() + q1_vals.tolist()[::-1],
+                        x=x_vals + x_vals[::-1],
+                        y=q3_vals + q1_vals[::-1],
                         fill="toself",
                         fillcolor=fig.data[-1].line.color,
                         opacity=0.2,

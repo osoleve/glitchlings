@@ -7,7 +7,7 @@ revealing clusters and patterns in glitchling behavior.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Sequence, cast
 
 import numpy as np
 
@@ -212,7 +212,7 @@ def _compute_embedding(
     else:
         raise ValueError(f"Unknown method: {method}. Use 'umap' or 'tsne'")
 
-    return np.asarray(embedding)
+    return cast(np.ndarray, embedding)
 
 
 def _plot_embedding_matplotlib(

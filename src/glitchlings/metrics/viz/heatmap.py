@@ -224,7 +224,8 @@ def _add_iqr_glyphs(
 
             # Compute IQR
             percentiles = np.percentile(values, [25, 75])
-            q1, q3 = float(percentiles[0]), float(percentiles[1])
+            percentiles_arr = np.asarray(percentiles)
+            q1, q3 = float(percentiles_arr[0]), float(percentiles_arr[1])
             iqr = q3 - q1
 
             # Draw error bars if IQR is significant
