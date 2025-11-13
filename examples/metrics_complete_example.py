@@ -137,7 +137,6 @@ def main():
                 tokenizers=tokenizers,
                 output_dir=output_dir,
                 partition_by=["tokenizer_id"],
-                run_id_prefix=glitchling_id,
             )
 
             all_manifests.append(manifest)
