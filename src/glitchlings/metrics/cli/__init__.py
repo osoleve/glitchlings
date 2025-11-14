@@ -1,5 +1,9 @@
-"""Command-line interface for glitchviz."""
+"""Command-line utilities for glitchling metrics."""
 
 from __future__ import annotations
 
-__all__: list[str] = []
+from .tui import launch_metrics_tui
+
+__all__ = [
+    "launch_metrics_tui",
+]

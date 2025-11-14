@@ -71,7 +71,12 @@ def cosine_distance(
     magnitude = math.sqrt(norm_before) * math.sqrt(norm_after)
 
     if magnitude == 0.0:
-        return {"value": 0.0}  # One or both are zero vectors
+        # One (or both) distributions are empty. If both are empty we already
+        # returned above, so hitting this branch means one vector has mass
+        # while the other does not. Treat as maximally different.
+        if counts_before and counts_after:
+            return {"value": 0.0}
+        return {"value": 1.0}
 
     cosine_sim = dot_product / magnitude
     distance = 1.0 - cosine_sim

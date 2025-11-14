@@ -124,7 +124,7 @@ def load_config_yaml(config_path: str | Path) -> list[FigureConfig]:
         ...     render_figure(config, observations)
     """
     try:
-        import yaml  # type: ignore[import-untyped]
+        import yaml
     except ImportError as e:
         raise ImportError(
             "PyYAML required for YAML config loading. Install with: pip install pyyaml"

@@ -5,12 +5,14 @@ A comprehensive framework for analyzing text transformation effects across diffe
 ## Overview
 
 The metrics framework provides tools to:
+
 - **Measure** how glitchlings transform text across 14 metrics spanning edit distance, distribution, structure, and complexity
 - **Compare** glitchling behavior across different tokenizers (GPT-2, BERT, tiktoken, etc.)
 - **Visualize** transformation patterns through radar charts, heatmaps, embeddings, and sparklines
 - **Scale** with batch processing and efficient Parquet storage
 
 **Key Design Principles:**
+
 - ✅ **Optional by Design**: Separate package that doesn't bloat core library
 - ✅ **Correctness First**: All metrics validated against hand-computed ground truth
 - ✅ **Reproducible**: Complete run manifests with vocabulary hashing
@@ -22,6 +24,9 @@ The metrics framework provides tools to:
 # Core metrics only (numpy, pandas, scipy)
 pip install glitchlings[metrics]
 
+# Add the Textual-based TUI
+pip install glitchlings[metrics,metrics-tui]
+
 # Add tokenizer support (HuggingFace, tiktoken)
 pip install glitchlings[metrics,metrics-tokenizers]
 
@@ -29,7 +34,7 @@ pip install glitchlings[metrics,metrics-tokenizers]
 pip install glitchlings[metrics,metrics-viz]
 
 # Everything
-pip install glitchlings[metrics,metrics-tokenizers,metrics-viz]
+pip install glitchlings[metrics,metrics-tokenizers,metrics-viz,metrics-tui]
 ```
 
 ## Quick Start
@@ -95,7 +100,38 @@ print(f"Processed {manifest.num_observations} observations")
 print(f"Run ID: {manifest.run_id}")
 ```
 
-### 3. Visualize Results
+### 3. Explore Transformations Interactively (TUI)
+
+Install the TUI dependencies and launch the Textual application:
+
+```bash
+pip install glitchlings[metrics,metrics-tui]
+
+# Default SAMPLE_TEXT + Typogre fingerprint
+python -m glitchlings.metrics.cli.tui
+
+# Custom glitchling/tokenizers/input
+python -m glitchlings.metrics.cli.tui \
+    --glitchling "rushmore(mode='swap')" \
+    --tokenizer simple \
+    --tokenizer hf:gpt2 \
+    --text "Glitch me, please!"
+
+# Or via the main CLI:
+glitchlings metrics-tui --text "Deterministic sample" --glitchling typogre --tokenizer simple
+
+# You can repeat --glitchling/--tokenizer flags to build gaggles and multi-tokenizer comparisons.
+```
+
+Keybindings:
+
+- `r` - recompute metrics for the current text/glitchling
+- `q` (or `Esc`) - quit the TUI
+
+Use `--text-file path/to/file.txt` for longer corpora and repeat `--metric ned.value` style flags to customize the table columns.
+Inside the UI you can toggle multiple built-in glitchlings/tokenizers via checkboxes and paste custom specs in the comma-separated fields to build arbitrary gaggles.
+
+### 4. Visualize Results
 
 ```python
 from glitchlings.metrics.viz import (
@@ -143,6 +179,7 @@ fig = create_embedding_plot(
 ### 4. Config-Driven Rendering
 
 Create `viz_config.yaml`:
+
 ```yaml
 figures:
   - type: radar
@@ -164,6 +201,7 @@ figures:
 ```
 
 Render all figures:
+
 ```python
 from glitchlings.metrics.viz import render_config_file
 
@@ -340,6 +378,7 @@ create_radar_chart(
 ```
 
 **Use Cases:**
+
 - Compare glitchling aggressiveness
 - Identify which metrics are most affected
 - Profile transformation characteristics
@@ -359,6 +398,7 @@ create_heatmap(
 ```
 
 **Use Cases:**
+
 - Find which tokenizers are most sensitive
 - Compare multiple glitchlings side-by-side
 - Spot cross-cutting patterns
@@ -377,6 +417,7 @@ create_embedding_plot(
 ```
 
 **Use Cases:**
+
 - Discover natural glitchling clusters
 - Identify outliers or unexpected behavior
 - Compare different "metric lenses" (edit vs. distributional)
@@ -395,6 +436,7 @@ create_sparklines(
 ```
 
 **Use Cases:**
+
 - Identify length-dependent effects
 - Find optimal input length ranges
 - Debug unexpected behavior at extreme lengths
@@ -404,44 +446,53 @@ create_sparklines(
 ### Metric Selection
 
 **For edit-heavy transformations** (insertions, deletions, swaps):
+
 - Primary: `ned.value`, `lcsr.value`, `pmr.value`
 - Secondary: `rord.value` (if reordering), `lr.value` (if length changes)
 
 **For distributional shifts** (frequency changes without structure):
+
 - Primary: `jsdiv.value`, `cosdist.value`, `h_delta.value`
 - Secondary: `jsdset.value`, `jsdbag.value`
 
 **For structural transformations** (span modifications, boundary changes):
+
 - Primary: `rord.value`, `spi.value`, `msi.value`
 - Secondary: `bhr.value` (if context provided)
 
 **For compression/complexity** analysis:
+
 - Primary: `c_delta.value`
 - Interpretation: Positive = harder to compress (more random), negative = easier (more regular)
 
 ### Normalization
 
 **Percentile normalization** (default for radar charts):
+
 - Best for: Comparing within a dataset
 - Interpretation: "What percentile does this observation fall in?"
 
 **Min-max normalization**:
+
 - Best for: Cross-dataset comparison
 - Interpretation: "Where does this fall in the theoretical range?"
 
 **Z-score normalization**:
+
 - Best for: Identifying outliers
 - Interpretation: "How many standard deviations from the mean?"
 
 ### Performance Tips
 
 **For large datasets**:
+
 1. Use `partition_by=["tokenizer_id"]` in batch processing
 2. Filter observations before visualization: `filters={"glitchling_id": "subset"}`
 3. Limit metrics in embeddings to most relevant subset
 4. Use `length_bins` parameter to reduce sparkline resolution
 
 **For accuracy**:
+
 1. Use at least 20 diverse input texts per glitchling-tokenizer pair
 2. Include inputs of varying lengths (short, medium, long)
 3. Verify edge cases: empty strings, single tokens, very long sequences
@@ -459,16 +510,19 @@ create_sparklines(
 ## Performance Characteristics
 
 **Pure Python Implementation** (no native extensions):
+
 - 100 tokens: <50ms per observation (all 14 metrics)
 - 500 tokens: <500ms per observation
 - 1000 tokens: <2000ms per observation
 
 **Bottlenecks** (from profiling):
+
 - `ned.value`: ~60% of total time (O(m×n) Damerau-Levenshtein)
 - `lcsr.value`: ~20% of total time (O(m×n) LCS)
 - Other metrics: ~20% combined
 
 **Optimization Options** (future work):
+
 - Use `python-Levenshtein` library for 10-100× NED speedup
 - Cythonize hot loops in `align.py`
 - Lazy evaluation: compute only requested metrics
@@ -563,6 +617,7 @@ def create_custom_plot(observations, metric):
 ### ImportError: No module named 'pandas'
 
 **Solution**: Install metrics dependencies:
+
 ```bash
 pip install glitchlings[metrics]
 ```
@@ -570,6 +625,7 @@ pip install glitchlings[metrics]
 ### ImportError: No module named 'umap'
 
 **Solution**: Install visualization dependencies:
+
 ```bash
 pip install glitchlings[metrics-viz]
 ```
@@ -577,6 +633,7 @@ pip install glitchlings[metrics-viz]
 ### ImportError: No module named 'transformers'
 
 **Solution**: Install tokenizer dependencies:
+
 ```bash
 pip install glitchlings[metrics-tokenizers]
 ```
@@ -586,6 +643,7 @@ pip install glitchlings[metrics-tokenizers]
 **Cause**: Some observations missing required metrics or have invalid values.
 
 **Solution**: Check that all observations have complete metric coverage:
+
 ```python
 for obs in observations:
     for metric in required_metrics:
@@ -596,6 +654,7 @@ for obs in observations:
 ### Performance: Processing too slow
 
 **Solutions**:
+
 1. Reduce metrics computed: `registry.compute(["ned.value", "lcsr.value"], ...)`
 2. Use shorter input texts for testing
 3. Process in batches with progress tracking
@@ -606,6 +665,7 @@ for obs in observations:
 **Cause**: After filtering, too few observations remain.
 
 **Solution**: Relax filters or use more diverse input data:
+
 ```python
 # Check observation count after filtering
 filtered = [obs for obs in observations if obs.glitchling_id == "target"]
@@ -619,19 +679,6 @@ print(f"Observations: {len(filtered)}")  # Should be ≥2
 - **API Reference**: Generated from docstrings with `mkdocs`
 - **Example Notebook**: `examples/metrics_tutorial.ipynb` - Interactive walkthrough
 - **Config Examples**: `examples/metrics_viz_config.yaml` - Visualization configurations
-
-## Citation
-
-If you use this framework in research, please cite:
-
-```bibtex
-@software{glitchlings_metrics,
-  title = {Glitchlings Metrics Framework},
-  author = {osoleve},
-  year = {2024},
-  url = {https://github.com/osoleve/glitchlings}
-}
-```
 
 ## License
 

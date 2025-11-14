@@ -6,6 +6,7 @@ and tokenizer-specific phenomena.
 
 from __future__ import annotations
 
+from collections import deque
 from typing import Any, Mapping, Sequence
 
 from ..core.align import (
@@ -19,13 +20,15 @@ def reordering_score(
 ) -> Mapping[str, float]:
     """Compute Reordering Score (RORD) using Kendall-tau distance.
 
-    Measures how much the relative order of matched tokens has changed,
-    independent of insertions/deletions/substitutions.
+    Measures how much the relative order of shared tokens changed, independent
+    of insertions/deletions/substitutions. Tokens are greedily matched
+    left-to-right (stable matching) to keep deterministic behaviour.
 
     Algorithm:
-    1. Find LCS to identify matched tokens
-    2. Extract their indices in both sequences
-    3. Compute Kendall-tau distance on the index sequences
+    1. Collect every index of each token in `after`.
+    2. Walk `before` from left-to-right and assign the next available index
+       from `after` for the same token (if any).
+    3. Compute Kendall-tau distance between the matched index sequences.
 
     Args:
         before: Original token sequence
@@ -49,34 +52,29 @@ def reordering_score(
         - Handles duplicates via stable left-to-right matching
         - Returns 0 if < 2 tokens match (no pairs to compare)
     """
-    # Find matched tokens via LCS
-    lcs_len, lcs_indices_before = longest_common_subsequence(before, after)
-
-    if lcs_len < 2:
-        # Need at least 2 tokens to measure reordering
+    if not before or not after:
         return {"value": 0.0}
 
-    # Build corresponding indices in `after`
-    # Use greedy left-to-right matching on matched tokens
-    lcs_indices_after: list[int] = []
-    after_pos = 0
-    for before_idx in lcs_indices_before:
-        target_token = before[before_idx]
-        # Find next occurrence of target_token in after[after_pos:]
-        while after_pos < len(after):
-            if after[after_pos] == target_token:
-                lcs_indices_after.append(after_pos)
-                after_pos += 1
-                break
-            after_pos += 1
+    after_positions: dict[int, deque[int]] = {}
+    for idx, token in enumerate(after):
+        after_positions.setdefault(token, deque()).append(idx)
 
-    # Sanity check: should have same number of indices
-    if len(lcs_indices_before) != len(lcs_indices_after):
-        # Shouldn't happen with correct LCS, but handle gracefully
+    matched_before: list[int] = []
+    matched_after: list[int] = []
+
+    for before_idx, token in enumerate(before):
+        positions = after_positions.get(token)
+        if not positions:
+            continue
+        matched_before.append(before_idx)
+        matched_after.append(positions.popleft())
+
+    if len(matched_after) < 2:
+        # Need at least two matches to detect reordering
         return {"value": 0.0}
 
-    # Compute Kendall-tau distance on index sequences
-    _, tau_dist = kendall_tau_distance(lcs_indices_before, lcs_indices_after)
+    # Compute Kendall-tau distance on matched indices
+    _, tau_dist = kendall_tau_distance(matched_before, matched_after)
 
     return {"value": tau_dist}
 

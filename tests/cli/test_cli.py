@@ -90,6 +90,37 @@ def test_cli_build_lexicon_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
     ]
 
 
+def test_cli_metrics_tui_subcommand(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_launch(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("glitchlings.main._launch_metrics_tui", fake_launch)
+
+    exit_code = cli_main(
+        [
+            "metrics-tui",
+            "--text",
+            "Hello there",
+            "--glitchling",
+            "typogre",
+            "--glitchling",
+            "pedant",
+            "--tokenizer",
+            "simple",
+            "--metric",
+            "ned.value",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["text"] == "Hello there"
+    assert captured["glitchlings"] == ["typogre", "pedant"]
+    assert captured["tokenizers"] == ["simple"]
+    assert captured["metrics"] == ["ned.value"]
+
+
 def test_run_build_lexicon_passes_optional_arguments(
     monkeypatch: pytest.MonkeyPatch, tmp_path
 ) -> None:

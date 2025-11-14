@@ -54,12 +54,12 @@ CASE_TRANSPOSITION = MetricTestCase(
         "jsdiv.value": 0.0,  # Identical distributions
         "h_delta.delta": 0.0,  # Same entropy (uniform)
         # Structural metrics
-        "rord.value": 0.0,  # LCS tokens [0,1] or [0,2] both preserve order
+        "rord.value": 1 / 3,  # One adjacent inversion out of three pairs
         # Length metrics
         "lr.ratio": 1.0,  # Length ratio 3/3
         "lr.delta": 0.0,  # |1 - 3/3|
     },
-    notes="Single transposition: [a,b,c] → [a,c,b]. RORD=0 because LCS preserves order.",
+    notes="Single transposition: [a,b,c] → [a,c,b]. RORD detects the adjacent swap.",
 )
 
 # Test Case 2: Identity
@@ -148,7 +148,7 @@ CASE_REVERSAL = MetricTestCase(
         "pmr.value": 1 / 4,  # LCS-based: 1 token matches out of 4 (LCS length / after length)
         "jsdset.value": 0.0,  # Same set
         "jsdbag.value": 0.0,  # Same counts
-        "rord.value": 0.0,  # RORD only considers pairs within LCS; LCS=1 has no pairs
+        "rord.value": 1.0,  # Perfect reversal: every pair inverted
         "lr.ratio": 1.0,  # Same length
         "lr.delta": 0.0,
     },

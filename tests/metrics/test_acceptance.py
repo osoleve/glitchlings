@@ -246,6 +246,24 @@ def test_metric_registry_missing_dependency() -> None:
     assert "ppl.value" not in results  # Skipped due to missing dependency
 
 
+def test_reordering_score_detects_simple_swap() -> None:
+    """Regression test for RORD previously returning 0."""
+    from glitchlings.metrics.metrics.structure import reordering_score
+
+    result = reordering_score([0, 1, 2], [0, 2, 1], {})
+
+    assert result["value"] == pytest.approx(1 / 3, abs=1e-6)
+
+
+def test_cosine_distance_handles_empty_and_nonempty() -> None:
+    """Regression test for cosine distance returning 0 instead of 1."""
+    from glitchlings.metrics.metrics.distro import cosine_distance
+
+    result = cosine_distance([], [1], {})
+
+    assert result["value"] == pytest.approx(1.0, abs=1e-6)
+
+
 if __name__ == "__main__":
     # Allow running tests directly
     pytest.main([__file__, "-v"])
