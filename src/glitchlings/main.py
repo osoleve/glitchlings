@@ -103,6 +103,54 @@ def build_parser(
     return parser
 
 
+def build_metrics_tui_parser() -> argparse.ArgumentParser:
+    """Parser for the metrics TUI subcommand."""
+    parser = argparse.ArgumentParser(
+        prog="glitchlings metrics-tui",
+        description="Launch the interactive metrics TUI.",
+    )
+    parser.add_argument(
+        "--text",
+        help="Literal text to analyze (overrides SAMPLE_TEXT).",
+    )
+    parser.add_argument(
+        "--text-file",
+        type=Path,
+        help="Load text from a UTF-8 file.",
+    )
+    parser.add_argument(
+        "--sample",
+        action="store_true",
+        help="Use SAMPLE_TEXT when no explicit input is provided.",
+    )
+    parser.add_argument(
+        "--glitchling",
+        action="append",
+        dest="glitchlings",
+        default=[],
+        help="Glitchling specification (repeatable), e.g. typogre(rate=0.05).",
+    )
+    parser.add_argument(
+        "--tokenizer",
+        action="append",
+        default=[],
+        help="Tokenizer spec (repeatable). Examples: simple, hf:gpt2, tiktoken:cl100k_base",
+    )
+    parser.add_argument(
+        "--metric",
+        action="append",
+        dest="metrics",
+        default=[],
+        help="Metric key to display (repeatable).",
+    )
+    parser.add_argument(
+        "--input-type",
+        default="adhoc",
+        help="Value recorded in session metadata.",
+    )
+    return parser
+
+
 def _configure_build_lexicon_parser(builder: argparse.ArgumentParser) -> argparse.ArgumentParser:
     """Attach ``build-lexicon`` options to ``builder`` and return it."""
     builder.add_argument(
@@ -345,6 +393,31 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
+def run_metrics_tui(args: argparse.Namespace) -> int:
+    """Launch the metrics TUI with the provided arguments."""
+    text = SAMPLE_TEXT
+    if args.text_file:
+        text = args.text_file.read_text(encoding="utf-8")
+    elif args.text:
+        text = args.text
+    elif not args.sample and not args.text:
+        # Keep SAMPLE_TEXT default
+        text = SAMPLE_TEXT
+
+    tokenizers = args.tokenizer or ["simple"]
+    glitchlings = args.glitchlings or ["typogre"]
+    metrics = args.metrics or None
+
+    _launch_metrics_tui(
+        text=text,
+        glitchlings=glitchlings,
+        tokenizers=tokenizers,
+        metrics=metrics,
+        input_type=args.input_type,
+    )
+    return 0
+
+
 def run_build_lexicon(args: argparse.Namespace) -> int:
     """Delegate to the vector lexicon cache builder using CLI arguments."""
     from glitchlings.lexicon.vector import main as vector_main
@@ -430,9 +503,36 @@ def main(argv: list[str] | None = None) -> int:
             return _exit_code(exc)
         return run_build_lexicon(subcommand_args)
 
+    if first_non_option_index is not None and first_non_option == "metrics-tui":
+        tui_parser = build_metrics_tui_parser()
+        try:
+            subcommand_args = tui_parser.parse_args(raw_args[first_non_option_index + 1 :])
+        except SystemExit as exc:
+            return _exit_code(exc)
+        return run_metrics_tui(subcommand_args)
+
     parser = build_parser(include_subcommands=False)
     args = parser.parse_args(raw_args)
     return run_cli(args, parser)
+
+
+def _launch_metrics_tui(
+    *,
+    text: str,
+    glitchlings: Sequence[str],
+    tokenizers: Sequence[str],
+    metrics: Sequence[str] | None,
+    input_type: str,
+) -> None:
+    from glitchlings.metrics.cli import launch_metrics_tui as _launcher
+
+    _launcher(
+        text=text,
+        glitchlings=glitchlings,
+        tokenizers=tokenizers,
+        metrics=metrics,
+        input_type=input_type,
+    )
 
 
 if __name__ == "__main__":
