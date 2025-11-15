@@ -10,9 +10,9 @@ from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
-from textual.widgets import Button, Input, Static, TabbedContent, TabPane, TextArea
+from textual.widgets import Button, Input, Static, Switch, TextArea
 
 from glitchlings import SAMPLE_TEXT
 from glitchlings.zoo import BUILTIN_GLITCHLINGS
@@ -229,6 +229,8 @@ def _preview_sample(text: str, limit: int = 160) -> str:
 class MetricsApp(App[None]):  # type: ignore[misc]
     """Responsive Textual application for exploring metrics."""
 
+    CONTROL_COLUMN_WIDTH = 42
+
     CSS = """
     Screen {
         layout: vertical;
@@ -244,8 +246,36 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     #app-body {
         height: 1fr;
+        layout: horizontal;
+        padding: 0 1 1 1;
+    }
+
+    #app-body.narrow {
         layout: vertical;
-        padding: 0 1;
+    }
+
+    #control-column {
+        width: 42;
+        min-width: 36;
+        max-width: 48;
+        height: 1fr;
+        padding-right: 1;
+        border-right: solid $surface 20%;
+        margin-right: 1;
+    }
+
+    #app-body.narrow #control-column {
+        width: 1fr;
+        max-width: 1fr;
+        border-right: none;
+        padding-right: 0;
+        margin-right: 0;
+    }
+
+    #control-scroll {
+        height: 1fr;
+        overflow-y: auto;
+        padding-right: 1;
     }
 
     #section-stack {
@@ -258,24 +288,17 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         margin-bottom: 1;
     }
 
-    .section-detail {
-        color: $text 70%;
-        padding-bottom: 1;
-    }
-
+    .section-detail,
     .section-help {
         color: $text 70%;
         padding-bottom: 1;
     }
 
     #run-summary {
-        min-height: 2;
+        min-height: 3;
         padding: 0 1;
-        border: none;
-    }
-
-    #main-tabs {
-        height: 1fr;
+        border: round $surface 20%;
+        margin-top: 1;
     }
 
     TextArea {
@@ -287,26 +310,120 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         height: 8;
     }
 
-    TabPane {
-        padding: 0 1;
-    }
-
-    #diff-view {
+    #results-column {
+        width: 1fr;
         height: 1fr;
-        border: tall transparent;
-        overflow-y: auto;
-        padding: 0 1;
+        layout: vertical;
     }
 
-    #debug-view {
+    #results-column > * {
+        margin-bottom: 1;
+    }
+
+    #results-primary {
+        layout: horizontal;
         height: 1fr;
     }
 
+    #results-primary.narrow {
+        layout: vertical;
+    }
+
+    #results-primary > * {
+        margin-right: 1;
+    }
+
+    #results-primary.narrow > * {
+        margin-right: 0;
+        margin-bottom: 1;
+    }
+
+    .results-panel {
+        border: round $surface 15%;
+        padding: 0 1 1 1;
+        background: $surface 3%;
+        height: 1fr;
+        min-height: 12;
+    }
+
+    .panel-title {
+        text-style: bold;
+        padding: 0 0 1 0;
+    }
+
+    #diff-scroll,
+    #token-diff-scroll,
+    #debug-scroll {
+        height: 1fr;
+    }
+
+    #diff-view,
     #token-diff-view {
-        height: 1fr;
         border: tall transparent;
         overflow-y: auto;
+    }
+
+    #aux-toolbar {
+        border: round transparent;
         padding: 0 1;
+        height: auto;
+        content-align: left middle;
+    }
+
+    #aux-toolbar > * {
+        margin-right: 2;
+    }
+
+    .toolbar-label {
+        color: $text 80%;
+        text-style: bold;
+    }
+
+    .toggle-row {
+        align: center middle;
+    }
+
+    .toggle-row > * {
+        margin-right: 1;
+    }
+
+    .toggle-label {
+        color: $text 70%;
+    }
+
+    #aux-panels {
+        layout: horizontal;
+    }
+
+    #aux-panels.narrow {
+        layout: vertical;
+    }
+
+    #aux-panels > * {
+        margin-right: 1;
+    }
+
+    #aux-panels.narrow > * {
+        margin-right: 0;
+        margin-bottom: 1;
+    }
+
+    .aux-panel {
+        width: 1fr;
+        min-height: 8;
+        border: round $surface 15%;
+        padding: 0 1 1 1;
+        background: $surface 5%;
+    }
+
+    .aux-panel.hidden {
+        display: none;
+    }
+
+    #output-panel,
+    #diff-panel,
+    #metrics-panel {
+        min-width: 32;
     }
     """
 
@@ -316,8 +433,8 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         Binding("c", "open_picker", "Edit section picker", show=False),
         Binding("g", "open_glitch_picker", "Glitchlings"),
         Binding("k", "open_tokenizer_picker", "Tokenizers"),
-        Binding("ctrl+right", "tab_next", "Next tab", show=False),
-        Binding("ctrl+left", "tab_previous", "Prev tab", show=False),
+        Binding("t", "toggle_token_diff", "Token diff"),
+        Binding("b", "toggle_debug", "Debug info"),
     ]
 
     def __init__(self, controller: MetricsTUIController) -> None:
@@ -337,7 +454,15 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self.metrics_view: MetricsView | None = None
         self.debug_view: TextArea | None = None
         self.footer: StatusFooter | None = None
-        self.tabs: TabbedContent | None = None
+        self.app_body: Horizontal | None = None
+        self.results_primary: Horizontal | None = None
+        self.aux_panels: Horizontal | None = None
+        self.token_diff_container: Vertical | None = None
+        self.debug_container: Vertical | None = None
+        self.token_diff_switch: Switch | None = None
+        self.debug_switch: Switch | None = None
+        self._show_token_diff = False
+        self._show_debug = False
 
         self.custom_glitch_input: Input | None = None
         self.custom_tokenizer_input: Input | None = None
@@ -382,6 +507,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             id="output-view",
         )
         self.diff_view = Static("", id="diff-view", markup=False)
+        self.token_diff_view = Static("", id="token-diff-view", markup=False)
         self.debug_view = TextArea(
             text="",
             read_only=True,
@@ -391,25 +517,50 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         )
         self.footer = StatusFooter()
 
-        with Vertical(id="app-body"):
-            with Vertical(id="section-stack"):
-                yield self.input_section
-                yield self.glitch_section
-                yield self.tokenizer_section
-            yield self.summary_display
-            with TabbedContent(id="main-tabs", initial="output") as tabs:
-                self.tabs = tabs
-                with TabPane("Output", id="output"):
-                    yield self.output_view
-                with TabPane("Metrics", id="metrics"):
-                    yield self.metrics_view
-                with TabPane("Diff", id="diff"):
-                    yield self.diff_view
-                with TabPane("Token Diff", id="token-diff"):
-                    self.token_diff_view = Static("", id="token-diff-view", markup=False)
-                    yield self.token_diff_view
-                with TabPane("Debug", id="debug"):
-                    yield self.debug_view
+        with Horizontal(id="app-body") as app_body:
+            self.app_body = app_body
+            with Vertical(id="control-column"):
+                with VerticalScroll(id="control-scroll"):
+                    with Vertical(id="section-stack"):
+                        yield self.input_section
+                        yield self.glitch_section
+                        yield self.tokenizer_section
+                yield self.summary_display
+            with Vertical(id="results-column"):
+                with Horizontal(id="results-primary") as results_primary:
+                    self.results_primary = results_primary
+                    with Vertical(id="output-panel", classes="results-panel"):
+                        yield Static("Output", classes="panel-title")
+                        yield self.output_view
+                    with Vertical(id="diff-panel", classes="results-panel"):
+                        yield Static("Diff", classes="panel-title")
+                        with VerticalScroll(id="diff-scroll"):
+                            yield self.diff_view
+                    with Vertical(id="metrics-panel", classes="results-panel"):
+                        yield Static("Metrics", classes="panel-title")
+                        yield self.metrics_view
+                with Horizontal(id="aux-toolbar"):
+                    yield Static("Optional views", classes="toolbar-label")
+                    with Horizontal(classes="toggle-row"):
+                        self.token_diff_switch = Switch(id="token-diff-switch")
+                        yield self.token_diff_switch
+                        yield Static("Token diff", classes="toggle-label")
+                    with Horizontal(classes="toggle-row"):
+                        self.debug_switch = Switch(id="debug-switch")
+                        yield self.debug_switch
+                        yield Static("Debug info", classes="toggle-label")
+                with Horizontal(id="aux-panels") as aux_panels:
+                    self.aux_panels = aux_panels
+                    with Vertical(id="token-diff-panel", classes="aux-panel hidden") as token_panel:
+                        self.token_diff_container = token_panel
+                        yield Static("Token diff", classes="panel-title")
+                        with VerticalScroll(id="token-diff-scroll"):
+                            yield self.token_diff_view
+                    with Vertical(id="debug-panel", classes="aux-panel hidden") as debug_panel:
+                        self.debug_container = debug_panel
+                        yield Static("Debug info", classes="panel-title")
+                        with VerticalScroll(id="debug-scroll"):
+                            yield self.debug_view
         yield self.footer
 
     def _build_input_body(self) -> Vertical:
@@ -464,8 +615,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._update_input_summary()
         self._update_glitch_summary()
         self._update_tokenizer_summary()
-        if self.metrics_view is not None:
-            self.metrics_view.set_narrow_mode(self.size.width < 120)
+        self._apply_responsive_layout(self.size.width)
         await self.refresh_metrics()
 
     async def on_key(self, event: events.Key) -> None:  # pragma: no cover - UI behaviour
@@ -473,19 +623,18 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             await self.action_quit()
 
     def on_resize(self, event: Resize) -> None:
-        if self.metrics_view is not None:
-            self.metrics_view.set_narrow_mode(event.size.width < 120)
+        self._apply_responsive_layout(event.size.width)
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        if event.switch.id == "token-diff-switch":
+            self._show_token_diff = event.value
+            self._update_aux_panel_visibility()
+        elif event.switch.id == "debug-switch":
+            self._show_debug = event.value
+            self._update_aux_panel_visibility()
 
     async def action_run_metrics(self) -> None:
         await self.refresh_metrics()
-
-    def action_tab_next(self) -> None:
-        if self.tabs is not None:
-            self.tabs.action_next_tab()
-
-    def action_tab_previous(self) -> None:
-        if self.tabs is not None:
-            self.tabs.action_previous_tab()
 
     async def action_open_picker(self) -> None:
         if self._active_section_id == "glitch-section":
@@ -498,6 +647,14 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     async def action_open_tokenizer_picker(self) -> None:
         await self._open_tokenizer_modal()
+
+    def action_toggle_token_diff(self) -> None:
+        self._show_token_diff = not self._show_token_diff
+        self._update_aux_panel_visibility()
+
+    def action_toggle_debug(self) -> None:
+        self._show_debug = not self._show_debug
+        self._update_aux_panel_visibility()
 
     async def refresh_metrics(self) -> None:
         try:
@@ -568,6 +725,35 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         glitch_count = len(self.controller.current_glitchling_specs())
         tokenizer_count = len(self.controller.selected_tokenizer_specs())
         self.footer.update_summary(glitch_count, tokenizer_count)
+
+    def _apply_responsive_layout(self, width: int) -> None:
+        is_narrow = width < 100
+        if self.app_body is not None:
+            self.app_body.set_class(is_narrow, "narrow")
+        if self.results_primary is not None:
+            self.results_primary.set_class(is_narrow, "narrow")
+        if self.aux_panels is not None:
+            self.aux_panels.set_class(is_narrow, "narrow")
+        available_width = max(width - self.CONTROL_COLUMN_WIDTH, 40)
+        if self.metrics_view is not None:
+            self.metrics_view.set_narrow_mode(available_width < 80)
+        self._update_aux_panel_visibility()
+
+    def _update_aux_panel_visibility(self) -> None:
+        if (
+            self.token_diff_switch is not None
+            and self.token_diff_switch.value != self._show_token_diff
+        ):
+            self.token_diff_switch.value = self._show_token_diff
+        if (
+            self.debug_switch is not None
+            and self.debug_switch.value != self._show_debug
+        ):
+            self.debug_switch.value = self._show_debug
+        if self.token_diff_container is not None:
+            self.token_diff_container.set_class(not self._show_token_diff, "hidden")
+        if self.debug_container is not None:
+            self.debug_container.set_class(not self._show_debug, "hidden")
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "run-button":
