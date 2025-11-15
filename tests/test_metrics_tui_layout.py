@@ -2,9 +2,9 @@
 
 import asyncio
 
-from glitchlings.metrics.cli.tui.app import MetricsApp
-from glitchlings.metrics.cli.tui.controller import ControllerOptions, MetricsTUIController
 from glitchlings.metrics.core.session import MetricsSession
+from glitchlings.metrics.tui.app import MetricsApp
+from glitchlings.metrics.tui.controller import ControllerOptions, MetricsTUIController
 
 
 def test_metrics_app_mounts_and_handles_breakpoints() -> None:

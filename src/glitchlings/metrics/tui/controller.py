@@ -15,8 +15,8 @@ from glitchlings.zoo import (
     parse_glitchling_spec,
 )
 
-from ...core.session import MetricsSession, SessionResult, TextTransformer
-from ...core.tokenizers import (
+from ..core.session import MetricsSession, SessionResult, TextTransformer
+from ..core.tokenizers import (
     SimpleTokenizer,
     TokenizerAdapter,
     create_huggingface_adapter,

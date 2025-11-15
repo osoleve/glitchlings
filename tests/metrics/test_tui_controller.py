@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from glitchlings.metrics.cli.tui.controller import (
+from glitchlings.metrics.core.session import MetricsSession
+from glitchlings.metrics.tui.controller import (
     BUILTIN_TOKENIZERS,
     DEFAULT_METRIC_KEYS,
     METRIC_LABEL_OVERRIDES,
@@ -11,7 +12,6 @@ from glitchlings.metrics.cli.tui.controller import (
     build_glitchling_pipeline,
     resolve_tokenizer_specs,
 )
-from glitchlings.metrics.core.session import MetricsSession
 
 
 def test_build_glitchling_pipeline_identity() -> None:
