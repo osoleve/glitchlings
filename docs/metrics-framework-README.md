@@ -129,10 +129,11 @@ Keybindings:
 | --- | --- |
 | `r` | Recompute metrics for the current text/glitchling selections |
 | `g` / `k` | Open the glitchling or tokenizer pickers |
+| `t` | Toggle the token diff panel |
+| `b` | Toggle the debug metadata panel |
 | `/` | Focus the active filter/customization input field |
 | `?` | Open the inline help + shortcut overlay |
 | `Ctrl+S` | Show workflow tips for saving/exporting the current run |
-| `Ctrl+←` / `Ctrl+→` | Cycle through the Output/Metrics/Diff tabs |
 | `q` / `Esc` | Quit the TUI |
 
 The TUI now launches with a lightweight walkthrough overlay that anchors tooltips to each section so first-time sessions highlight the intended workflow. You can always reopen `?` for shortcuts or press `Ctrl+S` to review how to persist a run via `process_and_write` and the batch APIs.

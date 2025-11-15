@@ -448,8 +448,6 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         Binding("?", "show_help", "Help"),
         Binding("/", "focus_filter", "Focus filter"),
         Binding("ctrl+s", "save_run", "Save run"),
-        Binding("ctrl+right", "tab_next", "Next tab", show=False),
-        Binding("ctrl+left", "tab_previous", "Prev tab", show=False),
         Binding("t", "toggle_token_diff", "Token diff"),
         Binding("b", "toggle_debug", "Debug info"),
     ]
@@ -471,7 +469,6 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self.metrics_view: MetricsView | None = None
         self.debug_view: TextArea | None = None
         self.footer: StatusFooter | None = None
-        self.tabs: TabbedContent | None = None
         self._footer_status = "Idle"
         self._footer_duration: float | None = None
         self._footer_is_error = False
@@ -690,10 +687,10 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         lines = [
             "r – recompute metrics",
             "g / k – pick glitchlings or tokenizers",
+            "t / b – toggle token diff or debug panels",
             "? – open this overlay",
             "/ – focus the active filter/input field",
             "Ctrl+S – workflow tips for persisting a run",
-            "Ctrl+←/→ – change result tabs",
             "Walkthrough hints show once per session; reopen sections to revisit the tips.",
         ]
         await self._show_info_dialog("Keyboard shortcuts", lines)
@@ -968,38 +965,61 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     def _update_glitch_summary(self) -> None:
         specs = self.controller.current_glitchling_specs()
-        summary = _format_list_summary("Glitchlings", specs) + " [press g]"
-        if self.glitch_section is not None:
-            self.glitch_section.set_summary(summary)
-        if self.glitch_detail is not None:
-            builtins = [
-                name
-                for name in self.controller.available_glitchlings()
-                if self.controller.is_glitchling_selected(name)
-            ]
-            custom = self.controller.custom_glitchlings_text()
-            parts = [f"Built-ins: {', '.join(builtins) or 'identity'}"]
-            if custom:
-                parts.append(f"Custom: {custom}")
-            self.glitch_detail.update("\n".join(parts))
-        self._update_footer_counts()
+        builtins = [
+            name
+            for name in self.controller.available_glitchlings()
+            if self.controller.is_glitchling_selected(name)
+        ]
+        self._update_selection_summary(
+            section=self.glitch_section,
+            detail_widget=self.glitch_detail,
+            summary_label="Glitchlings",
+            specs=specs,
+            key_hint="g",
+            builtin_names=builtins,
+            builtin_fallback="identity",
+            custom_text=self.controller.custom_glitchlings_text(),
+        )
 
     def _update_tokenizer_summary(self) -> None:
         specs = self.controller.selected_tokenizer_specs()
-        summary = _format_list_summary("Tokenizers", specs) + " [press k]"
-        if self.tokenizer_section is not None:
-            self.tokenizer_section.set_summary(summary)
-        if self.tokenizer_detail is not None:
-            builtins = [
-                label
-                for label, spec in self.controller.available_tokenizers()
-                if self.controller.is_tokenizer_selected(spec)
-            ]
-            custom = self.controller.custom_tokenizers_text()
-            parts = [f"Built-ins: {', '.join(builtins) or 'Simple'}"]
-            if custom:
-                parts.append(f"Custom: {custom}")
-            self.tokenizer_detail.update("\n".join(parts))
+        builtins = [
+            label
+            for label, spec in self.controller.available_tokenizers()
+            if self.controller.is_tokenizer_selected(spec)
+        ]
+        self._update_selection_summary(
+            section=self.tokenizer_section,
+            detail_widget=self.tokenizer_detail,
+            summary_label="Tokenizers",
+            specs=specs,
+            key_hint="k",
+            builtin_names=builtins,
+            builtin_fallback="Simple",
+            custom_text=self.controller.custom_tokenizers_text(),
+        )
+
+    def _update_selection_summary(
+        self,
+        *,
+        section: CollapsibleSection | None,
+        detail_widget: Static | None,
+        summary_label: str,
+        specs: Sequence[str],
+        key_hint: str,
+        builtin_names: Sequence[str],
+        builtin_fallback: str,
+        custom_text: str,
+    ) -> None:
+        summary = _format_list_summary(summary_label, specs) + f" [press {key_hint}]"
+        if section is not None:
+            section.set_summary(summary)
+        if detail_widget is not None:
+            builtin_display = ", ".join(builtin_names) or builtin_fallback
+            lines = [f"Built-ins: {builtin_display}"]
+            if custom_text:
+                lines.append(f"Custom: {custom_text}")
+            detail_widget.update("\n".join(lines))
         self._update_footer_counts()
 
     def on_input_changed(self, event: Input.Changed) -> None:

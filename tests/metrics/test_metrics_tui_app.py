@@ -15,3 +15,12 @@ def test_help_overlay_renders() -> None:
             assert any(isinstance(screen, InfoDialog) for screen in app.screen_stack)
 
     asyncio.run(_run())
+
+
+def test_metrics_app_bindings_omit_unused_tab_actions() -> None:
+    binding_actions = {binding.action for binding in MetricsApp.BINDINGS}
+    assert "tab_next" not in binding_actions
+    assert "tab_previous" not in binding_actions
+    binding_keys = {binding.key for binding in MetricsApp.BINDINGS}
+    assert "t" in binding_keys
+    assert "b" in binding_keys
