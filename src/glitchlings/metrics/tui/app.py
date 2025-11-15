@@ -19,7 +19,7 @@ from glitchlings import SAMPLE_TEXT
 from glitchlings.zoo import BUILTIN_GLITCHLINGS
 from glitchlings.zoo.core import AttackWave
 
-from ...core.session import SessionResult
+from ..core.session import SessionResult
 from .components import (
     CollapsibleSection,
     InfoDialog,

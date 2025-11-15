@@ -1,10 +1,10 @@
-"""Entry helpers for launching the metrics TUI."""
+"""Metrics TUI helpers."""
 
 from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from ...core.session import MetricsSession
+from ..core.session import MetricsSession
 from .controller import ControllerOptions, MetricsTUIController
 
 

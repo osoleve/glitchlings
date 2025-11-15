@@ -1,9 +1,9 @@
 import asyncio
 
-from glitchlings.metrics.cli.tui.app import HELP_SHORTCUTS, MetricsApp
-from glitchlings.metrics.cli.tui.components import InfoDialog
-from glitchlings.metrics.cli.tui.controller import ControllerOptions, MetricsTUIController
 from glitchlings.metrics.core.session import MetricsSession
+from glitchlings.metrics.tui.app import HELP_SHORTCUTS, MetricsApp
+from glitchlings.metrics.tui.components import InfoDialog
+from glitchlings.metrics.tui.controller import ControllerOptions, MetricsTUIController
 
 
 def test_help_overlay_renders() -> None:

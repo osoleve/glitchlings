@@ -566,8 +566,8 @@ To make the metrics suite explorable without notebooks, we will introduce a term
    - Add `metrics/core/session.py` that wires together `create_default_registry`, tokenizer adapters, and helper methods to cache tokenized text plus most recent Observation list.  
    - Surface `compute_once`, `rerun(glitchling, tokenizers, text)`, and manifest metadata so higher layers do not juggle batch internals.
 
-2. **Controller layer**  
-   - Create `metrics/cli/tui/controller.py` that owns application state (selected glitchling, rate params, tokenizer set, text buffer, active metrics) and exposes commands/events (`run`, `export`, `toggle_metric`, etc.).  
+2. **Controller layer**
+   - Create `metrics/tui/controller.py` that owns application state (selected glitchling, rate params, tokenizer set, text buffer, active metrics) and exposes commands/events (`run`, `export`, `toggle_metric`, etc.).
    - Reuse `BatchProcessor` for actual metric computation but keep fresh results in memory until the user decides to write Parquet.
 
 3. **UI layout & navigation**  
@@ -578,8 +578,8 @@ To make the metrics suite explorable without notebooks, we will introduce a term
    - When users request radar/heatmap/embedding views, call the existing helpers in `metrics.viz` and either render inline ASCII (heatmap) or generate PNGs displayed via Textual's `ImageLog`.  
    - Cache generated figures per run + metric subset to avoid recomputation when toggling between tabs.
 
-5. **CLI entry point + docs/tests**  
-   - Ship `python -m glitchlings.metrics.cli.tui` plus a `glitchlings metrics-tui` command that accepts `--glitchling`, `--tokenizer`, and `--text-file` seeds.  
+5. **CLI entry point + docs/tests**
+   - Ship `python -m glitchlings.metrics.tui` plus a `glitchlings metrics-tui` command that accepts `--glitchling`, `--tokenizer`, and `--text-file` seeds.
    - Document install requirements (`pip install glitchlings[metrics] textual rich pillow`), add smoke tests that boot the controller with a dummy terminal, and update `docs/metrics-framework-README.md` with a quickstart walkthrough.
 
 ---

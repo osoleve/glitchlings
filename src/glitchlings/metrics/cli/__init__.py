@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .tui import launch_metrics_tui
+from ..tui import launch_metrics_tui
 
 __all__ = [
     "launch_metrics_tui",

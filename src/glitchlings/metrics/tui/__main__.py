@@ -7,8 +7,8 @@ from pathlib import Path
 
 from glitchlings.util import SAMPLE_TEXT
 
+from . import launch_metrics_tui
 from .controller import DEFAULT_METRIC_KEYS
-from .launcher import launch_metrics_tui
 
 
 def parse_args() -> argparse.Namespace:

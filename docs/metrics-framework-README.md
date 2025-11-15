@@ -108,10 +108,10 @@ Install the TUI dependencies and launch the Textual application:
 pip install glitchlings[metrics,metrics-tui]
 
 # Default SAMPLE_TEXT + Typogre fingerprint
-python -m glitchlings.metrics.cli.tui
+python -m glitchlings.metrics.tui
 
 # Custom glitchling/tokenizers/input
-python -m glitchlings.metrics.cli.tui \
+python -m glitchlings.metrics.tui \
     --glitchling "rushmore(mode='swap')" \
     --tokenizer simple \
     --tokenizer hf:gpt2 \
