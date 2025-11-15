@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import difflib
 import re
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from rich.text import Text
 from textual import events
@@ -14,12 +14,19 @@ from textual.containers import Vertical
 from textual.events import Resize
 from textual.widgets import Button, Input, Static, TabbedContent, TabPane, TextArea
 
+from glitchlings import SAMPLE_TEXT
+from glitchlings.zoo import BUILTIN_GLITCHLINGS
+from glitchlings.zoo.core import AttackWave
+
 from ...core.session import SessionResult
 from .components import (
     CollapsibleSection,
     MetricsView,
+    PickerFormDefinition,
     PickerItem,
     PickerModal,
+    PickerModeControl,
+    PickerRateControl,
     SectionToggleRequested,
     StatusFooter,
 )
@@ -82,7 +89,7 @@ def _build_span_diff(before: str, after: str) -> Text:
     return result
 
 
-def _build_token_diff(tokens_before: list[int], tokens_after: list[int]) -> Text:
+def _build_token_diff(tokens_before: Sequence[int], tokens_after: Sequence[int]) -> Text:
     """Generate a diff over token ids."""
     matcher = difflib.SequenceMatcher(None, tokens_before, tokens_after)
     text = Text()
@@ -108,6 +115,115 @@ def _build_token_diff(tokens_before: list[int], tokens_after: list[int]) -> Text
     if not text.plain.strip():
         return Text("No token changes detected.")
     return text
+
+
+_RATE_ONLY_DEFAULTS: dict[str, float] = {
+    "ekkokin": 0.02,
+    "scannequin": 0.02,
+}
+
+_RATE_CONTROL_HELP = "Rates represent probabilities from 0.0 to 1.0."
+_RATE_INLINE_HELP = "Rate-only glitchling: 0 disables, 1 touches every candidate."
+_RUSHMORE_MODE_OPTIONS: list[tuple[str, str]] = [
+    ("Delete words", "delete"),
+    ("Duplicate words", "duplicate"),
+    ("Swap adjacent words", "swap"),
+]
+_RUSHMORE_DEFAULT_MODES = ["delete"]
+
+
+def _build_glitch_picker_items(names: Iterable[str]) -> list[PickerItem]:
+    """Return picker items enriched with grouping and form metadata."""
+
+    items: list[PickerItem] = []
+    for name in names:
+        glitch = BUILTIN_GLITCHLINGS.get(name)
+        label = glitch.name if glitch is not None else name
+        group = _group_label(glitch.level if glitch else None)
+        form = _glitch_form_definition(name)
+        help_text = None
+        if form and _is_rate_only_form(form):
+            help_text = _RATE_INLINE_HELP
+        elif name.lower() == "rushmore":
+            help_text = "Configure Rushmore modes and optional rate overrides."
+        items.append(
+            PickerItem(
+                label=label,
+                value=name,
+                group=group,
+                help_text=help_text,
+                form=form,
+            )
+        )
+    return items
+
+
+def _group_label(level: AttackWave | None) -> str:
+    if level is AttackWave.WORD:
+        return "Word-level glitchlings"
+    if level is AttackWave.CHARACTER:
+        return "Character-level glitchlings"
+    return "Other glitchlings"
+
+
+def _glitch_form_definition(name: str) -> PickerFormDefinition | None:
+    key = name.lower()
+    rate_default = _RATE_ONLY_DEFAULTS.get(key)
+    if rate_default is not None:
+        return PickerFormDefinition(
+            controls=[
+                PickerRateControl(
+                    key="rate",
+                    label="Rate",
+                    default=rate_default,
+                    minimum=0.0,
+                    maximum=1.0,
+                    help_text=_RATE_CONTROL_HELP,
+                )
+            ]
+        )
+    if key == "rushmore":
+        return PickerFormDefinition(
+            controls=[
+                PickerModeControl(
+                    key="modes",
+                    label="Modes",
+                    options=_RUSHMORE_MODE_OPTIONS,
+                    default=_RUSHMORE_DEFAULT_MODES,
+                    help_text="Choose one or more attack patterns.",
+                ),
+                PickerRateControl(
+                    key="rate",
+                    label="Global rate",
+                    default=None,
+                    minimum=0.0,
+                    maximum=1.0,
+                    help_text="Leave blank to use per-mode defaults.",
+                ),
+            ]
+        )
+    return None
+
+
+def _is_rate_only_form(definition: PickerFormDefinition | None) -> bool:
+    if definition is None or not definition.controls:
+        return False
+    if len(definition.controls) != 1:
+        return False
+    return isinstance(definition.controls[0], PickerRateControl)
+
+
+def _preview_sample(text: str, limit: int = 160) -> str:
+    """Return a short preview string for modal previews."""
+
+    source = text.strip() or SAMPLE_TEXT.strip()
+    flattened = " ".join(source.split())
+    if not flattened:
+        return source[:limit]
+    preview = flattened[:limit]
+    if len(flattened) > limit:
+        preview = preview.rstrip() + "…"
+    return preview
 
 
 class MetricsApp(App[None]):  # type: ignore[misc]
@@ -228,6 +344,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self.glitch_detail: Static | None = None
         self.tokenizer_detail: Static | None = None
         self._result: SessionResult | None = None
+        self._glitch_custom_remainder: list[str] = []
 
     def compose(self) -> ComposeResult:
         yield Static("Attack on Token", id="title-bar")
@@ -462,9 +579,19 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     async def _open_glitch_modal(self) -> None:
         names = self.controller.available_glitchlings()
-        items = [PickerItem(label=name, value=name) for name in names]
+        form_state, remainder = self.controller.partition_custom_glitchlings()
+        self._glitch_custom_remainder = list(remainder)
+        items = _build_glitch_picker_items(names)
         selected = [name for name in names if self.controller.is_glitchling_selected(name)]
-        picker = PickerModal("Glitchlings", items, selected=selected)
+        preview_text = _preview_sample(self.controller.text)
+        picker = PickerModal(
+            "Glitchlings",
+            items,
+            selected=selected,
+            form_state=form_state,
+            extra_specs=remainder,
+            preview_text=preview_text,
+        )
         await self.push_screen(picker, callback=self._handle_glitch_picker_result)
 
     async def _open_tokenizer_modal(self) -> None:
@@ -475,13 +602,29 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         await self.push_screen(picker, callback=self._handle_tokenizer_picker_result)
 
     async def _handle_glitch_picker_result(
-        self, result: list[dict[str, str | None]] | None
+        self, result: list[dict[str, object]] | None
     ) -> None:
         if result is None:
             return
-        selected_set = {entry["value"] for entry in result if entry.get("value")}
+        selected_set: set[str] = set()
+        structured: list[dict[str, object]] = []
+        for entry in result:
+            value = entry.get("value")
+            if not isinstance(value, str):
+                continue
+            params = entry.get("params")
+            if isinstance(params, dict) and params:
+                structured.append({"value": value, "params": params})
+            else:
+                selected_set.add(value)
         for name in self.controller.available_glitchlings():
             self.controller.set_builtin_glitchling(name, name in selected_set)
+        combined: list[str | dict[str, object]] = list(self._glitch_custom_remainder)
+        combined.extend(structured)
+        self.controller.set_custom_glitchlings(combined)
+        self._glitch_custom_remainder = []
+        if self.custom_glitch_input is not None:
+            self.custom_glitch_input.value = self.controller.custom_glitchlings_text()
         self._update_glitch_summary()
 
     async def _handle_tokenizer_picker_result(
