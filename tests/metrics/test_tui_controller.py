@@ -76,3 +76,16 @@ def test_controller_glitchling_selection_helpers() -> None:
     ]
     expected = ["Tokenizer", "Input Tokens", "Output Tokens", *friendly]
     assert controller.metric_columns() == expected
+
+
+def test_walkthrough_progression() -> None:
+    controller = MetricsTUIController(MetricsSession(), ControllerOptions(text="demo"))
+    step = controller.walkthrough_step()
+    assert step is not None
+    assert step.id == "input"
+    controller.advance_walkthrough()
+    index, total = controller.walkthrough_position()
+    assert total >= 3
+    assert index >= 1
+    controller.dismiss_walkthrough()
+    assert controller.walkthrough_step() is None

@@ -138,6 +138,16 @@ class ControllerOptions:
     input_type: str = "adhoc"
 
 
+@dataclass(slots=True)
+class WalkthroughStep:
+    """Represents a single onboarding hint."""
+
+    id: str
+    title: str
+    body: str
+    target_id: str
+
+
 class MetricsTUIController:
     """Bridges user input, metrics session, and UI rendering."""
 
@@ -175,6 +185,28 @@ class MetricsTUIController:
         ]
 
         self._result: SessionResult | None = None
+        self._walkthrough_steps: list[WalkthroughStep] = [
+            WalkthroughStep(
+                id="input",
+                title="Paste or edit text",
+                body="Use the text area above then press r to generate metrics.",
+                target_id="input-section",
+            ),
+            WalkthroughStep(
+                id="glitch",
+                title="Build a glitchling gaggle",
+                body="Press g or click the button to toggle built-ins, or type custom specs below.",
+                target_id="glitch-section",
+            ),
+            WalkthroughStep(
+                id="tokenizer",
+                title="Compare tokenizers",
+                body="Pick multiple tokenizers to view token diffs and metric tables side-by-side.",
+                target_id="tokenizer-section",
+            ),
+        ]
+        self._walkthrough_index = 0
+        self._walkthrough_enabled = True
 
     @property
     def result(self) -> SessionResult | None:
@@ -291,6 +323,34 @@ class MetricsTUIController:
         )
         return f"[b]Glitchlings:[/b] {glitch_summary}\n[b]Tokenizers:[/b] {tokenizer_summary}"
 
+    def walkthrough_step(self) -> WalkthroughStep | None:
+        if not self._walkthrough_enabled or not self._walkthrough_steps:
+            return None
+        if self._walkthrough_index >= len(self._walkthrough_steps):
+            return None
+        return self._walkthrough_steps[self._walkthrough_index]
+
+    def walkthrough_position(self) -> tuple[int, int]:
+        total = len(self._walkthrough_steps)
+        if total == 0:
+            return (0, 0)
+        if not self._walkthrough_enabled:
+            return (total, total)
+        index = min(self._walkthrough_index, total - 1)
+        return (index, total)
+
+    def advance_walkthrough(self) -> WalkthroughStep | None:
+        if not self._walkthrough_enabled:
+            return None
+        self._walkthrough_index += 1
+        if self._walkthrough_index >= len(self._walkthrough_steps):
+            self._walkthrough_enabled = False
+            return None
+        return self._walkthrough_steps[self._walkthrough_index]
+
+    def dismiss_walkthrough(self) -> None:
+        self._walkthrough_enabled = False
+
     @staticmethod
     def _format_value(value: float | None) -> str:
         if value is None:
@@ -353,4 +413,5 @@ __all__ = [
     "MetricsTUIController",
     "build_glitchling_pipeline",
     "resolve_tokenizer_specs",
+    "WalkthroughStep",
 ]
