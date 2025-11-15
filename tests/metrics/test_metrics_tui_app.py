@@ -1,6 +1,6 @@
 import asyncio
 
-from glitchlings.metrics.cli.tui.app import MetricsApp
+from glitchlings.metrics.cli.tui.app import HELP_SHORTCUTS, MetricsApp
 from glitchlings.metrics.cli.tui.components import InfoDialog
 from glitchlings.metrics.cli.tui.controller import ControllerOptions, MetricsTUIController
 from glitchlings.metrics.core.session import MetricsSession
@@ -24,3 +24,9 @@ def test_metrics_app_bindings_omit_unused_tab_actions() -> None:
     binding_keys = {binding.key for binding in MetricsApp.BINDINGS}
     assert "t" in binding_keys
     assert "b" in binding_keys
+
+
+def test_help_shortcuts_cover_context_picker_and_quit() -> None:
+    shortcut_keys = {keys for keys, _ in HELP_SHORTCUTS}
+    assert "c" in shortcut_keys
+    assert "q / Esc" in shortcut_keys

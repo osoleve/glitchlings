@@ -58,6 +58,17 @@ def _text_summary(text: str) -> str:
 
 TOKEN_SPLIT_RE = re.compile(r"(\s+|[.,!?;:])")
 
+HELP_SHORTCUTS: Sequence[tuple[str, str]] = (
+    ("r", "Recompute metrics"),
+    ("g / k", "Pick glitchlings or tokenizers"),
+    ("c", "Open the picker for the active section"),
+    ("t / b", "Toggle the token diff or debug panels"),
+    ("?", "Open this overlay"),
+    ("/", "Focus the active filter/input field"),
+    ("Ctrl+S", "Workflow tips for persisting a run"),
+    ("q / Esc", "Quit the TUI"),
+)
+
 
 def _tokenize_text(text: str) -> list[str]:
     """Split text into tokens preserving whitespace for more stable diffs."""
@@ -684,15 +695,10 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         await self._open_tokenizer_modal()
 
     async def action_show_help(self) -> None:
-        lines = [
-            "r – recompute metrics",
-            "g / k – pick glitchlings or tokenizers",
-            "t / b – toggle token diff or debug panels",
-            "? – open this overlay",
-            "/ – focus the active filter/input field",
-            "Ctrl+S – workflow tips for persisting a run",
-            "Walkthrough hints show once per session; reopen sections to revisit the tips.",
-        ]
+        lines = [f"{keys} – {description}" for keys, description in HELP_SHORTCUTS]
+        lines.append(
+            "Walkthrough hints show once per session; reopen sections to revisit the tips."
+        )
         await self._show_info_dialog("Keyboard shortcuts", lines)
 
     def action_focus_filter(self) -> None:
@@ -1043,4 +1049,4 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         await self.push_screen(InfoDialog(title, lines))
 
 
-__all__ = ["MetricsApp"]
+__all__ = ["HELP_SHORTCUTS", "MetricsApp"]

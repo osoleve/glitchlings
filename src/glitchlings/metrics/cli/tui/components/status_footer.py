@@ -37,7 +37,10 @@ class StatusFooter(Static):  # type: ignore[misc]
         is_error: bool = False,
     ) -> None:
         """Update footer text."""
-        hint = "Keys: r=run • ?=help • /=filter • Ctrl+S=save"
+        hint = (
+            "Keys: r=run • g/k=pickers • c=context picker • "
+            "t/b=panels • /=filter • ?=help • Ctrl+S=save"
+        )
         duration_text = f"{duration:.2f}s" if duration is not None else "—"
         summary = (
             f"glitchlings={glitch_count} • tokenizers={tokenizer_count} "

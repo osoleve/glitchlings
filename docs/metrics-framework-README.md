@@ -129,6 +129,7 @@ Keybindings:
 | --- | --- |
 | `r` | Recompute metrics for the current text/glitchling selections |
 | `g` / `k` | Open the glitchling or tokenizer pickers |
+| `c` | Open the picker for the currently focused section |
 | `t` | Toggle the token diff panel |
 | `b` | Toggle the debug metadata panel |
 | `/` | Focus the active filter/customization input field |
