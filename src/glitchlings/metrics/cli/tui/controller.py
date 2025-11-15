@@ -5,11 +5,12 @@ from __future__ import annotations
 import math
 import re
 from dataclasses import dataclass
-from typing import Any, Sequence, cast
+from typing import Any, Mapping, Sequence, cast
 
 from glitchlings.zoo import (
     DEFAULT_GLITCHLING_NAMES,
     Glitchling,
+    RushmoreMode,
     get_glitchling_class,
     parse_glitchling_spec,
 )
@@ -198,8 +199,10 @@ class MetricsTUIController:
     def custom_glitchlings_text(self) -> str:
         return ", ".join(self._custom_glitchling_specs)
 
-    def set_custom_glitchlings(self, raw: str) -> None:
-        specs = _split_specs(raw)
+    def set_custom_glitchlings(
+        self, raw: str | Sequence[str | Mapping[str, object]]
+    ) -> None:
+        specs = _coerce_custom_specs(raw)
         self._custom_glitchling_specs = specs
         self.session.clear_cache()
 
@@ -211,6 +214,11 @@ class MetricsTUIController:
         ]
         specs.extend(self._custom_glitchling_specs)
         return specs or ["identity"]
+
+    def partition_custom_glitchlings(self) -> tuple[dict[str, dict[str, object]], list[str]]:
+        """Split structured overrides from raw custom specs."""
+
+        return _partition_custom_specs(self._custom_glitchling_specs)
 
     # -------- Tokenizers --------
     def available_tokenizers(self) -> list[tuple[str, str]]:
@@ -344,6 +352,119 @@ def _split_specs(raw: str) -> list[str]:
         return []
     tokens = raw.replace("\n", ",").split(",")
     return [token.strip() for token in tokens if token.strip()]
+
+
+def _coerce_custom_specs(
+    raw: str | Sequence[str | Mapping[str, object]]
+) -> list[str]:
+    if isinstance(raw, str):
+        return _split_specs(raw)
+    specs: list[str] = []
+    for entry in raw:
+        if isinstance(entry, str):
+            cleaned = entry.strip()
+            if cleaned:
+                specs.append(cleaned)
+            continue
+        specs.append(_format_structured_entry(entry))
+    return specs
+
+
+def _format_structured_entry(entry: Mapping[str, object]) -> str:
+    value = entry.get("value") or entry.get("name")
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError("Structured glitch entry is missing a name/value field.")
+    params = entry.get("params")
+    if not params:
+        return value
+    if not isinstance(params, Mapping):
+        raise ValueError("Structured glitch entry params must be a mapping.")
+    rendered = ", ".join(
+        f"{key}={_format_glitch_param(value)}" for key, value in sorted(params.items())
+    )
+    return f"{value}({rendered})"
+
+
+def _format_glitch_param(value: object) -> str:
+    if isinstance(value, str):
+        return repr(value)
+    if isinstance(value, (float, int)):
+        return repr(value)
+    if isinstance(value, Mapping):
+        inner = ", ".join(
+            f"{key}: {_format_glitch_param(entry)}" for key, entry in sorted(value.items())
+        )
+        return "{" + inner + "}"
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        inner = ", ".join(_format_glitch_param(entry) for entry in value)
+        return f"[{inner}]"
+    if value is None:
+        return "None"
+    return repr(value)
+
+
+def _partition_custom_specs(
+    specs: Sequence[str],
+) -> tuple[dict[str, dict[str, object]], list[str]]:
+    structured: dict[str, dict[str, object]] = {}
+    remainder: list[str] = []
+    for spec in specs:
+        parsed = _parse_structured_glitch_spec(spec)
+        if parsed is None:
+            remainder.append(spec)
+            continue
+        value, params = parsed
+        if value in structured:
+            remainder.append(spec)
+            continue
+        structured[value] = params
+    return structured, remainder
+
+
+def _parse_structured_glitch_spec(spec: str) -> tuple[str, dict[str, object]] | None:
+    try:
+        glitch = parse_glitchling_spec(spec)
+    except ValueError:
+        return None
+
+    name = glitch.name.lower()
+    params: dict[str, object] = {}
+    if name in {"ekkokin", "scannequin"}:
+        rate_value = glitch.kwargs.get("rate")
+        if rate_value is not None:
+            params["rate"] = float(rate_value)
+    elif name == "rushmore":
+        modes_value = glitch.kwargs.get("modes")
+        modes = _modes_to_strings(modes_value)
+        if modes:
+            params["modes"] = modes
+        rate_value = glitch.kwargs.get("rate")
+        if rate_value is not None:
+            params["rate"] = float(rate_value)
+    else:
+        return None
+
+    if not params:
+        return None
+    return name, params
+
+
+def _modes_to_strings(value: object) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, RushmoreMode):
+        return [value.value]
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, Sequence):
+        modes: list[str] = []
+        for entry in value:
+            if isinstance(entry, RushmoreMode):
+                modes.append(entry.value)
+            else:
+                modes.append(str(entry))
+        return modes
+    return [str(value)]
 
 
 __all__ = [
