@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import difflib
 import re
+import time
 from typing import Iterable, Sequence
 
 from rich.text import Text
@@ -21,6 +22,7 @@ from glitchlings.zoo.core import AttackWave
 from ...core.session import SessionResult
 from .components import (
     CollapsibleSection,
+    InfoDialog,
     MetricsView,
     PickerFormDefinition,
     PickerItem,
@@ -29,6 +31,8 @@ from .components import (
     PickerRateControl,
     SectionToggleRequested,
     StatusFooter,
+    WalkthroughAdvance,
+    WalkthroughHint,
 )
 from .controller import MetricsTUIController
 
@@ -294,6 +298,14 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         padding-bottom: 1;
     }
 
+    .walkthrough-anchor {
+        margin-top: 1;
+    }
+
+    .walkthrough-hint {
+        margin-top: 1;
+    }
+
     #run-summary {
         min-height: 3;
         padding: 0 1;
@@ -433,6 +445,11 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         Binding("c", "open_picker", "Edit section picker", show=False),
         Binding("g", "open_glitch_picker", "Glitchlings"),
         Binding("k", "open_tokenizer_picker", "Tokenizers"),
+        Binding("?", "show_help", "Help"),
+        Binding("/", "focus_filter", "Focus filter"),
+        Binding("ctrl+s", "save_run", "Save run"),
+        Binding("ctrl+right", "tab_next", "Next tab", show=False),
+        Binding("ctrl+left", "tab_previous", "Prev tab", show=False),
         Binding("t", "toggle_token_diff", "Token diff"),
         Binding("b", "toggle_debug", "Debug info"),
     ]
@@ -454,6 +471,10 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self.metrics_view: MetricsView | None = None
         self.debug_view: TextArea | None = None
         self.footer: StatusFooter | None = None
+        self.tabs: TabbedContent | None = None
+        self._footer_status = "Idle"
+        self._footer_duration: float | None = None
+        self._footer_is_error = False
         self.app_body: Horizontal | None = None
         self.results_primary: Horizontal | None = None
         self.aux_panels: Horizontal | None = None
@@ -469,6 +490,11 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self.glitch_detail: Static | None = None
         self.tokenizer_detail: Static | None = None
         self._result: SessionResult | None = None
+        self._input_hint_anchor: Vertical | None = None
+        self._glitch_hint_anchor: Vertical | None = None
+        self._tokenizer_hint_anchor: Vertical | None = None
+        self._walkthrough_hint: WalkthroughHint | None = None
+        self._walkthrough_anchors: dict[str, Vertical] = {}
         self._glitch_custom_remainder: list[str] = []
 
     def compose(self) -> ComposeResult:
@@ -496,6 +522,11 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             collapsed=True,
             id="tokenizer-section",
         )
+        self._walkthrough_anchors = {
+            "input-section": self._input_hint_anchor,
+            "glitch-section": self._glitch_hint_anchor,
+            "tokenizer-section": self._tokenizer_hint_anchor,
+        }
 
         self.summary_display = Static("Run metrics (r) to view results.", id="run-summary")
         self.metrics_view = MetricsView(id="metrics-view")
@@ -570,10 +601,12 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             soft_wrap=True,
             id="input-text",
         )
+        self._input_hint_anchor = Vertical(classes="walkthrough-anchor")
         return Vertical(
             Static("Input text scrolls here. Press r to re-run metrics.", classes="section-help"),
             self.input_text,
             Button("Run metrics (r)", id="run-button"),
+            self._input_hint_anchor,
         )
 
     def _build_glitch_body(self) -> Vertical:
@@ -583,11 +616,13 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             id="custom-glitch-input",
             value=self.controller.custom_glitchlings_text(),
         )
+        self._glitch_hint_anchor = Vertical(classes="walkthrough-anchor")
         return Vertical(
             self.glitch_detail,
             Button("Choose glitchlings", id="glitch-picker-button"),
             Static("Custom glitchlings:", classes="section-help"),
             self.custom_glitch_input,
+            self._glitch_hint_anchor,
         )
 
     def _build_tokenizer_body(self) -> Vertical:
@@ -597,11 +632,13 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             id="custom-tokenizer-input",
             value=self.controller.custom_tokenizers_text(),
         )
+        self._tokenizer_hint_anchor = Vertical(classes="walkthrough-anchor")
         return Vertical(
             self.tokenizer_detail,
             Button("Choose tokenizers", id="tokenizer-picker-button"),
             Static("Custom tokenizers:", classes="section-help"),
             self.custom_tokenizer_input,
+            self._tokenizer_hint_anchor,
         )
 
     async def on_mount(self) -> None:
@@ -617,6 +654,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._update_tokenizer_summary()
         self._apply_responsive_layout(self.size.width)
         await self.refresh_metrics()
+        self._render_walkthrough_step()
 
     async def on_key(self, event: events.Key) -> None:  # pragma: no cover - UI behaviour
         if event.key == "escape":
@@ -648,6 +686,45 @@ class MetricsApp(App[None]):  # type: ignore[misc]
     async def action_open_tokenizer_picker(self) -> None:
         await self._open_tokenizer_modal()
 
+    async def action_show_help(self) -> None:
+        lines = [
+            "r – recompute metrics",
+            "g / k – pick glitchlings or tokenizers",
+            "? – open this overlay",
+            "/ – focus the active filter/input field",
+            "Ctrl+S – workflow tips for persisting a run",
+            "Ctrl+←/→ – change result tabs",
+            "Walkthrough hints show once per session; reopen sections to revisit the tips.",
+        ]
+        await self._show_info_dialog("Keyboard shortcuts", lines)
+
+    def action_focus_filter(self) -> None:
+        if self._active_section_id == "glitch-section" and self.custom_glitch_input is not None:
+            self.custom_glitch_input.focus()
+            return
+        if (
+            self._active_section_id == "tokenizer-section"
+            and self.custom_tokenizer_input is not None
+        ):
+            self.custom_tokenizer_input.focus()
+            return
+        if self.input_text is not None:
+            self.input_text.focus()
+
+    async def action_save_run(self) -> None:
+        if self._result is None:
+            lines = [
+                "Run metrics (r) to produce a SessionResult before saving.",
+                "Once you have a run ID you can persist via process_and_write()",
+                "Docs: docs/metrics-framework-README.md shows batch + storage workflows.",
+            ]
+        else:
+            lines = [
+                f"Current run id: {self._result.run_id}",
+                "Reuse these glitchling/tokenizer specs with process_and_write()",
+                "or scripted pipelines to write Parquet + manifest artifacts.",
+            ]
+        await self._show_info_dialog("Save run workflow", lines)
     def action_toggle_token_diff(self) -> None:
         self._show_token_diff = not self._show_token_diff
         self._update_aux_panel_visibility()
@@ -657,6 +734,11 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._update_aux_panel_visibility()
 
     async def refresh_metrics(self) -> None:
+        self._footer_status = "Running…"
+        self._footer_duration = None
+        self._footer_is_error = False
+        self._update_footer_counts()
+        start_time = time.perf_counter()
         try:
             result = self.controller.refresh()
         except ValueError as exc:
@@ -664,8 +746,15 @@ class MetricsApp(App[None]):  # type: ignore[misc]
                 self.summary_display.update(f"[b]Error:[/b] {exc}")
             if self.metrics_view is not None:
                 self.metrics_view.clear()
+            self._footer_status = f"Error: {exc}"
+            self._footer_duration = None
+            self._footer_is_error = True
+            self._update_footer_counts()
             return
         self._result = result
+        self._footer_status = "Run complete"
+        self._footer_duration = time.perf_counter() - start_time
+        self._footer_is_error = False
         if self.summary_display is not None:
             self.summary_display.update(self.controller.summary_text())
         if self.metrics_view is not None:
@@ -724,7 +813,37 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             return
         glitch_count = len(self.controller.current_glitchling_specs())
         tokenizer_count = len(self.controller.selected_tokenizer_specs())
-        self.footer.update_summary(glitch_count, tokenizer_count)
+        self.footer.update_summary(
+            glitch_count,
+            tokenizer_count,
+            self._footer_status,
+            duration=self._footer_duration,
+            is_error=self._footer_is_error,
+        )
+
+    def _render_walkthrough_step(self) -> None:
+        self._clear_walkthrough_hint()
+        step = self.controller.walkthrough_step()
+        if step is None:
+            return
+        anchor = self._walkthrough_anchors.get(step.target_id)
+        if anchor is None:
+            return
+        index, total = self.controller.walkthrough_position()
+        hint = WalkthroughHint(
+            step_id=step.id,
+            title=step.title,
+            body=step.body,
+            step_index=index,
+            total_steps=max(total, 1),
+        )
+        anchor.mount(hint)
+        self._walkthrough_hint = hint
+
+    def _clear_walkthrough_hint(self) -> None:
+        if self._walkthrough_hint is not None:
+            self._walkthrough_hint.remove()
+            self._walkthrough_hint = None
 
     def _apply_responsive_layout(self, width: int) -> None:
         is_narrow = width < 100
@@ -831,6 +950,13 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             if self._active_section_id == message.section.id:
                 self._active_section_id = None
 
+    def on_walkthrough_advance(self, message: WalkthroughAdvance) -> None:
+        if message.dismissed:
+            self.controller.dismiss_walkthrough()
+        else:
+            self.controller.advance_walkthrough()
+        self._render_walkthrough_step()
+
     def _set_active_section(self, target: CollapsibleSection) -> None:
         for section in self._sections:
             section.set_expanded(section is target)
@@ -892,6 +1018,9 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         if event.text_area.id == "input-text":
             self.controller.update_text(event.text_area.text)
             self._update_input_summary()
+
+    async def _show_info_dialog(self, title: str, lines: Iterable[str]) -> None:
+        await self.push_screen(InfoDialog(title, lines))
 
 
 __all__ = ["MetricsApp"]
