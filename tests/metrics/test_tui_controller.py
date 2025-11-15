@@ -5,6 +5,7 @@ from __future__ import annotations
 from glitchlings.metrics.cli.tui.controller import (
     BUILTIN_TOKENIZERS,
     DEFAULT_METRIC_KEYS,
+    METRIC_LABEL_OVERRIDES,
     ControllerOptions,
     MetricsTUIController,
     build_glitchling_pipeline,
@@ -45,7 +46,7 @@ def test_controller_refresh_populates_rows() -> None:
     rows = controller.metric_rows()
     assert rows
     assert rows[0][0] == "simple-whitespace"
-    assert controller.metric_columns()[0] == "tokenizer"
+    assert controller.metric_columns()[:3] == ["Tokenizer", "Input Tokens", "Output Tokens"]
 
 
 def test_controller_tokenizer_selection_helpers() -> None:
@@ -69,4 +70,9 @@ def test_controller_glitchling_selection_helpers() -> None:
     assert controller.current_glitchling_specs() == ["identity"]
     controller.set_custom_glitchlings("typogre(rate=0.3)")
     assert "typogre(rate=0.3)" in controller.current_glitchling_specs()
-    assert controller.metric_columns()[1:] == DEFAULT_METRIC_KEYS
+    friendly = [
+        METRIC_LABEL_OVERRIDES.get(key) or key.replace(".", " ").title()
+        for key in DEFAULT_METRIC_KEYS
+    ]
+    expected = ["Tokenizer", "Input Tokens", "Output Tokens", *friendly]
+    assert controller.metric_columns() == expected

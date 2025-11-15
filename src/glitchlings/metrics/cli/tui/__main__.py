@@ -35,8 +35,7 @@ def parse_args() -> argparse.Namespace:
         action="append",
         default=[],
         help=(
-            "Tokenizer specification (repeatable). "
-            "Examples: simple, hf:gpt2, tiktoken:cl100k_base"
+            "Tokenizer specification (repeatable). Examples: simple, hf:gpt2, tiktoken:cl100k_base"
         ),
     )
     parser.add_argument(
@@ -61,8 +60,8 @@ def main() -> None:
     if args.text_file:
         text = Path(args.text_file).read_text(encoding="utf-8")
 
-    tokenizers = args.tokenizer or ["simple"]
-    glitchlings = args.glitchlings or ["typogre"]
+    tokenizers = args.tokenizer or ["gpt2", "tiktoken:cl100k_base"]
+    glitchlings = args.glitchlings or ["typogre", "ekkokin", "scannequin"]
     metrics = args.metrics or DEFAULT_METRIC_KEYS
 
     launch_metrics_tui(

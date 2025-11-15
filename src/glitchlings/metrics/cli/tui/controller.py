@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from dataclasses import dataclass
 from typing import Any, Sequence, cast
 
@@ -20,6 +21,15 @@ from ...core.tokenizers import (
     create_huggingface_adapter,
     create_tiktoken_adapter,
 )
+
+METRIC_LABEL_OVERRIDES: dict[str, str] = {
+    "ned.value": "Edit Distance",
+    "lcsr.value": "LCS %",
+    "lr.ratio": "Length %",
+    "pmr.value": "Position Match %",
+    "jsdiv.value": "Jensen-Shannon Div.",
+    "rord.value": "Rank Order",
+}
 
 DEFAULT_METRIC_KEYS: list[str] = [
     "ned.value",
@@ -252,7 +262,7 @@ class MetricsTUIController:
         return result
 
     def metric_columns(self) -> list[str]:
-        return ["tokenizer"] + self.metric_keys
+        return ["Tokenizer", "Input Tokens", "Output Tokens", *self._metric_labels]
 
     def metric_rows(self) -> list[list[str]]:
         if not self._result:
@@ -260,7 +270,11 @@ class MetricsTUIController:
 
         rows: list[list[str]] = []
         for observation in self._result.observations:
-            row = [observation.tokenizer_id]
+            row = [
+                observation.tokenizer_id,
+                str(len(observation.tokens_before)),
+                str(len(observation.tokens_after)),
+            ]
             for key in self.metric_keys:
                 value = observation.metrics.get(key)
                 row.append(self._format_value(value))
@@ -271,17 +285,11 @@ class MetricsTUIController:
         if not self._result:
             return "Run metrics to view results."
 
-        observation = self._result.observations[0]
         glitch_summary = " + ".join(self.current_glitchling_specs())
         tokenizer_summary = ", ".join(
             observation.tokenizer_id for observation in self._result.observations
         )
-        return (
-            f"[b]Glitchlings:[/b] {glitch_summary}\n"
-            f"[b]Tokenizers:[/b] {tokenizer_summary}\n"
-            f"[b]Input tokens:[/b] {len(observation.tokens_before)}\n"
-            f"[b]Output tokens:[/b] {len(observation.tokens_after)}"
-        )
+        return f"[b]Glitchlings:[/b] {glitch_summary}\n[b]Tokenizers:[/b] {tokenizer_summary}"
 
     @staticmethod
     def _format_value(value: float | None) -> str:
@@ -290,6 +298,27 @@ class MetricsTUIController:
         if not math.isfinite(value):
             return "inf" if value > 0 else "-inf"
         return f"{value:.3f}"
+
+    @property
+    def _metric_labels(self) -> list[str]:
+        labels: list[str] = []
+        for key in self.metric_keys:
+            override = METRIC_LABEL_OVERRIDES.get(key)
+            if override:
+                labels.append(override)
+                continue
+            parts = re.split(r"[._]", key)
+            if not parts:
+                labels.append(key.title())
+                continue
+            head, *tail = parts
+            label = head.upper()
+            if tail:
+                tail_label = " ".join(part.capitalize() for part in tail if part)
+                if tail_label:
+                    label = f"{label} {tail_label}"
+            labels.append(label)
+        return labels
 
 
 def _instantiate_glitchling(spec: str) -> Glitchling:
@@ -320,6 +349,7 @@ def _split_specs(raw: str) -> list[str]:
 __all__ = [
     "ControllerOptions",
     "DEFAULT_METRIC_KEYS",
+    "METRIC_LABEL_OVERRIDES",
     "MetricsTUIController",
     "build_glitchling_pipeline",
     "resolve_tokenizer_specs",

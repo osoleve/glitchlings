@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import difflib
+import re
 from typing import Iterable
 
+from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -43,17 +45,69 @@ def _text_summary(text: str) -> str:
     return f"{len(text)} chars, {lines} {line_label}"
 
 
-def _build_diff(before: str, after: str) -> str:
-    diff_lines = list(
-        difflib.unified_diff(
-            before.splitlines(),
-            after.splitlines(),
-            fromfile="input",
-            tofile="output",
-            lineterm="",
-        )
-    )
-    return "\n".join(diff_lines) if diff_lines else "No differences detected."
+TOKEN_SPLIT_RE = re.compile(r"(\s+|[.,!?;:])")
+
+
+def _tokenize_text(text: str) -> list[str]:
+    """Split text into tokens preserving whitespace for more stable diffs."""
+    if not text:
+        return []
+    tokens = [segment for segment in TOKEN_SPLIT_RE.split(text) if segment]
+    return tokens if tokens else [text]
+
+
+def _build_span_diff(before: str, after: str) -> Text:
+    """Return a rich ``Text`` with inline span differences."""
+    before_tokens = _tokenize_text(before)
+    after_tokens = _tokenize_text(after)
+    matcher = difflib.SequenceMatcher(None, before_tokens, after_tokens)
+    result = Text()
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        before_chunk = "".join(before_tokens[i1:i2])
+        after_chunk = "".join(after_tokens[j1:j2])
+        if tag == "equal":
+            result.append(after_chunk)
+        elif tag == "insert":
+            result.append(after_chunk, style="bold green")
+        elif tag == "delete":
+            if before_chunk:
+                result.append(before_chunk, style="bold red strike")
+        elif tag == "replace":
+            if before_chunk:
+                result.append(before_chunk, style="bold red strike")
+            if after_chunk:
+                result.append(after_chunk, style="bold green")
+    if not result:
+        return Text("No differences detected.")
+    return result
+
+
+def _build_token_diff(tokens_before: list[int], tokens_after: list[int]) -> Text:
+    """Generate a diff over token ids."""
+    matcher = difflib.SequenceMatcher(None, tokens_before, tokens_after)
+    text = Text()
+    for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+        before_chunk = tokens_before[i1:i2]
+        after_chunk = tokens_after[j1:j2]
+        if tag == "equal":
+            text.append(" ".join(str(token) for token in after_chunk) + " ")
+        elif tag == "insert":
+            text.append(" ".join(str(token) for token in after_chunk) + " ", style="bold green")
+        elif tag == "delete":
+            if before_chunk:
+                text.append(
+                    " ".join(str(token) for token in before_chunk) + " ", style="bold red strike"
+                )
+        elif tag == "replace":
+            if before_chunk:
+                text.append(
+                    " ".join(str(token) for token in before_chunk) + " ", style="bold red strike"
+                )
+            if after_chunk:
+                text.append(" ".join(str(token) for token in after_chunk) + " ", style="bold green")
+    if not text.plain.strip():
+        return Text("No token changes detected.")
+    return text
 
 
 class MetricsApp(App[None]):  # type: ignore[misc]
@@ -85,6 +139,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
     CollapsibleSection {
         border: none;
         background: $surface 5%;
+        margin-bottom: 1;
     }
 
     .section-detail {
@@ -120,8 +175,22 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         padding: 0 1;
     }
 
+    #diff-view {
+        height: 1fr;
+        border: tall transparent;
+        overflow-y: auto;
+        padding: 0 1;
+    }
+
     #debug-view {
         height: 1fr;
+    }
+
+    #token-diff-view {
+        height: 1fr;
+        border: tall transparent;
+        overflow-y: auto;
+        padding: 0 1;
     }
     """
 
@@ -146,7 +215,8 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
         self.input_text: TextArea | None = None
         self.output_view: TextArea | None = None
-        self.diff_view: TextArea | None = None
+        self.diff_view: Static | None = None
+        self.token_diff_view: Static | None = None
         self.summary_display: Static | None = None
         self.metrics_view: MetricsView | None = None
         self.debug_view: TextArea | None = None
@@ -160,7 +230,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._result: SessionResult | None = None
 
     def compose(self) -> ComposeResult:
-        yield Static("Glitchlings Metrics", id="title-bar")
+        yield Static("Attack on Token", id="title-bar")
 
         input_body = self._build_input_body()
         glitch_body = self._build_glitch_body()
@@ -194,13 +264,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             soft_wrap=True,
             id="output-view",
         )
-        self.diff_view = TextArea(
-            text="",
-            read_only=True,
-            show_cursor=False,
-            soft_wrap=False,
-            id="diff-view",
-        )
+        self.diff_view = Static("", id="diff-view", markup=False)
         self.debug_view = TextArea(
             text="",
             read_only=True,
@@ -224,6 +288,9 @@ class MetricsApp(App[None]):  # type: ignore[misc]
                     yield self.metrics_view
                 with TabPane("Diff", id="diff"):
                     yield self.diff_view
+                with TabPane("Token Diff", id="token-diff"):
+                    self.token_diff_view = Static("", id="token-diff-view", markup=False)
+                    yield self.token_diff_view
                 with TabPane("Debug", id="debug"):
                     yield self.debug_view
         yield self.footer
@@ -334,6 +401,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             )
         self._update_output_view(result)
         self._update_diff_view(result)
+        self._update_token_diff_view(result)
         self._update_debug_view(result)
         self._update_footer_counts()
 
@@ -345,8 +413,23 @@ class MetricsApp(App[None]):  # type: ignore[misc]
     def _update_diff_view(self, result: SessionResult) -> None:
         if self.diff_view is None:
             return
-        diff_text = _build_diff(result.text_before, result.text_after)
-        self.diff_view.load_text(diff_text)
+        diff_text = _build_span_diff(result.text_before, result.text_after)
+        self.diff_view.update(diff_text)
+
+    def _update_token_diff_view(self, result: SessionResult) -> None:
+        if self.token_diff_view is None:
+            return
+        if not result.observations:
+            self.token_diff_view.update("No tokenizers selected.")
+            return
+        combined = Text()
+        for index, observation in enumerate(result.observations):
+            diff_text = _build_token_diff(observation.tokens_before, observation.tokens_after)
+            if index:
+                combined.append("\n\n")
+            combined.append(f"{observation.tokenizer_id}\n", style="bold")
+            combined.append_text(diff_text)
+        self.token_diff_view.update(combined)
 
     def _update_debug_view(self, result: SessionResult) -> None:
         if self.debug_view is None:
@@ -367,13 +450,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             return
         glitch_count = len(self.controller.current_glitchling_specs())
         tokenizer_count = len(self.controller.selected_tokenizer_specs())
-        tokens_before = 0
-        tokens_after = 0
-        if self._result and self._result.observations:
-            obs = self._result.observations[0]
-            tokens_before = len(obs.tokens_before)
-            tokens_after = len(obs.tokens_after)
-        self.footer.update_summary(glitch_count, tokenizer_count, tokens_before, tokens_after)
+        self.footer.update_summary(glitch_count, tokenizer_count)
 
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "run-button":
@@ -397,18 +474,22 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         picker = PickerModal("Tokenizers", items, selected=selected)
         await self.push_screen(picker, callback=self._handle_tokenizer_picker_result)
 
-    async def _handle_glitch_picker_result(self, result: list[str] | None) -> None:
+    async def _handle_glitch_picker_result(
+        self, result: list[dict[str, str | None]] | None
+    ) -> None:
         if result is None:
             return
-        selected_set = set(result)
+        selected_set = {entry["value"] for entry in result if entry.get("value")}
         for name in self.controller.available_glitchlings():
             self.controller.set_builtin_glitchling(name, name in selected_set)
         self._update_glitch_summary()
 
-    async def _handle_tokenizer_picker_result(self, result: list[str] | None) -> None:
+    async def _handle_tokenizer_picker_result(
+        self, result: list[dict[str, str | None]] | None
+    ) -> None:
         if result is None:
             return
-        selected_set = set(result)
+        selected_set = {entry["value"] for entry in result if entry.get("value")}
         for _, spec in self.controller.available_tokenizers():
             self.controller.set_builtin_tokenizer(spec, spec in selected_set)
         self._update_tokenizer_summary()

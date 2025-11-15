@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Iterable, Sequence
 
 from textual import events
@@ -21,7 +21,7 @@ class PickerItem:
     description: str | None = None
 
 
-class PickerModal(ModalScreen[list[str] | None]):  # type: ignore[misc]
+class PickerModal(ModalScreen[list[dict[str, str | None]] | None]):  # type: ignore[misc]
     """Full-screen picker that supports toggling entries."""
 
     DEFAULT_CSS = """
@@ -89,11 +89,12 @@ class PickerModal(ModalScreen[list[str] | None]):  # type: ignore[misc]
             event.stop()
             self.dismiss(self._selection())
 
-    def _selection(self) -> list[str]:
+    def _selection(self) -> list[dict[str, str | None]]:
         option_list = self._option_list
         if option_list is None:
             return []
-        return list(option_list.selected)
+        selected_values = set(option_list.selected)
+        return [asdict(item) for item in self._items if item.value in selected_values]
 
 
 __all__ = ["PickerItem", "PickerModal"]

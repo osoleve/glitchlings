@@ -20,18 +20,11 @@ class StatusFooter(Static):  # type: ignore[misc]
 
     def __init__(self) -> None:
         super().__init__("", id="status-footer", markup=False)
-        self.update_summary(0, 0, 0, 0)
+        self.update_summary(0, 0)
 
-    def update_summary(
-        self, glitch_count: int, tokenizer_count: int, tokens_before: int, tokens_after: int
-    ) -> None:
+    def update_summary(self, glitch_count: int, tokenizer_count: int) -> None:
         """Update footer text."""
-        self.update(
-            (
-                f"[r] Run | glitchlings={glitch_count} | tokenizers={tokenizer_count} | "
-                f"input_tokens={tokens_before} -> output_tokens={tokens_after}"
-            )
-        )
+        self.update(f"[r] Run | glitchlings={glitch_count} | tokenizers={tokenizer_count}")
 
 
 __all__ = ["StatusFooter"]
