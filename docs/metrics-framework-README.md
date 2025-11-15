@@ -131,6 +131,10 @@ Keybindings:
 Use `--text-file path/to/file.txt` for longer corpora and repeat `--metric ned.value` style flags to customize the table columns.
 Inside the UI you can toggle multiple built-in glitchlings/tokenizers via checkboxes and paste custom specs in the comma-separated fields to build arbitrary gaggles.
 
+![Metrics TUI split layout showing output, diff, metrics, and token diagnostics](images/metrics-tui-layout.svg)
+
+The refreshed Textual app keeps the controls in a fixed column on the left while dedicating the rest of the screen to a split view of the output text, inline diff, and metrics table/detail modes. Responsive breakpoints automatically stack the panes below 100 columns, and the toolbar switches let you reveal token-level diffs or debug metadata without swapping away from the primary view.
+
 ### 4. Visualize Results
 
 ```python
