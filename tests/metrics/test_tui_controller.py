@@ -89,3 +89,19 @@ def test_walkthrough_progression() -> None:
     assert index >= 1
     controller.dismiss_walkthrough()
     assert controller.walkthrough_step() is None
+    
+    
+def test_controller_structured_custom_glitchlings_roundtrip() -> None:
+    controller = MetricsTUIController(MetricsSession(), ControllerOptions(text="demo"))
+    payload: list[str | dict[str, object]] = [
+        {"value": "ekkokin", "params": {"rate": 0.05}},
+        {"value": "rushmore", "params": {"modes": ["delete", "swap"], "rate": 0.2}},
+        "scannequin(rate=0.1)",
+    ]
+    controller.set_custom_glitchlings(payload)
+    structured, remainder = controller.partition_custom_glitchlings()
+    assert structured["ekkokin"]["rate"] == 0.05
+    assert structured["rushmore"]["modes"] == ["delete", "swap"]
+    assert structured["rushmore"]["rate"] == 0.2
+    assert structured["scannequin"]["rate"] == 0.1
+    assert remainder == []

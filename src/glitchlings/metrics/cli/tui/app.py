@@ -11,17 +11,24 @@ from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.events import Resize
-from textual.widgets import Button, Input, Static, TabbedContent, TabPane, TextArea
+from textual.widgets import Button, Input, Static, Switch, TextArea
+
+from glitchlings import SAMPLE_TEXT
+from glitchlings.zoo import BUILTIN_GLITCHLINGS
+from glitchlings.zoo.core import AttackWave
 
 from ...core.session import SessionResult
 from .components import (
     CollapsibleSection,
     InfoDialog,
     MetricsView,
+    PickerFormDefinition,
     PickerItem,
     PickerModal,
+    PickerModeControl,
+    PickerRateControl,
     SectionToggleRequested,
     StatusFooter,
     WalkthroughAdvance,
@@ -114,8 +121,119 @@ def _build_token_diff(tokens_before: Sequence[int], tokens_after: Sequence[int])
     return text
 
 
+_RATE_ONLY_DEFAULTS: dict[str, float] = {
+    "ekkokin": 0.02,
+    "scannequin": 0.02,
+}
+
+_RATE_CONTROL_HELP = "Rates represent probabilities from 0.0 to 1.0."
+_RATE_INLINE_HELP = "Rate-only glitchling: 0 disables, 1 touches every candidate."
+_RUSHMORE_MODE_OPTIONS: list[tuple[str, str]] = [
+    ("Delete words", "delete"),
+    ("Duplicate words", "duplicate"),
+    ("Swap adjacent words", "swap"),
+]
+_RUSHMORE_DEFAULT_MODES = ["delete"]
+
+
+def _build_glitch_picker_items(names: Iterable[str]) -> list[PickerItem]:
+    """Return picker items enriched with grouping and form metadata."""
+
+    items: list[PickerItem] = []
+    for name in names:
+        glitch = BUILTIN_GLITCHLINGS.get(name)
+        label = glitch.name if glitch is not None else name
+        group = _group_label(glitch.level if glitch else None)
+        form = _glitch_form_definition(name)
+        help_text = None
+        if form and _is_rate_only_form(form):
+            help_text = _RATE_INLINE_HELP
+        elif name.lower() == "rushmore":
+            help_text = "Configure Rushmore modes and optional rate overrides."
+        items.append(
+            PickerItem(
+                label=label,
+                value=name,
+                group=group,
+                help_text=help_text,
+                form=form,
+            )
+        )
+    return items
+
+
+def _group_label(level: AttackWave | None) -> str:
+    if level is AttackWave.WORD:
+        return "Word-level glitchlings"
+    if level is AttackWave.CHARACTER:
+        return "Character-level glitchlings"
+    return "Other glitchlings"
+
+
+def _glitch_form_definition(name: str) -> PickerFormDefinition | None:
+    key = name.lower()
+    rate_default = _RATE_ONLY_DEFAULTS.get(key)
+    if rate_default is not None:
+        return PickerFormDefinition(
+            controls=[
+                PickerRateControl(
+                    key="rate",
+                    label="Rate",
+                    default=rate_default,
+                    minimum=0.0,
+                    maximum=1.0,
+                    help_text=_RATE_CONTROL_HELP,
+                )
+            ]
+        )
+    if key == "rushmore":
+        return PickerFormDefinition(
+            controls=[
+                PickerModeControl(
+                    key="modes",
+                    label="Modes",
+                    options=_RUSHMORE_MODE_OPTIONS,
+                    default=_RUSHMORE_DEFAULT_MODES,
+                    help_text="Choose one or more attack patterns.",
+                ),
+                PickerRateControl(
+                    key="rate",
+                    label="Global rate",
+                    default=None,
+                    minimum=0.0,
+                    maximum=1.0,
+                    help_text="Leave blank to use per-mode defaults.",
+                ),
+            ]
+        )
+    return None
+
+
+def _is_rate_only_form(definition: PickerFormDefinition | None) -> bool:
+    if definition is None or not definition.controls:
+        return False
+    if len(definition.controls) != 1:
+        return False
+    return isinstance(definition.controls[0], PickerRateControl)
+
+
+def _preview_sample(text: str, limit: int = 160) -> str:
+    """Return a short preview string for modal previews."""
+
+    source = text.strip() or SAMPLE_TEXT.strip()
+    flattened = " ".join(source.split())
+    if not flattened:
+        return source[:limit]
+    preview = flattened[:limit]
+    if len(flattened) > limit:
+        preview = preview.rstrip() + "…"
+    return preview
+
+
 class MetricsApp(App[None]):  # type: ignore[misc]
     """Responsive Textual application for exploring metrics."""
+
+    CONTROL_COLUMN_WIDTH = 42
 
     CSS = """
     Screen {
@@ -132,8 +250,36 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     #app-body {
         height: 1fr;
+        layout: horizontal;
+        padding: 0 1 1 1;
+    }
+
+    #app-body.narrow {
         layout: vertical;
-        padding: 0 1;
+    }
+
+    #control-column {
+        width: 42;
+        min-width: 36;
+        max-width: 48;
+        height: 1fr;
+        padding-right: 1;
+        border-right: solid $surface 20%;
+        margin-right: 1;
+    }
+
+    #app-body.narrow #control-column {
+        width: 1fr;
+        max-width: 1fr;
+        border-right: none;
+        padding-right: 0;
+        margin-right: 0;
+    }
+
+    #control-scroll {
+        height: 1fr;
+        overflow-y: auto;
+        padding-right: 1;
     }
 
     #section-stack {
@@ -146,11 +292,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         margin-bottom: 1;
     }
 
-    .section-detail {
-        color: $text 70%;
-        padding-bottom: 1;
-    }
-
+    .section-detail,
     .section-help {
         color: $text 70%;
         padding-bottom: 1;
@@ -165,13 +307,10 @@ class MetricsApp(App[None]):  # type: ignore[misc]
     }
 
     #run-summary {
-        min-height: 2;
+        min-height: 3;
         padding: 0 1;
-        border: none;
-    }
-
-    #main-tabs {
-        height: 1fr;
+        border: round $surface 20%;
+        margin-top: 1;
     }
 
     TextArea {
@@ -183,26 +322,120 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         height: 8;
     }
 
-    TabPane {
-        padding: 0 1;
-    }
-
-    #diff-view {
+    #results-column {
+        width: 1fr;
         height: 1fr;
-        border: tall transparent;
-        overflow-y: auto;
-        padding: 0 1;
+        layout: vertical;
     }
 
-    #debug-view {
+    #results-column > * {
+        margin-bottom: 1;
+    }
+
+    #results-primary {
+        layout: horizontal;
         height: 1fr;
     }
 
+    #results-primary.narrow {
+        layout: vertical;
+    }
+
+    #results-primary > * {
+        margin-right: 1;
+    }
+
+    #results-primary.narrow > * {
+        margin-right: 0;
+        margin-bottom: 1;
+    }
+
+    .results-panel {
+        border: round $surface 15%;
+        padding: 0 1 1 1;
+        background: $surface 3%;
+        height: 1fr;
+        min-height: 12;
+    }
+
+    .panel-title {
+        text-style: bold;
+        padding: 0 0 1 0;
+    }
+
+    #diff-scroll,
+    #token-diff-scroll,
+    #debug-scroll {
+        height: 1fr;
+    }
+
+    #diff-view,
     #token-diff-view {
-        height: 1fr;
         border: tall transparent;
         overflow-y: auto;
+    }
+
+    #aux-toolbar {
+        border: round transparent;
         padding: 0 1;
+        height: auto;
+        content-align: left middle;
+    }
+
+    #aux-toolbar > * {
+        margin-right: 2;
+    }
+
+    .toolbar-label {
+        color: $text 80%;
+        text-style: bold;
+    }
+
+    .toggle-row {
+        align: center middle;
+    }
+
+    .toggle-row > * {
+        margin-right: 1;
+    }
+
+    .toggle-label {
+        color: $text 70%;
+    }
+
+    #aux-panels {
+        layout: horizontal;
+    }
+
+    #aux-panels.narrow {
+        layout: vertical;
+    }
+
+    #aux-panels > * {
+        margin-right: 1;
+    }
+
+    #aux-panels.narrow > * {
+        margin-right: 0;
+        margin-bottom: 1;
+    }
+
+    .aux-panel {
+        width: 1fr;
+        min-height: 8;
+        border: round $surface 15%;
+        padding: 0 1 1 1;
+        background: $surface 5%;
+    }
+
+    .aux-panel.hidden {
+        display: none;
+    }
+
+    #output-panel,
+    #diff-panel,
+    #metrics-panel {
+        min-width: 32;
     }
     """
 
@@ -217,6 +450,8 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         Binding("ctrl+s", "save_run", "Save run"),
         Binding("ctrl+right", "tab_next", "Next tab", show=False),
         Binding("ctrl+left", "tab_previous", "Prev tab", show=False),
+        Binding("t", "toggle_token_diff", "Token diff"),
+        Binding("b", "toggle_debug", "Debug info"),
     ]
 
     def __init__(self, controller: MetricsTUIController) -> None:
@@ -240,6 +475,15 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._footer_status = "Idle"
         self._footer_duration: float | None = None
         self._footer_is_error = False
+        self.app_body: Horizontal | None = None
+        self.results_primary: Horizontal | None = None
+        self.aux_panels: Horizontal | None = None
+        self.token_diff_container: Vertical | None = None
+        self.debug_container: Vertical | None = None
+        self.token_diff_switch: Switch | None = None
+        self.debug_switch: Switch | None = None
+        self._show_token_diff = False
+        self._show_debug = False
 
         self.custom_glitch_input: Input | None = None
         self.custom_tokenizer_input: Input | None = None
@@ -251,6 +495,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._tokenizer_hint_anchor: Vertical | None = None
         self._walkthrough_hint: WalkthroughHint | None = None
         self._walkthrough_anchors: dict[str, Vertical] = {}
+        self._glitch_custom_remainder: list[str] = []
 
     def compose(self) -> ComposeResult:
         yield Static("Attack on Token", id="title-bar")
@@ -293,6 +538,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             id="output-view",
         )
         self.diff_view = Static("", id="diff-view", markup=False)
+        self.token_diff_view = Static("", id="token-diff-view", markup=False)
         self.debug_view = TextArea(
             text="",
             read_only=True,
@@ -302,25 +548,50 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         )
         self.footer = StatusFooter()
 
-        with Vertical(id="app-body"):
-            with Vertical(id="section-stack"):
-                yield self.input_section
-                yield self.glitch_section
-                yield self.tokenizer_section
-            yield self.summary_display
-            with TabbedContent(id="main-tabs", initial="output") as tabs:
-                self.tabs = tabs
-                with TabPane("Output", id="output"):
-                    yield self.output_view
-                with TabPane("Metrics", id="metrics"):
-                    yield self.metrics_view
-                with TabPane("Diff", id="diff"):
-                    yield self.diff_view
-                with TabPane("Token Diff", id="token-diff"):
-                    self.token_diff_view = Static("", id="token-diff-view", markup=False)
-                    yield self.token_diff_view
-                with TabPane("Debug", id="debug"):
-                    yield self.debug_view
+        with Horizontal(id="app-body") as app_body:
+            self.app_body = app_body
+            with Vertical(id="control-column"):
+                with VerticalScroll(id="control-scroll"):
+                    with Vertical(id="section-stack"):
+                        yield self.input_section
+                        yield self.glitch_section
+                        yield self.tokenizer_section
+                yield self.summary_display
+            with Vertical(id="results-column"):
+                with Horizontal(id="results-primary") as results_primary:
+                    self.results_primary = results_primary
+                    with Vertical(id="output-panel", classes="results-panel"):
+                        yield Static("Output", classes="panel-title")
+                        yield self.output_view
+                    with Vertical(id="diff-panel", classes="results-panel"):
+                        yield Static("Diff", classes="panel-title")
+                        with VerticalScroll(id="diff-scroll"):
+                            yield self.diff_view
+                    with Vertical(id="metrics-panel", classes="results-panel"):
+                        yield Static("Metrics", classes="panel-title")
+                        yield self.metrics_view
+                with Horizontal(id="aux-toolbar"):
+                    yield Static("Optional views", classes="toolbar-label")
+                    with Horizontal(classes="toggle-row"):
+                        self.token_diff_switch = Switch(id="token-diff-switch")
+                        yield self.token_diff_switch
+                        yield Static("Token diff", classes="toggle-label")
+                    with Horizontal(classes="toggle-row"):
+                        self.debug_switch = Switch(id="debug-switch")
+                        yield self.debug_switch
+                        yield Static("Debug info", classes="toggle-label")
+                with Horizontal(id="aux-panels") as aux_panels:
+                    self.aux_panels = aux_panels
+                    with Vertical(id="token-diff-panel", classes="aux-panel hidden") as token_panel:
+                        self.token_diff_container = token_panel
+                        yield Static("Token diff", classes="panel-title")
+                        with VerticalScroll(id="token-diff-scroll"):
+                            yield self.token_diff_view
+                    with Vertical(id="debug-panel", classes="aux-panel hidden") as debug_panel:
+                        self.debug_container = debug_panel
+                        yield Static("Debug info", classes="panel-title")
+                        with VerticalScroll(id="debug-scroll"):
+                            yield self.debug_view
         yield self.footer
 
     def _build_input_body(self) -> Vertical:
@@ -381,8 +652,7 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         self._update_input_summary()
         self._update_glitch_summary()
         self._update_tokenizer_summary()
-        if self.metrics_view is not None:
-            self.metrics_view.set_narrow_mode(self.size.width < 120)
+        self._apply_responsive_layout(self.size.width)
         await self.refresh_metrics()
         self._render_walkthrough_step()
 
@@ -391,19 +661,18 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             await self.action_quit()
 
     def on_resize(self, event: Resize) -> None:
-        if self.metrics_view is not None:
-            self.metrics_view.set_narrow_mode(event.size.width < 120)
+        self._apply_responsive_layout(event.size.width)
+
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        if event.switch.id == "token-diff-switch":
+            self._show_token_diff = event.value
+            self._update_aux_panel_visibility()
+        elif event.switch.id == "debug-switch":
+            self._show_debug = event.value
+            self._update_aux_panel_visibility()
 
     async def action_run_metrics(self) -> None:
         await self.refresh_metrics()
-
-    def action_tab_next(self) -> None:
-        if self.tabs is not None:
-            self.tabs.action_next_tab()
-
-    def action_tab_previous(self) -> None:
-        if self.tabs is not None:
-            self.tabs.action_previous_tab()
 
     async def action_open_picker(self) -> None:
         if self._active_section_id == "glitch-section":
@@ -456,6 +725,13 @@ class MetricsApp(App[None]):  # type: ignore[misc]
                 "or scripted pipelines to write Parquet + manifest artifacts.",
             ]
         await self._show_info_dialog("Save run workflow", lines)
+    def action_toggle_token_diff(self) -> None:
+        self._show_token_diff = not self._show_token_diff
+        self._update_aux_panel_visibility()
+
+    def action_toggle_debug(self) -> None:
+        self._show_debug = not self._show_debug
+        self._update_aux_panel_visibility()
 
     async def refresh_metrics(self) -> None:
         self._footer_status = "Running…"
@@ -569,6 +845,35 @@ class MetricsApp(App[None]):  # type: ignore[misc]
             self._walkthrough_hint.remove()
             self._walkthrough_hint = None
 
+    def _apply_responsive_layout(self, width: int) -> None:
+        is_narrow = width < 100
+        if self.app_body is not None:
+            self.app_body.set_class(is_narrow, "narrow")
+        if self.results_primary is not None:
+            self.results_primary.set_class(is_narrow, "narrow")
+        if self.aux_panels is not None:
+            self.aux_panels.set_class(is_narrow, "narrow")
+        available_width = max(width - self.CONTROL_COLUMN_WIDTH, 40)
+        if self.metrics_view is not None:
+            self.metrics_view.set_narrow_mode(available_width < 80)
+        self._update_aux_panel_visibility()
+
+    def _update_aux_panel_visibility(self) -> None:
+        if (
+            self.token_diff_switch is not None
+            and self.token_diff_switch.value != self._show_token_diff
+        ):
+            self.token_diff_switch.value = self._show_token_diff
+        if (
+            self.debug_switch is not None
+            and self.debug_switch.value != self._show_debug
+        ):
+            self.debug_switch.value = self._show_debug
+        if self.token_diff_container is not None:
+            self.token_diff_container.set_class(not self._show_token_diff, "hidden")
+        if self.debug_container is not None:
+            self.debug_container.set_class(not self._show_debug, "hidden")
+
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "run-button":
             await self.refresh_metrics()
@@ -579,9 +884,19 @@ class MetricsApp(App[None]):  # type: ignore[misc]
 
     async def _open_glitch_modal(self) -> None:
         names = self.controller.available_glitchlings()
-        items = [PickerItem(label=name, value=name) for name in names]
+        form_state, remainder = self.controller.partition_custom_glitchlings()
+        self._glitch_custom_remainder = list(remainder)
+        items = _build_glitch_picker_items(names)
         selected = [name for name in names if self.controller.is_glitchling_selected(name)]
-        picker = PickerModal("Glitchlings", items, selected=selected)
+        preview_text = _preview_sample(self.controller.text)
+        picker = PickerModal(
+            "Glitchlings",
+            items,
+            selected=selected,
+            form_state=form_state,
+            extra_specs=remainder,
+            preview_text=preview_text,
+        )
         await self.push_screen(picker, callback=self._handle_glitch_picker_result)
 
     async def _open_tokenizer_modal(self) -> None:
@@ -592,13 +907,29 @@ class MetricsApp(App[None]):  # type: ignore[misc]
         await self.push_screen(picker, callback=self._handle_tokenizer_picker_result)
 
     async def _handle_glitch_picker_result(
-        self, result: list[dict[str, str | None]] | None
+        self, result: list[dict[str, object]] | None
     ) -> None:
         if result is None:
             return
-        selected_set = {entry["value"] for entry in result if entry.get("value")}
+        selected_set: set[str] = set()
+        structured: list[dict[str, object]] = []
+        for entry in result:
+            value = entry.get("value")
+            if not isinstance(value, str):
+                continue
+            params = entry.get("params")
+            if isinstance(params, dict) and params:
+                structured.append({"value": value, "params": params})
+            else:
+                selected_set.add(value)
         for name in self.controller.available_glitchlings():
             self.controller.set_builtin_glitchling(name, name in selected_set)
+        combined: list[str | dict[str, object]] = list(self._glitch_custom_remainder)
+        combined.extend(structured)
+        self.controller.set_custom_glitchlings(combined)
+        self._glitch_custom_remainder = []
+        if self.custom_glitch_input is not None:
+            self.custom_glitch_input.value = self.controller.custom_glitchlings_text()
         self._update_glitch_summary()
 
     async def _handle_tokenizer_picker_result(
