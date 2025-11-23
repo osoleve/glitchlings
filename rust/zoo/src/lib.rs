@@ -2,6 +2,7 @@ mod ekkokin;
 mod glitch_ops;
 mod hokey;
 mod jargoyle;
+mod metrics;
 mod mim1c;
 mod pedant;
 mod pipeline;
@@ -646,5 +647,11 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     m.add_function(wrap_pyfunction!(hokey::hokey, m)?)?;
     m.add_function(wrap_pyfunction!(spectroll::swap_colors, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::jensen_shannon_divergence, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::normalized_edit_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::subsequence_retention, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_jensen_shannon_divergence, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_normalized_edit_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_subsequence_retention, m)?)?;
     Ok(())
 }
