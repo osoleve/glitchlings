@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, NoReturn, Protocol, cast
+from typing import Any, Callable, Iterable, Mapping, NoReturn, cast
+
+from packaging.markers import default_environment
+from packaging.requirements import Requirement
 
 
 class _MissingSentinel:
@@ -14,40 +16,6 @@ class _MissingSentinel:
 
 
 _MISSING = _MissingSentinel()
-
-
-class _MarkerProtocol(Protocol):
-    def evaluate(self, environment: dict[str, str]) -> bool: ...
-
-
-class _RequirementProtocol(Protocol):
-    marker: _MarkerProtocol | None
-    name: str
-
-    def __init__(self, requirement: str) -> None: ...
-
-
-try:  # pragma: no cover - packaging is bundled with modern Python environments
-    from packaging.markers import default_environment as _default_environment
-except ModuleNotFoundError:  # pragma: no cover - fallback when packaging missing
-    _default_environment = None
-
-try:  # pragma: no cover - packaging is bundled with modern Python environments
-    from packaging.requirements import Requirement as _RequirementClass
-except ModuleNotFoundError:  # pragma: no cover - fallback when packaging missing
-    _RequirementClass = None
-
-default_environment: Callable[[], dict[str, str]] | None
-if _default_environment is None:
-    default_environment = None
-else:
-    default_environment = cast(Callable[[], dict[str, str]], _default_environment)
-
-Requirement: type[_RequirementProtocol] | None
-if _RequirementClass is None:
-    Requirement = None
-else:
-    Requirement = cast(type[_RequirementProtocol], _RequirementClass)
 
 
 def _build_lightning_stub() -> ModuleType:
@@ -319,41 +287,22 @@ def _distribution_installed(name: str) -> bool:
     return True
 
 
-_EXTRA_PATTERN = re.compile(r'extra\\s*==\\s*"(?P<extra>[^"]+)"')
-
-
 def _extras_from_requirement(requirement: str, candidates: set[str]) -> set[str]:
-    if Requirement is not None and default_environment is not None:
-        req = Requirement(requirement)
-        if req.marker is None:
-            return set()
-        extras: set[str] = set()
-        for extra in candidates:
-            environment = default_environment()
-            environment["extra"] = extra
-            if req.marker.evaluate(environment):
-                extras.add(extra)
-        return extras
-
-    matches = set()
-    for match in _EXTRA_PATTERN.finditer(requirement):
-        extra = match.group("extra").lower()
-        if extra in candidates:
-            matches.add(extra)
-    return matches
+    req = Requirement(requirement)
+    if req.marker is None:
+        return set()
+    extras: set[str] = set()
+    for extra in candidates:
+        environment = default_environment()
+        environment["extra"] = extra
+        if req.marker.evaluate(environment):
+            extras.add(extra)
+    return extras
 
 
 def _requirement_name(requirement: str) -> str:
-    if Requirement is not None:
-        req = Requirement(requirement)
-        return req.name
-
-    candidate = requirement.split(";", 1)[0].strip()
-    for delimiter in ("[", "(", " ", "<", ">", "=", "!", "~"):
-        index = candidate.find(delimiter)
-        if index != -1:
-            return candidate[:index]
-    return candidate
+    req = Requirement(requirement)
+    return req.name
 
 
 __all__ = [
