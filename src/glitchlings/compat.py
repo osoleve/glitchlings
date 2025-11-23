@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, NoReturn, cast
+from typing import Any, Callable, Iterable, Mapping, NoReturn
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
