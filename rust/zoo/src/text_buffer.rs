@@ -301,8 +301,7 @@ impl TextBuffer {
     /// - second_word: the duplicated word to insert after
     /// - separator: optional separator between the two words
     ///
-    /// Processes in descending index order to avoid index shifting.
-    /// Only reindexes once at the end.
+    /// Rebuilds the segment vector in a single pass to avoid O(N^2) behavior from repeated insertions.
     pub fn reduplicate_words_bulk<I>(
         &mut self,
         reduplications: I,
@@ -313,45 +312,60 @@ impl TextBuffer {
         // Ensure indices are fresh before we start
         self.reindex_if_needed();
 
-        // Collect and sort in descending order by word_index
+        // Collect and sort in ASCENDING order by word_index
         let mut ops: Vec<_> = reduplications.into_iter().collect();
         if ops.is_empty() {
             return Ok(());
         }
-        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+        ops.sort_by(|a, b| a.0.cmp(&b.0)); // Ascending order
 
-        for (word_index, first_replacement, second_word, separator) in ops {
-            // Get segment index for this word
-            let segment_index = self
-                .word_segment_indices
-                .get(word_index)
-                .copied()
-                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-
-            // Replace the original word
-            let segment = self
-                .segments
-                .get_mut(segment_index)
-                .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-            segment.set_text(first_replacement, SegmentKind::Word);
-
-            // Insert separator and second word
-            let mut insert_at = segment_index + 1;
-            if let Some(sep) = separator {
-                if !sep.is_empty() {
-                    self.segments.insert(
-                        insert_at,
-                        TextSegment::new(sep, SegmentKind::Separator),
-                    );
-                    insert_at += 1;
-                }
+        // Validate all indices first
+        if let Some((max_idx, _, _, _)) = ops.last() {
+            if *max_idx >= self.word_count() {
+                return Err(TextBufferError::InvalidWordIndex { index: *max_idx });
             }
-            self.segments.insert(
-                insert_at,
-                TextSegment::new(second_word, SegmentKind::Word),
-            );
         }
 
+        // Rebuild segments in a new vector
+        // Use std::mem::take to consume the old segments and avoid cloning strings
+        let old_segments = std::mem::take(&mut self.segments);
+        let mut new_segments = Vec::with_capacity(old_segments.len() + ops.len() * 2);
+        let mut ops_iter = ops.into_iter().peekable();
+
+        for (segment_index, segment) in old_segments.into_iter().enumerate() {
+            // Check if this segment corresponds to a word index we want to modify
+            let word_idx_opt = self.segment_to_word_index.get(segment_index).copied().flatten();
+
+            if let Some(word_idx) = word_idx_opt {
+                // Check if the next operation targets this word
+                if let Some(&(target_word_idx, _, _, _)) = ops_iter.peek() {
+                    if target_word_idx == word_idx {
+                        // Apply the operation
+                        let (_, first_replacement, second_word, separator) = ops_iter.next().unwrap();
+
+                        // 1. First word (replacement)
+                        new_segments.push(TextSegment::new(first_replacement, SegmentKind::Word));
+
+                        // 2. Separator (if any)
+                        if let Some(sep) = separator {
+                            if !sep.is_empty() {
+                                new_segments.push(TextSegment::new(sep, SegmentKind::Separator));
+                            }
+                        }
+
+                        // 3. Second word
+                        new_segments.push(TextSegment::new(second_word, SegmentKind::Word));
+
+                        continue; // Skip adding the original segment
+                    }
+                }
+            }
+
+            // Otherwise, keep the original segment
+            new_segments.push(segment);
+        }
+
+        self.segments = new_segments;
         self.mark_dirty();
         Ok(())
     }

@@ -2,7 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use pprof::criterion::{Output, PProfProfiler};
 use _zoo_rust::{
     DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation,
-    ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer,
+    ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer, TypoOp,
 };
 
 /// Generate test text of approximately target_chars length
@@ -226,6 +226,46 @@ fn bench_mixed_ops_large(c: &mut Criterion) {
     group.finish();
 }
 
+/// Benchmark TypoOp which involves character-level mutations
+fn bench_typo(c: &mut Criterion) {
+    let mut group = c.benchmark_group("typo");
+
+    let layout = std::collections::HashMap::from([
+        ("a".to_string(), vec!["s".to_string(), "q".to_string()]),
+        ("s".to_string(), vec!["a".to_string(), "d".to_string()]),
+        ("d".to_string(), vec!["s".to_string(), "f".to_string()]),
+        ("e".to_string(), vec!["w".to_string(), "r".to_string()]),
+        ("i".to_string(), vec!["u".to_string(), "o".to_string()]),
+    ]);
+
+    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+        let text = generate_test_text(*size);
+        let actual_len = text.chars().count();
+
+        group.throughput(Throughput::Elements(actual_len as u64));
+        group.bench_with_input(
+            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            &text,
+            |b, text| {
+                b.iter(|| {
+                    let mut buffer = TextBuffer::from_str(black_box(text));
+                    let mut rng = DeterministicRng::new(42);
+
+                    let op = TypoOp {
+                        rate: 0.1, // 10% of chars (high load)
+                        layout: layout.clone(),
+                    };
+
+                    let _ = op.apply(&mut buffer, &mut rng);
+                    black_box(buffer);
+                });
+            },
+        );
+    }
+
+    group.finish();
+}
+
 /// Benchmark scaling: measure how performance scales with input size
 fn bench_scaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("scaling");
@@ -271,6 +311,7 @@ criterion_group! {
         bench_heavy_replace,
         bench_heavy_delete,
         bench_mixed_ops_large,
+        bench_typo,
         bench_scaling
 }
 
