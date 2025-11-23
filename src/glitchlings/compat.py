@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, NoReturn
+from typing import Any, Callable, Iterable, Mapping, NoReturn, cast
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
@@ -302,7 +302,7 @@ def _extras_from_requirement(requirement: str, candidates: set[str]) -> set[str]
 
 def _requirement_name(requirement: str) -> str:
     req = Requirement(requirement)
-    return req.name
+    return cast(str, req.name)
 
 
 __all__ = [
