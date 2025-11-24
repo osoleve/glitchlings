@@ -9,11 +9,6 @@ Currently, similar information is maintained in `MONSTER_MANUAL.md`, `README.md`
   - *Task*: Create `docs/build_monster_manual.py`. Use flavor text defined in classes (e.g., `PedantBase.flavor`) or docstrings to generate the "Stat Block" markdown programmatically.
   - *Goal*: Ensure "flavor" documentation automatically reflects current defaults and available parameters.
 
-- [ ] **Consolidate "Getting Started" Guides**
-  - *Context*: `README.md`, `docs/index.md`, and `AGENTS.md` all contain workflow instructions.
-  - *Task*: Reduce `README.md` to a project elevator pitch and a link to `docs/index.md`. Move developer-specific instructions exclusively to `docs/development.md`.
-  - *Goal*: Reduce maintenance surface area; users go to one place for instructions.
-
 ## 2. Configuration Consolidation
 
 There are three config-related files in the top-level package: `config.py`, `attack_config.py`, and `runtime_config.py`.

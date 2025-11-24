@@ -1,6 +1,6 @@
 # Glitchlings development setup
 
-This guide walks through preparing a local development environment, running the automated checks, and working with the Rust acceleration layer that now powers the core runtime.
+This guide walks through preparing a local development environment, running the automated checks, and working with the Rust acceleration layer that now powers the core runtime. It is the source of truth for contributor workflow details.
 
 ## Prerequisites
 
