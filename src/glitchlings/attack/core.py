@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Sequence, Union
+from typing import List, Mapping, Optional, Sequence, Union, cast
 
 from ..zoo.core import Gaggle, Glitchling
 from .metrics import (
@@ -84,9 +84,10 @@ class Attack:
         input_token_ids = list(input_token_ids)
         output_token_ids = list(output_token_ids)
 
-        computed_metrics = {}
+        computed_metrics: dict[str, float] = {}
         for name, metric_fn in self.metrics.items():
-            computed_metrics[name] = metric_fn(input_tokens, output_tokens)
+            value = metric_fn(input_tokens, output_tokens)
+            computed_metrics[name] = cast(float, value)
 
         return AttackResult(
             original=text,
