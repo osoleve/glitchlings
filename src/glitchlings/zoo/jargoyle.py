@@ -4,9 +4,9 @@ from collections.abc import Iterable
 from types import ModuleType
 from typing import Any, Literal, cast
 
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
-from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackWave, Glitchling
 
 _wordnet_module: ModuleType | None

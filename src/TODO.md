@@ -50,10 +50,11 @@ Asset logic is split between `glitchlings.zoo.assets`, `glitchlings.dev.sync_ass
 
 Cleanup technical debt from the Rust migration.
 
-- [ ] **Consolidate Rust Loading**
+- [x] **Consolidate Rust Loading**
   - *Context*: `src/glitchlings/_zoo_rust/__init__.py` locates the extension, while `src/glitchlings/zoo/_rust_extensions.py` imports it.
   - *Task*: Merge `_rust_extensions.py` logic into a single internal module (e.g., `src/glitchlings/internal/rust.py`).
   - *Goal*: Single entry point for "Get Rust function or raise error."
+  - *Status*: New `glitchlings.internal.rust` centralizes extension loading/operation resolution; `_zoo_rust` and `_rust_extensions` now delegate to it.
 
 - [ ] **Standardize "Behavioral" Constants**
   - *Context*: Constants like `DEFAULT_ATTACK_SEED` live in `attack_config.py`. Default rates are hardcoded in `__init__` methods.

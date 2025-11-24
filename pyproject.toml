@@ -198,6 +198,8 @@ module = [
     "glitchlings.__main__",
     "glitchlings.__init__",
     "glitchlings.assets",
+    "glitchlings.internal",
+    "glitchlings.internal.*",
     "glitchlings.zoo",
     "glitchlings.zoo.*",
 ]

@@ -8,9 +8,10 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union, cast
 
+from glitchlings.internal.rust import get_rust_operation
+
 from ..compat import get_datasets_dataset, require_datasets
 from ..util.transcripts import Transcript, is_transcript
-from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
 

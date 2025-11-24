@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import Dict, Type, cast
 
-from .._rust_extensions import get_rust_operation
+from glitchlings.internal.rust import get_rust_operation
+
 from ..core import Gaggle
 from .stones import PedantStone
 

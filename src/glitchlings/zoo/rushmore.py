@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from enum import Enum, unique
 from typing import Any, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
 

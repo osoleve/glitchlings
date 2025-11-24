@@ -1,7 +1,8 @@
 import random
 from typing import cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
 FULL_BLOCK = "█"

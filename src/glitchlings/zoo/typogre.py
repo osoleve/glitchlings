@@ -4,8 +4,9 @@ import random
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from ..util import KEYNEIGHBORS
-from ._rust_extensions import get_rust_operation, resolve_seed
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _fatfinger_rust = get_rust_operation("fatfinger")

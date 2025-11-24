@@ -6,7 +6,8 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
