@@ -42,6 +42,14 @@ print(result.input_tokens)
 print(result.output_tokens)
 ```
 
+## Choosing a tokenizer
+
+By default, Attack uses a lightweight `tiktoken` encoder:
+
+- Tries `o200k_base` first (good coverage for modern LLM contexts).
+- Falls back to `cl100k_base`, then to a whitespace tokenizer if tiktoken is unavailable.
+- Pass a name (e.g., `"gpt2"`), a `tiktoken.Encoding`, a Hugging Face `tokenizers.Tokenizer`, or a custom object implementing `encode`/`decode`.
+
 ## Determinism
 
 - Default seeds align with the rest of the library (`DEFAULT_ATTACK_SEED = 151`).

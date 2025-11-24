@@ -24,13 +24,16 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
 8. [Dataset workflows](#dataset-workflows)
-9. [Prime Intellect integration](#prime-intellect-integration)
+9. [Integrations and DLC](#integrations-and-dlc)
 10. [Ensuring determinism](#ensuring-determinism)
 11. [Testing checklist](#testing-checklist)
 12. [Additional resources](#additional-resources)
     - [Glitchling gallery](glitchling-gallery.md)
     - [Keyboard layout reference](keyboard-layouts.md)
     - [Attack helper reference](attack.md)
+    - [Dataset workflows](datasets.md)
+    - [Integrations and DLC](integrations.md)
+    - [Determinism guide](determinism.md)
 
 ## Installation
 
@@ -201,68 +204,11 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 
 ## Dataset workflows
 
-Leverage the Hugging Face integration to perturb large corpora reproducibly:
+Leverage the Hugging Face and PyTorch integrations to perturb large corpora reproducibly. See the dedicated [dataset workflows guide](datasets.md) for examples and tips, including column inference, saving corrupted copies, and seed hygiene.
 
-```python
-from datasets import load_dataset
-from glitchlings import Gaggle, Typogre, Mim1c
+## Integrations and DLC
 
-dataset = load_dataset("ag_news")
-gaggle = Gaggle([Typogre(rate=0.02), Mim1c(rate=0.01)], seed=404)
-
-corrupted = gaggle.corrupt_dataset(
-    dataset,
-    columns=["text"],
-    description="ag_news with typographic noise",
-)
-```
-
-Key points:
-
-- When `columns` is omitted, Glitchlings infers targets (`prompt`, `question`, or all string columns) using `_resolve_columns` semantics from the Prime loader.
-- The returned dataset is a shallow copy containing both clean and corrupted columns-persist it with `corrupted.push_to_hub(...)` or `corrupted.save_to_disk(...)`.
-- Use dataset-level seeds (`seed=` on the gaggle) so repeated corruptions are stable across machines.
-
-Integration coverage for Hugging Face datasets lives in `tests/test_dataset_corruption.py`, while the DLC-specific loaders are exercised in `tests/test_huggingface_dlc.py`.
-
-## Prime Intellect integration
-
-Installing the `prime` extra exposes `glitchlings.dlc.prime.load_environment`, a convenience wrapper around `verifiers.load_environment` that lets you pre-inject glitchlings into benchmark datasets.
-
-```python
-from glitchlings import Mim1c, Typogre
-from glitchlings.dlc.prime import (
-    Difficulty,
-    echo_chamber,
-    load_environment,
-    tutorial_level,
-)
-
-# Load an existing environment and apply custom corruption
-custom_env = load_environment(
-    "osoleve/syllabify-en",
-    glitchlings=[Mim1c(rate=0.01), Typogre(rate=0.02)],
-    seed=404,
-    columns=["prompt"],  # optional; inferred when omitted
-)
-
-# Or convert a Hugging Face dataset column into an Echo Chamber
-restoration_env = echo_chamber(
-    "osoleve/clean-room",
-    column="text",
-    glitchlings=["Typogre", "Mim1c"],
-    reward_function=lambda prompt, completion, answer: float(completion == answer),
-)
-```
-
-Capabilities at a glance:
-
-- **Flexible inputs** – pass a string environment slug, an instantiated `verifiers.Environment`, a single glitchling, a list of glitchlings or names, or a pre-built `Gaggle`.
-- **Column inference** – when `columns` is `None`, the loader searches for `prompt`/`question` columns, otherwise falls back to all string-valued columns. Explicitly list columns to target subsets (e.g., prompts but not references).
-- **Deterministic summoning** – non-`Gaggle` inputs are normalised via `summon(...)` with the provided `seed`, so repeated calls produce matching corruption ensembles.
-- **Tutorial difficulty scaling** – `tutorial_level` wires in tuned Mim1c/Typogre parameters multiplied by the selected `Difficulty` enum. Use `Difficulty.Easy` for gentle practice or `Difficulty.Extreme` to hammer robustness.
-- **Dataset mutation** – environments are returned with their dataset replaced by the corrupted clone. Skip the `glitchlings` argument to leave the dataset untouched.
-- **Echo Chambers** – bootstrap text-cleaning challenges straight from Hugging Face datasets; the environment instructs models to restore glitch-corrupted text, scores responses with a symmetric Damerau–Levenshtein rubric by default, and lets you swap in bespoke reward functions when needed.
+Optional extras patch popular libraries to make corruption frictionless. See [Integrations and DLC](integrations.md) for Hugging Face, PyTorch, Lightning, and Prime details plus install commands.
 
 ## Ensuring determinism
 
@@ -271,7 +217,7 @@ Capabilities at a glance:
 - Use `set_param` to expose tunable values so they can be reset between tests.
 - When writing new glitchlings, route randomness through the instance RNG rather than module-level state.
 
-These determinism checks are enforced in `tests/test_glitchlings_determinism.py`.
+These determinism checks are enforced in `tests/test_glitchlings_determinism.py`. For a deeper checklist (including Attack seeds and dataset corruption), see the [Determinism guide](determinism.md).
 
 ## Testing checklist
 
@@ -294,3 +240,7 @@ Want to compare against the legacy WordNet lexicon? Install `nltk` and download 
 - [Development setup](development.md) - local environment, testing, and Rust acceleration guide.
 - [Glitchling gallery](glitchling-gallery.md) - side-by-side outputs for each glitchling at multiple rates.
 - [Keyboard layout reference](keyboard-layouts.md) - available adjacency maps for Typogre and related features.
+- [Attack helper reference](attack.md) - single-call corruption + metrics.
+- [Dataset workflows](datasets.md) - dataset and loader corruption patterns.
+- [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras.
+- [Determinism guide](determinism.md) - seeds and RNG guidance.
