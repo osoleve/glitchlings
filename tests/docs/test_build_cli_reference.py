@@ -41,3 +41,28 @@ def test_run_cli_sets_columns_when_command_available(monkeypatch):
     assert result == "ready"
     assert recorded_envs and recorded_envs[0] is not None
     assert recorded_envs[0]["COLUMNS"] == "80"
+
+
+def test_build_cli_reference_includes_truncated_help(monkeypatch):
+    module = load_module()
+
+    recorded_commands: list[list[str]] = []
+
+    def fake_run_cli(command: list[str]) -> str:
+        recorded_commands.append(command)
+        if command[-1] == "--list":
+            return "typogre\nmim1c"
+        return "usage: __main__.py\nfirst line\nsecond line\nthird line"
+
+    globals_namespace = module["build_cli_reference"].__globals__
+    globals_namespace["run_cli"] = fake_run_cli
+    globals_namespace["HELP_PREVIEW_LINES"] = 2
+
+    result = module["build_cli_reference"]()
+
+    assert recorded_commands == [["glitchlings", "--list"], ["glitchlings", "--help"]]
+    assert "typogre" in result
+    assert "usage: glitchlings" in result
+    assert "first line" in result
+    assert "second line" not in result
+    assert "..." in result

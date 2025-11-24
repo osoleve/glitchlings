@@ -118,7 +118,7 @@ Glitchlings slot neatly into existing pipelines:
 
 ### Command line interface
 
-Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality:
+Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality. Consult the generated [CLI reference](cli.md) for the full contract and live help output:
 
 ```bash
 # Discover all built-in glitchlings.

@@ -9,6 +9,9 @@ Currently, similar information is maintained in `MONSTER_MANUAL.md`, `README.md`
   - *Task*: Create `docs/build_monster_manual.py`. Use flavor text defined in classes (e.g., `PedantBase.flavor`) or docstrings to generate the "Stat Block" markdown programmatically.
   - *Goal*: Ensure "flavor" documentation automatically reflects current defaults and available parameters.
 
+- [x] Repoint the CLI doc autogeneration to a dedicated docs page instead of the README; retarget `docs/build_cli_reference.py`, add/update the destination page, and make sure the README links to it.
+  - *Status*: CLI reference is now generated to `docs/cli.md` with nav updates plus README/index pointers.
+
 ## 2. Configuration Consolidation
 
 There are three config-related files in the top-level package: `config.py`, `attack_config.py`, and `runtime_config.py`.
@@ -37,6 +40,7 @@ Asset logic is split between `glitchlings.zoo.assets`, `glitchlings.dev.sync_ass
   - *Context*: `sync_assets.py` hardcodes `PIPELINE_ASSETS`.
   - *Task*: Move the `PIPELINE_ASSETS` constant into `src/glitchlings/assets/__init__.py`. Ensure both Python loaders and `build.rs` reference this single list.
   - *Goal*: Prevent build and packaging from drifting apart on required assets.
+- [ ] Add a packaging check that asserts all assets declared in the manifest land in the wheel/sdist and match the Rust `resources.rs` expectations.
 
 ## 4. Internal Module Hygiene
 
@@ -51,6 +55,7 @@ Cleanup technical debt from the Rust migration.
   - *Context*: Constants like `DEFAULT_ATTACK_SEED` live in `attack_config.py`. Default rates are hardcoded in `__init__` methods.
   - *Task*: Create `src/glitchlings/constants.py`. Move seeds, default rates, and standard file paths there.
   - *Goal*: Allow global tuning of defaults and centralized reference in docs/tests.
+- [ ] Audit `pipeline_operation` descriptors to ensure every Rust-backed glitchling advertises the correct fast-path metadata and the Python shims fail loudly when Rust symbols diverge.
 
 ## 5. Test Suite Organization
 

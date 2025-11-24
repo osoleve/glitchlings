@@ -117,7 +117,7 @@ They're horrible little gremlins, but they're not _unreasonable_.
 
 ## Command-Line Interface (CLI)
 
-Keyboard warriors can challenge them directly via the `glitchlings` command:
+Keyboard warriors can challenge them directly via the `glitchlings` command (see the generated CLI reference in `docs/cli.md` for the full contract):
 
 ```bash
 # Discover which glitchlings are currently on the loose.

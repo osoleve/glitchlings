@@ -16,7 +16,7 @@ def _run_script(path: Path) -> None:
 
 
 def refresh_cli_reference() -> None:
-    """Regenerate the README CLI usage block."""
+    """Regenerate the CLI reference docs page."""
     _run_script(DOCS_DIR / "build_cli_reference.py")
 
 
@@ -26,7 +26,7 @@ def refresh_gallery() -> None:
 
 
 def refresh_all() -> None:
-    """Regenerate CLI usage and gallery docs in one call."""
+    """Regenerate CLI reference and gallery docs in one call."""
     refresh_cli_reference()
     refresh_gallery()
 

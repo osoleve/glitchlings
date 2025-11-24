@@ -17,6 +17,7 @@ theme:
 nav:
   - Overview: index.md
   - Guides:
+      - CLI Reference: cli.md
       - Attack Helper: attack.md
       - Dataset Workflows: datasets.md
       - Integrations & DLC: integrations.md
