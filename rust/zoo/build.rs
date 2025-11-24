@@ -1,23 +1,56 @@
 use base64::{engine::general_purpose, Engine as _};
 use flate2::read::GzDecoder;
+use serde::Deserialize;
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::{self, Cursor, ErrorKind, Read};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum AssetKind {
+    Copy,
+    Compressed,
+}
+
+impl Default for AssetKind {
+    fn default() -> Self {
+        AssetKind::Copy
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct AssetSpec {
+    name: String,
+    #[serde(default)]
+    kind: AssetKind,
+    output: Option<String>,
+}
+
+impl AssetSpec {
+    fn staged_name(&self) -> &str {
+        self.output.as_deref().unwrap_or(&self.name)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct PipelineManifest {
+    pipeline_assets: Vec<AssetSpec>,
+}
+
 fn main() {
-    stage_asset("ocr_confusions.tsv").expect("failed to stage OCR confusion table for compilation");
-    stage_asset("apostrofae_pairs.json")
-        .expect("failed to stage Apostrofae replacement table for compilation");
-    stage_asset("ekkokin_homophones.json")
-        .expect("failed to stage Ekkokin homophone table for compilation");
-    stage_lexicon_asset("default_vector_cache.json")
+    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
+    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
+
+    let manifest =
+        load_pipeline_manifest(&manifest_dir).expect("failed to load pipeline asset manifest");
+
+    stage_pipeline_assets(&manifest_dir, &out_dir, &manifest)
+        .expect("failed to stage pipeline assets for compilation");
+    stage_lexicon_asset(&manifest_dir, &out_dir, "default_vector_cache.json")
         .expect("failed to stage Jargoyle vector cache for compilation");
-    stage_compressed_asset("mim1c_homoglyphs.json.gz.b64", "mim1c_homoglyphs.json")
-        .expect("failed to stage Mim1c homoglyph table for compilation");
-    stage_asset("hokey_assets.json").expect("failed to stage Hokey asset payload for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
     // Only perform custom Python linking on non-Linux platforms.
@@ -30,6 +63,46 @@ fn main() {
             link_python(&python);
         }
     }
+}
+
+fn load_pipeline_manifest(manifest_dir: &Path) -> io::Result<PipelineManifest> {
+    let manifest_path = manifest_dir.join("../../src/glitchlings/assets/pipeline_assets.json");
+    if !manifest_path.exists() {
+        return Err(io::Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "missing pipeline asset manifest; expected {}",
+                manifest_path.display()
+            ),
+        ));
+    }
+
+    println!("cargo:rerun-if-changed={}", manifest_path.display());
+
+    let manifest_text = fs::read_to_string(&manifest_path)?;
+    let manifest: PipelineManifest =
+        serde_json::from_str(&manifest_text).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+    Ok(manifest)
+}
+
+fn stage_pipeline_assets(
+    manifest_dir: &Path,
+    out_dir: &Path,
+    manifest: &PipelineManifest,
+) -> io::Result<()> {
+    for asset in &manifest.pipeline_assets {
+        match asset.kind {
+            AssetKind::Copy => stage_asset(manifest_dir, out_dir, &asset.name)?,
+            AssetKind::Compressed => stage_compressed_asset(
+                manifest_dir,
+                out_dir,
+                &asset.name,
+                asset.staged_name(),
+            )?,
+        }
+    }
+
+    Ok(())
 }
 
 fn configured_python() -> Option<OsString> {
@@ -108,10 +181,7 @@ fn query_python(python: &OsStr, command: &str) -> Option<String> {
     Some(value)
 }
 
-fn stage_asset(asset_name: &str) -> io::Result<()> {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
-
+fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
     let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
@@ -125,15 +195,16 @@ fn stage_asset(asset_name: &str) -> io::Result<()> {
 
     println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
 
-    fs::create_dir_all(&out_dir)?;
+    fs::create_dir_all(out_dir)?;
     fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
     Ok(())
 }
 
-fn stage_lexicon_asset(asset_name: &str) -> io::Result<()> {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
-
+fn stage_lexicon_asset(
+    manifest_dir: &Path,
+    out_dir: &Path,
+    asset_name: &str,
+) -> io::Result<()> {
     let canonical_repo_asset = manifest_dir
         .join("../../src/glitchlings/lexicon/data")
         .join(asset_name);
@@ -149,15 +220,17 @@ fn stage_lexicon_asset(asset_name: &str) -> io::Result<()> {
 
     println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
 
-    fs::create_dir_all(&out_dir)?;
+    fs::create_dir_all(out_dir)?;
     fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
     Ok(())
 }
 
-fn stage_compressed_asset(asset_name: &str, output_name: &str) -> io::Result<()> {
-    let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
-    let out_dir = PathBuf::from(env::var("OUT_DIR").expect("missing OUT_DIR"));
-
+fn stage_compressed_asset(
+    manifest_dir: &Path,
+    out_dir: &Path,
+    asset_name: &str,
+    output_name: &str,
+) -> io::Result<()> {
     let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
@@ -171,7 +244,7 @@ fn stage_compressed_asset(asset_name: &str, output_name: &str) -> io::Result<()>
 
     println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
 
-    fs::create_dir_all(&out_dir)?;
+    fs::create_dir_all(out_dir)?;
     let mut encoded = String::new();
     File::open(&canonical_repo_asset)?.read_to_string(&mut encoded)?;
 

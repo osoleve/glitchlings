@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .assets import read_text
+from glitchlings.assets import read_text
 
 _CONFUSION_TABLE: list[tuple[str, list[str]]] | None = None
 

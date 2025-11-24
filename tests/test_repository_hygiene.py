@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-import re
+import fnmatch
 from pathlib import Path
 
-from glitchlings.dev.sync_assets import PIPELINE_ASSETS, sync_assets
-from glitchlings.zoo import assets
+import tomllib
+
+from glitchlings import assets
+from glitchlings.assets import PIPELINE_ASSET_SPECS, PIPELINE_ASSETS
+from glitchlings.dev.sync_assets import sync_assets
 
 
 def test_apostrofae_pairs_asset_unique_source():
@@ -42,18 +45,48 @@ def test_hokey_assets_shared_source():
 
 
 def test_pipeline_assets_match_build_stage_list():
-    """Verify all pipeline assets listed in build.rs exist in assets/ directory."""
+    """Verify build.rs sources pipeline assets from the shared manifest."""
     repo_root = Path(__file__).resolve().parents[1]
     build_rs = (repo_root / "rust/zoo/build.rs").read_text(encoding="utf-8")
-    staged_assets = set(re.findall(r'stage_asset\("([^"]+)"\)', build_rs))
-    assert staged_assets == PIPELINE_ASSETS
+    assert "pipeline_assets.json" in build_rs, "Rust build should read pipeline asset manifest"
+
+    manifest_assets = {spec.name for spec in PIPELINE_ASSET_SPECS}
+    assert manifest_assets == PIPELINE_ASSETS
+
+
+def test_pipeline_assets_packaged_for_distribution():
+    """Verify packaged assets stay in sync with the canonical copies."""
+    repo_root = Path(__file__).resolve().parents[1]
+    pyproject = tomllib.loads((repo_root / "pyproject.toml").read_text(encoding="utf-8"))
+    package_patterns = pyproject["tool"]["setuptools"]["package-data"]["glitchlings"]
+    manifest_in = (repo_root / "MANIFEST.in").read_text(encoding="utf-8")
+    assert "src/glitchlings/assets" in manifest_in
+
+    canonical_dir = repo_root / "assets"
+    packaged_dir = repo_root / "src/glitchlings/assets"
+
+    manifest_candidate = "assets/pipeline_assets.json"
+    assert any(fnmatch.fnmatch(manifest_candidate, pattern) for pattern in package_patterns)
+    assert (packaged_dir / "pipeline_assets.json").exists()
+
+    for asset_name in PIPELINE_ASSETS:
+        packaged_path = packaged_dir / asset_name
+        canonical_path = canonical_dir / asset_name
+        assert packaged_path.exists(), f"packaged asset missing: {asset_name}"
+        assert canonical_path.read_bytes() == packaged_path.read_bytes(), (
+            f"packaged asset {asset_name} diverges from canonical copy"
+        )
+        candidate = f"assets/{asset_name}"
+        assert any(fnmatch.fnmatch(candidate, pattern) for pattern in package_patterns), (
+            f"package-data patterns missing coverage for {asset_name}"
+        )
 
 
 def test_pipeline_assets_exist_in_canonical_directory():
     """Verify all assets listed in rust/zoo/build.rs exist in canonical assets/ directory."""
     repo_root = Path(__file__).resolve().parents[1]
     assets_dir = repo_root / "assets"
-    
+
     for asset_name in PIPELINE_ASSETS:
         asset_path = assets_dir / asset_name
         assert asset_path.exists(), f"missing canonical asset: {asset_name}"

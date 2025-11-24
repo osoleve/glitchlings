@@ -31,6 +31,8 @@ module-name = "glitchlings._zoo_rust"
 pyo3-build-config = { workspace = true }
 flate2 = "1"
 base64 = "0.21"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 
 [[bench]]
 name = "baseline_performance"

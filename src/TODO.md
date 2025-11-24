@@ -32,16 +32,19 @@ There are three config-related files in the top-level package: `config.py`, `att
 
 Asset logic is split between `glitchlings.zoo.assets`, `glitchlings.dev.sync_assets`, and Rust's `resources.rs`.
 
-- [ ] **Promote Assets Module**
+- [x] **Promote Assets Module**
   - *Context*: `src/glitchlings/zoo/assets/` exists, but assets are general.
   - *Task*: Move `src/glitchlings/zoo/assets/` to `src/glitchlings/assets/`. Update `MANIFEST.in` and setup configuration.
   - *Goal*: Decouple assets from the `zoo` subdirectory.
+  - *Status*: Assets helpers now live in `glitchlings.assets` with a `zoo` shim and packaged copies stored under `src/glitchlings/assets/`.
 
-- [ ] **Strict Asset Manifest**
+- [x] **Strict Asset Manifest**
   - *Context*: `sync_assets.py` hardcodes `PIPELINE_ASSETS`.
   - *Task*: Move the `PIPELINE_ASSETS` constant into `src/glitchlings/assets/__init__.py`. Ensure both Python loaders and `build.rs` reference this single list.
   - *Goal*: Prevent build and packaging from drifting apart on required assets.
-- [ ] Add a packaging check that asserts all assets declared in the manifest land in the wheel/sdist and match the Rust `resources.rs` expectations.
+  - *Status*: Pipeline assets are defined in `pipeline_assets.json`, parsed by `glitchlings.assets`, and consumed by `rust/zoo/build.rs`.
+- [x] Add a packaging check that asserts all assets declared in the manifest land in the wheel/sdist and match the Rust `resources.rs` expectations.
+  - *Status*: Hygiene tests enforce package-data/MANIFEST coverage and verify packaged asset copies match canonical sources.
 
 ## 4. Internal Module Hygiene
 

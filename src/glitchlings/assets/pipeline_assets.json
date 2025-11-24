@@ -1,0 +1,25 @@
+{
+  "pipeline_assets": [
+    {
+      "name": "apostrofae_pairs.json",
+      "kind": "copy"
+    },
+    {
+      "name": "ekkokin_homophones.json",
+      "kind": "copy"
+    },
+    {
+      "name": "hokey_assets.json",
+      "kind": "copy"
+    },
+    {
+      "name": "ocr_confusions.tsv",
+      "kind": "copy"
+    },
+    {
+      "name": "mim1c_homoglyphs.json.gz.b64",
+      "kind": "compressed",
+      "output": "mim1c_homoglyphs.json"
+    }
+  ]
+}

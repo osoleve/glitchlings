@@ -6,8 +6,9 @@ import math
 import random
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
 
+from glitchlings.assets import load_homophone_groups
+
 from ._rust_extensions import get_rust_operation, resolve_seed
-from .assets import load_homophone_groups
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
 
