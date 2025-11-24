@@ -4,11 +4,9 @@ from typing import Any, List, Protocol, Sequence, Tuple, Union
 
 
 class Tokenizer(Protocol):
-    def encode(self, text: str) -> Tuple[List[str], List[int]]:
-        ...
+    def encode(self, text: str) -> Tuple[List[str], List[int]]: ...
 
-    def decode(self, tokens: Sequence[str]) -> str:
-        ...
+    def decode(self, tokens: Sequence[str]) -> str: ...
 
 
 class WhitespaceTokenizer:
@@ -38,9 +36,8 @@ class TiktokenTokenizer:
         ]
         return tokens, ids
 
-    def decode(self, tokens: Sequence[str]) -> str:
-        # Best effort reconstruction
-        return "".join(tokens)
+    def decode(self, tokens: Sequence[str], sep: str = "") -> str:
+        return sep.join(tokens)
 
 
 class HuggingFaceTokenizerWrapper:
@@ -57,12 +54,11 @@ class HuggingFaceTokenizerWrapper:
         return "".join(tokens).replace("##", "")
 
 
-def resolve_tokenizer(tokenizer: Union[str, Any, None]) -> Tokenizer:
+def resolve_tokenizer(tokenizer: Union[str, Tokenizer, None]) -> Tokenizer:
     if tokenizer is None:
         return WhitespaceTokenizer()
 
     if isinstance(tokenizer, str):
-        # Try tiktoken
         if importlib.util.find_spec("tiktoken"):
             import tiktoken
 
@@ -80,7 +76,6 @@ def resolve_tokenizer(tokenizer: Union[str, Any, None]) -> Tokenizer:
             except ImportError:
                 pass
 
-        # Try tokenizers
         if importlib.util.find_spec("tokenizers"):
             from tokenizers import Tokenizer
 
@@ -91,12 +86,11 @@ def resolve_tokenizer(tokenizer: Union[str, Any, None]) -> Tokenizer:
 
         raise ValueError(f"Could not resolve tokenizer: {tokenizer}")
 
-    # Check if it is a HuggingFace tokenizer object that needs wrapping
+    # Check if it is a HuggingFace tokenizer object
     if importlib.util.find_spec("tokenizers"):
         from tokenizers import Tokenizer as HFTokenizer
 
         if isinstance(tokenizer, HFTokenizer):
             return HuggingFaceTokenizerWrapper(tokenizer)
 
-    # Assume it's a tokenizer object
-    return tokenizer  # type: ignore
+    return tokenizer

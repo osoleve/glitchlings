@@ -1,5 +1,7 @@
-use std::collections::HashMap;
 use std::cmp::max;
+use std::collections::{BTreeMap, BTreeSet};
+
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 #[pyfunction]
@@ -21,30 +23,42 @@ pub fn subsequence_retention(input_tokens: Vec<String>, output_tokens: Vec<Strin
 pub fn batch_jensen_shannon_divergence(
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
-) -> Vec<f64> {
-    inputs.iter().zip(outputs.iter())
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(inputs.len(), outputs.len())?;
+
+    Ok(inputs
+        .iter()
+        .zip(outputs.iter())
         .map(|(input, output)| compute_jsd(input, output))
-        .collect()
+        .collect())
 }
 
 #[pyfunction]
 pub fn batch_normalized_edit_distance(
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
-) -> Vec<f64> {
-    inputs.iter().zip(outputs.iter())
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(inputs.len(), outputs.len())?;
+
+    Ok(inputs
+        .iter()
+        .zip(outputs.iter())
         .map(|(input, output)| compute_normalized_edit_distance(input, output))
-        .collect()
+        .collect())
 }
 
 #[pyfunction]
 pub fn batch_subsequence_retention(
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
-) -> Vec<f64> {
-    inputs.iter().zip(outputs.iter())
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(inputs.len(), outputs.len())?;
+
+    Ok(inputs
+        .iter()
+        .zip(outputs.iter())
         .map(|(input, output)| compute_subsequence_retention(input, output))
-        .collect()
+        .collect())
 }
 
 fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
@@ -52,20 +66,17 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
         return 0.0;
     }
 
-    let mut counts1: HashMap<&str, f64> = HashMap::new();
-    let mut counts2: HashMap<&str, f64> = HashMap::new();
-    // Use a vector of keys to iterate deterministically if needed,
-    // or just iterate over unique keys.
-    // To get union of keys:
-    let mut vocab: HashMap<&str, ()> = HashMap::new();
+    let mut counts1: BTreeMap<String, f64> = BTreeMap::new();
+    let mut counts2: BTreeMap<String, f64> = BTreeMap::new();
+    let mut vocab: BTreeSet<String> = BTreeSet::new();
 
     for t in tokens1 {
-        *counts1.entry(t).or_insert(0.0) += 1.0;
-        vocab.entry(t).or_insert(());
+        *counts1.entry(t.clone()).or_insert(0.0) += 1.0;
+        vocab.insert(t.clone());
     }
     for t in tokens2 {
-        *counts2.entry(t).or_insert(0.0) += 1.0;
-        vocab.entry(t).or_insert(());
+        *counts2.entry(t.clone()).or_insert(0.0) += 1.0;
+        vocab.insert(t.clone());
     }
 
     let sum1: f64 = counts1.values().sum();
@@ -77,7 +88,7 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
     let mut kl_pm = 0.0;
     let mut kl_qm = 0.0;
 
-    for k in vocab.keys() {
+    for k in vocab.iter() {
         let p = counts1.get(k).copied().unwrap_or(0.0) / norm1;
         let q = counts2.get(k).copied().unwrap_or(0.0) / norm2;
         let m = 0.5 * (p + q);
@@ -151,4 +162,13 @@ fn compute_subsequence_retention(tokens1: &[String], tokens2: &[String]) -> f64 
 
     // Retention is LCS / length of original input (tokens1, which is n)
     lcs_len / (n as f64)
+}
+
+fn guard_equal_batches(inputs: usize, outputs: usize) -> PyResult<()> {
+    if inputs != outputs {
+        return Err(PyValueError::new_err(format!(
+            "batch metric inputs and outputs must have the same length (got {inputs} and {outputs})"
+        )));
+    }
+    Ok(())
 }

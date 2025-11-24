@@ -105,17 +105,17 @@ def test_tokenizers_integration():
 
 def test_batch_metrics():
     from glitchlings.attack.metrics import (
-        batch_jensen_shannon_divergence,
-        batch_normalized_edit_distance,
-        batch_subsequence_retention,
+        jensen_shannon_divergence,
+        normalized_edit_distance,
+        subsequence_retention,
     )
 
     inputs = [["a", "b"], ["c"]]
     outputs = [["a", "c"], ["c"]]
 
-    jsd = batch_jensen_shannon_divergence(inputs, outputs)
-    ned = batch_normalized_edit_distance(inputs, outputs)
-    sr = batch_subsequence_retention(inputs, outputs)
+    jsd = jensen_shannon_divergence(inputs, outputs)
+    ned = normalized_edit_distance(inputs, outputs)
+    sr = subsequence_retention(inputs, outputs)
 
     assert len(jsd) == 2
     assert len(ned) == 2

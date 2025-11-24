@@ -2,9 +2,6 @@
 
 from .core import Attack
 from .metrics import (
-    batch_jensen_shannon_divergence,
-    batch_normalized_edit_distance,
-    batch_subsequence_retention,
     jensen_shannon_divergence,
     normalized_edit_distance,
     subsequence_retention,
@@ -17,7 +14,4 @@ __all__ = [
     "jensen_shannon_divergence",
     "normalized_edit_distance",
     "subsequence_retention",
-    "batch_jensen_shannon_divergence",
-    "batch_normalized_edit_distance",
-    "batch_subsequence_retention",
 ]

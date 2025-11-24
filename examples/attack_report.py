@@ -3,18 +3,14 @@ Example script demonstrating the usage of the Attack submodule to compare
 corruptions using different tokenizers and metrics.
 """
 
-import sys
+import importlib.util
 from typing import Any, List, Tuple
 
-try:
-    import tiktoken
-    HAS_TIKTOKEN = True
-except ImportError:
-    HAS_TIKTOKEN = False
-
 from glitchlings import SAMPLE_TEXT
-from glitchlings.attack import Attack
+from glitchlings.attack import Attack, Tokenizer
 from glitchlings.zoo import Typogre
+
+HAS_TIKTOKEN = importlib.util.find_spec("tiktoken") is not None
 
 
 def main() -> None:
@@ -51,7 +47,7 @@ def main() -> None:
         print("Running Attack with Character Tokenizer (Tiktoken not found)")
         print("-" * 60)
 
-        class CharTokenizer:
+        class CharTokenizer(Tokenizer):
             def encode(self, text: str) -> Tuple[List[str], List[int]]:
                 return list(text), [ord(c) for c in text]
 
@@ -79,7 +75,7 @@ def print_report(result: Any) -> None:
     out_toks = result.output_tokens[:limit]
 
     print(f"  {'Input':<20} | {'Output':<20}")
-    print(f"  {'-'*20} | {'-'*20}")
+    print(f"  {'-' * 20} | {'-' * 20}")
     for i in range(max(len(in_toks), len(out_toks))):
         in_t = repr(in_toks[i]) if i < len(in_toks) else ""
         out_t = repr(out_toks[i]) if i < len(out_toks) else ""
