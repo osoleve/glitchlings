@@ -6,10 +6,11 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 
 1. [Installation](#installation)
 2. [Quickstart](#quickstart)
-3. [Rust pipeline acceleration](#rust-pipeline-acceleration)
-4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
+3. [The Gaggle orchestrator](#the-gaggle-orchestrator)
+4. [Attack helper](#attack-helper)
 5. [Declarative attack configurations](#declarative-attack-configurations)
-6. [Glitchling reference](#glitchling-reference)
+6. [Rust pipeline acceleration](#rust-pipeline-acceleration)
+7. [Glitchling reference](#glitchling-reference)
    - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
    - [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md)
@@ -22,13 +23,14 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
-7. [Dataset workflows](#dataset-workflows)
-8. [Prime Intellect integration](#prime-intellect-integration)
-9. [Ensuring determinism](#ensuring-determinism)
-10. [Testing checklist](#testing-checklist)
-11. [Additional resources](#additional-resources)
+8. [Dataset workflows](#dataset-workflows)
+9. [Prime Intellect integration](#prime-intellect-integration)
+10. [Ensuring determinism](#ensuring-determinism)
+11. [Testing checklist](#testing-checklist)
+12. [Additional resources](#additional-resources)
     - [Glitchling gallery](glitchling-gallery.md)
     - [Keyboard layout reference](keyboard-layouts.md)
+    - [Attack helper reference](attack.md)
 
 ## Installation
 
@@ -138,6 +140,16 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 - **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
 
 Deep integration tests for the orchestration stack live in `tests/test_glitchling_core.py`, and the CLI argument matrix in `tests/test_parameter_effects.py`.
+
+## Attack helper
+
+Use `glitchlings.attack.Attack` when you want a single call that corrupts text, tokenises the before/after, and emits similarity metrics. It wraps your glitchlings (or a `Gaggle`) and exposes:
+
+- **Deterministic seeding** – pass `seed=` to stabilise the gaggle Attack builds; existing gaggles/glitchlings have their RNGs reset when seeded.
+- **Transcript-aware batching** – chat transcripts are treated as batches and metrics return one value per turn.
+- **Modern default tokenization** – defaults to a `tiktoken` encoder (`o200k_base`, falling back to `cl100k_base`, then whitespace).
+
+See the dedicated [Attack helper reference](attack.md) for full details and examples.
 
 ## Declarative attack configurations
 

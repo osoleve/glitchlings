@@ -2,6 +2,8 @@ import importlib.util
 import zlib
 from typing import Any, List, Protocol, Sequence, Tuple, Union
 
+DEFAULT_TIKTOKEN_ENCODINGS = ("o200k_base", "cl100k_base")
+
 
 class Tokenizer(Protocol):
     def encode(self, text: str) -> Tuple[List[str], List[int]]: ...
@@ -24,6 +26,7 @@ class TiktokenTokenizer:
     def __init__(self, model_name: str):
         import tiktoken
 
+        self.name = model_name
         try:
             self.enc = tiktoken.get_encoding(model_name)
         except ValueError:
@@ -56,7 +59,7 @@ class HuggingFaceTokenizerWrapper:
 
 def resolve_tokenizer(tokenizer: Union[str, Tokenizer, None]) -> Tokenizer:
     if tokenizer is None:
-        return WhitespaceTokenizer()
+        return _default_tokenizer()
 
     if isinstance(tokenizer, str):
         if importlib.util.find_spec("tiktoken"):
@@ -94,3 +97,18 @@ def resolve_tokenizer(tokenizer: Union[str, Tokenizer, None]) -> Tokenizer:
             return HuggingFaceTokenizerWrapper(tokenizer)
 
     return tokenizer
+
+
+def _default_tokenizer() -> Tokenizer:
+    """Select a modern, lightweight tokenizer with graceful fallbacks."""
+    if importlib.util.find_spec("tiktoken"):
+        import tiktoken
+
+        for encoding in DEFAULT_TIKTOKEN_ENCODINGS:
+            try:
+                tiktoken.get_encoding(encoding)
+                return TiktokenTokenizer(encoding)
+            except ValueError:
+                continue
+
+    return WhitespaceTokenizer()

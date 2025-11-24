@@ -211,6 +211,10 @@ glitchlings:
 
 Pass the file to `glitchlings --config` or load it from Python with `glitchlings.load_attack_config` and `glitchlings.build_gaggle`.
 
+## Attack on Token
+
+Looking to compare before/after corruption with metrics and stable seeds? Reach for the [`Attack` helper](docs/attack.md), which bundles tokenization, metrics, transcript batching, and deterministic gaggle seeding into a single call.
+
 ## Development
 
 Follow the [development setup guide](docs/development.md) for editable installs, automated tests, and tips on enabling the Rust pipeline while you hack on new glitchlings.

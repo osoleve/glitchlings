@@ -4,6 +4,7 @@ from typing import Any, List, Tuple
 import pytest
 
 from glitchlings.attack import Attack
+from glitchlings.config import DEFAULT_ATTACK_SEED
 from glitchlings.zoo.core import AttackWave, Glitchling
 
 
@@ -26,12 +27,15 @@ def test_attack_run_basic():
     attack = Attack([glitchling])
     result = attack.run("hello world")
 
+    expected_tokens, expected_ids = attack.tokenizer.encode("hello world")
+    output_tokens, output_ids = attack.tokenizer.encode("hello world!")
+
     assert result.original == "hello world"
     assert result.corrupted == "hello world!"
-    assert result.input_tokens == ["hello", "world"]  # Default whitespace tokenizer
-    assert result.output_tokens == ["hello", "world!"]
-    assert len(result.input_token_ids) == 2
-    assert len(result.output_token_ids) == 2
+    assert result.input_tokens == expected_tokens
+    assert result.output_tokens == output_tokens
+    assert result.input_token_ids == expected_ids
+    assert result.output_token_ids == output_ids
 
     # Check default metrics
     assert "jensen_shannon_divergence" in result.metrics
@@ -128,3 +132,40 @@ def test_batch_metrics():
     assert jsd[0] > 0.0
     assert ned[0] > 0.0
     assert sr[0] < 1.0
+
+
+def test_attack_transcript_is_treated_as_batch():
+    glitchling = MockGlitchling()
+    attack = Attack([glitchling])
+
+    transcript = [
+        {"role": "user", "content": "hello world"},
+        {"role": "assistant", "content": "goodbye"},
+    ]
+
+    result = attack.run(transcript)
+
+    assert isinstance(result.corrupted, list)
+    assert len(result.input_tokens) == len(transcript)
+    assert len(result.output_tokens) == len(transcript)
+
+    jsd = result.metrics["jensen_shannon_divergence"]
+    assert isinstance(jsd, list)
+    assert len(jsd) == len(transcript)
+
+
+def test_attack_accepts_seed_for_gaggle_creation():
+    glitchlings = [MockGlitchling("a"), MockGlitchling("b")]
+    attack = Attack(glitchlings, seed=999)
+
+    assert attack.glitchlings.seed == 999
+
+    default_seed_attack = Attack(glitchlings)
+    assert default_seed_attack.glitchlings.seed == DEFAULT_ATTACK_SEED
+
+
+def test_attack_applies_seed_to_existing_gaggle():
+    base = Attack([MockGlitchling("a"), MockGlitchling("b")]).glitchlings
+    seeded_attack = Attack(base, seed=42)
+
+    assert seeded_attack.glitchlings.seed == 42
