@@ -191,7 +191,7 @@ impl GlitchOp for Mim1cOp {
         }
 
         // Apply all segment replacements in bulk without reparsing
-        buffer.replace_segments_bulk(segment_replacements.into_iter());
+        buffer.replace_segments_bulk(segment_replacements);
 
         buffer.reindex_if_needed();
         Ok(())
@@ -316,7 +316,7 @@ mod tests {
 
     #[test]
     fn replaces_expected_characters() {
-        let mut buffer = TextBuffer::from_str("hello");
+        let mut buffer = TextBuffer::from_owned("hello".to_string());
         let mut rng = DeterministicRng::new(42);
         let op = Mim1cOp::new(1.0, ClassSelection::Default, Vec::new());
         op.apply(&mut buffer, &mut rng)
@@ -333,7 +333,7 @@ mod tests {
         assert!(options.iter().any(|entry| entry.glyph != 'o'));
 
         let original = "oooo";
-        let mut buffer = TextBuffer::from_str(original);
+        let mut buffer = TextBuffer::from_owned(original.to_string());
         let mut rng = ScriptedRng::new(vec![2, 0]);
         let op = Mim1cOp::new(0.3, ClassSelection::All, Vec::new());
         op.apply(&mut buffer, &mut rng)

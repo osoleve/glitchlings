@@ -1,5 +1,4 @@
 use once_cell::sync::Lazy;
-use regex::Regex;
 use std::collections::HashMap;
 
 const RAW_APOSTROFAE_PAIRS: &str = include_str!(concat!(env!("OUT_DIR"), "/apostrofae_pairs.json"));
@@ -7,14 +6,6 @@ const RAW_APOSTROFAE_PAIRS: &str = include_str!(concat!(env!("OUT_DIR"), "/apost
 const RAW_OCR_CONFUSIONS: &str = include_str!(concat!(env!("OUT_DIR"), "/ocr_confusions.tsv"));
 const RAW_EKKOKIN_HOMOPHONES: &str =
     include_str!(concat!(env!("OUT_DIR"), "/ekkokin_homophones.json"));
-
-/// Precompiled regex removing spaces before punctuation characters.
-pub static SPACE_BEFORE_PUNCTUATION: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\s+([.,;:])").expect("valid punctuation regex"));
-
-/// Precompiled regex collapsing stretches of whitespace into a single space.
-pub static MULTIPLE_WHITESPACE: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"\s{2,}").expect("valid multi-whitespace regex"));
 
 /// Replacement pairs used by the Apostrofae glitchling.
 pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = Lazy::new(|| {

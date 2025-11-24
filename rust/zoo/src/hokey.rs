@@ -499,11 +499,7 @@ impl HokeyOp {
             let length = end - start;
             // Don't count leading 'y' as multi-vowel
             if length >= 2 {
-                if *start == 0 && lower_chars[*start] == 'y' {
-                    false
-                } else {
-                    true
-                }
+                !(*start == 0 && lower_chars[*start] == 'y')
             } else {
                 false
             }

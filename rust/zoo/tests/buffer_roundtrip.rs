@@ -66,7 +66,7 @@ fn test_op_roundtrip<O>(op: O, text: &str, seed: u64, op_name: &str)
 where
     O: GlitchOp,
 {
-    let mut buffer = TextBuffer::from_str(text);
+    let mut buffer = TextBuffer::from_owned(text.to_string());
     let mut rng = DeterministicRng::new(seed);
 
     // Apply the operation - should not panic
@@ -241,7 +241,7 @@ fn test_zero_width_roundtrip() {
 #[test]
 fn test_quote_pairs_roundtrip() {
     for text in TEST_CORPUS {
-        let op = QuotePairsOp::default();
+        let op = QuotePairsOp;
         test_op_roundtrip(op, text, 404, "QuotePairsOp");
     }
 }
@@ -257,16 +257,16 @@ fn test_deterministic_operations() {
         ("Delete", GlitchOperation::Delete(DeleteRandomWordsOp { rate: 0.3, unweighted: false })),
         ("SwapAdjacent", GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 })),
         ("Ocr", GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.5 })),
-        ("QuotePairs", GlitchOperation::QuotePairs(QuotePairsOp::default())),
+        ("QuotePairs", GlitchOperation::QuotePairs(QuotePairsOp)),
     ];
 
     for (name, op) in ops {
-        let mut buffer1 = TextBuffer::from_str(text);
+        let mut buffer1 = TextBuffer::from_owned(text.to_string());
         let mut rng1 = DeterministicRng::new(999);
         let _ = op.apply(&mut buffer1, &mut rng1);
         let result1 = buffer1.to_string();
 
-        let mut buffer2 = TextBuffer::from_str(text);
+        let mut buffer2 = TextBuffer::from_owned(text.to_string());
         let mut rng2 = DeterministicRng::new(999);
         let _ = op.apply(&mut buffer2, &mut rng2);
         let result2 = buffer2.to_string();
@@ -288,7 +288,7 @@ fn test_long_text_roundtrip() {
 
     for (i, op_factory) in ops.iter().enumerate() {
         let op = op_factory();
-        let mut buffer = TextBuffer::from_str(&long_text);
+        let mut buffer = TextBuffer::from_owned(long_text.clone());
         let mut rng = DeterministicRng::new(555);
 
         let result = op.apply(&mut buffer, &mut rng);

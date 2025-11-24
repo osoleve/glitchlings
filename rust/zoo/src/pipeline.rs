@@ -62,7 +62,7 @@ impl Pipeline {
     }
 
     pub fn run(&self, text: &str) -> Result<String, PipelineError> {
-        let mut buffer = TextBuffer::from_str(text);
+        let mut buffer = TextBuffer::from_owned(text.to_string());
         self.apply(&mut buffer)?;
         Ok(buffer.to_string())
     }
@@ -122,9 +122,9 @@ pub fn plan_gaggle(inputs: Vec<GagglePlanInput>, master_seed: i128) -> Vec<Gaggl
 pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
     let mut hasher = Blake2s::<U8>::new();
     Digest::update(&mut hasher, int_to_bytes(master_seed));
-    Digest::update(&mut hasher, &[0]);
+    Digest::update(&mut hasher, [0]);
     Digest::update(&mut hasher, glitchling_name.as_bytes());
-    Digest::update(&mut hasher, &[0]);
+    Digest::update(&mut hasher, [0]);
     Digest::update(&mut hasher, int_to_bytes(index));
     let digest = hasher.finalize();
     u64::from_be_bytes(digest.into())
