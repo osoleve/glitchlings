@@ -184,7 +184,7 @@ Want to compare against the legacy WordNet lexicon? Install `nltk` and download 
 
 ## Additional resources
 
-- Monster Manual (`MONSTER_MANUAL.md` in the repository root) - complete bestiary with flavour text.
+- [Monster Manual](monster-manual.md) - complete bestiary with flavour text.
 - Repository README (`README.md` in the repository root) - project overview and ASCII ambience.
 - [Development setup](development.md) - local environment, testing, and Rust acceleration guide.
 - [Glitchling gallery](glitchling-gallery.md) - side-by-side outputs for each glitchling at multiple rates.

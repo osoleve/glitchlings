@@ -20,14 +20,20 @@ def refresh_cli_reference() -> None:
     _run_script(DOCS_DIR / "build_cli_reference.py")
 
 
+def refresh_monster_manual() -> None:
+    """Regenerate the Monster Manual."""
+    _run_script(DOCS_DIR / "build_monster_manual.py")
+
+
 def refresh_gallery() -> None:
     """Regenerate the glitchling gallery page."""
     _run_script(DOCS_DIR / "build_glitchling_gallery.py")
 
 
 def refresh_all() -> None:
-    """Regenerate CLI reference and gallery docs in one call."""
+    """Regenerate CLI reference, Monster Manual, and gallery docs in one call."""
     refresh_cli_reference()
+    refresh_monster_manual()
     refresh_gallery()
 
 

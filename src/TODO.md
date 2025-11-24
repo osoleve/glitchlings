@@ -4,10 +4,11 @@
 
 Currently, similar information is maintained in `MONSTER_MANUAL.md`, `README.md`, and `docs/glitchlings/*.md` (e.g.,). This invites drift where parameter descriptions update in code but lag in documentation.
 
-- [ ] **Automate `MONSTER_MANUAL.md` Generation**
+- [x] **Automate `MONSTER_MANUAL.md` Generation**
   - *Context*: `docs/build_glitchling_gallery.py` already introspects glitchlings to generate markdown.
   - *Task*: Create `docs/build_monster_manual.py`. Use flavor text defined in classes (e.g., `PedantBase.flavor`) or docstrings to generate the "Stat Block" markdown programmatically.
   - *Goal*: Ensure "flavor" documentation automatically reflects current defaults and available parameters.
+  - *Status*: New generator builds `MONSTER_MANUAL.md` directly from live glitchling metadata.
 
 - [x] Repoint the CLI doc autogeneration to a dedicated docs page instead of the README; retarget `docs/build_cli_reference.py`, add/update the destination page, and make sure the README links to it.
   - *Status*: CLI reference is now generated to `docs/cli.md` with nav updates plus README/index pointers.

@@ -23,6 +23,7 @@ nav:
       - Integrations & DLC: integrations.md
       - Determinism: determinism.md
   - Development: development.md
+  - Monster Manual: monster-manual.md
   - Hokey Design Spec: hokey_design_spec.md
   - Performance:
       - Gallery Builder: glitchling-gallery.md

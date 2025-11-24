@@ -80,7 +80,7 @@ pytest --maxfail=1 --disable-warnings -q
   maturin develop -m rust/zoo/Cargo.toml
   ```
 
-- Regenerate the CLI reference page and glitchling gallery together with:
+- Regenerate the CLI reference page, Monster Manual (both repo root and docs site copies), and glitchling gallery together with:
 
   ```bash
   python -m glitchlings.dev.docs
