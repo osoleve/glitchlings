@@ -53,13 +53,10 @@ class Attack:
                     glitchlings.sort_glitchlings()
                 else:
                     glitchlings.reset_rng(seed)
-        elif isinstance(glitchlings, list):
-            gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
-            self.glitchlings = Gaggle(glitchlings, seed=gaggle_seed)
         else:
-            # Fallback for other sequences
+            glitchling_list = self._validate_glitchling_sequence(glitchlings)
             gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
-            self.glitchlings = Gaggle(list(glitchlings), seed=gaggle_seed)
+            self.glitchlings = Gaggle(glitchling_list, seed=gaggle_seed)
 
         self.tokenizer = resolve_tokenizer(tokenizer)
         self.tokenizer_info = self._describe_tokenizer(tokenizer)
@@ -72,6 +69,20 @@ class Attack:
             }
         else:
             self.metrics = dict(metrics)
+
+    @staticmethod
+    def _validate_glitchling_sequence(
+        glitchlings: Sequence[Glitchling],
+    ) -> list[Glitchling]:
+        normalized = list(glitchlings)
+        for index, entry in enumerate(normalized):
+            if not isinstance(entry, Glitchling):
+                message = (
+                    "glitchlings sequence entries must be Glitchling instances "
+                    f"(index {index})"
+                )
+                raise TypeError(message)
+        return normalized
 
     def _describe_tokenizer(self, raw: Union[str, Tokenizer, None]) -> str:
         if isinstance(raw, str):
@@ -91,6 +102,22 @@ class Attack:
         return list(tokens), list(ids)
 
     def _encode_batch(self, texts: List[str]) -> Tuple[List[List[str]], List[List[int]]]:
+        batch_encode = getattr(self.tokenizer, "encode_batch", None)
+        if callable(batch_encode):
+            try:
+                encoded = batch_encode(texts)
+            except Exception:
+                # Fall back to per-item encoding if a custom tokenizer's batch
+                # implementation is missing or mis-specified.
+                pass
+            else:
+                fast_token_batches: List[List[str]] = []
+                fast_id_batches: List[List[int]] = []
+                for tokens, ids in encoded:
+                    fast_token_batches.append(list(tokens))
+                    fast_id_batches.append(list(ids))
+                return fast_token_batches, fast_id_batches
+
         token_batches: List[List[str]] = []
         id_batches: List[List[int]] = []
         for entry in texts:
@@ -151,6 +178,19 @@ class Attack:
 
         if len(original_contents) != len(corrupted_contents):
             raise ValueError("Transcript inputs and outputs must contain the same number of turns.")
+
+        if not original_contents:
+            empty_metrics: dict[str, float | List[float]] = {name: [] for name in self.metrics}
+            return AttackResult(
+                original=original_transcript,
+                corrupted=corrupted_transcript,
+                input_tokens=[],
+                output_tokens=[],
+                input_token_ids=[],
+                output_token_ids=[],
+                tokenizer_info=self.tokenizer_info,
+                metrics=empty_metrics,
+            )
 
         batched_input_tokens, batched_input_token_ids = self._encode_batch(original_contents)
         batched_output_tokens, batched_output_token_ids = self._encode_batch(corrupted_contents)

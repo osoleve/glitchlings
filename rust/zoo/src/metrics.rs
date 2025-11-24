@@ -1,64 +1,85 @@
 use std::cmp::max;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::HashMap;
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 
 #[pyfunction]
-pub fn jensen_shannon_divergence(input_tokens: Vec<String>, output_tokens: Vec<String>) -> f64 {
-    compute_jsd(&input_tokens, &output_tokens)
+pub fn jensen_shannon_divergence(
+    py: Python<'_>,
+    input_tokens: Vec<String>,
+    output_tokens: Vec<String>,
+) -> PyResult<f64> {
+    Ok(py.allow_threads(|| compute_jsd(&input_tokens, &output_tokens)))
 }
 
 #[pyfunction]
-pub fn normalized_edit_distance(input_tokens: Vec<String>, output_tokens: Vec<String>) -> f64 {
-    compute_normalized_edit_distance(&input_tokens, &output_tokens)
+pub fn normalized_edit_distance(
+    py: Python<'_>,
+    input_tokens: Vec<String>,
+    output_tokens: Vec<String>,
+) -> PyResult<f64> {
+    Ok(py.allow_threads(|| compute_normalized_edit_distance(&input_tokens, &output_tokens)))
 }
 
 #[pyfunction]
-pub fn subsequence_retention(input_tokens: Vec<String>, output_tokens: Vec<String>) -> f64 {
-    compute_subsequence_retention(&input_tokens, &output_tokens)
+pub fn subsequence_retention(
+    py: Python<'_>,
+    input_tokens: Vec<String>,
+    output_tokens: Vec<String>,
+) -> PyResult<f64> {
+    Ok(py.allow_threads(|| compute_subsequence_retention(&input_tokens, &output_tokens)))
 }
 
 #[pyfunction]
 pub fn batch_jensen_shannon_divergence(
+    py: Python<'_>,
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(inputs
-        .iter()
-        .zip(outputs.iter())
-        .map(|(input, output)| compute_jsd(input, output))
-        .collect())
+    Ok(py.allow_threads(|| {
+        inputs
+            .iter()
+            .zip(outputs.iter())
+            .map(|(input, output)| compute_jsd(input, output))
+            .collect()
+    }))
 }
 
 #[pyfunction]
 pub fn batch_normalized_edit_distance(
+    py: Python<'_>,
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(inputs
-        .iter()
-        .zip(outputs.iter())
-        .map(|(input, output)| compute_normalized_edit_distance(input, output))
-        .collect())
+    Ok(py.allow_threads(|| {
+        inputs
+            .iter()
+            .zip(outputs.iter())
+            .map(|(input, output)| compute_normalized_edit_distance(input, output))
+            .collect()
+    }))
 }
 
 #[pyfunction]
 pub fn batch_subsequence_retention(
+    py: Python<'_>,
     inputs: Vec<Vec<String>>,
     outputs: Vec<Vec<String>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(inputs
-        .iter()
-        .zip(outputs.iter())
-        .map(|(input, output)| compute_subsequence_retention(input, output))
-        .collect())
+    Ok(py.allow_threads(|| {
+        inputs
+            .iter()
+            .zip(outputs.iter())
+            .map(|(input, output)| compute_subsequence_retention(input, output))
+            .collect()
+    }))
 }
 
 fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
@@ -66,17 +87,14 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
         return 0.0;
     }
 
-    let mut counts1: BTreeMap<String, f64> = BTreeMap::new();
-    let mut counts2: BTreeMap<String, f64> = BTreeMap::new();
-    let mut vocab: BTreeSet<String> = BTreeSet::new();
+    let mut counts1: HashMap<&str, f64> = HashMap::new();
+    let mut counts2: HashMap<&str, f64> = HashMap::new();
 
-    for t in tokens1 {
-        *counts1.entry(t.clone()).or_insert(0.0) += 1.0;
-        vocab.insert(t.clone());
+    for token in tokens1 {
+        *counts1.entry(token.as_str()).or_insert(0.0) += 1.0;
     }
-    for t in tokens2 {
-        *counts2.entry(t.clone()).or_insert(0.0) += 1.0;
-        vocab.insert(t.clone());
+    for token in tokens2 {
+        *counts2.entry(token.as_str()).or_insert(0.0) += 1.0;
     }
 
     let sum1: f64 = counts1.values().sum();
@@ -86,19 +104,25 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
     let norm2 = if sum2 > 0.0 { sum2 } else { 1.0 };
 
     let mut kl_pm = 0.0;
-    let mut kl_qm = 0.0;
-
-    for k in vocab.iter() {
-        let p = counts1.get(k).copied().unwrap_or(0.0) / norm1;
-        let q = counts2.get(k).copied().unwrap_or(0.0) / norm2;
+    for (token, count_p) in counts1.iter() {
+        let p = count_p / norm1;
+        let q = counts2.get(token).copied().unwrap_or(0.0) / norm2;
         let m = 0.5 * (p + q);
 
         if p > 0.0 {
             kl_pm += p * (p / m).log2();
         }
-        if q > 0.0 {
-            kl_qm += q * (q / m).log2();
+    }
+
+    let mut kl_qm = 0.0;
+    for (token, count_q) in counts2.iter() {
+        let q = count_q / norm2;
+        if q == 0.0 {
+            continue;
         }
+        let p = counts1.get(token).copied().unwrap_or(0.0) / norm1;
+        let m = 0.5 * (p + q);
+        kl_qm += q * (q / m).log2();
     }
 
     0.5 * (kl_pm + kl_qm)

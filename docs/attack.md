@@ -14,6 +14,7 @@ The `glitchlings.attack.Attack` helper runs a roster of glitchlings, tokenises b
 - `seed`: Master seed used when constructing a `Gaggle` from a sequence (defaults to `DEFAULT_ATTACK_SEED`). If you pass an existing `Gaggle` or `Glitchling`, the seed is applied directly and the RNG is reset.
 - `tokenizer`: Optional tokenizer name or object. Defaults to a modern `tiktoken` encoding (`o200k_base`, falling back to `cl100k_base`, then whitespace). Hugging Face `tokenizers.Tokenizer` instances and names are also supported.
 - `metrics`: Mapping of metric names to callables. Defaults to the Rust-backed `jensen_shannon_divergence`, `normalized_edit_distance`, and `subsequence_retention`.
+- Sequences must contain glitchling instances; mixed types raise a `TypeError` at construction.
 
 ## Transcript handling
 
@@ -22,6 +23,7 @@ If you pass a transcript (list of dicts containing `content`), `Attack`:
 - Treats each turn as a separate sample in a batch.
 - Encodes each turn independently.
 - Returns per-turn metrics as lists (aligned with the transcript order).
+- Returns empty metric lists for empty transcripts (no turns in, no turns out).
 
 Input and output types must match; mixed string/transcript pairs raise an error.
 

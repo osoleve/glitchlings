@@ -154,6 +154,29 @@ def test_attack_transcript_is_treated_as_batch():
     assert len(jsd) == len(transcript)
 
 
+def test_attack_empty_transcript_returns_empty_metrics():
+    glitchling = MockGlitchling()
+    attack = Attack([glitchling])
+
+    transcript: list[dict[str, str]] = []
+
+    result = attack.run(transcript)
+
+    assert result.input_tokens == []
+    assert result.output_tokens == []
+    assert result.metrics["jensen_shannon_divergence"] == []
+    assert result.metrics["normalized_edit_distance"] == []
+    assert result.metrics["subsequence_retention"] == []
+
+
+def test_attack_rejects_non_glitchling_sequences():
+    with pytest.raises(TypeError):
+        Attack([MockGlitchling(), "nope"])  # type: ignore[list-item]
+
+    with pytest.raises(TypeError):
+        Attack((MockGlitchling(), None))  # type: ignore[arg-type]
+
+
 def test_attack_accepts_seed_for_gaggle_creation():
     glitchlings = [MockGlitchling("a"), MockGlitchling("b")]
     attack = Attack(glitchlings, seed=999)
