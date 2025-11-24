@@ -209,7 +209,7 @@ glitchlings:
       characters: ["\u200b", "\u2060"]
 ```
 
-Pass the file to `glitchlings --config` or load it from Python with `glitchlings.load_attack_config` and `glitchlings.build_gaggle`.
+Pass the file to `glitchlings --config` or load it from Python with `glitchlings.conf.load_attack_config` and `glitchlings.conf.build_gaggle` (also re-exported from `glitchlings`).
 
 ## Attack on Token
 

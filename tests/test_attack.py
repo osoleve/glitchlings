@@ -4,7 +4,7 @@ from typing import Any, List, Tuple
 import pytest
 
 from glitchlings.attack import Attack
-from glitchlings.attack_config import DEFAULT_ATTACK_SEED
+from glitchlings.conf import DEFAULT_ATTACK_SEED
 from glitchlings.zoo.core import AttackWave, Glitchling
 
 

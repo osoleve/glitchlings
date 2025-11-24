@@ -1,5 +1,5 @@
-from .attack_config import AttackConfig, build_gaggle, load_attack_config
 from .auggie import Auggie
+from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .zoo import (
     Ekkokin,

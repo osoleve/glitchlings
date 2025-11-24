@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
 
-from ..attack_config import DEFAULT_ATTACK_SEED
+from ..conf import DEFAULT_ATTACK_SEED
 from ..util.transcripts import Transcript, is_transcript
 from ..zoo.core import Gaggle, Glitchling
 from .metrics import (

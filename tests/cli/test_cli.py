@@ -6,7 +6,7 @@ import difflib
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
-from glitchlings.attack_config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
+from glitchlings.conf import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,

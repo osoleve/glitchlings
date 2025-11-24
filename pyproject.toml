@@ -180,6 +180,8 @@ disallow_untyped_decorators = true
 
 [[tool.mypy.overrides]]
 module = [
+    "glitchlings.conf",
+    "glitchlings.conf.*",
     "glitchlings.compat",
     "glitchlings.config",
     "glitchlings.attack_config",
