@@ -67,7 +67,7 @@ static COLOR_ADJACENCY: Lazy<HashMap<&'static str, &'static [&'static str]>> = L
 
 static COLOR_PATTERN: Lazy<Regex> = Lazy::new(|| {
     let mut names: Vec<&str> = CANONICAL_COLOR_MAP.keys().copied().collect();
-    names.sort_by(|left, right| right.len().cmp(&left.len()));
+    names.sort_by_key(|name| std::cmp::Reverse(name.len()));
     let joined = names.join("|");
     let pattern = format!(r"(?i)\b(?P<color>{joined})(?P<suffix>[a-zA-Z]*)\b");
     Regex::new(&pattern).expect("valid color regex")
@@ -199,9 +199,7 @@ fn harmonize_suffix(original: &str, replacement: &str, suffix: &str) -> String {
         .find(|ch| ch.is_ascii_alphabetic());
 
     if let (Some(orig), Some(suff), Some(repl)) = (original_last, suffix_first, replacement_last) {
-        if orig.to_ascii_lowercase() == suff.to_ascii_lowercase()
-            && repl.to_ascii_lowercase() != suff.to_ascii_lowercase()
-        {
+        if orig.eq_ignore_ascii_case(&suff) && !repl.eq_ignore_ascii_case(&suff) {
             return suffix.chars().skip(1).collect();
         }
     }
@@ -346,8 +344,7 @@ impl GlitchOp for SpectrollOp {
 
 #[pyfunction(signature = (text, mode, seed=None))]
 pub(crate) fn swap_colors(text: &str, mode: &str, seed: Option<u64>) -> PyResult<String> {
-    let parsed_mode =
-        SpectrollMode::parse(mode).map_err(|message| PyValueError::new_err(message))?;
+    let parsed_mode = SpectrollMode::parse(mode).map_err(PyValueError::new_err)?;
     let result = match parsed_mode {
         SpectrollMode::Literal => transform_text(text, parsed_mode, None),
         SpectrollMode::Drift => {
