@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
 
-from ..config import DEFAULT_ATTACK_SEED
-from ..zoo.core import Gaggle, Glitchling, Transcript, _is_transcript
+from ..attack_config import DEFAULT_ATTACK_SEED
+from ..util.transcripts import Transcript, is_transcript
+from ..zoo.core import Gaggle, Glitchling
 from .metrics import (
     Metric,
     jensen_shannon_divergence,
@@ -114,8 +115,8 @@ class Attack:
         """Apply corruptions and calculate metrics, supporting transcripts as batches."""
         result = self.glitchlings.corrupt(text)
 
-        input_is_transcript = _is_transcript(text)
-        output_is_transcript = _is_transcript(result)
+        input_is_transcript = is_transcript(text)
+        output_is_transcript = is_transcript(result)
         if input_is_transcript != output_is_transcript:
             raise ValueError("Attack expected output type to mirror input type.")
 

@@ -6,14 +6,14 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 
 1. [Installation](#installation)
 2. [Quickstart](#quickstart)
-3. [The Gaggle orchestrator](#the-gaggle-orchestrator)
-4. [Attack helper](#attack-helper)
-5. [Declarative attack configurations](#declarative-attack-configurations)
-6. [Rust pipeline acceleration](#rust-pipeline-acceleration)
+3. [Guide map](#guide-map)
+4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
+5. [Attack helper](#attack-helper)
+6. [Command line interface](#command-line-interface)
 7. [Glitchling reference](#glitchling-reference)
    - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
-   - [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md)
+   - [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
@@ -23,17 +23,14 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
-8. [Dataset workflows](#dataset-workflows)
-9. [Integrations and DLC](#integrations-and-dlc)
-10. [Ensuring determinism](#ensuring-determinism)
-11. [Testing checklist](#testing-checklist)
-12. [Additional resources](#additional-resources)
-    - [Glitchling gallery](glitchling-gallery.md)
-    - [Keyboard layout reference](keyboard-layouts.md)
-    - [Attack helper reference](attack.md)
-    - [Dataset workflows](datasets.md)
-    - [Integrations and DLC](integrations.md)
-    - [Determinism guide](determinism.md)
+8. [Testing checklist](#testing-checklist)
+9. [Additional resources](#additional-resources)
+   - [Glitchling gallery](glitchling-gallery.md)
+   - [Keyboard layout reference](keyboard-layouts.md)
+   - [Attack helper reference](attack.md)
+   - [Dataset workflows](datasets.md)
+   - [Integrations and DLC](integrations.md)
+   - [Determinism guide](determinism.md)
 
 ## Installation
 
@@ -112,6 +109,13 @@ Glitchlings slot neatly into existing pipelines:
 - **Dataset corruption** – After ``import glitchlings.dlc.huggingface`` registers the extension, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
 - **PyTorch data loaders** – Import ``glitchlings.dlc.pytorch`` to patch ``torch.utils.data.DataLoader.glitch(...)``. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
 
+## Guide map
+
+- [Attack helper](attack.md) – single-call corruption plus metrics, with transcript-aware batching and tokenizer selection.
+- [Dataset workflows](datasets.md) – how to glitch Hugging Face datasets and PyTorch data loaders with column inference.
+- [Integrations and DLC](integrations.md) – Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
+- [Determinism guide](determinism.md) – seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
+
 ### Command line interface
 
 Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality:
@@ -146,45 +150,7 @@ Deep integration tests for the orchestration stack live in `tests/test_glitchlin
 
 ## Attack helper
 
-Use `glitchlings.attack.Attack` when you want a single call that corrupts text, tokenises the before/after, and emits similarity metrics. It wraps your glitchlings (or a `Gaggle`) and exposes:
-
-- **Deterministic seeding** – pass `seed=` to stabilise the gaggle Attack builds; existing gaggles/glitchlings have their RNGs reset when seeded.
-- **Transcript-aware batching** – chat transcripts are treated as batches and metrics return one value per turn.
-- **Modern default tokenization** – defaults to a `tiktoken` encoder (`o200k_base`, falling back to `cl100k_base`, then whitespace).
-
-See the dedicated [Attack helper reference](attack.md) for full details and examples.
-
-## Declarative attack configurations
-
-Keep repeatable experiments outside your codebase by describing rosters in YAML. Each entry can either reference a built-in glitchling by name (with optional keyword arguments) or provide a mapping with `name` plus parameters:
-
-```yaml
-seed: 2024
-glitchlings:
-  - "Typogre(rate=0.03)"
-  - name: Rushmore
-    parameters:
-      rate: 0.08
-      unweighted: true
-  - name: Zeedub
-    rate: 0.01          # top-level keys become parameters when `parameters` is omitted
-```
-
-Feed the file to the CLI with:
-
-```bash
-glitchlings --config experiments/story-mode.yaml --diff "Here be dragons."
-```
-
-Omit `--seed` to honour the configuration's `seed`; supply `--seed` to override it on the fly while keeping the same roster. In Python, load the same file with `glitchlings.load_attack_config(path)` and convert it into a callable `Gaggle` via `glitchlings.build_gaggle(...)`.
-
-Configuration files are now validated against a JSON Schema before any glitchlings are instantiated. Unknown top-level keys raise an error, and each mapping entry must define a `name`. The schema is exposed as `glitchlings.config.ATTACK_CONFIG_SCHEMA` if you want to reuse it in external tooling.
-
-## Rust pipeline acceleration
-
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. The orchestrator now requires this compiled extension, so build the PyO3 crate before running Glitchlings.
-
-`tests/test_rust_backed_glitchlings.py` exercises the Rust-backed glitchlings to ensure the accelerated implementations remain stable.
+Use `glitchlings.attack.Attack` when you want a single call that corrupts text, tokenises the before/after, and emits similarity metrics. It mirrors the determinism guarantees of the `Gaggle` and understands chat transcripts. See the dedicated [Attack helper reference](attack.md) for parameters, tokenizer options, and examples.
 
 ## Glitchling reference
 
@@ -201,23 +167,6 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Pedant](glitchlings/pedant.md) - grammar evolutions driven by themed stones (Whomst, Fewerling, Commama, Kiloa, and more).
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
-
-## Dataset workflows
-
-Leverage the Hugging Face and PyTorch integrations to perturb large corpora reproducibly. See the dedicated [dataset workflows guide](datasets.md) for examples and tips, including column inference, saving corrupted copies, and seed hygiene.
-
-## Integrations and DLC
-
-Optional extras patch popular libraries to make corruption frictionless. See [Integrations and DLC](integrations.md) for Hugging Face, PyTorch, Lightning, and Prime details plus install commands.
-
-## Ensuring determinism
-
-- Derive seeds from the surrounding context (`Gaggle.derive_seed`) when spawning new RNGs.
-- Stabilise candidate order before sampling subsets to keep runs reproducible.
-- Use `set_param` to expose tunable values so they can be reset between tests.
-- When writing new glitchlings, route randomness through the instance RNG rather than module-level state.
-
-These determinism checks are enforced in `tests/test_glitchlings_determinism.py`. For a deeper checklist (including Attack seeds and dataset corruption), see the [Determinism guide](determinism.md).
 
 ## Testing checklist
 

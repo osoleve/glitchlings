@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import cast
 
 from . import SAMPLE_TEXT
-from .config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
+from .attack_config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from .zoo import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,

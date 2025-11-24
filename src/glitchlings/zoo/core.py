@@ -6,9 +6,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union, cast
 
 from ..compat import get_datasets_dataset, require_datasets
+from ..util.transcripts import Transcript, is_transcript
 from ._rust_extensions import get_rust_operation
 
 _DatasetsDataset = get_datasets_dataset()
@@ -20,10 +21,9 @@ class PlanSpecification(TypedDict):
     order: int
 
 
-TranscriptTurn = dict[str, Any]
-Transcript = list[TranscriptTurn]
-
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
+
+_is_transcript = is_transcript
 
 
 class PipelineOperationPayload(TypedDict, total=False):
@@ -153,28 +153,6 @@ else:
         """Typed stub mirroring the Hugging Face dataset interface used here."""
 
         def with_transform(self, function: Any) -> "Dataset": ...
-
-
-def _is_transcript(
-    value: Any,
-    *,
-    allow_empty: bool = True,
-    require_all_content: bool = False,
-) -> TypeGuard[Transcript]:
-    """Return ``True`` when ``value`` appears to be a chat transcript."""
-    if not isinstance(value, list):
-        return False
-
-    if not value:
-        return allow_empty
-
-    if not all(isinstance(turn, dict) for turn in value):
-        return False
-
-    if require_all_content:
-        return all("content" in turn for turn in value)
-
-    return "content" in value[-1]
 
 
 class CorruptionCallable(Protocol):

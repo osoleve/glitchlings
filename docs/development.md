@@ -79,3 +79,10 @@ pytest --maxfail=1 --disable-warnings -q
   ```bash
   maturin develop -m rust/zoo/Cargo.toml
   ```
+
+- Regenerate the README CLI usage block and glitchling gallery together with:
+
+  ```bash
+  python -m glitchlings.dev.docs
+  # or, once installed: glitchlings-refresh-docs
+  ```

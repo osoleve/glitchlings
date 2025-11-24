@@ -6,7 +6,7 @@ import difflib
 import pytest
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
-from glitchlings.config import build_gaggle, load_attack_config
+from glitchlings.attack_config import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
@@ -30,7 +30,7 @@ def invoke_cli(arguments: list[str]):
 
 
 def _effective_seed(args: argparse.Namespace) -> int:
-    return args.seed if args.seed is not None else 151
+    return args.seed if args.seed is not None else DEFAULT_ATTACK_SEED
 
 
 def render_expected_list_output() -> str:

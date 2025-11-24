@@ -49,6 +49,7 @@ Changelog = "https://github.com/osoleve/glitchlings/releases"
 
 [project.scripts]
 glitchlings = "glitchlings.main:main"
+glitchlings-refresh-docs = "glitchlings.dev.docs:main"
 
 [project.optional-dependencies]
 all = [
@@ -181,6 +182,8 @@ disallow_untyped_decorators = true
 module = [
     "glitchlings.compat",
     "glitchlings.config",
+    "glitchlings.attack_config",
+    "glitchlings.runtime_config",
     "glitchlings.lexicon",
     "glitchlings.lexicon.*",
 ]

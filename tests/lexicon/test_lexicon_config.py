@@ -4,13 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from glitchlings.config import reload_config, reset_config
 from glitchlings.lexicon import (
     Lexicon,
     get_default_lexicon,
     register_backend,
     unregister_backend,
 )
+from glitchlings.runtime_config import reload_config, reset_config
 
 
 class StubLexicon(Lexicon):
