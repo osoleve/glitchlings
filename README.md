@@ -3,15 +3,15 @@
 ```plaintext
      .─') _                                       .─') _                  
     (  OO) )                                     ( OO ) )            
-  ░██████  ░██ ░██   ░██               ░██       ░██ ░██                                 
- ░██   ░██ ░██       ░██               ░██       ░██                                     
-░██        ░██ ░██░████████  ░███████ ░████████  ░██ ░██░████████   ░████████ ░███████  
+  ░██████  ░██ ░██   ░██               ░██        ░██ ░██                                 
+ ░██   ░██ ░██       ░██                ░██        ░██                                     
+░██        ░██ ░██░████████  ░███████   ░████████  ░██ ░██░████████   ░████████ ░███████  
 ░██  █████ ░██ ░██   ░██    ░██('─.░██ ░██    ░██ ░██ ░██░██    ░██ ░██.─')░██ ░██        
 ░██     ██ ░██ ░██   ░██    ░██( OO ) ╱░██    ░██ ░██ ░██░██    ░██ ░██(OO)░██ ░███████  
-  ░██  ░███ ░██ ░██   ░██   ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██  o░███      ░██ 
+  ░██  ░███ ░██ ░██   ░██    ░██    ░██ ░██    ░██ ░██ ░██░██    ░██ ░██ o ░███      ░██ 
   ░█████░█ ░██ ░██   ░████   ░███████  ░██    ░██ ░██ ░██░██    ░██  ░█████░██ ░███████  
-                                                                    ░██            
-                                                                ░███████             
+                                                                          ░██            
+                                                                  ░███████             
 
                         Every language game breeds monsters.
 ```
@@ -379,4 +379,3 @@ If you're trying to add a new glitchling and can't seem to make it deterministic
 2. Ensure you sort collections before shuffling or sampling.
 3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
 4. Make sure there are enough sort keys to maintain stability.
-

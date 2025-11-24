@@ -132,6 +132,23 @@ pub struct TextBuffer {
     needs_reindex: bool,
 }
 
+impl std::fmt::Display for TextBuffer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for segment in &self.segments {
+            write!(f, "{}", segment.text)?;
+        }
+        Ok(())
+    }
+}
+
+impl std::str::FromStr for TextBuffer {
+    type Err = std::convert::Infallible;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::from_owned(s.to_string()))
+    }
+}
+
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
     pub fn from_owned(text: String) -> Self {
@@ -150,11 +167,6 @@ impl TextBuffer {
         };
         buffer.reindex();
         buffer
-    }
-
-    /// Constructs a buffer from a borrowed `&str`.
-    pub fn from_str(text: &str) -> Self {
-        Self::from_owned(text.to_string())
     }
 
     /// Returns all tracked segments.
@@ -403,7 +415,7 @@ impl TextBuffer {
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
 
             // Determine if we should remove or replace
-            let should_remove = replacement.as_ref().map_or(true, |s| s.is_empty());
+            let should_remove = replacement.as_ref().is_none_or(|s| s.is_empty());
 
             if should_remove {
                 // Remove the segment entirely
@@ -461,14 +473,6 @@ impl TextBuffer {
         text.replace_range(start_byte..end_byte, replacement);
         *self = TextBuffer::from_owned(text);
         Ok(())
-    }
-
-    /// Returns the full text represented by the buffer.
-    pub fn to_string(&self) -> String {
-        self.segments
-            .iter()
-            .map(|segment| segment.text.as_str())
-            .collect()
     }
 
     /// Normalizes whitespace and punctuation spacing without reparsing.
@@ -583,7 +587,7 @@ impl TextBuffer {
                 return false;
             }
             // Check if the word length is a multiple of the token length
-            if text.len() % repeated_char.len() != 0 {
+            if !text.len().is_multiple_of(repeated_char.len()) {
                 return false;
             }
             // Check if the word consists of repeated copies of the token
@@ -716,12 +720,10 @@ fn byte_index_for_char_offset(text: &str, offset: usize) -> usize {
     if offset == 0 {
         return 0;
     }
-    let mut count = 0;
-    for (byte_index, _) in text.char_indices() {
+    for (count, (byte_index, _)) in text.char_indices().enumerate() {
         if count == offset {
             return byte_index;
         }
-        count += 1;
     }
     text.len()
 }
@@ -757,7 +759,7 @@ mod tests {
 
     #[test]
     fn tokenisation_tracks_words_and_separators() {
-        let buffer = TextBuffer::from_str("Hello  world!\n");
+        let buffer = TextBuffer::from_owned("Hello  world!\n".to_string());
         let segments = buffer.segments();
         assert_eq!(segments.len(), 4);
         assert_eq!(segments[0].text(), "Hello");
@@ -775,7 +777,7 @@ mod tests {
 
     #[test]
     fn replacing_words_updates_segments_and_metadata() {
-        let mut buffer = TextBuffer::from_str("Hello world");
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
         buffer.replace_word(1, "galaxy").unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello galaxy");
@@ -786,7 +788,7 @@ mod tests {
 
     #[test]
     fn deleting_words_removes_segments() {
-        let mut buffer = TextBuffer::from_str("Hello brave world");
+        let mut buffer = TextBuffer::from_owned("Hello brave world".to_string());
         buffer.delete_word(1).unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello  world");
@@ -799,7 +801,7 @@ mod tests {
 
     #[test]
     fn inserting_words_preserves_separator_control() {
-        let mut buffer = TextBuffer::from_str("Hello world");
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
         buffer.insert_word_after(0, "there", Some(", ")).unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello, there world");
@@ -809,7 +811,7 @@ mod tests {
 
     #[test]
     fn bulk_replace_words_updates_multiple_entries() {
-        let mut buffer = TextBuffer::from_str("alpha beta gamma delta");
+        let mut buffer = TextBuffer::from_owned("alpha beta gamma delta".to_string());
         buffer
             .replace_words_bulk(vec![(0, "delta".to_string()), (3, "alpha".to_string())])
             .expect("bulk replace succeeds");
@@ -822,7 +824,7 @@ mod tests {
 
     #[test]
     fn replace_char_range_handles_multisegment_updates() {
-        let mut buffer = TextBuffer::from_str("Hello world");
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
         buffer
             .replace_char_range(6..11, "galaxy")
             .expect("char replacement succeeded");
@@ -833,7 +835,7 @@ mod tests {
 
     #[test]
     fn invalid_operations_return_errors() {
-        let mut buffer = TextBuffer::from_str("Hello");
+        let mut buffer = TextBuffer::from_owned("Hello".to_string());
         let err = buffer.replace_word(1, "world").unwrap_err();
         assert!(matches!(err, TextBufferError::InvalidWordIndex { .. }));
 

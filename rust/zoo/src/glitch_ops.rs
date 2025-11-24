@@ -1,9 +1,7 @@
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
-use regex::Regex;
 use smallvec::SmallVec;
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
 
 use crate::ekkokin::EkkokinOp;
 use crate::mim1c::Mim1cOp;
@@ -14,8 +12,6 @@ use crate::resources::{
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
-
-static MERGE_REGEX_CACHE: OnceLock<Mutex<HashMap<String, Regex>>> = OnceLock::new();
 
 /// Errors produced while applying a [`GlitchOp`].
 #[derive(Debug)]
@@ -118,8 +114,6 @@ struct ReduplicateCandidate {
 #[derive(Debug)]
 struct DeleteCandidate {
     index: usize,
-    prefix: String,
-    suffix: String,
     weight: f64,
 }
 
@@ -130,21 +124,6 @@ struct RedactCandidate {
     core_end: usize,
     repeat: usize,
     weight: f64,
-}
-
-fn cached_merge_regex(token: &str) -> Result<Regex, GlitchOpError> {
-    let cache = MERGE_REGEX_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(regex) = cache.lock().unwrap().get(token).cloned() {
-        return Ok(regex);
-    }
-
-    let pattern = format!("{}\\W+{}", regex::escape(token), regex::escape(token));
-    let compiled = Regex::new(&pattern)
-        .map_err(|err| GlitchOpError::Regex(format!("failed to build merge regex: {err}")))?;
-
-    let mut guard = cache.lock().unwrap();
-    let entry = guard.entry(token.to_string()).or_insert_with(|| compiled);
-    Ok(entry.clone())
 }
 
 fn weighted_sample_without_replacement(
@@ -246,7 +225,7 @@ impl GlitchOp for ReduplicateWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.max(0.0);
+        let effective_rate = self.rate.clamp(0.0, 1.0);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -306,18 +285,13 @@ impl GlitchOp for DeleteRandomWordsOp {
                     continue;
                 }
                 let original = text.to_string();
-                let (prefix, core, suffix) = split_affixes(&original);
+                let (_prefix, core, _suffix) = split_affixes(&original);
                 let weight = if self.unweighted {
                     1.0
                 } else {
                     inverse_length_weight(&core, &original)
                 };
-                candidates.push(DeleteCandidate {
-                    index: idx,
-                    prefix,
-                    suffix,
-                    weight,
-                });
+                candidates.push(DeleteCandidate { index: idx, weight });
             }
         }
 
@@ -325,7 +299,7 @@ impl GlitchOp for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.max(0.0);
+        let effective_rate = self.rate.clamp(0.0, 1.0);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -444,7 +418,7 @@ impl GlitchOp for SwapAdjacentWordsOp {
             return Ok(());
         }
 
-        let clamped = self.rate.max(0.0).min(1.0);
+        let clamped = self.rate.clamp(0.0, 1.0);
         if clamped <= 0.0 {
             return Ok(());
         }
@@ -840,7 +814,7 @@ impl GlitchOp for OcrArtifactsOp {
         }
 
         // Apply all segment replacements in bulk without reparsing
-        buffer.replace_segments_bulk(segment_replacements.into_iter());
+        buffer.replace_segments_bulk(segment_replacements);
 
         buffer.reindex_if_needed();
         Ok(())
@@ -949,16 +923,16 @@ impl GlitchOp for ZeroWidthOp {
             let mut prev_idx = 0;
             for (char_idx, zero_width) in seg_insertions {
                 // Add characters from prev_idx up to (but not including) char_idx
-                for i in prev_idx..char_idx {
-                    modified.push(chars[i]);
+                for ch in chars.iter().take(char_idx).skip(prev_idx) {
+                    modified.push(*ch);
                 }
                 // Insert zero-width character at char_idx
                 modified.push_str(&zero_width);
                 prev_idx = char_idx;
             }
             // Add remaining characters from prev_idx to end
-            for i in prev_idx..chars.len() {
-                modified.push(chars[i]);
+            for ch in chars.iter().skip(prev_idx) {
+                modified.push(*ch);
             }
 
             segment_replacements.push((seg_idx, modified));
@@ -966,7 +940,7 @@ impl GlitchOp for ZeroWidthOp {
 
         // Apply all segment replacements in bulk
         if !segment_replacements.is_empty() {
-            buffer.replace_segments_bulk(segment_replacements.into_iter());
+            buffer.replace_segments_bulk(segment_replacements);
         }
 
         buffer.reindex_if_needed();
@@ -1178,7 +1152,7 @@ impl GlitchOp for TypoOp {
             let action_idx = rng.rand_index(TOTAL_ACTIONS)?;
 
             match action_idx {
-                0 | 1 | 2 | 3 => {
+                0..=3 => {
                     // Character-level operations within Word segments only
                     if word_indices.is_empty() {
                         continue;
@@ -1481,8 +1455,8 @@ impl GlitchOp for QuotePairsOp {
                 let (seg_idx, _) = byte_to_segment[replacement.start];
                 // Calculate byte offset within segment
                 let mut segment_byte_start = 0;
-                for i in 0..seg_idx {
-                    segment_byte_start += segments[i].text().len();
+                for segment in segments.iter().take(seg_idx) {
+                    segment_byte_start += segment.text().len();
                 }
                 let byte_offset_in_seg = replacement.start - segment_byte_start;
                 let byte_end_in_seg = byte_offset_in_seg + (replacement.end - replacement.start);
@@ -1519,7 +1493,7 @@ impl GlitchOp for QuotePairsOp {
         }
 
         // Apply all segment replacements in bulk without reparsing
-        buffer.replace_segments_bulk(segment_replacements.into_iter());
+        buffer.replace_segments_bulk(segment_replacements);
 
         buffer.reindex_if_needed();
         Ok(())
@@ -1577,7 +1551,7 @@ mod tests {
 
     #[test]
     fn reduplication_inserts_duplicate_with_space() {
-        let mut buffer = TextBuffer::from_str("Hello world");
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
         let mut rng = DeterministicRng::new(151);
         let op = ReduplicateWordsOp {
             rate: 1.0,
@@ -1590,7 +1564,7 @@ mod tests {
 
     #[test]
     fn swap_adjacent_words_swaps_cores() {
-        let mut buffer = TextBuffer::from_str("Alpha, beta! Gamma delta");
+        let mut buffer = TextBuffer::from_owned("Alpha, beta! Gamma delta".to_string());
         let mut rng = DeterministicRng::new(7);
         let op = SwapAdjacentWordsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng)
@@ -1604,7 +1578,7 @@ mod tests {
     #[test]
     fn swap_adjacent_words_respects_zero_rate() {
         let original = "Do not move these words";
-        let mut buffer = TextBuffer::from_str(original);
+        let mut buffer = TextBuffer::from_owned(original.to_string());
         let mut rng = DeterministicRng::new(42);
         let op = SwapAdjacentWordsOp { rate: 0.0 };
         op.apply(&mut buffer, &mut rng)
@@ -1614,7 +1588,7 @@ mod tests {
 
     #[test]
     fn delete_random_words_cleans_up_spacing() {
-        let mut buffer = TextBuffer::from_str("One two three four five");
+        let mut buffer = TextBuffer::from_owned("One two three four five".to_string());
         let mut rng = DeterministicRng::new(151);
         let op = DeleteRandomWordsOp {
             rate: 0.75,
@@ -1629,7 +1603,7 @@ mod tests {
 
     #[test]
     fn redact_words_respects_sample_and_merge() {
-        let mut buffer = TextBuffer::from_str("Keep secrets safe");
+        let mut buffer = TextBuffer::from_owned("Keep secrets safe".to_string());
         let mut rng = DeterministicRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1644,7 +1618,7 @@ mod tests {
 
     #[test]
     fn redact_words_without_candidates_errors() {
-        let mut buffer = TextBuffer::from_str("   ");
+        let mut buffer = TextBuffer::from_owned("   ".to_string());
         let mut rng = DeterministicRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1662,7 +1636,7 @@ mod tests {
     #[test]
     #[ignore] // TODO: Update seed/expectations after deferred reindexing optimization
     fn ocr_artifacts_replaces_expected_regions() {
-        let mut buffer = TextBuffer::from_str("Hello rn world");
+        let mut buffer = TextBuffer::from_owned("Hello rn world".to_string());
         let mut rng = DeterministicRng::new(151);
         let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr works");
@@ -1673,7 +1647,7 @@ mod tests {
 
     #[test]
     fn reduplication_is_deterministic_for_seed() {
-        let mut buffer = TextBuffer::from_str("The quick brown fox");
+        let mut buffer = TextBuffer::from_owned("The quick brown fox".to_string());
         let mut rng = DeterministicRng::new(123);
         let op = ReduplicateWordsOp {
             rate: 0.5,
@@ -1692,7 +1666,7 @@ mod tests {
 
     #[test]
     fn delete_removes_words_for_seed() {
-        let mut buffer = TextBuffer::from_str("The quick brown fox jumps over the lazy dog.");
+        let mut buffer = TextBuffer::from_owned("The quick brown fox jumps over the lazy dog.".to_string());
         let mut rng = DeterministicRng::new(123);
         let op = DeleteRandomWordsOp {
             rate: 0.5,
@@ -1706,7 +1680,7 @@ mod tests {
 
     #[test]
     fn redact_replaces_words_for_seed() {
-        let mut buffer = TextBuffer::from_str("Hide these words please");
+        let mut buffer = TextBuffer::from_owned("Hide these words please".to_string());
         let mut rng = DeterministicRng::new(42);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1722,7 +1696,7 @@ mod tests {
 
     #[test]
     fn redact_merge_merges_adjacent_for_seed() {
-        let mut buffer = TextBuffer::from_str("redact these words");
+        let mut buffer = TextBuffer::from_owned("redact these words".to_string());
         let mut rng = DeterministicRng::new(7);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1738,7 +1712,7 @@ mod tests {
 
     #[test]
     fn ocr_produces_consistent_results_for_seed() {
-        let mut buffer = TextBuffer::from_str("The m rn");
+        let mut buffer = TextBuffer::from_owned("The m rn".to_string());
         let mut rng = DeterministicRng::new(1);
         let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr succeeds");
