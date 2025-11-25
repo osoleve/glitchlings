@@ -1329,6 +1329,7 @@ dependencies = [
 name = "zoo_rust"
 version = "0.1.0"
 dependencies = [
+ "aho-corasick",
  "base64",
  "blake2",
  "criterion",

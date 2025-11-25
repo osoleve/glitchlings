@@ -1,3 +1,4 @@
+use aho_corasick::AhoCorasick;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
@@ -56,6 +57,22 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
 
         entries.into_iter().map(|(_, pair)| pair).collect()
     });
+
+/// Pre-built Aho-Corasick automaton for OCR pattern matching.
+/// This allows O(n + m) multi-pattern matching instead of O(n × patterns).
+pub static OCR_AUTOMATON: Lazy<AhoCorasick> = Lazy::new(|| {
+    let patterns: Vec<&str> = OCR_CONFUSION_TABLE
+        .iter()
+        .map(|(src, _)| *src)
+        .collect();
+    AhoCorasick::new(&patterns).expect("OCR patterns should build a valid automaton")
+});
+
+/// Returns the pre-built Aho-Corasick automaton for OCR pattern matching.
+#[inline]
+pub fn ocr_automaton() -> &'static AhoCorasick {
+    &OCR_AUTOMATON
+}
 
 /// Parsed homophone sets for the Ekkokin glitchling.
 pub static EKKOKIN_HOMOPHONE_SETS: Lazy<Vec<Vec<String>>> = Lazy::new(|| {

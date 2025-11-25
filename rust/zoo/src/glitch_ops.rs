@@ -7,7 +7,8 @@ use crate::ekkokin::EkkokinOp;
 use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
-    affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
+    affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, ocr_automaton,
+    split_affixes,
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
@@ -670,16 +671,22 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        // Find candidates across all segments
-        // Track (segment_index, start_byte_in_segment, end_byte_in_segment, choices)
-        let mut candidates: Vec<(usize, usize, usize, &'static [&'static str])> = Vec::new();
+        // Pre-fetch the confusion table and automaton for efficient lookup
+        let table = confusion_table();
+        let automaton = ocr_automaton();
+
+        // Estimate candidate capacity based on text length
+        let total_chars: usize = segments.iter().map(|s| s.text().len()).sum();
+        let estimated_candidates = total_chars / 3;
+
+        // Find candidates across all segments using Aho-Corasick
+        let mut candidates: Vec<(usize, usize, usize, usize)> =
+            Vec::with_capacity(estimated_candidates);
 
         for (seg_idx, segment) in segments.iter().enumerate() {
             let seg_text = segment.text();
-            for &(src, choices) in confusion_table() {
-                for (start, _) in seg_text.match_indices(src) {
-                    candidates.push((seg_idx, start, start + src.len(), choices));
-                }
+            for mat in automaton.find_iter(seg_text) {
+                candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize()));
             }
         }
 
@@ -687,40 +694,47 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        let to_select = ((candidates.len() as f64) * self.rate).floor() as usize;
+        let total_candidates = candidates.len();
+        let to_select = ((total_candidates as f64) * self.rate).floor() as usize;
         if to_select == 0 {
             return Ok(());
         }
 
-        let mut order: Vec<usize> = (0..candidates.len()).collect();
-        // Hand-roll Fisher–Yates to mirror Python's random.shuffle for test parity
-        for idx in (1..order.len()).rev() {
+        // Fisher-Yates shuffle - must complete for RNG determinism
+        let mut order: Vec<usize> = (0..total_candidates).collect();
+        for idx in (1..total_candidates).rev() {
             let swap_with = rng.rand_index(idx + 1)?;
             order.swap(idx, swap_with);
         }
 
-        let mut chosen: Vec<(usize, usize, usize, &'static str)> = Vec::new();
-        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> =
-            std::collections::HashMap::new();
+        // Now select candidates in shuffled order
+        let num_segments = segments.len();
+        let mut occupied: Vec<Vec<(usize, usize)>> = vec![Vec::new(); num_segments];
+        let mut chosen: Vec<(usize, usize, usize, &'static str)> =
+            Vec::with_capacity(to_select.min(1024));
 
-        for idx in order {
+        for &candidate_idx in &order {
             if chosen.len() >= to_select {
                 break;
             }
-            let (seg_idx, start, end, choices) = candidates[idx];
+
+            let (seg_idx, start, end, pattern_idx) = candidates[candidate_idx];
+            let (_, choices) = table[pattern_idx];
             if choices.is_empty() {
                 continue;
             }
 
-            // Check for overlap within the same segment
-            let seg_occupied = occupied.entry(seg_idx).or_default();
-            if seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
+            // Check for overlap - use simple linear scan (few items per segment)
+            let seg_occupied = &occupied[seg_idx];
+            let overlaps = seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start));
+
+            if overlaps {
                 continue;
             }
 
             let choice_idx = rng.rand_index(choices.len())?;
             chosen.push((seg_idx, start, end, choices[choice_idx]));
-            seg_occupied.push((start, end));
+            occupied[seg_idx].push((start, end));
         }
 
         if chosen.is_empty() {
@@ -741,7 +755,6 @@ impl GlitchOp for OcrArtifactsOp {
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
         for (seg_idx, mut seg_replacements) in by_segment {
-            // Sort by start position
             seg_replacements.sort_by_key(|&(start, _, _)| start);
 
             let seg_text = segments[seg_idx].text();
@@ -762,9 +775,7 @@ impl GlitchOp for OcrArtifactsOp {
             segment_replacements.push((seg_idx, output));
         }
 
-        // Apply all segment replacements in bulk without reparsing
         buffer.replace_segments_bulk(segment_replacements);
-
         buffer.reindex_if_needed();
         Ok(())
     }
