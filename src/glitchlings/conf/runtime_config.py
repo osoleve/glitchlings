@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Any, Mapping, Protocol, Sequence, cast
 
+from glitchlings.constants import DEFAULT_CONFIG_PATH, DEFAULT_LEXICON_PRIORITY
+
 from ._loader import load_binary_config, normalize_mapping
 
 try:  # Python 3.11+
@@ -23,8 +25,6 @@ class _TomllibModule(Protocol):
 tomllib = cast(_TomllibModule, _tomllib)
 
 CONFIG_ENV_VAR = "GLITCHLINGS_CONFIG"
-DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
-DEFAULT_LEXICON_PRIORITY = ["vector", "wordnet"]
 
 
 @dataclass(slots=True)

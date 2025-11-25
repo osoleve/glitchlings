@@ -82,6 +82,20 @@ def test_pipeline_assets_packaged_for_distribution():
         )
 
 
+def test_pipeline_descriptors_expose_types():
+    """Verify Rust-backed glitchlings include a pipeline type descriptor."""
+
+    from glitchlings.zoo import BUILTIN_GLITCHLINGS
+
+    for name, glitchling in BUILTIN_GLITCHLINGS.items():
+        operation = glitchling.pipeline_operation()
+        if operation is None:
+            continue
+        assert isinstance(operation, dict), f"pipeline_operation for {name} must return a dict"
+        op_type = operation.get("type")
+        assert isinstance(op_type, str) and op_type, f"{name} pipeline descriptor missing type"
+
+
 def test_pipeline_assets_exist_in_canonical_directory():
     """Verify all assets listed in rust/zoo/build.rs exist in canonical assets/ directory."""
     repo_root = Path(__file__).resolve().parents[1]

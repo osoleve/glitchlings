@@ -8,6 +8,8 @@ from io import TextIOBase
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Mapping, Protocol, Sequence, cast
 
+from glitchlings.constants import DEFAULT_ATTACK_SEED
+
 from ..compat import jsonschema
 from ._loader import load_text_config, normalize_mapping
 
@@ -22,8 +24,6 @@ class _YamlModule(Protocol):
 
 
 yaml = cast(_YamlModule, importlib.import_module("yaml"))
-
-DEFAULT_ATTACK_SEED = 151
 
 ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
     "type": "object",

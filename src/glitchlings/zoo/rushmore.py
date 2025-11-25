@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from enum import Enum, unique
 from typing import Any, cast
 
+from glitchlings.constants import RUSHMORE_DEFAULT_RATES
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from ._text_utils import WordToken
@@ -37,13 +38,6 @@ _MODE_ALIASES: dict[str, RushmoreMode] = {
     "swap": RushmoreMode.SWAP,
     "adjacent": RushmoreMode.SWAP,
 }
-
-_DEFAULT_RATES: dict[RushmoreMode, float] = {
-    RushmoreMode.DELETE: 0.01,
-    RushmoreMode.DUPLICATE: 0.01,
-    RushmoreMode.SWAP: 0.05,
-}
-
 
 @dataclass(frozen=True)
 class RushmoreRuntimeConfig:
@@ -173,7 +167,7 @@ def _resolve_mode_rate(
     if baseline is None:
         if not allow_default:
             return None
-        baseline = _DEFAULT_RATES[mode]
+        baseline = RUSHMORE_DEFAULT_RATES[mode.value]
 
     value = float(baseline)
     value = max(0.0, value)

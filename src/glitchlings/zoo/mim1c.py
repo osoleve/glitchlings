@@ -6,13 +6,12 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
+from glitchlings.constants import MIM1C_DEFAULT_CLASSES
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
-
-_DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
 
 def _normalise_classes(
@@ -71,7 +70,7 @@ def swap_homoglyphs(
     normalised_banned = _normalise_banned(banned_characters)
 
     if normalised_classes is None:
-        payload_classes: list[str] | Literal["all"] | None = list(_DEFAULT_CLASS_NAMES)
+        payload_classes: list[str] | Literal["all"] | None = list(MIM1C_DEFAULT_CLASSES)
     else:
         payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)

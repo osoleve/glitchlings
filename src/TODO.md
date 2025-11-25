@@ -60,7 +60,9 @@ Cleanup technical debt from the Rust migration.
   - *Context*: Constants like `DEFAULT_ATTACK_SEED` live in `attack_config.py`. Default rates are hardcoded in `__init__` methods.
   - *Task*: Create `src/glitchlings/constants.py`. Move seeds, default rates, and standard file paths there.
   - *Goal*: Allow global tuning of defaults and centralized reference in docs/tests.
+  - *Status*: `glitchlings.constants` now defines attack seed, config path/lexicon priority, and default glitchling parameters (Ekkokin, Mim1c classes, Rushmore rates, Zeedub palette).
 - [ ] Audit `pipeline_operation` descriptors to ensure every Rust-backed glitchling advertises the correct fast-path metadata and the Python shims fail loudly when Rust symbols diverge.
+  - *Status*: Hygiene test now asserts built-in pipeline descriptors include non-empty type identifiers; loader already raises on missing Rust symbols.
 
 ## 5. Test Suite Organization
 

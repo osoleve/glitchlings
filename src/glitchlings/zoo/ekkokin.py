@@ -7,13 +7,11 @@ import random
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
 
 from glitchlings.assets import load_homophone_groups
+from glitchlings.constants import DEFAULT_EKKOKIN_RATE, DEFAULT_EKKOKIN_WEIGHTING
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
-
-_DEFAULT_RATE = 0.02
-_DEFAULT_WEIGHTING = "flat"
 
 _homophone_groups: tuple[tuple[str, ...], ...] = load_homophone_groups()
 
@@ -69,14 +67,14 @@ def substitute_homophones(
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
 
-    effective_rate = _DEFAULT_RATE if rate is None else rate
+    effective_rate = DEFAULT_EKKOKIN_RATE if rate is None else rate
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
 
     return _ekkokin_rust(
         text,
         clamped_rate,
-        _DEFAULT_WEIGHTING,
+        DEFAULT_EKKOKIN_WEIGHTING,
         resolve_seed(seed, rng),
     )
 
@@ -90,7 +88,7 @@ class Ekkokin(_GlitchlingBase):
         rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = _DEFAULT_RATE if rate is None else rate
+        effective_rate = DEFAULT_EKKOKIN_RATE if rate is None else rate
         super().__init__(
             name="Ekkokin",
             corruption_function=substitute_homophones,
@@ -104,11 +102,11 @@ class Ekkokin(_GlitchlingBase):
 
 def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object]:
     rate_value = glitch.kwargs.get("rate")
-    rate = _DEFAULT_RATE if rate_value is None else float(rate_value)
+    rate = DEFAULT_EKKOKIN_RATE if rate_value is None else float(rate_value)
     return {
         "type": "ekkokin",
         "rate": rate,
-        "weighting": _DEFAULT_WEIGHTING,
+        "weighting": DEFAULT_EKKOKIN_WEIGHTING,
     }
 
 
