@@ -10,16 +10,30 @@ import sys
 import time
 import types
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Iterable, Sequence
 
-from benchmarks.constants import (
-    BASE_DESCRIPTORS,
-    DEFAULT_ITERATIONS,
-    DEFAULT_TEXTS,
-    MASTER_SEED,
-    Descriptor,
-    redactyl_full_block,
-)
+# Support running as script or as module
+if __name__ == "__main__" and __package__ is None:
+    # Add parent directory to path when run as script
+    sys.path.insert(0, str(Path(__file__).parent))
+    from constants import (
+        BASE_DESCRIPTORS,
+        DEFAULT_ITERATIONS,
+        DEFAULT_TEXTS,
+        MASTER_SEED,
+        Descriptor,
+        redactyl_full_block,
+    )
+else:
+    from benchmarks.constants import (
+        BASE_DESCRIPTORS,
+        DEFAULT_ITERATIONS,
+        DEFAULT_TEXTS,
+        MASTER_SEED,
+        Descriptor,
+        redactyl_full_block,
+    )
 
 
 def _ensure_datasets_stub() -> None:
@@ -124,11 +138,70 @@ def _stealth_noise_descriptors() -> list[Descriptor]:
     ]
 
 
+# Individual glitchling scenarios
+def _typogre_only_descriptors() -> list[Descriptor]:
+    return [_make_descriptor("Typogre", rate=0.05)]
+
+
+def _rushmore_delete_descriptors() -> list[Descriptor]:
+    return [{"name": "Rushmore-Delete", "operation": {"type": "delete", "rate": 0.05}}]
+
+
+def _rushmore_duplicate_descriptors() -> list[Descriptor]:
+    return [{"name": "Rushmore-Duplicate", "operation": {"type": "reduplicate", "rate": 0.05}}]
+
+
+def _rushmore_swap_descriptors() -> list[Descriptor]:
+    return [{"name": "Rushmore-Swap", "operation": {"type": "swap_adjacent", "rate": 0.35}}]
+
+
+def _redactyl_only_descriptors() -> list[Descriptor]:
+    return [
+        {
+            "name": "Redactyl",
+            "operation": {
+                "type": "redact",
+                "replacement_char": redactyl_full_block(),
+                "rate": 0.05,
+                "merge_adjacent": True,
+            },
+        }
+    ]
+
+
+def _scannequin_only_descriptors() -> list[Descriptor]:
+    return [_make_descriptor("Scannequin", rate=0.05)]
+
+
+def _zeedub_only_descriptors() -> list[Descriptor]:
+    return [_make_descriptor("Zeedub", rate=0.05)]
+
+
+def _mim1c_only_descriptors() -> list[Descriptor]:
+    return [{"name": "Mim1c", "operation": {"type": "mimic", "rate": 0.05}}]
+
+
+def _ekkokin_only_descriptors() -> list[Descriptor]:
+    return [{"name": "Ekkokin", "operation": {"type": "ekkokin", "rate": 0.05}}]
+
+
 SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
+    # Multi-glitchling scenarios
     "baseline": _baseline_descriptors,
     "shuffle_mix": _shuffle_mix_descriptors,
     "aggressive_cleanup": _aggressive_cleanup_descriptors,
     "stealth_noise": _stealth_noise_descriptors,
+    # Individual glitchling scenarios
+    "typogre_only": _typogre_only_descriptors,
+    "rushmore_delete": _rushmore_delete_descriptors,
+    "rushmore_duplicate": _rushmore_duplicate_descriptors,
+    "rushmore_swap": _rushmore_swap_descriptors,
+    "redactyl_only": _redactyl_only_descriptors,
+    "scannequin_only": _scannequin_only_descriptors,
+    "zeedub_only": _zeedub_only_descriptors,
+    "mim1c_only": _mim1c_only_descriptors,
+    "ekkokin_only": _ekkokin_only_descriptors,
+    # Note: Jargoyle (synonym replacement) is not supported by the Rust pipeline
 }
 
 

@@ -49,6 +49,9 @@ OPERATION_MODULES: Dict[str, str] = {
     "pedant": "Pedant",
     "ekkokin": "Ekkokin",
     "rushmore_combo": "Rushmore",
+    "homoglyph": "Mim1c",
+    "synonym": "Jargoyle",
+    "homophone": "Ekkokin",
 }
 
 
@@ -103,11 +106,13 @@ SHORT_TEXT = (
 )
 MEDIUM_TEXT = " ".join([SHORT_TEXT] * 32)
 LONG_TEXT = " ".join([SHORT_TEXT] * 256)
+VERY_LONG_TEXT = " ".join([SHORT_TEXT] * 2048)
 
 DEFAULT_TEXTS: Tuple[Tuple[str, str], ...] = (
     ("short", SHORT_TEXT),
     ("medium", MEDIUM_TEXT),
     ("long", LONG_TEXT),
+    ("very_long", VERY_LONG_TEXT),
 )
 DEFAULT_ITERATIONS = 25
 MASTER_SEED = 151
@@ -115,9 +120,19 @@ MASTER_SEED = 151
 
 SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "baseline": "Default six-glitch pipeline mirroring the public benchmark configuration.",
-    "shuffle_mix": ("Adds Rushmore's swap mode alongside deletion to stress mixed workloads."),
+    "shuffle_mix": "Adds Rushmore's swap mode alongside deletion to stress mixed workloads.",
     "aggressive_cleanup": "Heavy redaction and deletion pass to emulate worst-case sanitisation.",
     "stealth_noise": "Lightweight typo and zero-width noise focused on subtle obfuscations.",
+    # Individual glitchling scenarios
+    "typogre_only": "Typogre-only benchmark for keyboard neighbor typo injection.",
+    "rushmore_delete": "Rushmore delete-only benchmark for word deletion.",
+    "rushmore_duplicate": "Rushmore duplicate-only benchmark for word reduplication.",
+    "rushmore_swap": "Rushmore swap-only benchmark for adjacent word swapping.",
+    "redactyl_only": "Redactyl-only benchmark for character redaction.",
+    "scannequin_only": "Scannequin-only benchmark for OCR confusion injection.",
+    "zeedub_only": "Zeedub-only benchmark for zero-width character injection.",
+    "mim1c_only": "Mim1c-only benchmark for homoglyph substitution.",
+    "ekkokin_only": "Ekkokin-only benchmark for homophone substitution.",
 }
 
 
@@ -133,6 +148,7 @@ __all__ = [
     "SHORT_TEXT",
     "MEDIUM_TEXT",
     "LONG_TEXT",
+    "VERY_LONG_TEXT",
     "redactyl_full_block",
     "zero_width_characters",
     "keyboard_layout",
