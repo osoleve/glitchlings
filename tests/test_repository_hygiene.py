@@ -3,7 +3,10 @@ from __future__ import annotations
 import fnmatch
 from pathlib import Path
 
-import tomllib
+try:
+    import tomllib
+except ModuleNotFoundError:  # Python<3.11
+    import tomli as tomllib
 
 from glitchlings import assets
 from glitchlings.assets import PIPELINE_ASSET_SPECS, PIPELINE_ASSETS
