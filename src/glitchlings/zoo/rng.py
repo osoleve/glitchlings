@@ -26,6 +26,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 from __future__ import annotations
 
 import random
+from hashlib import blake2s
 from typing import Protocol, runtime_checkable
 
 # ---------------------------------------------------------------------------
@@ -128,6 +129,10 @@ def derive_seed(base_seed: int, *components: int | str) -> int:
     This is a pure function for hierarchical seed derivation.
     Used by Gaggle to give each glitchling a unique but reproducible seed.
 
+    Uses blake2s for stable hashing across interpreter runs (unlike Python's
+    built-in hash() which is salted per-process). This ensures identical
+    inputs always produce identical seeds regardless of PYTHONHASHSEED.
+
     Args:
         base_seed: The parent seed.
         *components: Additional components to mix in (integers or strings).
@@ -137,25 +142,38 @@ def derive_seed(base_seed: int, *components: int | str) -> int:
 
     Examples:
         >>> derive_seed(12345, 0)  # first child
-        8730926076880073437
+        13704458811836263874
         >>> derive_seed(12345, 1)  # second child
-        5145114529261393469
+        7874335407589182396
         >>> derive_seed(12345, "typogre")  # named child
-        2684691618913044547
+        561509252352425601
     """
-    # Use a deterministic hash-like combination
-    # This matches what Gaggle.derive_seed does
-    combined = base_seed
+    # Use blake2s for stable, deterministic hashing across runs
+    hasher = blake2s(digest_size=8)
+
+    # Helper to convert int to bytes (handles arbitrary size)
+    def _int_to_bytes(value: int) -> bytes:
+        if value == 0:
+            return b"\x00"
+        abs_value = abs(value)
+        length = (abs_value.bit_length() + 7) // 8
+        if value < 0:
+            while True:
+                try:
+                    return value.to_bytes(length, "big", signed=True)
+                except OverflowError:
+                    length += 1
+        return abs_value.to_bytes(length, "big", signed=False)
+
+    hasher.update(_int_to_bytes(base_seed))
     for component in components:
+        hasher.update(b"\x00")  # separator
         if isinstance(component, str):
-            # Hash string to int
-            component_int = hash(component) & SEED_MASK
+            hasher.update(component.encode("utf-8"))
         else:
-            component_int = int(component) & SEED_MASK
-        # XOR-shift combination for good distribution
-        combined ^= component_int
-        combined = ((combined * 6364136223846793005) + 1) & SEED_MASK
-    return combined
+            hasher.update(_int_to_bytes(component))
+
+    return int.from_bytes(hasher.digest(), "big")
 
 
 # ---------------------------------------------------------------------------
