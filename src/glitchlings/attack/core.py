@@ -166,34 +166,20 @@ class Attack:
         if input_is_transcript != output_is_transcript:
             raise ValueError("Attack expected output type to mirror input type.")
 
-        if not input_is_transcript:
-            assert isinstance(text, str)  # For type checkers
+        original_payload: str | Transcript
+        corrupted_payload: str | Transcript
+        if input_is_transcript:
+            original_payload = cast(Transcript, text)
+            corrupted_payload = cast(Transcript, result)
+            original_contents = self._extract_transcript_contents(original_payload)
+            corrupted_contents = self._extract_transcript_contents(corrupted_payload)
+        else:
+            assert isinstance(text, str)
             assert isinstance(result, str)
-            corrupted = result
-
-            input_tokens, input_token_ids = self._encode(text)
-            output_tokens, output_token_ids = self._encode(corrupted)
-
-            computed_metrics: dict[str, float | list[float]] = {}
-            for name, metric_fn in self.metrics.items():
-                value = metric_fn(input_tokens, output_tokens)
-                computed_metrics[name] = cast(float, value)
-
-            return AttackResult(
-                original=text,
-                corrupted=corrupted,
-                input_tokens=input_tokens,
-                output_tokens=output_tokens,
-                input_token_ids=input_token_ids,
-                output_token_ids=output_token_ids,
-                tokenizer_info=self.tokenizer_info,
-                metrics=computed_metrics,
-            )
-
-        original_transcript = cast(Transcript, text)
-        corrupted_transcript = cast(Transcript, result)
-        original_contents = self._extract_transcript_contents(original_transcript)
-        corrupted_contents = self._extract_transcript_contents(corrupted_transcript)
+            original_payload = text
+            corrupted_payload = result
+            original_contents = [text]
+            corrupted_contents = [result]
 
         if len(original_contents) != len(corrupted_contents):
             raise ValueError("Transcript inputs and outputs must contain the same number of turns.")
@@ -201,8 +187,8 @@ class Attack:
         if not original_contents:
             empty_metrics: dict[str, float | list[float]] = {name: [] for name in self.metrics}
             return AttackResult(
-                original=original_transcript,
-                corrupted=corrupted_transcript,
+                original=original_payload,
+                corrupted=corrupted_payload,
                 input_tokens=[],
                 output_tokens=[],
                 input_token_ids=[],
@@ -214,17 +200,44 @@ class Attack:
         batched_input_tokens, batched_input_token_ids = self._encode_batch(original_contents)
         batched_output_tokens, batched_output_token_ids = self._encode_batch(corrupted_contents)
 
-        batched_metrics: dict[str, float | list[float]] = {}
+        metric_inputs: list[str] | list[list[str]]
+        metric_outputs: list[str] | list[list[str]]
+        if input_is_transcript:
+            metric_inputs = batched_input_tokens
+            metric_outputs = batched_output_tokens
+        else:
+            metric_inputs = batched_input_tokens[0]
+            metric_outputs = batched_output_tokens[0]
+
+        computed_metrics: dict[str, float | list[float]] = {}
         for name, metric_fn in self.metrics.items():
-            batched_metrics[name] = metric_fn(batched_input_tokens, batched_output_tokens)
+            computed_metrics[name] = metric_fn(metric_inputs, metric_outputs)
+
+        if not input_is_transcript:
+            return AttackResult(
+                original=original_payload,
+                corrupted=corrupted_payload,
+                input_tokens=batched_input_tokens[0],
+                output_tokens=batched_output_tokens[0],
+                input_token_ids=batched_input_token_ids[0],
+                output_token_ids=batched_output_token_ids[0],
+                tokenizer_info=self.tokenizer_info,
+                metrics={
+                    name: cast(
+                        float,
+                        value if not isinstance(value, list) else value[0] if value else value,
+                    )
+                    for name, value in computed_metrics.items()
+                },
+            )
 
         return AttackResult(
-            original=original_transcript,
-            corrupted=corrupted_transcript,
+            original=original_payload,
+            corrupted=corrupted_payload,
             input_tokens=batched_input_tokens,
             output_tokens=batched_output_tokens,
             input_token_ids=batched_input_token_ids,
             output_token_ids=batched_output_token_ids,
             tokenizer_info=self.tokenizer_info,
-            metrics=batched_metrics,
+            metrics=computed_metrics,
         )

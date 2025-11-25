@@ -36,8 +36,14 @@ _batch_sr = cast(BatchMetric, getattr(_rust, "batch_subsequence_retention"))
 
 
 def _is_batch(tokens: TokenSequence | TokenBatch) -> TypeGuard[TokenBatch]:
+    """Determine if tokens represent a batch of sequences.
+
+    An empty list is treated as an empty batch (returning True) so that
+    ``metric([], [])`` returns ``[]`` rather than ``0.0``. This matches
+    the behavior of :meth:`Attack.run` when processing empty transcripts.
+    """
     if not tokens:
-        return False
+        return True  # Empty list is an empty batch
 
     first = tokens[0]
     return isinstance(first, Sequence) and not isinstance(first, (str, bytes))

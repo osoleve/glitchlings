@@ -582,26 +582,82 @@ class Gaggle(Glitchling):
 
         return descriptors, missing
 
-    def _corrupt_text(self, text: str) -> str:
-        """Apply each glitchling to string input sequentially."""
+    def _build_execution_plan(
+        self,
+    ) -> list[tuple[list[PipelineDescriptor], Glitchling | None]]:
+        """Build an execution plan that batches consecutive pipeline-supported glitchlings.
+
+        Returns a list of tuples where each tuple contains:
+        - A list of pipeline descriptors (may be empty for single fallback items)
+        - A single glitchling to execute via fallback (None when using pipeline)
+
+        This enables partial pipeline execution when only some glitchlings lack
+        pipeline support, reducing tokenization overhead compared to full fallback.
+        """
         master_seed = self.seed
-        descriptors, missing = self._pipeline_descriptors()
+        plan: list[tuple[list[PipelineDescriptor], Glitchling | None]] = []
+        current_batch: list[PipelineDescriptor] = []
 
-        if missing:
-            result = text
-            for glitchling in self.apply_order:
-                result = cast(str, glitchling.corrupt(result))
-            return result
+        for glitchling in self.apply_order:
+            descriptor = _build_pipeline_descriptor(glitchling, master_seed=master_seed)
+            if descriptor is not None:
+                current_batch.append(descriptor.as_mapping())
+            else:
+                # Flush any accumulated batch before the fallback item
+                if current_batch:
+                    plan.append((current_batch, None))
+                    current_batch = []
+                # Add the fallback item
+                plan.append(([], glitchling))
 
+        # Flush any remaining batch
+        if current_batch:
+            plan.append((current_batch, None))
+
+        return plan
+
+    def _corrupt_text(self, text: str) -> str:
+        """Apply each glitchling to string input sequentially.
+
+        This method uses a batched execution strategy to minimize tokenization
+        overhead. Consecutive glitchlings with pipeline support are grouped and
+        executed together via the Rust pipeline, while glitchlings without
+        pipeline support are executed individually. This hybrid approach ensures
+        the text is tokenized fewer times compared to executing every glitchling
+        individually.
+        """
+        master_seed = self.seed
         if master_seed is None:
             message = "Gaggle orchestration requires a master seed"
             raise RuntimeError(message)
 
+        execution_plan = self._build_execution_plan()
+
+        # Fast path: all glitchlings support pipeline
+        if len(execution_plan) == 1 and execution_plan[0][1] is None:
+            descriptors = execution_plan[0][0]
+            compose_glitchlings = get_rust_operation("compose_glitchlings")
+            try:
+                return cast(str, compose_glitchlings(text, descriptors, master_seed))
+            except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+                raise RuntimeError("Rust pipeline execution failed") from error
+
+        # Hybrid path: mix of pipeline batches and individual fallbacks
         compose_glitchlings = get_rust_operation("compose_glitchlings")
-        try:
-            return cast(str, compose_glitchlings(text, descriptors, master_seed))
-        except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
-            raise RuntimeError("Rust pipeline execution failed") from error
+        result = text
+
+        for descriptors, fallback_glitchling in execution_plan:
+            if descriptors:
+                # Execute the batch through the pipeline
+                try:
+                    result = cast(str, compose_glitchlings(result, descriptors, master_seed))
+                except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+                    raise RuntimeError("Rust pipeline execution failed") from error
+            elif fallback_glitchling is not None:
+                # Execute single glitchling via fallback
+                result = cast(str, fallback_glitchling.corrupt(result))
+
+        return result
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially.

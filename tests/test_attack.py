@@ -134,6 +134,23 @@ def test_batch_metrics():
     assert sr[0] < 1.0
 
 
+def test_empty_batch_metrics():
+    """Empty lists are treated as empty batches, returning empty lists."""
+    from glitchlings.attack.metrics import (
+        jensen_shannon_divergence,
+        normalized_edit_distance,
+        subsequence_retention,
+    )
+
+    jsd = jensen_shannon_divergence([], [])
+    ned = normalized_edit_distance([], [])
+    sr = subsequence_retention([], [])
+
+    assert jsd == []
+    assert ned == []
+    assert sr == []
+
+
 def test_attack_transcript_is_treated_as_batch():
     glitchling = MockGlitchling()
     attack = Attack([glitchling])
