@@ -4,6 +4,7 @@ from collections.abc import Iterable
 from types import ModuleType
 from typing import Any, Literal, cast
 
+from glitchlings.constants import DEFAULT_JARGOYLE_RATE
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
@@ -105,7 +106,7 @@ def substitute_random_synonyms(
 ) -> str:
     """Replace words with random lexicon-driven synonyms."""
 
-    effective_rate = 0.1 if rate is None else float(rate)
+    effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else float(rate)
 
     if lexicon is not None and not isinstance(lexicon, Lexicon):
         raise TypeError("lexicon must be a Lexicon instance or None")
@@ -179,7 +180,7 @@ class Jargoyle(Glitchling):
         self._owns_lexicon = owns_lexicon
         self._external_lexicon_original_seed = None if owns_lexicon else prepared_lexicon.seed
         self._initializing = True
-        effective_rate = 0.01 if rate is None else rate
+        effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else rate
         if not owns_lexicon and seed is not None:
             prepared_lexicon.reseed(seed)
         try:

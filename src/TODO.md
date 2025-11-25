@@ -56,20 +56,21 @@ Cleanup technical debt from the Rust migration.
   - *Goal*: Single entry point for "Get Rust function or raise error."
   - *Status*: New `glitchlings.internal.rust` centralizes extension loading/operation resolution; `_zoo_rust` and `_rust_extensions` now delegate to it.
 
-- [ ] **Standardize "Behavioral" Constants**
+- [x] **Standardize "Behavioral" Constants**
   - *Context*: Constants like `DEFAULT_ATTACK_SEED` live in `attack_config.py`. Default rates are hardcoded in `__init__` methods.
   - *Task*: Create `src/glitchlings/constants.py`. Move seeds, default rates, and standard file paths there.
   - *Goal*: Allow global tuning of defaults and centralized reference in docs/tests.
   - *Status*: `glitchlings.constants` now defines attack seed, config path/lexicon priority, and default glitchling parameters (Ekkokin, Mim1c classes, Rushmore rates, Zeedub palette).
-- [ ] Audit `pipeline_operation` descriptors to ensure every Rust-backed glitchling advertises the correct fast-path metadata and the Python shims fail loudly when Rust symbols diverge.
+- [x] Audit `pipeline_operation` descriptors to ensure every Rust-backed glitchling advertises the correct fast-path metadata and the Python shims fail loudly when Rust symbols diverge.
   - *Status*: Hygiene test now asserts built-in pipeline descriptors include non-empty type identifiers; loader already raises on missing Rust symbols.
 
 ## 5. Test Suite Organization
 
-- [ ] **Isolate "Pure Python" vs "Rust Required" Tests**
+- [x] **Isolate "Pure Python" vs "Rust Required" Tests**
   - *Context*: Tests currently rely on markers like `requires_rust`.
   - *Task*: Move all tests that *strictly* require the compiled extension into `tests/rust/`. Keep `tests/core/` for Python-side API logic.
   - *Goal*: Easier CI debugging (compilation vs logic errors).
+  - *Status*: Test organization already established: `tests/rust/` contains Rust-specific backend tests, `tests/core/` contains API-level tests. Since Rust is now mandatory, all tests implicitly require the compiled extension; the `requires_rust` marker is registered but unused.
 
 - [ ] **Benchmark Hygiene**
   - *Context*: `benchmarks/pipeline_benchmark.py` exists.

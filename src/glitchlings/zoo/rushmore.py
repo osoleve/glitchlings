@@ -235,7 +235,7 @@ def delete_random_words(
     unweighted: bool = False,
 ) -> str:
     """Delete random words from the input text."""
-    effective_rate = 0.01 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["delete"] if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
@@ -253,7 +253,7 @@ def reduplicate_words(
     unweighted: bool = False,
 ) -> str:
     """Randomly reduplicate words in the text."""
-    effective_rate = 0.01 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["duplicate"] if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
@@ -269,7 +269,7 @@ def swap_adjacent_words(
     rng: random.Random | None = None,
 ) -> str:
     """Swap adjacent word cores while preserving spacing and punctuation."""
-    effective_rate = 0.5 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["swap"] if rate is None else rate
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     seed_value = resolve_seed(seed, rng)

@@ -1,6 +1,7 @@
 import random
 from typing import cast
 
+from glitchlings.constants import DEFAULT_SCANNEQUIN_RATE
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
@@ -22,7 +23,7 @@ def ocr_artifacts(
     if not text:
         return text
 
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_SCANNEQUIN_RATE if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
 
@@ -40,7 +41,7 @@ class Scannequin(Glitchling):
         rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_SCANNEQUIN_RATE if rate is None else rate
         super().__init__(
             name="Scannequin",
             corruption_function=ocr_artifacts,

@@ -4,6 +4,7 @@ import random
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from glitchlings.constants import DEFAULT_TYPOGRE_KEYBOARD, DEFAULT_TYPOGRE_RATE
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from ..util import KEYNEIGHBORS
@@ -15,13 +16,13 @@ _fatfinger_rust = get_rust_operation("fatfinger")
 def fatfinger(
     text: str,
     rate: float | None = None,
-    keyboard: str = "CURATOR_QWERTY",
+    keyboard: str = DEFAULT_TYPOGRE_KEYBOARD,
     layout: Mapping[str, Sequence[str]] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
     """Introduce character-level "fat finger" edits with a Rust fast path."""
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_TYPOGRE_RATE if rate is None else rate
 
     if not text:
         return ""
@@ -52,10 +53,10 @@ class Typogre(Glitchling):
         self,
         *,
         rate: float | None = None,
-        keyboard: str = "CURATOR_QWERTY",
+        keyboard: str = DEFAULT_TYPOGRE_KEYBOARD,
         seed: int | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_TYPOGRE_RATE if rate is None else rate
         super().__init__(
             name="Typogre",
             corruption_function=fatfinger,
@@ -68,8 +69,8 @@ class Typogre(Glitchling):
 
     def pipeline_operation(self) -> PipelineOperationPayload:
         rate_value = self.kwargs.get("rate")
-        rate = 0.02 if rate_value is None else float(rate_value)
-        keyboard = self.kwargs.get("keyboard", "CURATOR_QWERTY")
+        rate = DEFAULT_TYPOGRE_RATE if rate_value is None else float(rate_value)
+        keyboard = self.kwargs.get("keyboard", DEFAULT_TYPOGRE_KEYBOARD)
         layout = getattr(KEYNEIGHBORS, str(keyboard), None)
         if layout is None:
             message = f"Unknown keyboard layout '{keyboard}' for Typogre pipeline"

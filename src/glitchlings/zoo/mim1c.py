@@ -6,7 +6,7 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
-from glitchlings.constants import MIM1C_DEFAULT_CLASSES
+from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
@@ -64,7 +64,7 @@ def swap_homoglyphs(
 ) -> str:
     """Replace characters with visually confusable homoglyphs via the Rust engine."""
 
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
 
     normalised_classes = _normalise_classes(classes)
     normalised_banned = _normalise_banned(banned_characters)
@@ -97,7 +97,7 @@ class Mim1c(Glitchling):
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
         normalised_classes = _normalise_classes(classes)
         normalised_banned = _normalise_banned(banned_characters)
         super().__init__(
@@ -113,7 +113,7 @@ class Mim1c(Glitchling):
 
     def pipeline_operation(self) -> PipelineOperationPayload:
         rate_value = self.kwargs.get("rate")
-        rate = 0.02 if rate_value is None else float(rate_value)
+        rate = DEFAULT_MIM1C_RATE if rate_value is None else float(rate_value)
 
         descriptor: dict[str, object] = {"type": "mimic", "rate": rate}
 

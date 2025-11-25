@@ -1,11 +1,13 @@
 import random
 from typing import cast
 
+from glitchlings.constants import DEFAULT_REDACTYL_CHAR, DEFAULT_REDACTYL_RATE
 from glitchlings.internal.rust import get_rust_operation, resolve_seed
 
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
-FULL_BLOCK = "█"
+# Backwards compatibility alias
+FULL_BLOCK = DEFAULT_REDACTYL_CHAR
 
 # Load the mandatory Rust implementation
 _redact_words_rust = get_rust_operation("redact_words")
@@ -13,7 +15,7 @@ _redact_words_rust = get_rust_operation("redact_words")
 
 def redact_words(
     text: str,
-    replacement_char: str | None = FULL_BLOCK,
+    replacement_char: str | None = DEFAULT_REDACTYL_CHAR,
     rate: float | None = None,
     merge_adjacent: bool | None = False,
     seed: int = 151,
@@ -22,9 +24,9 @@ def redact_words(
     unweighted: bool = False,
 ) -> str:
     """Redact random words by replacing their characters."""
-    effective_rate = 0.025 if rate is None else rate
+    effective_rate = DEFAULT_REDACTYL_RATE if rate is None else rate
 
-    replacement = FULL_BLOCK if replacement_char is None else str(replacement_char)
+    replacement = DEFAULT_REDACTYL_CHAR if replacement_char is None else str(replacement_char)
     merge = False if merge_adjacent is None else bool(merge_adjacent)
 
     clamped_rate = max(0.0, min(effective_rate, 1.0))
@@ -51,13 +53,13 @@ class Redactyl(Glitchling):
     def __init__(
         self,
         *,
-        replacement_char: str = FULL_BLOCK,
+        replacement_char: str = DEFAULT_REDACTYL_CHAR,
         rate: float | None = None,
         merge_adjacent: bool = False,
         seed: int = 151,
         unweighted: bool = False,
     ) -> None:
-        effective_rate = 0.025 if rate is None else rate
+        effective_rate = DEFAULT_REDACTYL_RATE if rate is None else rate
         super().__init__(
             name="Redactyl",
             corruption_function=redact_words,
