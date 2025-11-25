@@ -1,6 +1,7 @@
 # Glitchlings - AGENTS.md
 
 ## Work Tracking
+
 1. Install the [Beads `bd` CLI](https://github.com/steveyegge/beads) in every environment before writing code. The project ships prebuilt binaries—download the latest release (e.g. `curl -L https://github.com/steveyegge/beads/releases/download/v0.20.1/beads_0.20.1_linux_amd64.tar.gz -o beads.tar.gz && tar -xzf beads.tar.gz`) and move the `bd` executable onto `$PATH` (for example, `install -m 0755 bd /usr/local/bin/bd`). Verify the install with `bd version`. If `bd` is missing from the environment, you are expected—and explicitly allowed—to install it.
 2. Run `bd quickstart` once after installation to review the workflow commands and confirm the CLI is operational.
 3. Bootstrap new clones with `bd init --quiet` from the repository root; this keeps `.beads/` synchronised and ready for the agent workflow.
@@ -8,13 +9,16 @@
 5. Confirm the editable install succeeds with `pip install -e .[dev]` before making changes—this primes the tooling stack and validates that the repository builds cleanly.
 
 ## Quality Gates
+
 After completing a task, always:
+
 1. Lint with `ruff`
 2. Type check `src/`  with `mypy`
 3. Build the project with `uv`
 4. Run tests with `pytest`
 
 ## Repository Tour
+
 - **`src/glitchlings/`** - Installable Python package.
   - `__init__.py` exposes the public API (glitchlings, `Gaggle`, `summon`, `SAMPLE_TEXT`).
   - `__main__.py` wires `python -m glitchlings` to the CLI entry point in `main.py`.
@@ -33,6 +37,7 @@ After completing a task, always:
   - Highlights: `test_glitchling_core.py` (Gaggle orchestration and feature flags), `test_parameter_effects.py` (argument coverage), `test_benchmarks.py` (pipeline smoke tests), `test_prime_echo_chamber.py` (Prime DLC), and `test_rust_backed_glitchlings.py` (parity checks).
 
 ## Coding Conventions
+
 - Target **Python 3.10+** (see `pyproject.toml`).
 - Follow the import order used in the package: standard library, third-party, then local modules.
 - Every new glitchling must:
@@ -46,15 +51,61 @@ After completing a task, always:
 - Treat Rust failures as fatal: the compiled backend must import cleanly, surface identical signatures, and stay in lockstep with the Python shims.
 
 ## Testing & Tooling
+
 - Run the full suite with `pytest` from the repository root.
 
 ## Determinism Checklist
+
 - Expose configurable parameters via `set_param` so fixtures in `tests/test_glitchlings_determinism.py` can reset seeds predictably.
 - Derive RNGs from the enclosing context (`Gaggle.derive_seed`) instead of using global state.
 - When sampling subsets (e.g., replacements or deletions), stabilise candidate ordering before selecting to keep results reproducible.
 
 ## Workflow Tips
+
 - The CLI lists built-in glitchlings (`glitchlings --list`) and can show diffs; update `BUILTIN_GLITCHLINGS` and help text when introducing new creatures.
 - Keep documentation synchronised: update `README.md`, `docs/index.md`, per-glitchling reference pages, and `MONSTER_MANUAL.md` when behaviours or defaults change.
 - When editing keyboard layouts or homoglyph mappings, ensure downstream consumers continue to work with lowercase keys (`util.KEYNEIGHBORS`).
 - Verify the Rust backend builds in every environment (CI, local, release) and fix import errors immediately—there is no supported Python-only mode anymore.
+
+## Functional Purity Architecture (Planned)
+
+The codebase is undergoing a refactor to explicitly separate **pure** (functionally deterministic) code from **impure** (side-effectful) code. Track progress via the epic `glitchlings-251f` in the beads tracker. Until complete, follow these principles:
+
+### What is Pure Code?
+
+- Functions that return the same output given the same inputs
+- No side effects: no IO, no logging, no mutation of external state
+- No RNG object manipulation—accept pre-computed random values instead
+
+### What is Impure Code?
+
+- File IO (config loading, cache reading/writing)
+- Rust FFI calls via `get_rust_operation()`
+- RNG state management (`random.Random` instantiation, seeding)
+- Optional dependency imports (`compat.py` loaders)
+- Global state access (`get_config()`, cached singletons)
+
+### Boundary Layer Pattern
+
+Validation and defensive code belong at **module boundaries** where untrusted input enters:
+
+- CLI argument parsing (`main.py`)
+- Public API entry points (`Glitchling.__init__`, `Attack.__init__`)
+- Configuration loaders (`conf/` module)
+
+Core transformation functions **inside** these boundaries should:
+
+- Trust that inputs are already validated
+- NOT check for `None` on required parameters
+- NOT re-validate types that the boundary already checked
+- NOT add defensive `try/except` around trusted calls
+
+### Why This Matters for Agents
+
+AI coding agents tend to add defensive checks everywhere. This architecture makes it explicit:
+
+- If you're in a `pure/` or `transforms/` module: **trust your inputs**
+- If you're at a boundary: **validate thoroughly once**
+- If you're unsure: check which layer the file belongs to
+
+See `docs/development.md` for detailed guidance once the refactor is complete.
