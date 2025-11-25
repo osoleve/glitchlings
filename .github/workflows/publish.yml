@@ -168,7 +168,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        runner: ['macos-14', 'macos-latest']
+        runner: ['macos-latest', 'macos-14']  # macos-latest is Intel x86_64, macos-14 is ARM64
 
     steps:
       - uses: actions/checkout@v4
