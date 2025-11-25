@@ -12,13 +12,11 @@ class Metric(Protocol):
         self,
         original_tokens: TokenSequence | TokenBatch,
         corrupted_tokens: TokenSequence | TokenBatch,
-    ) -> float | list[float]:
-        ...
+    ) -> float | list[float]: ...
 
 
 class BatchMetric(Protocol):
-    def __call__(self, inputs: TokenBatch, outputs: TokenBatch) -> list[float]:
-        ...
+    def __call__(self, inputs: TokenBatch, outputs: TokenBatch) -> list[float]: ...
 
 
 try:

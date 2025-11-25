@@ -87,7 +87,10 @@ def swap_homoglyphs(
 class Mim1c(Glitchling):
     """Glitchling that swaps characters for visually similar homoglyphs."""
 
-    flavor = "Breaks your parser by replacing some characters in strings with doppelgangers. Don't worry, this text is clean. ;)"
+    flavor = (
+        "Breaks your parser by replacing some characters in strings with "
+        "doppelgangers. Don't worry, this text is clean. ;)"
+    )
 
     def __init__(
         self,

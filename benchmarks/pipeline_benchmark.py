@@ -132,9 +132,7 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
 }
 
 
-def _seeded_descriptors(
-    master_seed: int, descriptors: Sequence[Descriptor]
-) -> list[Descriptor]:
+def _seeded_descriptors(master_seed: int, descriptors: Sequence[Descriptor]) -> list[Descriptor]:
     """Return pipeline descriptors enriched with per-glitchling seeds."""
     seeded: list[Descriptor] = []
     for index, descriptor in enumerate(descriptors):
@@ -142,11 +140,7 @@ def _seeded_descriptors(
             {
                 "name": descriptor["name"],
                 "operation": dict(descriptor["operation"]),
-                "seed": int(
-                    core_module.Gaggle.derive_seed(
-                        master_seed, descriptor["name"], index
-                    )
-                ),
+                "seed": int(core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)),
             }
         )
     return seeded
@@ -226,6 +220,7 @@ def collect_benchmark_results(
 
     results: list[BenchmarkResult] = []
     for label, text in samples:
+
         def runtime_subject(text: str = text) -> str:
             return zoo_rust.compose_glitchlings(
                 text,

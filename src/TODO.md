@@ -72,6 +72,7 @@ Cleanup technical debt from the Rust migration.
   - *Goal*: Easier CI debugging (compilation vs logic errors).
   - *Status*: Test organization already established: `tests/rust/` contains Rust-specific backend tests, `tests/core/` contains API-level tests. Since Rust is now mandatory, all tests implicitly require the compiled extension; the `requires_rust` marker is registered but unused.
 
-- [ ] **Benchmark Hygiene**
+- [x] **Benchmark Hygiene**
   - *Context*: `benchmarks/pipeline_benchmark.py` exists.
   - *Task*: Integrate benchmarks into CI (as a non-failing step) to monitor performance regressions.
+  - *Status*: Added benchmark job to `.github/workflows/ci.yml` with `continue-on-error: true`. Added `--output` flag to benchmark script for saving results as artifacts.

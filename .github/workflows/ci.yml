@@ -58,7 +58,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[all]
       - name: Run pipeline benchmarks
-        run: python -m benchmarks.pipeline_benchmark --iterations 5
+        run: python -m benchmarks.pipeline_benchmark --iterations 5 --output benchmark-results.txt
       - name: Save benchmark results
         if: always()
         uses: actions/upload-artifact@v4

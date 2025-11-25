@@ -78,8 +78,7 @@ class Attack:
         for index, entry in enumerate(normalized):
             if not isinstance(entry, Glitchling):
                 message = (
-                    "glitchlings sequence entries must be Glitchling instances "
-                    f"(index {index})"
+                    f"glitchlings sequence entries must be Glitchling instances (index {index})"
                 )
                 raise TypeError(message)
         return normalized
