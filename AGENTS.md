@@ -84,6 +84,9 @@ These modules contain only pure functions—same inputs always produce same outp
 | `compat/types.py` | Pure type definitions for optional dependency loading |
 | `conf/types.py` | Pure dataclass definitions for configuration (LexiconConfig, RuntimeConfig, AttackConfig) |
 | `constants.py` | Centralized default values and constants (no I/O operations) |
+| `attack/compose.py` | Pure result assembly for Attack (extract_transcript_contents, build_*_result) |
+| `attack/encode.py` | Pure encoding utilities (encode_single, encode_batch, describe_tokenizer) |
+| `attack/metrics_dispatch.py` | Pure metric dispatch logic (is_batch, validate_batch_consistency) |
 
 **When writing code in pure modules:**
 
@@ -102,6 +105,9 @@ These modules handle IO, FFI, and mutable state:
 - `compat/loaders.py` — Optional dependency loading with lazy import machinery
 - `conf/loaders.py` — Configuration file loading, caching, and Gaggle construction
 - `lexicon/` — Cache file IO
+- `attack/tokenization.py` — Tokenizer resolution (imports tiktoken, tokenizers)
+- `attack/metrics.py` — Rust FFI metric loading
+- `attack/core.py` — Attack orchestrator (coordinates impure operations)
 
 ### Boundary Layer Pattern
 

@@ -31,6 +31,7 @@ import pytest
 # Get the src directory for import path resolution
 SRC_DIR = Path(__file__).parent.parent / "src" / "glitchlings"
 ZOO_DIR = SRC_DIR / "zoo"
+ATTACK_DIR = SRC_DIR / "attack"
 
 
 class ImportInfo(NamedTuple):
@@ -166,6 +167,10 @@ PURE_MODULES = [
     SRC_DIR / "compat" / "types.py",
     SRC_DIR / "conf" / "types.py",
     SRC_DIR / "constants.py",
+    # Attack pure modules
+    ATTACK_DIR / "compose.py",
+    ATTACK_DIR / "encode.py",
+    ATTACK_DIR / "metrics_dispatch.py",
 ]
 
 # Map module paths to their import names for allowlisting pure-to-pure imports
@@ -177,6 +182,10 @@ PURE_MODULE_NAMES = {
     "glitchlings.compat.types",
     "glitchlings.conf.types",
     "glitchlings.constants",
+    # Attack pure modules
+    "glitchlings.attack.compose",
+    "glitchlings.attack.encode",
+    "glitchlings.attack.metrics_dispatch",
 }
 
 # Impure internal modules (importing these makes a module impure)
@@ -188,6 +197,10 @@ IMPURE_MODULES = {
     "glitchlings.config",
     "glitchlings.compat.loaders",
     "glitchlings.conf.loaders",
+    # Attack impure modules
+    "glitchlings.attack.tokenization",
+    "glitchlings.attack.metrics",
+    "glitchlings.attack.core",
 }
 
 
