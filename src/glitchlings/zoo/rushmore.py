@@ -5,10 +5,15 @@ import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum, unique
-from typing import Any, cast
+from typing import Any
 
 from glitchlings.constants import RUSHMORE_DEFAULT_RATES
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import (
+    delete_random_words_rust,
+    reduplicate_words_rust,
+    resolve_seed,
+    swap_adjacent_words_rust,
+)
 
 from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
@@ -221,12 +226,6 @@ def _resolve_rushmore_config(
     )
 
 
-# Load the mandatory Rust operations
-_delete_random_words_rust = get_rust_operation("delete_random_words")
-_reduplicate_words_rust = get_rust_operation("reduplicate_words")
-_swap_adjacent_words_rust = get_rust_operation("swap_adjacent_words")
-
-
 def delete_random_words(
     text: str,
     rate: float | None = None,
@@ -241,7 +240,7 @@ def delete_random_words(
     unweighted_flag = bool(unweighted)
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _delete_random_words_rust(text, clamped_rate, unweighted_flag, seed_value))
+    return delete_random_words_rust(text, clamped_rate, unweighted_flag, seed_value)
 
 
 def reduplicate_words(
@@ -259,7 +258,7 @@ def reduplicate_words(
     unweighted_flag = bool(unweighted)
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _reduplicate_words_rust(text, clamped_rate, unweighted_flag, seed_value))
+    return reduplicate_words_rust(text, clamped_rate, unweighted_flag, seed_value)
 
 
 def swap_adjacent_words(
@@ -273,7 +272,7 @@ def swap_adjacent_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     seed_value = resolve_seed(seed, rng)
-    return cast(str, _swap_adjacent_words_rust(text, clamped_rate, seed_value))
+    return swap_adjacent_words_rust(text, clamped_rate, seed_value)
 
 
 def rushmore_attack(

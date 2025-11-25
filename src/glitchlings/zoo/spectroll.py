@@ -3,11 +3,9 @@ from __future__ import annotations
 import random
 from typing import cast
 
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import resolve_seed, swap_colors_rust
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
-
-_swap_colors_rust = get_rust_operation("swap_colors")
 
 
 def swap_colors(
@@ -26,7 +24,7 @@ def swap_colors(
     else:
         resolved_seed = None
 
-    return cast(str, _swap_colors_rust(text, normalized_mode, resolved_seed))
+    return swap_colors_rust(text, normalized_mode, resolved_seed)
 
 
 class Spectroll(Glitchling):

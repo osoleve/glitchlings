@@ -8,7 +8,10 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union, cast
 
-from glitchlings.internal.rust import get_rust_operation
+from glitchlings.internal.rust_ffi import (
+    compose_glitchlings_rust,
+    plan_glitchlings_rust,
+)
 
 from ..compat import get_datasets_dataset, require_datasets
 from ..util.transcripts import (
@@ -101,14 +104,7 @@ def _plan_glitchlings_with_rust(
     master_seed: int,
 ) -> list[tuple[int, int]]:
     """Obtain the orchestration plan from the compiled Rust module."""
-    plan_glitchlings = get_rust_operation("plan_glitchlings")
-    try:
-        plan = plan_glitchlings(specs, int(master_seed))
-    except (TypeError, ValueError, RuntimeError, AttributeError) as error:
-        message = "Rust orchestration planning failed"
-        raise RuntimeError(message) from error
-
-    return [(int(index), int(seed)) for index, seed in plan]
+    return plan_glitchlings_rust(list(specs), int(master_seed))
 
 
 def plan_glitchling_specs(
@@ -636,23 +632,15 @@ class Gaggle(Glitchling):
         # Fast path: all glitchlings support pipeline
         if len(execution_plan) == 1 and execution_plan[0][1] is None:
             descriptors = execution_plan[0][0]
-            compose_glitchlings = get_rust_operation("compose_glitchlings")
-            try:
-                return cast(str, compose_glitchlings(text, descriptors, master_seed))
-            except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
-                raise RuntimeError("Rust pipeline execution failed") from error
+            return compose_glitchlings_rust(text, descriptors, master_seed)
 
         # Hybrid path: mix of pipeline batches and individual fallbacks
-        compose_glitchlings = get_rust_operation("compose_glitchlings")
         result = text
 
         for descriptors, fallback_glitchling in execution_plan:
             if descriptors:
                 # Execute the batch through the pipeline
-                try:
-                    result = cast(str, compose_glitchlings(result, descriptors, master_seed))
-                except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
-                    raise RuntimeError("Rust pipeline execution failed") from error
+                result = compose_glitchlings_rust(result, descriptors, master_seed)
             elif fallback_glitchling is not None:
                 # Execute single glitchling via fallback
                 result = cast(str, fallback_glitchling.corrupt(result))

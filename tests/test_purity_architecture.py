@@ -12,10 +12,11 @@ Pure modules (verified to have no impure imports):
 - zoo/_text_utils.py - Text tokenization utilities
 
 Impure modules (may have side effects at import time):
-- internal/rust.py - Rust FFI loader
+- internal/rust.py - Low-level Rust FFI loader
+- internal/rust_ffi.py - Centralized Rust operation wrappers (preferred for FFI)
 - compat.py - Optional dependency loader
 - config.py - Configuration singleton
-- Any module that imports from internal/rust.py
+- Any module that imports from internal/rust.py or internal/rust_ffi.py
 """
 
 from __future__ import annotations
@@ -166,6 +167,7 @@ PURE_MODULES = [
 # Impure internal modules (importing these makes a module impure)
 IMPURE_MODULES = {
     "glitchlings.internal.rust",
+    "glitchlings.internal.rust_ffi",
     "glitchlings.internal",
     "glitchlings._zoo_rust",
     "glitchlings.config",

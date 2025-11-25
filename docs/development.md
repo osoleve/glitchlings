@@ -119,7 +119,8 @@ The zoo subpackage organizes code by purity:
 | `zoo/transforms.py` | Pure | Text tokenization, keyboard processing, string diffs |
 | `zoo/rng.py` | Pure boundary | Seed resolution, hierarchical derivation |
 | `zoo/_text_utils.py` | Pure | Word splitting, token edge extraction |
-| `internal/rust.py` | Impure | Rust FFI loader, operation dispatch |
+| `internal/rust.py` | Impure | Low-level Rust FFI loader and primitives |
+| `internal/rust_ffi.py` | Impure | Centralized Rust operation wrappers (preferred) |
 | `compat.py` | Impure | Optional dependency detection |
 
 ### Boundary Layer Pattern

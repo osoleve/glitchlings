@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Dict, Type, cast
+from typing import Dict, Type
 
-from glitchlings.internal.rust import get_rust_operation
+from glitchlings.internal.rust_ffi import pedant_rust
 
 from ..core import Gaggle
 from .stones import PedantStone
-
-_PEDANT_RUST = get_rust_operation("pedant")
 
 
 def apply_pedant(
@@ -20,13 +18,10 @@ def apply_pedant(
 ) -> str:
     """Apply a pedant transformation via the Rust extension."""
 
-    return cast(
-        str,
-        _PEDANT_RUST(
-            text,
-            stone=stone.label,
-            seed=int(seed),
-        ),
+    return pedant_rust(
+        text,
+        stone=stone.label,
+        seed=int(seed),
     )
 
 

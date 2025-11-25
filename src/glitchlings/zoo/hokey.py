@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Callable, cast
+from typing import Any, cast
 
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import hokey_rust, resolve_seed
 
 from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
-
-HokeyRustCallable = Callable[[str, float, int, int, int, float, int | None], str]
-
-_hokey_rust = cast(HokeyRustCallable, get_rust_operation("hokey"))
 
 
 def extend_vowels(
@@ -54,7 +50,7 @@ def extend_vowels(
     base_probability = base_p if base_p is not None else 0.45
 
     seed_value = resolve_seed(seed, rng)
-    return _hokey_rust(
+    return hokey_rust(
         text,
         rate,
         extension_min,

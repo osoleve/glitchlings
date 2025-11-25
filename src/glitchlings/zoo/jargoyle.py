@@ -5,7 +5,7 @@ from types import ModuleType
 from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import resolve_seed, substitute_random_synonyms_rust
 from glitchlings.lexicon import Lexicon, get_default_lexicon
 
 from .core import AttackWave, Glitchling
@@ -88,9 +88,6 @@ def _normalize_parts_of_speech(
     return tuple(normalized)
 
 
-_SUBSTITUTE_RANDOM_SYNONYMS = get_rust_operation("substitute_random_synonyms")
-
-
 def substitute_random_synonyms(
     text: str,
     rate: float | None = None,
@@ -131,16 +128,13 @@ def substitute_random_synonyms(
     try:
         target_pos = _normalize_parts_of_speech(part_of_speech)
         resolved_seed = resolve_seed(seed, rng)
-        return cast(
-            str,
-            _SUBSTITUTE_RANDOM_SYNONYMS(
-                text,
-                effective_rate,
-                list(target_pos),
-                resolved_seed,
-                active_lexicon,
-                lexicon_seed_repr,
-            ),
+        return substitute_random_synonyms_rust(
+            text,
+            effective_rate,
+            list(target_pos),
+            resolved_seed,
+            active_lexicon,
+            lexicon_seed_repr,
         )
     finally:
         if restore_lexicon_seed and isinstance(active_lexicon, Lexicon):

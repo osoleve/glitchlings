@@ -94,7 +94,8 @@ These modules contain only pure functions—same inputs always produce same outp
 
 These modules handle IO, FFI, and mutable state:
 
-- `internal/rust.py` — Rust FFI calls via PyO3
+- `internal/rust.py` — Low-level Rust FFI loader and primitives
+- `internal/rust_ffi.py` — Centralized Rust operation wrappers (preferred entry point for FFI)
 - `compat.py` — Optional dependency loading
 - `config.py`, `runtime_config.py` — Configuration loading/caching
 - `lexicon/` — Cache file IO

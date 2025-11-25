@@ -1,0 +1,423 @@
+"""Centralized Rust FFI operations module.
+
+This module is the **single entry point** for all Rust FFI calls in the codebase.
+All glitchling transformations that delegate to Rust must go through this module.
+
+**Design Philosophy:**
+
+This module is explicitly *impure* - it loads and invokes compiled Rust functions
+which are stateful operations. By centralizing all FFI here:
+
+1. Pure modules (validation.py, transforms.py, rng.py) never import Rust
+2. The Rust dependency is explicit and traceable
+3. Testing can mock this module to verify Python-only paths
+4. Side effects from FFI are isolated to one location
+
+**Usage Pattern:**
+
+    # In a glitchling module (e.g., typogre.py)
+    from glitchlings.internal.rust_ffi import fatfinger_rust
+
+    def fatfinger(text: str, rate: float, ...) -> str:
+        # ... validation and setup ...
+        return fatfinger_rust(text, rate, layout, seed)
+
+See AGENTS.md "Functional Purity Architecture" for full details.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Literal, Mapping, Sequence, cast
+
+from .rust import get_rust_operation, resolve_seed
+
+# Re-export resolve_seed for backward compatibility
+__all__ = [
+    # Seed resolution (re-exported from rust.py)
+    "resolve_seed",
+    # Orchestration operations
+    "plan_glitchlings_rust",
+    "compose_glitchlings_rust",
+    # Character-level operations
+    "fatfinger_rust",
+    "mim1c_rust",
+    "ocr_artifacts_rust",
+    "inject_zero_widths_rust",
+    "swap_colors_rust",
+    "hokey_rust",
+    # Word-level operations
+    "delete_random_words_rust",
+    "reduplicate_words_rust",
+    "swap_adjacent_words_rust",
+    "redact_words_rust",
+    "substitute_random_synonyms_rust",
+    "ekkokin_homophones_rust",
+    # Grammar operations
+    "pedant_rust",
+]
+
+
+# ---------------------------------------------------------------------------
+# Type Aliases
+# ---------------------------------------------------------------------------
+
+# Orchestration types
+PlanResult = list[tuple[int, int]]
+PipelineDescriptor = Mapping[str, Any]
+
+# Lexicon protocol for Jargoyle
+LexiconProtocol = Any  # Lexicon instance with get_synonyms() method
+
+
+# ---------------------------------------------------------------------------
+# Orchestration Operations
+# ---------------------------------------------------------------------------
+
+
+def plan_glitchlings_rust(
+    specs: Sequence[Mapping[str, Any]],
+    master_seed: int,
+) -> PlanResult:
+    """Invoke Rust orchestration planner.
+
+    Args:
+        specs: Sequence of glitchling specifications with name/scope/order.
+        master_seed: Master seed for deterministic ordering.
+
+    Returns:
+        List of (index, derived_seed) tuples defining execution order.
+
+    Raises:
+        RuntimeError: If Rust orchestration fails.
+    """
+    plan_fn = get_rust_operation("plan_glitchlings")
+    try:
+        plan = plan_fn(specs, int(master_seed))
+    except (TypeError, ValueError, RuntimeError, AttributeError) as error:
+        raise RuntimeError("Rust orchestration planning failed") from error
+    return [(int(index), int(seed)) for index, seed in plan]
+
+
+def compose_glitchlings_rust(
+    text: str,
+    descriptors: Sequence[PipelineDescriptor],
+    master_seed: int,
+) -> str:
+    """Execute a sequence of glitchlings through the Rust pipeline.
+
+    Args:
+        text: Input text to transform.
+        descriptors: Pipeline descriptors for each glitchling.
+        master_seed: Master seed for determinism.
+
+    Returns:
+        Transformed text.
+
+    Raises:
+        RuntimeError: If Rust pipeline execution fails.
+    """
+    compose_fn = get_rust_operation("compose_glitchlings")
+    try:
+        return cast(str, compose_fn(text, descriptors, int(master_seed)))
+    except (TypeError, ValueError, AttributeError) as error:
+        raise RuntimeError("Rust pipeline execution failed") from error
+
+
+# ---------------------------------------------------------------------------
+# Character-Level Operations
+# ---------------------------------------------------------------------------
+
+
+def fatfinger_rust(
+    text: str,
+    rate: float,
+    layout: Mapping[str, Sequence[str]],
+    seed: int,
+) -> str:
+    """Introduce keyboard typos via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of corrupting each character.
+        layout: Keyboard neighbor mapping.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with simulated typing errors.
+    """
+    fn = get_rust_operation("fatfinger")
+    return cast(str, fn(text, rate, layout, seed))
+
+
+def mim1c_rust(
+    text: str,
+    rate: float,
+    classes: list[str] | Literal["all"] | None,
+    banned: list[str] | None,
+    seed: int,
+) -> str:
+    """Replace characters with homoglyphs via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of swapping each character.
+        classes: Homoglyph classes to use, or "all".
+        banned: Characters to never replace with.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with homoglyph substitutions.
+    """
+    fn = get_rust_operation("mim1c")
+    return cast(str, fn(text, rate, classes, banned, seed))
+
+
+def ocr_artifacts_rust(
+    text: str,
+    rate: float,
+    seed: int,
+) -> str:
+    """Introduce OCR-like artifacts via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of introducing artifacts.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with simulated OCR errors.
+    """
+    fn = get_rust_operation("ocr_artifacts")
+    return cast(str, fn(text, rate, seed))
+
+
+def inject_zero_widths_rust(
+    text: str,
+    rate: float,
+    characters: list[str],
+    seed: int | None,
+) -> str:
+    """Inject zero-width characters via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of injection between characters.
+        characters: Palette of zero-width characters to use.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with injected zero-width characters.
+    """
+    fn = get_rust_operation("inject_zero_widths")
+    return cast(str, fn(text, rate, characters, seed))
+
+
+def swap_colors_rust(
+    text: str,
+    mode: str,
+    seed: int | None,
+) -> str:
+    """Swap color terms via Rust.
+
+    Args:
+        text: Input text.
+        mode: Swap mode ("literal" or "drift").
+        seed: Deterministic seed (only used for "drift" mode).
+
+    Returns:
+        Text with color terms swapped.
+    """
+    fn = get_rust_operation("swap_colors")
+    return cast(str, fn(text, mode, seed))
+
+
+def hokey_rust(
+    text: str,
+    rate: float,
+    extension_min: int,
+    extension_max: int,
+    word_length_threshold: int,
+    base_p: float,
+    seed: int | None,
+) -> str:
+    """Extend expressive segments via Rust.
+
+    Args:
+        text: Input text.
+        rate: Selection rate for candidate words.
+        extension_min: Minimum extra repetitions.
+        extension_max: Maximum extra repetitions.
+        word_length_threshold: Preferred max word length.
+        base_p: Base probability for sampler.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with extended expressive segments.
+    """
+    fn = get_rust_operation("hokey")
+    return cast(
+        str,
+        fn(text, rate, extension_min, extension_max, word_length_threshold, base_p, seed),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Word-Level Operations
+# ---------------------------------------------------------------------------
+
+
+def delete_random_words_rust(
+    text: str,
+    rate: float,
+    unweighted: bool,
+    seed: int,
+) -> str:
+    """Delete random words via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of deleting each word.
+        unweighted: If True, use uniform selection; else weight by length.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with words deleted.
+    """
+    fn = get_rust_operation("delete_random_words")
+    return cast(str, fn(text, rate, unweighted, seed))
+
+
+def reduplicate_words_rust(
+    text: str,
+    rate: float,
+    unweighted: bool,
+    seed: int,
+) -> str:
+    """Reduplicate random words via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of duplicating each word.
+        unweighted: If True, use uniform selection; else weight by length.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with words duplicated.
+    """
+    fn = get_rust_operation("reduplicate_words")
+    return cast(str, fn(text, rate, unweighted, seed))
+
+
+def swap_adjacent_words_rust(
+    text: str,
+    rate: float,
+    seed: int,
+) -> str:
+    """Swap adjacent words via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of swapping adjacent word pairs.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with adjacent words swapped.
+    """
+    fn = get_rust_operation("swap_adjacent_words")
+    return cast(str, fn(text, rate, seed))
+
+
+def redact_words_rust(
+    text: str,
+    replacement: str,
+    rate: float,
+    merge: bool,
+    unweighted: bool,
+    seed: int,
+) -> str:
+    """Redact random words via Rust.
+
+    Args:
+        text: Input text.
+        replacement: Character to replace word characters with.
+        rate: Probability of redacting each word.
+        merge: If True, merge adjacent redactions.
+        unweighted: If True, use uniform selection; else weight by length.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with words redacted.
+    """
+    fn = get_rust_operation("redact_words")
+    return cast(str, fn(text, replacement, rate, merge, unweighted, seed))
+
+
+def substitute_random_synonyms_rust(
+    text: str,
+    rate: float,
+    parts_of_speech: list[str],
+    seed: int,
+    lexicon: LexiconProtocol,
+    lexicon_seed_repr: str | None,
+) -> str:
+    """Substitute words with synonyms via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of substituting each word.
+        parts_of_speech: List of POS tags to target.
+        seed: Deterministic seed.
+        lexicon: Lexicon instance for synonym lookup.
+        lexicon_seed_repr: String representation of lexicon seed.
+
+    Returns:
+        Text with synonym substitutions.
+    """
+    fn = get_rust_operation("substitute_random_synonyms")
+    return cast(str, fn(text, rate, parts_of_speech, seed, lexicon, lexicon_seed_repr))
+
+
+def ekkokin_homophones_rust(
+    text: str,
+    rate: float,
+    weighting: str,
+    seed: int | None,
+) -> str:
+    """Substitute words with homophones via Rust.
+
+    Args:
+        text: Input text.
+        rate: Probability of substituting each word.
+        weighting: Weighting mode for selection.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with homophone substitutions.
+    """
+    fn = get_rust_operation("ekkokin_homophones")
+    return cast(str, fn(text, rate, weighting, seed))
+
+
+# ---------------------------------------------------------------------------
+# Grammar Operations
+# ---------------------------------------------------------------------------
+
+
+def pedant_rust(
+    text: str,
+    *,
+    stone: str,
+    seed: int,
+) -> str:
+    """Apply pedant grammar transformation via Rust.
+
+    Args:
+        text: Input text.
+        stone: Pedant stone label defining transformation type.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with grammar transformation applied.
+    """
+    fn = get_rust_operation("pedant")
+    return cast(str, fn(text, stone=stone, seed=seed))

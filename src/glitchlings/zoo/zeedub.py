@@ -2,19 +2,15 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import Callable, cast
+from typing import cast
 
 from glitchlings.constants import DEFAULT_ZEEDUB_RATE, ZEEDUB_DEFAULT_ZERO_WIDTHS
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
-
-from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
-
-# Load the mandatory Rust implementation
-_inject_zero_widths_rust = cast(
-    Callable[[str, float, list[str], int | None], str],
-    get_rust_operation("inject_zero_widths"),
+from glitchlings.internal.rust_ffi import (
+    inject_zero_widths_rust,
+    resolve_seed,
 )
 
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = ZEEDUB_DEFAULT_ZERO_WIDTHS
 
@@ -43,7 +39,7 @@ def insert_zero_widths(
         return text
 
     seed_value = resolve_seed(seed, rng)
-    return _inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), seed_value)
+    return inject_zero_widths_rust(text, clamped_rate, list(cleaned_palette), seed_value)
 
 
 class Zeedub(Glitchling):

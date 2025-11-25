@@ -5,12 +5,10 @@ from collections.abc import Mapping, Sequence
 from typing import cast
 
 from glitchlings.constants import DEFAULT_TYPOGRE_KEYBOARD, DEFAULT_TYPOGRE_RATE
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import fatfinger_rust, resolve_seed
 
 from ..util import KEYNEIGHBORS
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
-
-_fatfinger_rust = get_rust_operation("fatfinger")
 
 
 def fatfinger(
@@ -33,14 +31,11 @@ def fatfinger(
 
     layout_mapping = layout if layout is not None else getattr(KEYNEIGHBORS, keyboard)
 
-    return cast(
-        str,
-        _fatfinger_rust(
-            text,
-            clamped_rate,
-            layout_mapping,
-            resolve_seed(seed, rng),
-        ),
+    return fatfinger_rust(
+        text,
+        clamped_rate,
+        layout_mapping,
+        resolve_seed(seed, rng),
     )
 
 
