@@ -1,3 +1,16 @@
+"""Pure text tokenization utilities.
+
+This module contains text manipulation functions that are:
+- **Pure**: Output depends only on inputs, no side effects
+- **Deterministic**: Same inputs always produce same outputs
+- **Self-contained**: No RNG, no Rust FFI, no config loading
+
+Functions here handle splitting text into tokens while preserving
+whitespace for accurate reconstruction after modifications.
+
+See AGENTS.md "Functional Purity Architecture" for full details.
+"""
+
 from __future__ import annotations
 
 import re

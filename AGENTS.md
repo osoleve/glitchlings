@@ -67,45 +67,93 @@ After completing a task, always:
 - When editing keyboard layouts or homoglyph mappings, ensure downstream consumers continue to work with lowercase keys (`util.KEYNEIGHBORS`).
 - Verify the Rust backend builds in every environment (CI, local, release) and fix import errors immediately—there is no supported Python-only mode anymore.
 
-## Functional Purity Architecture (Planned)
+## Functional Purity Architecture
 
-The codebase is undergoing a refactor to explicitly separate **pure** (functionally deterministic) code from **impure** (side-effectful) code. Track progress via the epic `glitchlings-251f` in the beads tracker. Until complete, follow these principles:
+The codebase explicitly separates **pure** (functionally deterministic) code from **impure** (side-effectful) code. This architecture discourages AI agents from adding unnecessary defensive code by keeping validation and transformation concerns separate. See `docs/development.md` for the full specification.
 
-### What is Pure Code?
+### Pure Modules (No Side Effects)
 
-- Functions that return the same output given the same inputs
-- No side effects: no IO, no logging, no mutation of external state
-- No RNG object manipulation—accept pre-computed random values instead
+These modules contain only pure functions—same inputs always produce same outputs:
 
-### What is Impure Code?
+| Module | Purpose |
+|--------|---------|
+| `zoo/validation.py` | Parameter validation and normalization |
+| `zoo/transforms.py` | Text tokenization and transformation utilities |
+| `zoo/rng.py` | Seed resolution and RNG helpers |
+| `zoo/_text_utils.py` | Text splitting and joining utilities |
 
-- File IO (config loading, cache reading/writing)
-- Rust FFI calls via `get_rust_operation()`
-- RNG state management (`random.Random` instantiation, seeding)
-- Optional dependency imports (`compat.py` loaders)
-- Global state access (`get_config()`, cached singletons)
+**When writing code in pure modules:**
+
+- Trust that inputs are already validated—do NOT add defensive `None` checks
+- Do NOT import from impure modules (`internal/rust.py`, `compat.py`, `config.py`)
+- Do NOT use `random.Random()` instantiation—accept pre-computed random values
+- Do NOT catch exceptions around trusted internal calls
+- Use only standard library imports
+
+### Impure Modules (Side Effects Allowed)
+
+These modules handle IO, FFI, and mutable state:
+
+- `internal/rust.py` — Rust FFI calls via PyO3
+- `compat.py` — Optional dependency loading
+- `config.py`, `runtime_config.py` — Configuration loading/caching
+- `lexicon/` — Cache file IO
 
 ### Boundary Layer Pattern
 
-Validation and defensive code belong at **module boundaries** where untrusted input enters:
+Validation belongs at **module boundaries** where untrusted input enters:
 
 - CLI argument parsing (`main.py`)
 - Public API entry points (`Glitchling.__init__`, `Attack.__init__`)
-- Configuration loaders (`conf/` module)
+- Configuration loaders
 
-Core transformation functions **inside** these boundaries should:
+Use `zoo/validation.py` functions at these boundaries:
 
-- Trust that inputs are already validated
-- NOT check for `None` on required parameters
-- NOT re-validate types that the boundary already checked
-- NOT add defensive `try/except` around trusted calls
+```python
+# ✅ Correct: validate at boundary, trust inside
+class MyGlitchling(Glitchling):
+    def __init__(self, *, rate: float = 0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.rate = clamp_rate(rate)  # boundary validation
 
-### Why This Matters for Agents
+    def _transform(self, text: str) -> str:
+        # Trust self.rate is valid—no defensive checks here
+        return apply_transformation(text, self.rate)
+```
 
-AI coding agents tend to add defensive checks everywhere. This architecture makes it explicit:
+```python
+# ❌ Wrong: defensive checks inside transformation
+def apply_transformation(text: str, rate: float) -> str:
+    if rate is None:  # DON'T DO THIS
+        rate = 0.1
+    if not 0 <= rate <= 1:  # DON'T DO THIS
+        raise ValueError("rate out of range")
+    ...
+```
 
-- If you're in a `pure/` or `transforms/` module: **trust your inputs**
-- If you're at a boundary: **validate thoroughly once**
-- If you're unsure: check which layer the file belongs to
+### RNG Handling
 
-See `docs/development.md` for detailed guidance once the refactor is complete.
+For deterministic behaviour, accept seeds or pre-computed random values instead of RNG objects:
+
+```python
+# ✅ Pure function: accepts pre-computed value
+def select_word(words: list[str], random_index: int) -> str:
+    return words[random_index]
+
+# ✅ Boundary: resolves seed, generates random values
+def corrupt(self, text: str) -> str:
+    seed = resolve_seed(self.seed, text)
+    rng = create_rng(seed)
+    index = sample_random_index(rng, len(words))
+    return select_word(words, index)
+```
+
+### How to Recognize Module Layers
+
+When adding new code, check which layer the file belongs to:
+
+1. **Pure modules** (`zoo/validation.py`, `zoo/transforms.py`, `zoo/rng.py`): Trust inputs, no side effects
+2. **Boundary modules** (`main.py`, `__init__` methods): Validate thoroughly once
+3. **Impure modules** (`internal/rust.py`, `compat.py`): Side effects allowed
+
+The test suite in `tests/test_purity_architecture.py` enforces import conventions automatically.
