@@ -361,6 +361,8 @@ def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | No
 class Rushmore(Glitchling):
     """Glitchling that bundles deletion, duplication, and swap attacks."""
 
+    flavor = "You shouldn't have waited for the last minute to write that paper, anon. Sure hope everything is in the right place."
+
     _param_aliases = {"mode": "modes"}
 
     def __init__(

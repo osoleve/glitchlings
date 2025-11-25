@@ -32,6 +32,8 @@ def ocr_artifacts(
 class Scannequin(Glitchling):
     """Glitchling that simulates OCR artifacts using common confusions."""
 
+    flavor = "Isn't it weird how the word 'bed' looks like a bed?"
+
     def __init__(
         self,
         *,

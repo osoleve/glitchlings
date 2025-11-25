@@ -17,8 +17,7 @@ else:  # pragma: no cover - import guard for runtime
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC_PATH = REPO_ROOT / "src"
-DEFAULT_OUTPUT = REPO_ROOT / "MONSTER_MANUAL.md"
-DEFAULT_DOCS_OUTPUT = REPO_ROOT / "docs" / "monster-manual.md"
+DEFAULT_OUTPUT = REPO_ROOT / "docs" / "monster-manual.md"
 LINE_WIDTH = 88
 
 
@@ -124,7 +123,7 @@ def build_monster_manual(glitchlings: Mapping[str, GlitchlingType] | None = None
 
         flavor = _resolve_flavor(glitchling)
         if flavor:
-            sections.append(_wrap(f"Flavor: {flavor}"))
+            sections.append(f"*\"{flavor}\"*")
             sections.append("")
 
         sections.append(f"- **Scope:** {glitchling.level.name.title()}")
@@ -150,13 +149,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "--output",
         type=Path,
         default=DEFAULT_OUTPUT,
-        help="Destination file for the generated manual. Defaults to MONSTER_MANUAL.md.",
-    )
-    parser.add_argument(
-        "--docs-output",
-        type=Path,
-        default=DEFAULT_DOCS_OUTPUT,
-        help="Optional second output inside the docs directory for site navigation.",
+        help="Destination file for the generated manual. Defaults to docs/monster-manual.md.",
     )
     return parser.parse_args(argv)
 
@@ -171,15 +164,6 @@ def main(argv: Sequence[str] | None = None) -> None:
     content = build_monster_manual()
     output.write_text(content, encoding="utf-8")
     print(f"Wrote {output.relative_to(REPO_ROOT)}")
-
-    docs_output: Path | None = args.docs_output
-    if docs_output:
-        if not docs_output.is_absolute():
-            docs_output = REPO_ROOT / docs_output
-        docs_output.parent.mkdir(parents=True, exist_ok=True)
-        if docs_output != output:
-            docs_output.write_text(content, encoding="utf-8")
-            print(f"Wrote {docs_output.relative_to(REPO_ROOT)}")
 
 
 if __name__ == "__main__":

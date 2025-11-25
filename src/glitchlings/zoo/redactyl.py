@@ -46,6 +46,8 @@ def redact_words(
 class Redactyl(Glitchling):
     """Glitchling that redacts words with block characters."""
 
+    flavor = "Some things are better left ████████."
+
     def __init__(
         self,
         *,

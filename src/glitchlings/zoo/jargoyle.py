@@ -153,6 +153,8 @@ def substitute_random_synonyms(
 class Jargoyle(Glitchling):
     """Glitchling that swaps words with lexicon-driven synonyms."""
 
+    flavor = "Oh no... The worst person you know just bought a thesaurus..."
+
     def __init__(
         self,
         *,

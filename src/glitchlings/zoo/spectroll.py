@@ -32,6 +32,8 @@ def swap_colors(
 class Spectroll(Glitchling):
     """Glitchling that remaps colour terms via the Rust backend."""
 
+    flavor = "The colors, Duke, the colors!</br>*I'm colorblind, kid.*"
+
     def __init__(
         self,
         *,

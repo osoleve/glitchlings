@@ -46,6 +46,8 @@ def fatfinger(
 class Typogre(Glitchling):
     """Glitchling that introduces deterministic keyboard-typing errors."""
 
+    flavor = "What a nice word, would be a shame if something happened to it..."
+
     def __init__(
         self,
         *,

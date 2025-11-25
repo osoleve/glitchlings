@@ -68,6 +68,8 @@ def extend_vowels(
 class Hokey(GlitchlingBase):
     """Glitchling that stretches words using linguistic heuristics."""
 
+    flavor = "Sooooo excited to meet you! We reeeeeally missed you last week."
+
     seed: int | None
 
     def __init__(

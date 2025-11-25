@@ -82,6 +82,8 @@ def substitute_homophones(
 class Ekkokin(_GlitchlingBase):
     """Glitchling that swaps words for curated homophones."""
 
+    flavor = "Homophonic idiolectician. There leased favourite flavour? Orange."
+
     def __init__(
         self,
         *,

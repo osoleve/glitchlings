@@ -49,6 +49,8 @@ def insert_zero_widths(
 class Zeedub(Glitchling):
     """Glitchling that plants zero-width glyphs inside words."""
 
+    flavor = "I'm invoking my right to remain silent."
+
     def __init__(
         self,
         *,
