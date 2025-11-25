@@ -164,7 +164,20 @@ PURE_MODULES = [
     ZOO_DIR / "rng.py",
     ZOO_DIR / "_text_utils.py",
     SRC_DIR / "compat" / "types.py",
+    SRC_DIR / "conf" / "types.py",
+    SRC_DIR / "constants.py",
 ]
+
+# Map module paths to their import names for allowlisting pure-to-pure imports
+PURE_MODULE_NAMES = {
+    "glitchlings.zoo.validation",
+    "glitchlings.zoo.transforms",
+    "glitchlings.zoo.rng",
+    "glitchlings.zoo._text_utils",
+    "glitchlings.compat.types",
+    "glitchlings.conf.types",
+    "glitchlings.constants",
+}
 
 # Impure internal modules (importing these makes a module impure)
 IMPURE_MODULES = {
@@ -174,7 +187,7 @@ IMPURE_MODULES = {
     "glitchlings._zoo_rust",
     "glitchlings.config",
     "glitchlings.compat.loaders",
-    "glitchlings.conf",
+    "glitchlings.conf.loaders",
 }
 
 
@@ -218,10 +231,10 @@ class TestPureModuleImports:
         ids=[p.stem for p in PURE_MODULES],
     )
     def test_pure_module_no_glitchlings_imports(self, module_path: Path) -> None:
-        """Verify pure modules don't import from glitchlings package at all.
+        """Verify pure modules don't import from impure glitchlings modules.
 
-        This is a stricter check - pure modules should only use stdlib.
-        Exceptions can be made for other pure modules via explicit allowlist.
+        Pure modules may import from other pure modules (allowlisted in
+        PURE_MODULE_NAMES), but not from any impure glitchlings modules.
         """
         if not module_path.exists():
             pytest.skip(f"Module {module_path} not found")
@@ -234,15 +247,15 @@ class TestPureModuleImports:
             if is_type_checking_import(module_path, imp):
                 continue
 
-            # Check for any glitchlings imports
+            # Check for glitchlings imports not in the pure allowlist
             if imp.module.startswith("glitchlings"):
-                internal_imports.append(f"Line {imp.line}: imports '{imp.module}'")
+                if imp.module not in PURE_MODULE_NAMES:
+                    internal_imports.append(f"Line {imp.line}: imports '{imp.module}'")
 
-        # For now, pure modules should have NO glitchlings imports
         assert not internal_imports, (
-            f"Pure module {module_path.name} imports from glitchlings:\n"
+            f"Pure module {module_path.name} imports from impure glitchlings modules:\n"
             + "\n".join(internal_imports)
-            + "\nPure modules should only import stdlib to avoid side effects."
+            + "\nPure modules may only import from stdlib or other pure modules."
         )
 
 

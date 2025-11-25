@@ -120,9 +120,12 @@ The zoo subpackage organizes code by purity:
 | `zoo/rng.py` | Pure boundary | Seed resolution, hierarchical derivation |
 | `zoo/_text_utils.py` | Pure | Word splitting, token edge extraction |
 | `compat/types.py` | Pure | Type definitions for optional dependency loading |
+| `conf/types.py` | Pure | Configuration dataclasses (LexiconConfig, RuntimeConfig, AttackConfig) |
+| `constants.py` | Pure | Centralized default values and constants |
 | `internal/rust.py` | Impure | Low-level Rust FFI loader and primitives |
 | `internal/rust_ffi.py` | Impure | Centralized Rust operation wrappers (preferred) |
 | `compat/loaders.py` | Impure | Optional dependency lazy loading machinery |
+| `conf/loaders.py` | Impure | Configuration file loading, caching, Gaggle construction |
 
 ### Boundary Layer Pattern
 

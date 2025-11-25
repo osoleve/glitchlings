@@ -82,14 +82,16 @@ These modules contain only pure functions—same inputs always produce same outp
 | `zoo/rng.py` | Seed resolution and RNG helpers |
 | `zoo/_text_utils.py` | Text splitting and joining utilities |
 | `compat/types.py` | Pure type definitions for optional dependency loading |
+| `conf/types.py` | Pure dataclass definitions for configuration (LexiconConfig, RuntimeConfig, AttackConfig) |
+| `constants.py` | Centralized default values and constants (no I/O operations) |
 
 **When writing code in pure modules:**
 
 - Trust that inputs are already validated—do NOT add defensive `None` checks
-- Do NOT import from impure modules (`internal/rust.py`, `compat/loaders.py`, `config.py`)
+- Do NOT import from impure modules (`internal/rust.py`, `compat/loaders.py`, `conf/loaders.py`)
 - Do NOT use `random.Random()` instantiation—accept pre-computed random values
 - Do NOT catch exceptions around trusted internal calls
-- Use only standard library imports
+- Use only standard library imports or other pure modules
 
 ### Impure Modules (Side Effects Allowed)
 
@@ -98,7 +100,7 @@ These modules handle IO, FFI, and mutable state:
 - `internal/rust.py` — Low-level Rust FFI loader and primitives
 - `internal/rust_ffi.py` — Centralized Rust operation wrappers (preferred entry point for FFI)
 - `compat/loaders.py` — Optional dependency loading with lazy import machinery
-- `config.py`, `runtime_config.py` — Configuration loading/caching
+- `conf/loaders.py` — Configuration file loading, caching, and Gaggle construction
 - `lexicon/` — Cache file IO
 
 ### Boundary Layer Pattern
@@ -154,8 +156,8 @@ def corrupt(self, text: str) -> str:
 
 When adding new code, check which layer the file belongs to:
 
-1. **Pure modules** (`zoo/validation.py`, `zoo/transforms.py`, `zoo/rng.py`): Trust inputs, no side effects
+1. **Pure modules** (`zoo/validation.py`, `zoo/transforms.py`, `zoo/rng.py`, `compat/types.py`, `conf/types.py`, `constants.py`): Trust inputs, no side effects
 2. **Boundary modules** (`main.py`, `__init__` methods): Validate thoroughly once
-3. **Impure modules** (`internal/rust.py`, `compat.py`): Side effects allowed
+3. **Impure modules** (`internal/rust.py`, `compat/loaders.py`, `conf/loaders.py`): Side effects allowed
 
 The test suite in `tests/test_purity_architecture.py` enforces import conventions automatically.

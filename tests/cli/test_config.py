@@ -79,7 +79,7 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
         calls += 1
         return RuntimeConfig(lexicon=LexiconConfig(), path=Path(tmp_path / "config.toml"))
 
-    monkeypatch.setattr("glitchlings.conf.runtime_config._load_runtime_config", _fake_loader)
+    monkeypatch.setattr("glitchlings.conf.loaders._load_runtime_config", _fake_loader)
     reset_config()
 
     config_one = get_config()
