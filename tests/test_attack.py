@@ -169,9 +169,10 @@ def test_attack_empty_transcript_returns_empty_metrics():
     assert result.metrics["subsequence_retention"] == []
 
 
-def test_attack_rejects_non_glitchling_sequences():
-    with pytest.raises(TypeError):
-        Attack([MockGlitchling(), "nope"])  # type: ignore[list-item]
+def test_attack_rejects_invalid_glitchling_specs():
+    """Invalid glitchling names in specs raise ValueError."""
+    with pytest.raises(ValueError, match="not found"):
+        Attack([MockGlitchling(), "nope"])
 
     with pytest.raises(TypeError):
         Attack((MockGlitchling(), None))  # type: ignore[arg-type]
@@ -192,3 +193,43 @@ def test_attack_applies_seed_to_existing_gaggle():
     seeded_attack = Attack(base, seed=42)
 
     assert seeded_attack.glitchlings.seed == 42
+
+
+@pytest.mark.parametrize("override_seed", [None, 42])
+def test_attack_clones_existing_gaggle_before_seeding(override_seed):
+    base = Attack([MockGlitchling("a"), MockGlitchling("b")], seed=7).glitchlings
+    base("hello")  # Advance RNG state to detect resets.
+
+    original_seed = base.seed
+    original_states = [glitchling.rng.getstate() for glitchling in base.apply_order]
+
+    Attack(base, seed=override_seed)
+
+    assert base.seed == original_seed
+    assert [glitchling.rng.getstate() for glitchling in base.apply_order] == original_states
+
+
+def test_attack_accepts_string_specifications():
+    """Attack can be initialized with string glitchling specs."""
+    # Single string spec
+    attack = Attack("typogre")
+    assert len(attack.glitchlings._clones_by_index) == 1
+    assert attack.glitchlings._clones_by_index[0].name.lower() == "typogre"
+
+    # String spec with parameters
+    attack_with_params = Attack("Typogre(rate=0.05)")
+    assert len(attack_with_params.glitchlings._clones_by_index) == 1
+
+    # List of string specs
+    attack_list = Attack(["typogre", "mim1c"])
+    assert len(attack_list.glitchlings._clones_by_index) == 2
+
+
+def test_attack_accepts_mixed_specs_and_instances():
+    """Attack can mix string specs with Glitchling instances."""
+    mock = MockGlitchling()  # Uses default name "mock"
+    attack = Attack([mock, "typogre"])
+
+    names = [g.name.lower() for g in attack.glitchlings._clones_by_index]
+    assert "mock" in names
+    assert "typogre" in names

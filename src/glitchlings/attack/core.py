@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Mapping, Sequence, cast
+from typing import Mapping, cast
 
 from ..conf import DEFAULT_ATTACK_SEED
-from ..util.transcripts import Transcript, is_transcript
-from ..zoo.core import Gaggle, Glitchling
+from ..util.adapters import coerce_gaggle
+from ..util.transcripts import Transcript, TranscriptTarget, is_transcript
+from ..zoo.core import Glitchling
 from .metrics import (
     Metric,
     jensen_shannon_divergence,
@@ -30,35 +32,42 @@ class AttackResult:
 class Attack:
     def __init__(
         self,
-        glitchlings: Glitchling | Sequence[Glitchling],
+        glitchlings: Glitchling | str | Iterable[str | Glitchling],
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Metric] | None = None,
         *,
         seed: int | None = None,
+        transcript_target: TranscriptTarget | None = None,
     ) -> None:
         """Initialize an Attack.
 
         Args:
-            glitchlings: A single Glitchling (including Gaggle) or a list of Glitchlings.
+            glitchlings: A single Glitchling (including Gaggle), a string specification
+                         (e.g. 'Typogre(rate=0.05)'), or an iterable of glitchlings/specs.
             tokenizer: Tokenizer name (e.g. 'cl100k_base', 'bert-base-uncased'),
                        Tokenizer object, or None (defaults to whitespace).
             metrics: Dictionary of metric functions. If None, defaults are used.
-            seed: Optional master seed used when building a Gaggle from a list/sequence.
-                  When a Gaggle or Glitchling instance is provided directly, the seed
-                  is applied to that instance to keep runs deterministic.
+            seed: Optional master seed used when building a Gaggle. When a Gaggle
+                  instance is provided directly, the seed is applied to that instance
+                  to keep runs deterministic. Instances are cloned before seeding to
+                  avoid mutating caller-owned objects.
+            transcript_target: Which transcript turns to corrupt. When None (default),
+                uses the Gaggle default ("last"). Accepts:
+                - "last": corrupt only the last turn (default)
+                - "all": corrupt all turns
+                - "assistant": corrupt only assistant turns
+                - "user": corrupt only user turns
+                - int: corrupt a specific index (negative indexing supported)
+                - Sequence[int]: corrupt specific indices
         """
-        if isinstance(glitchlings, Glitchling):
-            self.glitchlings = glitchlings
-            if seed is not None:
-                if isinstance(glitchlings, Gaggle):
-                    glitchlings.seed = seed
-                    glitchlings.sort_glitchlings()
-                else:
-                    glitchlings.reset_rng(seed)
-        else:
-            glitchling_list = self._validate_glitchling_sequence(glitchlings)
-            gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
-            self.glitchlings = Gaggle(glitchling_list, seed=gaggle_seed)
+        gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
+        cloned_glitchlings = self._clone_glitchling_specs(glitchlings)
+        self.glitchlings = coerce_gaggle(
+            cloned_glitchlings,
+            seed=gaggle_seed,
+            apply_seed_to_existing=True,
+            transcript_target=transcript_target,
+        )
 
         self.tokenizer = resolve_tokenizer(tokenizer)
         self.tokenizer_info = self._describe_tokenizer(tokenizer)
@@ -73,17 +82,26 @@ class Attack:
             self.metrics = dict(metrics)
 
     @staticmethod
-    def _validate_glitchling_sequence(
-        glitchlings: Sequence[Glitchling],
-    ) -> list[Glitchling]:
-        normalized = list(glitchlings)
-        for index, entry in enumerate(normalized):
-            if not isinstance(entry, Glitchling):
-                message = (
-                    f"glitchlings sequence entries must be Glitchling instances (index {index})"
-                )
-                raise TypeError(message)
-        return normalized
+    def _clone_glitchling_specs(
+        glitchlings: Glitchling | str | Iterable[str | Glitchling],
+    ) -> Glitchling | str | list[str | Glitchling]:
+        """Return cloned glitchling specs so Attack ownership never mutates inputs."""
+        if isinstance(glitchlings, Glitchling):
+            return glitchlings.clone()
+
+        if isinstance(glitchlings, str):
+            return glitchlings
+
+        if isinstance(glitchlings, Iterable):
+            cloned_specs: list[str | Glitchling] = []
+            for entry in glitchlings:
+                if isinstance(entry, Glitchling):
+                    cloned_specs.append(entry.clone())
+                else:
+                    cloned_specs.append(entry)
+            return cloned_specs
+
+        return glitchlings
 
     def _describe_tokenizer(self, raw: str | Tokenizer | None) -> str:
         if isinstance(raw, str):

@@ -11,7 +11,8 @@ The `glitchlings.attack.Attack` helper runs a roster of glitchlings, tokenises b
 ## Parameters
 
 - `glitchlings`: A `Glitchling`, a `Gaggle`, or any sequence of glitchlings. Sequences are wrapped in a `Gaggle`.
-- `seed`: Master seed used when constructing a `Gaggle` from a sequence (defaults to `DEFAULT_ATTACK_SEED`). If you pass an existing `Gaggle` or `Glitchling`, the seed is applied directly and the RNG is reset.
+- `seed`: Master seed used when constructing a `Gaggle` from a sequence (defaults to `DEFAULT_ATTACK_SEED`). If you pass an existing `Gaggle` or `Glitchling`, Attack clones it before applying the seed so your original object stays untouched while the Attack-owned copy is reseeded.
+- `transcript_target`: Controls which transcript turns are corrupted. See below for options.
 - `tokenizer`: Optional tokenizer name or object. Defaults to a modern `tiktoken` encoding (`o200k_base`, falling back to `cl100k_base`, then whitespace). Hugging Face `tokenizers.Tokenizer` instances and names are also supported.
 - `metrics`: Mapping of metric names to callables. Defaults to the Rust-backed `jensen_shannon_divergence`, `normalized_edit_distance`, and `subsequence_retention`.
 - Sequences must contain glitchling instances; mixed types raise a `TypeError` at construction.
@@ -26,6 +27,32 @@ If you pass a transcript (list of dicts containing `content`), `Attack`:
 - Returns empty metric lists for empty transcripts (no turns in, no turns out).
 
 Input and output types must match; mixed string/transcript pairs raise an error.
+
+### Controlling which turns are corrupted
+
+The `transcript_target` parameter controls which transcript turns are corrupted:
+
+| Value | Effect |
+|-------|--------|
+| `"last"` | Corrupt only the last turn (default). |
+| `"all"` | Corrupt all turns. |
+| `"assistant"` | Corrupt only turns with `role="assistant"`. |
+| `"user"` | Corrupt only turns with `role="user"`. |
+| `int` | Corrupt a specific turn by index (negative indexing supported). |
+| `Sequence[int]` | Corrupt multiple specific turns by index. |
+
+This setting is available on `Attack`, `Gaggle`, and `Glitchling`. The default (`"last"`) matches the previous implicit behaviour.
+
+```python
+from glitchlings import Typogre, Gaggle
+from glitchlings.attack import Attack
+
+# Corrupt only assistant turns
+attack = Attack([Typogre()], transcript_target="assistant")
+
+# Or set it directly on a Gaggle
+gaggle = Gaggle([Typogre()], transcript_target="all")
+```
 
 ## Example
 
@@ -56,7 +83,7 @@ By default, Attack uses a lightweight `tiktoken` encoder:
 
 - Default seeds align with the rest of the library (`DEFAULT_ATTACK_SEED = 151`).
 - Passing `seed=` stabilises both roster ordering and per-glitchling RNGs when Attack builds the `Gaggle`.
-- When a `Gaggle` or `Glitchling` instance is supplied directly, the seed is applied to that instance and its RNG is reset to keep outputs reproducible.
+- When a `Gaggle` or `Glitchling` instance is supplied directly, Attack clones it before applying the seed so caller-owned instances are never mutated while the Attack copy is reseeded.
 
 ## Metrics and performance
 

@@ -70,8 +70,20 @@ class HuggingFaceTokenizerWrapper:
         return encoding.tokens, encoding.ids
 
     def decode(self, tokens: Sequence[str]) -> str:
-        # Simple join; subword prefixes (e.g. "##") are tokenizer-specific.
-        return "".join(tokens).replace("##", "")
+        # Use the tokenizer's decode method to properly handle model-specific
+        # artifacts (e.g., "##" for WordPiece, "Ġ" for BPE).
+        # Convert tokens to IDs first, then decode.
+        try:
+            token_ids = [self.tokenizer.token_to_id(token) for token in tokens]
+            # Filter out None values (tokens not in vocabulary)
+            valid_ids = [tid for tid in token_ids if tid is not None]
+            if valid_ids:
+                result: str = self.tokenizer.decode(valid_ids)
+                return result
+        except (AttributeError, TypeError):
+            pass
+        # Fallback: simple join without any replacements
+        return "".join(tokens)
 
     def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:
         encodings = self.tokenizer.encode_batch(list(texts))
