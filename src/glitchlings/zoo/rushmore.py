@@ -39,6 +39,7 @@ _MODE_ALIASES: dict[str, RushmoreMode] = {
     "adjacent": RushmoreMode.SWAP,
 }
 
+
 @dataclass(frozen=True)
 class RushmoreRuntimeConfig:
     """Resolved Rushmore configuration used by both Python and Rust paths."""

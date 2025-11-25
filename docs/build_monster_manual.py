@@ -123,7 +123,7 @@ def build_monster_manual(glitchlings: Mapping[str, GlitchlingType] | None = None
 
         flavor = _resolve_flavor(glitchling)
         if flavor:
-            sections.append(f"*\"{flavor}\"*")
+            sections.append(f'*"{flavor}"*')
             sections.append("")
 
         sections.append(f"- **Scope:** {glitchling.level.name.title()}")
