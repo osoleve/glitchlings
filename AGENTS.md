@@ -81,11 +81,12 @@ These modules contain only pure functions—same inputs always produce same outp
 | `zoo/transforms.py` | Text tokenization and transformation utilities |
 | `zoo/rng.py` | Seed resolution and RNG helpers |
 | `zoo/_text_utils.py` | Text splitting and joining utilities |
+| `compat/types.py` | Pure type definitions for optional dependency loading |
 
 **When writing code in pure modules:**
 
 - Trust that inputs are already validated—do NOT add defensive `None` checks
-- Do NOT import from impure modules (`internal/rust.py`, `compat.py`, `config.py`)
+- Do NOT import from impure modules (`internal/rust.py`, `compat/loaders.py`, `config.py`)
 - Do NOT use `random.Random()` instantiation—accept pre-computed random values
 - Do NOT catch exceptions around trusted internal calls
 - Use only standard library imports
@@ -96,7 +97,7 @@ These modules handle IO, FFI, and mutable state:
 
 - `internal/rust.py` — Low-level Rust FFI loader and primitives
 - `internal/rust_ffi.py` — Centralized Rust operation wrappers (preferred entry point for FFI)
-- `compat.py` — Optional dependency loading
+- `compat/loaders.py` — Optional dependency loading with lazy import machinery
 - `config.py`, `runtime_config.py` — Configuration loading/caching
 - `lexicon/` — Cache file IO
 

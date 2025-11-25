@@ -16,10 +16,7 @@ if TYPE_CHECKING:
 
 def _materialize(dataset: Dataset) -> list[dict[str, Any]]:
     """Eagerly load a dataset to regular dictionaries for comparison."""
-    return [
-        {column: row[column] for column in dataset.column_names}
-        for row in dataset
-    ]
+    return [{column: row[column] for column in dataset.column_names} for row in dataset]
 
 
 class _DatasetSentinel:
@@ -43,9 +40,7 @@ def test_corrupt_dataset_is_deterministic_across_columns() -> None:
             "untouched": ["keep", "these", "same"],
         }
     )
-    glitchling = Glitchling(
-        "rngster", append_rng_token, AttackWave.SENTENCE, seed=2024
-    )
+    glitchling = Glitchling("rngster", append_rng_token, AttackWave.SENTENCE, seed=2024)
 
     original_rows = _materialize(dataset)
 
@@ -60,9 +55,7 @@ def test_corrupt_dataset_is_deterministic_across_columns() -> None:
     assert corrupted_first.column_names == dataset.column_names
     assert corrupted_second.column_names == dataset.column_names
     assert first_rows == second_rows
-    assert [row["untouched"] for row in first_rows] == [
-        row["untouched"] for row in original_rows
-    ]
+    assert [row["untouched"] for row in first_rows] == [row["untouched"] for row in original_rows]
 
 
 def test_corrupt_dataset_requires_optional_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -89,13 +82,14 @@ def test_corrupt_dataset_requires_optional_dependency(monkeypatch: pytest.Monkey
     assert glitchlings is not None
 
     from glitchlings import compat as glitchlings_compat
+    from glitchlings.compat import loaders as compat_loaders
 
     def _deny_import(name: str, *args: object, **kwargs: object):
         if name == "datasets":
             raise ModuleNotFoundError("datasets is not installed")
         return importlib.import_module(name, package=None)
 
-    monkeypatch.setattr(glitchlings_compat, "import_module", _deny_import)
+    monkeypatch.setattr(compat_loaders, "import_module", _deny_import)
     glitchlings_compat.reset_optional_dependencies()
     assert glitchlings_compat.datasets.get() is None
 
@@ -141,4 +135,3 @@ def test_corrupt_dataset_glitches_list_columns_individually():
             assert item in mutated
         assert ":" in mutated
         assert row["notes"] == note
-

@@ -10,11 +10,12 @@ Pure modules (verified to have no impure imports):
 - zoo/transforms.py - Pure text transformations
 - zoo/rng.py - RNG boundary layer (only has random, which is stdlib)
 - zoo/_text_utils.py - Text tokenization utilities
+- compat/types.py - Pure type definitions for optional dependency loading
 
 Impure modules (may have side effects at import time):
 - internal/rust.py - Low-level Rust FFI loader
 - internal/rust_ffi.py - Centralized Rust operation wrappers (preferred for FFI)
-- compat.py - Optional dependency loader
+- compat/loaders.py - Optional dependency loader with lazy import machinery
 - config.py - Configuration singleton
 - Any module that imports from internal/rust.py or internal/rust_ffi.py
 """
@@ -162,6 +163,7 @@ PURE_MODULES = [
     ZOO_DIR / "transforms.py",
     ZOO_DIR / "rng.py",
     ZOO_DIR / "_text_utils.py",
+    SRC_DIR / "compat" / "types.py",
 ]
 
 # Impure internal modules (importing these makes a module impure)
@@ -171,7 +173,7 @@ IMPURE_MODULES = {
     "glitchlings.internal",
     "glitchlings._zoo_rust",
     "glitchlings.config",
-    "glitchlings.compat",
+    "glitchlings.compat.loaders",
     "glitchlings.conf",
 }
 
@@ -257,7 +259,7 @@ class TestImportConventions:
         # This test documents the impure modules for visibility
         impure_locations = [
             SRC_DIR / "internal" / "rust.py",
-            SRC_DIR / "compat.py",
+            SRC_DIR / "compat" / "loaders.py",
             SRC_DIR / "config.py",
         ]
         for path in impure_locations:

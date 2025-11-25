@@ -1,21 +1,27 @@
-"""Compatibility helpers centralising optional dependency imports and extras."""
+"""Lazy loading infrastructure for optional dependencies.
+
+This module is IMPURE - it performs import attempts and caches results.
+Import-time side effects: None (lazy loading only happens on access).
+Runtime side effects: Module imports, file IO for metadata queries.
+
+The OptionalDependency class provides lazy loading with:
+- Cached import results
+- Fallback factories for stub modules
+- Error preservation for better diagnostics
+- Thread-unsafe caching (by design - single-threaded use expected)
+"""
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import import_module, metadata
 from types import ModuleType
-from typing import Any, Callable, Iterable, Mapping, NoReturn, cast
+from typing import Any, Callable, Iterable, NoReturn, cast
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
 
-
-class _MissingSentinel:
-    __slots__ = ()
-
-
-_MISSING = _MissingSentinel()
+from .types import MISSING, _MissingSentinel
 
 
 def _build_lightning_stub() -> ModuleType:
@@ -41,7 +47,7 @@ def _build_lightning_stub() -> ModuleType:
         def state_dict(self) -> dict[str, Any]:
             return {}
 
-        def load_state_dict(self, state_dict: Mapping[str, Any]) -> None:
+        def load_state_dict(self, state_dict: dict[str, Any]) -> None:
             return None
 
         def transfer_batch_to_device(self, batch: Any, device: Any, dataloader_idx: int) -> Any:
@@ -79,14 +85,20 @@ def _build_lightning_stub() -> ModuleType:
 
 @dataclass
 class OptionalDependency:
-    """Lazily import an optional dependency and retain the import error."""
+    """Lazily import an optional dependency and retain the import error.
+
+    This class is impure:
+    - Performs module imports on first access
+    - Caches results in mutable instance state
+    - May trigger fallback factory execution
+    """
 
     module_name: str
     fallback_factory: Callable[[], ModuleType] | None = None
-    _cached: ModuleType | None | _MissingSentinel = _MISSING
-    _error: ModuleNotFoundError | None = None
-    _used_fallback: bool = False
-    _fallback_instance: ModuleType | None = None
+    _cached: ModuleType | None | _MissingSentinel = field(default=MISSING)
+    _error: ModuleNotFoundError | None = field(default=None)
+    _used_fallback: bool = field(default=False)
+    _fallback_instance: ModuleType | None = field(default=None)
 
     def _attempt_import(self) -> ModuleType | None:
         try:
@@ -154,7 +166,7 @@ class OptionalDependency:
 
     def reset(self) -> None:
         """Forget any cached import result."""
-        self._cached = _MISSING
+        self._cached = MISSING
         self._error = None
         self._used_fallback = False
         self._fallback_instance = None
@@ -175,6 +187,10 @@ class OptionalDependency:
         return self._error
 
 
+# ---------------------------------------------------------------------------
+# Global dependency instances (mutable singletons)
+# ---------------------------------------------------------------------------
+
 pytorch_lightning = OptionalDependency(
     "pytorch_lightning",
     fallback_factory=_build_lightning_stub,
@@ -191,6 +207,11 @@ def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
     for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, nltk, torch):
         dependency.reset()
+
+
+# ---------------------------------------------------------------------------
+# Convenience accessors
+# ---------------------------------------------------------------------------
 
 
 def get_datasets_dataset() -> Any | None:
@@ -245,6 +266,11 @@ def get_torch_dataloader() -> Any | None:
     return getattr(data_module, "DataLoader", None)
 
 
+# ---------------------------------------------------------------------------
+# Extras metadata inspection (impure - queries package metadata)
+# ---------------------------------------------------------------------------
+
+
 def get_installed_extras(
     extras: Iterable[str] | None = None,
     *,
@@ -293,7 +319,7 @@ def _extras_from_requirement(requirement: str, candidates: set[str]) -> set[str]
         return set()
     extras: set[str] = set()
     for extra in candidates:
-        environment = default_environment()
+        environment = {k: str(v) for k, v in default_environment().items()}
         environment["extra"] = extra
         if req.marker.evaluate(environment):
             extras.add(extra)
@@ -306,16 +332,26 @@ def _requirement_name(requirement: str) -> str:
 
 
 __all__ = [
+    # Core class
     "OptionalDependency",
+    # Global instances
+    "pytorch_lightning",
     "datasets",
     "verifiers",
     "jellyfish",
     "jsonschema",
     "nltk",
+    "torch",
+    # Accessors
     "get_datasets_dataset",
     "require_datasets",
+    "get_pytorch_lightning_datamodule",
+    "require_pytorch_lightning",
     "require_verifiers",
     "require_jellyfish",
-    "get_installed_extras",
+    "require_torch",
+    "get_torch_dataloader",
+    # Utilities
     "reset_optional_dependencies",
+    "get_installed_extras",
 ]
