@@ -58,10 +58,6 @@ def dependencies_available() -> bool:
     return True
 
 
-# Backwards compatibility for callers relying on the previous private helper name.
-_ensure_wordnet = ensure_wordnet
-
-
 PartOfSpeech = Literal["n", "v", "a", "r"]
 PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
 NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]

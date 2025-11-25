@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import List, Mapping, Optional, Sequence, Tuple, Union, cast
+from typing import Mapping, Sequence, cast
 
 from ..conf import DEFAULT_ATTACK_SEED
 from ..util.transcripts import Transcript, is_transcript
@@ -17,20 +19,20 @@ from .tokenization import Tokenizer, resolve_tokenizer
 class AttackResult:
     original: str | Transcript
     corrupted: str | Transcript
-    input_tokens: List[str] | List[List[str]]
-    output_tokens: List[str] | List[List[str]]
-    input_token_ids: List[int] | List[List[int]]
-    output_token_ids: List[int] | List[List[int]]
+    input_tokens: list[str] | list[list[str]]
+    output_tokens: list[str] | list[list[str]]
+    input_token_ids: list[int] | list[list[int]]
+    output_token_ids: list[int] | list[list[int]]
     tokenizer_info: str
-    metrics: dict[str, float | List[float]]
+    metrics: dict[str, float | list[float]]
 
 
 class Attack:
     def __init__(
         self,
-        glitchlings: Union[Glitchling, Sequence[Glitchling]],
-        tokenizer: Union[str, Tokenizer, None] = None,
-        metrics: Optional[Mapping[str, Metric]] = None,
+        glitchlings: Glitchling | Sequence[Glitchling],
+        tokenizer: str | Tokenizer | None = None,
+        metrics: Mapping[str, Metric] | None = None,
         *,
         seed: int | None = None,
     ) -> None:
@@ -83,7 +85,7 @@ class Attack:
                 raise TypeError(message)
         return normalized
 
-    def _describe_tokenizer(self, raw: Union[str, Tokenizer, None]) -> str:
+    def _describe_tokenizer(self, raw: str | Tokenizer | None) -> str:
         if isinstance(raw, str):
             return raw
 
@@ -96,29 +98,29 @@ class Attack:
 
         return str(raw)
 
-    def _encode(self, text: str) -> Tuple[List[str], List[int]]:
+    def _encode(self, text: str) -> tuple[list[str], list[int]]:
         tokens, ids = self.tokenizer.encode(text)
         return list(tokens), list(ids)
 
-    def _encode_batch(self, texts: List[str]) -> Tuple[List[List[str]], List[List[int]]]:
+    def _encode_batch(self, texts: list[str]) -> tuple[list[list[str]], list[list[int]]]:
         batch_encode = getattr(self.tokenizer, "encode_batch", None)
         if callable(batch_encode):
             try:
                 encoded = batch_encode(texts)
-            except Exception:
+            except (TypeError, AttributeError, NotImplementedError):
                 # Fall back to per-item encoding if a custom tokenizer's batch
                 # implementation is missing or mis-specified.
                 pass
             else:
-                fast_token_batches: List[List[str]] = []
-                fast_id_batches: List[List[int]] = []
+                fast_token_batches: list[list[str]] = []
+                fast_id_batches: list[list[int]] = []
                 for tokens, ids in encoded:
                     fast_token_batches.append(list(tokens))
                     fast_id_batches.append(list(ids))
                 return fast_token_batches, fast_id_batches
 
-        token_batches: List[List[str]] = []
-        id_batches: List[List[int]] = []
+        token_batches: list[list[str]] = []
+        id_batches: list[list[int]] = []
         for entry in texts:
             tokens, ids = self._encode(entry)
             token_batches.append(tokens)
@@ -126,8 +128,8 @@ class Attack:
         return token_batches, id_batches
 
     @staticmethod
-    def _extract_transcript_contents(transcript: Transcript) -> List[str]:
-        contents: List[str] = []
+    def _extract_transcript_contents(transcript: Transcript) -> list[str]:
+        contents: list[str] = []
         for index, turn in enumerate(transcript):
             if not isinstance(turn, Mapping):
                 raise TypeError(f"Transcript turn #{index + 1} must be a mapping.")
@@ -154,7 +156,7 @@ class Attack:
             input_tokens, input_token_ids = self._encode(text)
             output_tokens, output_token_ids = self._encode(corrupted)
 
-            computed_metrics: dict[str, float | List[float]] = {}
+            computed_metrics: dict[str, float | list[float]] = {}
             for name, metric_fn in self.metrics.items():
                 value = metric_fn(input_tokens, output_tokens)
                 computed_metrics[name] = cast(float, value)
@@ -179,7 +181,7 @@ class Attack:
             raise ValueError("Transcript inputs and outputs must contain the same number of turns.")
 
         if not original_contents:
-            empty_metrics: dict[str, float | List[float]] = {name: [] for name in self.metrics}
+            empty_metrics: dict[str, float | list[float]] = {name: [] for name in self.metrics}
             return AttackResult(
                 original=original_transcript,
                 corrupted=corrupted_transcript,
@@ -194,7 +196,7 @@ class Attack:
         batched_input_tokens, batched_input_token_ids = self._encode_batch(original_contents)
         batched_output_tokens, batched_output_token_ids = self._encode_batch(corrupted_contents)
 
-        batched_metrics: dict[str, float | List[float]] = {}
+        batched_metrics: dict[str, float | list[float]] = {}
         for name, metric_fn in self.metrics.items():
             batched_metrics[name] = metric_fn(batched_input_tokens, batched_output_tokens)
 

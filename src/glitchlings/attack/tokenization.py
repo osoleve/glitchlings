@@ -1,18 +1,20 @@
+from __future__ import annotations
+
 import importlib.util
 import zlib
-from typing import Any, List, Protocol, Sequence, Tuple, Union
+from typing import Any, Protocol, Sequence
 
 DEFAULT_TIKTOKEN_ENCODINGS = ("o200k_base", "cl100k_base")
 
 
 class Tokenizer(Protocol):
-    def encode(self, text: str) -> Tuple[List[str], List[int]]: ...
+    def encode(self, text: str) -> tuple[list[str], list[int]]: ...
 
     def decode(self, tokens: Sequence[str]) -> str: ...
 
 
 class WhitespaceTokenizer:
-    def encode(self, text: str) -> Tuple[List[str], List[int]]:
+    def encode(self, text: str) -> tuple[list[str], list[int]]:
         tokens = text.split()
         # Synthetic IDs based on adler32 hash for stability
         ids = [zlib.adler32(t.encode("utf-8")) & 0xFFFFFFFF for t in tokens]
@@ -21,7 +23,7 @@ class WhitespaceTokenizer:
     def decode(self, tokens: Sequence[str]) -> str:
         return " ".join(tokens)
 
-    def encode_batch(self, texts: Sequence[str]) -> List[Tuple[List[str], List[int]]]:
+    def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:
         return [self.encode(text) for text in texts]
 
 
@@ -35,7 +37,7 @@ class TiktokenTokenizer:
         except ValueError:
             self.enc = tiktoken.encoding_for_model(model_name)
 
-    def encode(self, text: str) -> Tuple[List[str], List[int]]:
+    def encode(self, text: str) -> tuple[list[str], list[int]]:
         ids = self.enc.encode(text)
         tokens = [
             self.enc.decode_single_token_bytes(i).decode("utf-8", errors="replace") for i in ids
@@ -45,9 +47,9 @@ class TiktokenTokenizer:
     def decode(self, tokens: Sequence[str], sep: str = "") -> str:
         return sep.join(tokens)
 
-    def encode_batch(self, texts: Sequence[str]) -> List[Tuple[List[str], List[int]]]:
+    def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:
         id_batches = [list(batch) for batch in self.enc.encode_batch(list(texts))]
-        token_batches: List[List[str]] = []
+        token_batches: list[list[str]] = []
         for ids in id_batches:
             token_batches.append(
                 [
@@ -62,21 +64,21 @@ class HuggingFaceTokenizerWrapper:
     def __init__(self, tokenizer_obj: Any):
         self.tokenizer = tokenizer_obj
 
-    def encode(self, text: str) -> Tuple[List[str], List[int]]:
+    def encode(self, text: str) -> tuple[list[str], list[int]]:
         # tokenizers.Tokenizer.encode returns an Encoding object
         encoding = self.tokenizer.encode(text)
         return encoding.tokens, encoding.ids
 
     def decode(self, tokens: Sequence[str]) -> str:
-        # Best effort
+        # Simple join; subword prefixes (e.g. "##") are tokenizer-specific.
         return "".join(tokens).replace("##", "")
 
-    def encode_batch(self, texts: Sequence[str]) -> List[Tuple[List[str], List[int]]]:
+    def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:
         encodings = self.tokenizer.encode_batch(list(texts))
         return [(encoding.tokens, encoding.ids) for encoding in encodings]
 
 
-def resolve_tokenizer(tokenizer: Union[str, Tokenizer, None]) -> Tokenizer:
+def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
     if tokenizer is None:
         return _default_tokenizer()
 
@@ -131,3 +133,13 @@ def _default_tokenizer() -> Tokenizer:
                 continue
 
     return WhitespaceTokenizer()
+
+
+__all__ = [
+    "DEFAULT_TIKTOKEN_ENCODINGS",
+    "HuggingFaceTokenizerWrapper",
+    "TiktokenTokenizer",
+    "Tokenizer",
+    "WhitespaceTokenizer",
+    "resolve_tokenizer",
+]

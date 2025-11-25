@@ -176,12 +176,16 @@ def test_cli_command():
 5. **Document Tests**: Add clear docstrings explaining what each test validates
 6. **Avoid Duplication**: Reuse fixtures and helpers instead of duplicating logic
 
-## Backward Compatibility
+## Glitchling Fixtures
 
-Legacy individual glitchling fixtures are still available but deprecated:
-- `typogre_instance` → Use `fresh_glitchling("typogre")` instead
-- `mim1c_instance` → Use `fresh_glitchling("mim1c")` instead
-- etc.
+Use the factory fixture `fresh_glitchling(name)` to get any glitchling:
+
+```python
+def test_something(fresh_glitchling):
+    glitch = fresh_glitchling("typogre")
+    glitch.set_param("rate", 0.1)
+    result = glitch("test text")
+```
 
 ## Migration Guide
 
