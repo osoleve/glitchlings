@@ -423,9 +423,7 @@ def normalize_zero_width_palette(
     Returns:
         Tuple of non-empty characters.
     """
-    palette: Sequence[str] = (
-        tuple(characters) if characters is not None else default
-    )
+    palette: Sequence[str] = tuple(characters) if characters is not None else default
     return tuple(char for char in palette if char)
 
 
