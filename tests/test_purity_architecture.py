@@ -7,9 +7,8 @@ This test module verifies that the functional purity architecture is maintained:
 
 Pure modules (verified to have no impure imports):
 - zoo/validation.py - Boundary validation functions
-- zoo/transforms.py - Pure text transformations
+- zoo/transforms.py - Pure text transformations (includes text tokenization utilities)
 - zoo/rng.py - RNG boundary layer (only has random, which is stdlib)
-- zoo/_text_utils.py - Text tokenization utilities
 - compat/types.py - Pure type definitions for optional dependency loading
 
 Impure modules (may have side effects at import time):
@@ -163,7 +162,6 @@ PURE_MODULES = [
     ZOO_DIR / "validation.py",
     ZOO_DIR / "transforms.py",
     ZOO_DIR / "rng.py",
-    ZOO_DIR / "_text_utils.py",
     SRC_DIR / "compat" / "types.py",
     SRC_DIR / "conf" / "types.py",
     SRC_DIR / "constants.py",
@@ -178,7 +176,6 @@ PURE_MODULE_NAMES = {
     "glitchlings.zoo.validation",
     "glitchlings.zoo.transforms",
     "glitchlings.zoo.rng",
-    "glitchlings.zoo._text_utils",
     "glitchlings.compat.types",
     "glitchlings.conf.types",
     "glitchlings.constants",

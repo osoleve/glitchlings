@@ -116,9 +116,8 @@ The zoo subpackage organizes code by purity:
 | Module | Type | Purpose |
 |--------|------|---------|
 | `zoo/validation.py` | Pure | Boundary validation, rate clamping, parameter normalization |
-| `zoo/transforms.py` | Pure | Text tokenization, keyboard processing, string diffs |
+| `zoo/transforms.py` | Pure | Text tokenization, keyboard processing, string diffs, word splitting |
 | `zoo/rng.py` | Pure boundary | Seed resolution, hierarchical derivation |
-| `zoo/_text_utils.py` | Pure | Word splitting, token edge extraction |
 | `compat/types.py` | Pure | Type definitions for optional dependency loading |
 | `conf/types.py` | Pure | Configuration dataclasses (LexiconConfig, RuntimeConfig, AttackConfig) |
 | `constants.py` | Pure | Centralized default values and constants |

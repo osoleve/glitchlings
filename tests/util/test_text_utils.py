@@ -1,10 +1,10 @@
 import pytest
 
-from glitchlings.zoo._text_utils import (
+from glitchlings.zoo.transforms import (
     collect_word_tokens,
+    compute_core_length,
     split_preserving_whitespace,
     split_token_edges,
-    token_core_length,
 )
 
 
@@ -20,10 +20,10 @@ def test_split_token_edges_returns_prefix_core_suffix():
     assert suffix == '!"'
 
 
-def test_token_core_length_handles_edge_cases():
-    assert token_core_length("alpha") == 5
-    assert token_core_length("...") == 3
-    assert token_core_length("") == 1
+def test_compute_core_length_handles_edge_cases():
+    assert compute_core_length("alpha") == 5
+    assert compute_core_length("...") == 3
+    assert compute_core_length("") == 1
 
 
 def test_collect_word_tokens_computes_core_length_with_fallbacks():

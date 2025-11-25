@@ -1,5 +1,12 @@
-import difflib
 from collections.abc import Iterable
+
+from glitchlings.zoo.transforms import (
+    KeyNeighborMap,
+    build_keyboard_neighbor_map,
+)
+from glitchlings.zoo.transforms import (
+    compute_string_diffs as string_diffs,
+)
 
 __all__ = [
     "SAMPLE_TEXT",
@@ -20,63 +27,7 @@ SAMPLE_TEXT = (
 )
 
 
-def string_diffs(a: str, b: str) -> list[list[tuple[str, str, str]]]:
-    """Compare two strings using SequenceMatcher and return
-    grouped adjacent opcodes (excluding 'equal' tags).
-
-    Each element is a tuple: (tag, a_text, b_text).
-    """
-    sm = difflib.SequenceMatcher(None, a, b)
-    ops: list[list[tuple[str, str, str]]] = []
-    buffer: list[tuple[str, str, str]] = []
-
-    for tag, i1, i2, j1, j2 in sm.get_opcodes():
-        if tag == "equal":
-            # flush any buffered operations before skipping
-            if buffer:
-                ops.append(buffer)
-                buffer = []
-            continue
-
-        # append operation to buffer
-        buffer.append((tag, a[i1:i2], b[j1:j2]))
-
-    # flush trailing buffer
-    if buffer:
-        ops.append(buffer)
-
-    return ops
-
-
-KeyNeighborMap = dict[str, list[str]]
 KeyboardLayouts = dict[str, KeyNeighborMap]
-
-
-def _build_neighbor_map(rows: Iterable[str]) -> KeyNeighborMap:
-    """Derive 8-neighbour adjacency lists from keyboard layout rows."""
-    grid: dict[tuple[int, int], str] = {}
-    for y, row in enumerate(rows):
-        for x, char in enumerate(row):
-            if char == " ":
-                continue
-            grid[(x, y)] = char.lower()
-
-    neighbors: KeyNeighborMap = {}
-    for (x, y), char in grid.items():
-        seen: list[str] = []
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if dx == 0 and dy == 0:
-                    continue
-                candidate = grid.get((x + dx, y + dy))
-                if candidate is None:
-                    continue
-                seen.append(candidate)
-        # Preserve encounter order but drop duplicates for determinism
-        deduped = list(dict.fromkeys(seen))
-        neighbors[char] = deduped
-
-    return neighbors
 
 
 _KEYNEIGHBORS: KeyboardLayouts = {
@@ -112,7 +63,7 @@ _KEYNEIGHBORS: KeyboardLayouts = {
 
 
 def _register_layout(name: str, rows: Iterable[str]) -> None:
-    _KEYNEIGHBORS[name] = _build_neighbor_map(rows)
+    _KEYNEIGHBORS[name] = build_keyboard_neighbor_map(rows)
 
 
 _register_layout(

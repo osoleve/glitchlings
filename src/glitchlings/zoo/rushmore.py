@@ -15,8 +15,8 @@ from glitchlings.internal.rust_ffi import (
     swap_adjacent_words_rust,
 )
 
-from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
+from .transforms import WordToken
 
 
 @unique

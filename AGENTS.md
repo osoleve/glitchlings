@@ -78,9 +78,8 @@ These modules contain only pure functions—same inputs always produce same outp
 | Module | Purpose |
 |--------|---------|
 | `zoo/validation.py` | Parameter validation and normalization |
-| `zoo/transforms.py` | Text tokenization and transformation utilities |
+| `zoo/transforms.py` | Text tokenization, transformation utilities, word splitting |
 | `zoo/rng.py` | Seed resolution and RNG helpers |
-| `zoo/_text_utils.py` | Text splitting and joining utilities |
 | `compat/types.py` | Pure type definitions for optional dependency loading |
 | `conf/types.py` | Pure dataclass definitions for configuration (LexiconConfig, RuntimeConfig, AttackConfig) |
 | `constants.py` | Centralized default values and constants (no I/O operations) |
