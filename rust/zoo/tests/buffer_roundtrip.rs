@@ -4,11 +4,10 @@
 /// 1. Each op can be applied to a TextBuffer without panicking
 /// 2. The resulting buffer is in a valid state (can be converted to string)
 /// 3. The buffer can be re-parsed from its string representation without loss
-
 use _zoo_rust::{
     DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, GlitchRng, OcrArtifactsOp,
-    QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp,
-    TextBuffer, TypoOp, ZeroWidthOp,
+    QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp, TextBuffer,
+    TypoOp, ZeroWidthOp,
 };
 
 /// Test corpus covering various text patterns
@@ -19,42 +18,35 @@ const TEST_CORPUS: &[&str] = &[
     "",
     "   ",
     "a",
-
     // Punctuation
     "Hello, world!",
     "Wait... what?",
     "Yes! No? Maybe...",
-
     // Multiple spaces and whitespace
     "Double  space",
     "Triple   space",
     "Tab\there",
     "Newline\nhere",
-
     // Mixed case
     "UPPERCASE",
     "lowercase",
     "MixedCase",
     "CamelCase",
-
     // Numbers and special chars
     "Test123",
     "user@example.com",
     "http://example.com",
     "$100.00",
-
     // Quotes and apostrophes
     "\"quoted text\"",
     "'single quotes'",
     "`backticks`",
     "don't",
     "it's",
-
     // Unicode
     "café",
     "résumé",
     "naïve",
-
     // Edge cases
     "a b c d e f g h i j",
     "Word",
@@ -136,7 +128,9 @@ fn verify_segment_integrity(buffer: &TextBuffer, op_name: &str) {
             assert!(
                 segment.text().chars().all(char::is_whitespace),
                 "{}: separator segment {} contains non-whitespace: '{}'",
-                op_name, i, segment.text()
+                op_name,
+                i,
+                segment.text()
             );
         }
     }
@@ -253,9 +247,24 @@ fn test_deterministic_operations() {
 
     // Run each op twice with same seed
     let ops: Vec<(&str, GlitchOperation)> = vec![
-        ("Reduplicate", GlitchOperation::Reduplicate(ReduplicateWordsOp { rate: 0.5, unweighted: false })),
-        ("Delete", GlitchOperation::Delete(DeleteRandomWordsOp { rate: 0.3, unweighted: false })),
-        ("SwapAdjacent", GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 })),
+        (
+            "Reduplicate",
+            GlitchOperation::Reduplicate(ReduplicateWordsOp {
+                rate: 0.5,
+                unweighted: false,
+            }),
+        ),
+        (
+            "Delete",
+            GlitchOperation::Delete(DeleteRandomWordsOp {
+                rate: 0.3,
+                unweighted: false,
+            }),
+        ),
+        (
+            "SwapAdjacent",
+            GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 }),
+        ),
         ("Ocr", GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.5 })),
         ("QuotePairs", GlitchOperation::QuotePairs(QuotePairsOp)),
     ];
@@ -271,7 +280,11 @@ fn test_deterministic_operations() {
         let _ = op.apply(&mut buffer2, &mut rng2);
         let result2 = buffer2.to_string();
 
-        assert_eq!(result1, result2, "{} should be deterministic with same seed", name);
+        assert_eq!(
+            result1, result2,
+            "{} should be deterministic with same seed",
+            name
+        );
     }
 }
 
@@ -281,8 +294,18 @@ fn test_long_text_roundtrip() {
     let long_text = "word ".repeat(1000);
 
     let ops: Vec<Box<dyn Fn() -> Box<dyn GlitchOp>>> = vec![
-        Box::new(|| Box::new(ReduplicateWordsOp { rate: 0.1, unweighted: false })),
-        Box::new(|| Box::new(DeleteRandomWordsOp { rate: 0.1, unweighted: false })),
+        Box::new(|| {
+            Box::new(ReduplicateWordsOp {
+                rate: 0.1,
+                unweighted: false,
+            })
+        }),
+        Box::new(|| {
+            Box::new(DeleteRandomWordsOp {
+                rate: 0.1,
+                unweighted: false,
+            })
+        }),
         Box::new(|| Box::new(SwapAdjacentWordsOp { rate: 0.1 })),
     ];
 
@@ -297,6 +320,11 @@ fn test_long_text_roundtrip() {
         // Verify round-trip
         let output = buffer.to_string();
         let reparsed = TextBuffer::from_owned(output.clone());
-        assert_eq!(output, reparsed.to_string(), "Op {} failed round-trip on long text", i);
+        assert_eq!(
+            output,
+            reparsed.to_string(),
+            "Op {} failed round-trip on long text",
+            i
+        );
     }
 }

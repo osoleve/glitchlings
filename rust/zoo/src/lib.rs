@@ -157,10 +157,8 @@ impl<'py> FromPyObject<'py> for PyGagglePlanInput {
         if let Ok(dict) = obj.downcast::<PyDict>() {
             let name: String =
                 extract_required_field_with_field_suffix(dict, "plan input", "name")?;
-            let scope: i32 =
-                extract_required_field_with_field_suffix(dict, "plan input", "scope")?;
-            let order: i32 =
-                extract_required_field_with_field_suffix(dict, "plan input", "order")?;
+            let scope: i32 = extract_required_field_with_field_suffix(dict, "plan input", "scope")?;
+            let order: i32 = extract_required_field_with_field_suffix(dict, "plan input", "order")?;
             return Ok(Self { name, scope, order });
         }
 
@@ -343,16 +341,14 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 })
             }
             "zwj" => {
-                let rate =
-                    extract_required_field_with_field_suffix(dict, "zwj operation", "rate")?;
+                let rate = extract_required_field_with_field_suffix(dict, "zwj operation", "rate")?;
                 let characters = extract_optional_field(dict, "characters")?.unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
             "spectroll" => {
                 let mode =
                     extract_optional_field(dict, "mode")?.unwrap_or_else(|| "literal".to_string());
-                let parsed_mode = SpectrollMode::parse(&mode)
-                    .map_err(PyValueError::new_err)?;
+                let parsed_mode = SpectrollMode::parse(&mode).map_err(PyValueError::new_err)?;
                 Ok(PyGlitchOperation::Spectroll { mode: parsed_mode })
             }
             "ekkokin" => {
@@ -469,9 +465,7 @@ impl PyGlitchOperation {
                 let op = PedantOp::new(seed as i128, &stone)?;
                 GlitchOperation::Pedant(op)
             }
-            PyGlitchOperation::QuotePairs => {
-                GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp)
-            }
+            PyGlitchOperation::QuotePairs => GlitchOperation::QuotePairs(glitch_ops::QuotePairsOp),
             PyGlitchOperation::Hokey {
                 rate,
                 extension_min,
@@ -651,8 +645,14 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(metrics::jensen_shannon_divergence, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::normalized_edit_distance, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::subsequence_retention, m)?)?;
-    m.add_function(wrap_pyfunction!(metrics::batch_jensen_shannon_divergence, m)?)?;
-    m.add_function(wrap_pyfunction!(metrics::batch_normalized_edit_distance, m)?)?;
+    m.add_function(wrap_pyfunction!(
+        metrics::batch_jensen_shannon_divergence,
+        m
+    )?)?;
+    m.add_function(wrap_pyfunction!(
+        metrics::batch_normalized_edit_distance,
+        m
+    )?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_subsequence_retention, m)?)?;
     Ok(())
 }

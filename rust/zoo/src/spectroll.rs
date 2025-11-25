@@ -356,4 +356,3 @@ pub(crate) fn swap_colors(text: &str, mode: &str, seed: Option<u64>) -> PyResult
 
     result.map_err(|error| error.into_pyerr())
 }
-

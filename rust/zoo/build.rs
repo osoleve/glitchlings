@@ -80,8 +80,8 @@ fn load_pipeline_manifest(manifest_dir: &Path) -> io::Result<PipelineManifest> {
     println!("cargo:rerun-if-changed={}", manifest_path.display());
 
     let manifest_text = fs::read_to_string(&manifest_path)?;
-    let manifest: PipelineManifest =
-        serde_json::from_str(&manifest_text).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+    let manifest: PipelineManifest = serde_json::from_str(&manifest_text)
+        .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
     Ok(manifest)
 }
 
@@ -93,12 +93,9 @@ fn stage_pipeline_assets(
     for asset in &manifest.pipeline_assets {
         match asset.kind {
             AssetKind::Copy => stage_asset(manifest_dir, out_dir, &asset.name)?,
-            AssetKind::Compressed => stage_compressed_asset(
-                manifest_dir,
-                out_dir,
-                &asset.name,
-                asset.staged_name(),
-            )?,
+            AssetKind::Compressed => {
+                stage_compressed_asset(manifest_dir, out_dir, &asset.name, asset.staged_name())?
+            }
         }
     }
 
@@ -200,11 +197,7 @@ fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Res
     Ok(())
 }
 
-fn stage_lexicon_asset(
-    manifest_dir: &Path,
-    out_dir: &Path,
-    asset_name: &str,
-) -> io::Result<()> {
+fn stage_lexicon_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
     let canonical_repo_asset = manifest_dir
         .join("../../src/glitchlings/lexicon/data")
         .join(asset_name);

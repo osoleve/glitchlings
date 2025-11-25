@@ -358,7 +358,9 @@ impl GlitchOp for DeleteRandomWordsOp {
                             if !combined.is_empty() {
                                 // Check if we need space before this
                                 if needs_separator {
-                                    let starts_with_punct = combined.chars().next()
+                                    let starts_with_punct = combined
+                                        .chars()
+                                        .next()
                                         .map(|c| matches!(c, '.' | ',' | ':' | ';'))
                                         .unwrap_or(false);
                                     if !starts_with_punct {
@@ -376,7 +378,9 @@ impl GlitchOp for DeleteRandomWordsOp {
                     let text = segment.text();
                     if !text.is_empty() {
                         if needs_separator {
-                            let starts_with_punct = text.chars().next()
+                            let starts_with_punct = text
+                                .chars()
+                                .next()
                                 .map(|c| matches!(c, '.' | ',' | ':' | ';'))
                                 .unwrap_or(false);
                             if !starts_with_punct {
@@ -628,7 +632,9 @@ impl GlitchOp for RedactWordsOp {
                                 if repeat == 0 {
                                     // Can't redact - treat as non-redacted
                                     if pending_tokens > 0 {
-                                        result.push_str(&self.replacement_char.repeat(pending_tokens));
+                                        result.push_str(
+                                            &self.replacement_char.repeat(pending_tokens),
+                                        );
                                         result.push_str(&pending_suffix);
                                         pending_tokens = 0;
                                         pending_suffix.clear();
@@ -756,7 +762,8 @@ impl GlitchOp for OcrArtifactsOp {
         }
 
         let mut chosen: Vec<(usize, usize, usize, &'static str)> = Vec::new();
-        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> = std::collections::HashMap::new();
+        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> =
+            std::collections::HashMap::new();
 
         for idx in order {
             if chosen.len() >= to_select {
@@ -783,9 +790,13 @@ impl GlitchOp for OcrArtifactsOp {
         }
 
         // Group replacements by segment
-        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, &str)>> = std::collections::HashMap::new();
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, &str)>> =
+            std::collections::HashMap::new();
         for (seg_idx, start, end, replacement) in chosen {
-            by_segment.entry(seg_idx).or_default().push((start, end, replacement));
+            by_segment
+                .entry(seg_idx)
+                .or_default()
+                .push((start, end, replacement));
         }
 
         // Build segment replacements
@@ -906,7 +917,10 @@ impl GlitchOp for ZeroWidthOp {
         use std::collections::HashMap;
         let mut by_segment: HashMap<usize, Vec<(usize, String)>> = HashMap::new();
         for (seg_idx, char_idx, zero_width) in insertions {
-            by_segment.entry(seg_idx).or_default().push((char_idx, zero_width));
+            by_segment
+                .entry(seg_idx)
+                .or_default()
+                .push((char_idx, zero_width));
         }
 
         // Build replacement text for each affected segment
@@ -918,7 +932,8 @@ impl GlitchOp for ZeroWidthOp {
 
             let original_text = segments[seg_idx].text();
             let chars: Vec<char> = original_text.chars().collect();
-            let mut modified = String::with_capacity(original_text.len() + seg_insertions.len() * 5);
+            let mut modified =
+                String::with_capacity(original_text.len() + seg_insertions.len() * 5);
 
             let mut prev_idx = 0;
             for (char_idx, zero_width) in seg_insertions {
@@ -1448,7 +1463,8 @@ impl GlitchOp for QuotePairsOp {
         }
 
         // Group replacements by segment
-        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, String)>> = std::collections::HashMap::new();
+        let mut by_segment: std::collections::HashMap<usize, Vec<(usize, usize, String)>> =
+            std::collections::HashMap::new();
 
         for replacement in replacements {
             if replacement.start < byte_to_segment.len() {
@@ -1461,10 +1477,11 @@ impl GlitchOp for QuotePairsOp {
                 let byte_offset_in_seg = replacement.start - segment_byte_start;
                 let byte_end_in_seg = byte_offset_in_seg + (replacement.end - replacement.start);
 
-                by_segment
-                    .entry(seg_idx)
-                    .or_default()
-                    .push((byte_offset_in_seg, byte_end_in_seg, replacement.value));
+                by_segment.entry(seg_idx).or_default().push((
+                    byte_offset_in_seg,
+                    byte_end_in_seg,
+                    replacement.value,
+                ));
             }
         }
 
@@ -1666,7 +1683,8 @@ mod tests {
 
     #[test]
     fn delete_removes_words_for_seed() {
-        let mut buffer = TextBuffer::from_owned("The quick brown fox jumps over the lazy dog.".to_string());
+        let mut buffer =
+            TextBuffer::from_owned("The quick brown fox jumps over the lazy dog.".to_string());
         let mut rng = DeterministicRng::new(123);
         let op = DeleteRandomWordsOp {
             rate: 0.5,

@@ -1,88 +1,115 @@
+use std::borrow::Cow;
 use std::cmp::max;
 use std::collections::HashMap;
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyString;
+
+/// Extract strings from Python string objects without deep copying.
+/// Returns Cow<str> which borrows when possible and owns when necessary.
+fn extract_str_refs<'py>(tokens: &'py [Bound<'py, PyString>]) -> PyResult<Vec<Cow<'py, str>>> {
+    tokens.iter().map(|s| s.to_cow()).collect()
+}
+
+/// Extract batch of string references from Python.
+fn extract_batch_str_refs<'py>(
+    batches: &'py [Vec<Bound<'py, PyString>>],
+) -> PyResult<Vec<Vec<Cow<'py, str>>>> {
+    batches
+        .iter()
+        .map(|tokens| extract_str_refs(tokens))
+        .collect()
+}
 
 #[pyfunction]
 pub fn jensen_shannon_divergence(
-    py: Python<'_>,
-    input_tokens: Vec<String>,
-    output_tokens: Vec<String>,
+    _py: Python<'_>,
+    input_tokens: Vec<Bound<'_, PyString>>,
+    output_tokens: Vec<Bound<'_, PyString>>,
 ) -> PyResult<f64> {
-    Ok(py.allow_threads(|| compute_jsd(&input_tokens, &output_tokens)))
+    let inputs = extract_str_refs(&input_tokens)?;
+    let outputs = extract_str_refs(&output_tokens)?;
+    Ok(compute_jsd(&inputs, &outputs))
 }
 
 #[pyfunction]
 pub fn normalized_edit_distance(
-    py: Python<'_>,
-    input_tokens: Vec<String>,
-    output_tokens: Vec<String>,
+    _py: Python<'_>,
+    input_tokens: Vec<Bound<'_, PyString>>,
+    output_tokens: Vec<Bound<'_, PyString>>,
 ) -> PyResult<f64> {
-    Ok(py.allow_threads(|| compute_normalized_edit_distance(&input_tokens, &output_tokens)))
+    let inputs = extract_str_refs(&input_tokens)?;
+    let outputs = extract_str_refs(&output_tokens)?;
+    Ok(compute_normalized_edit_distance(&inputs, &outputs))
 }
 
 #[pyfunction]
 pub fn subsequence_retention(
-    py: Python<'_>,
-    input_tokens: Vec<String>,
-    output_tokens: Vec<String>,
+    _py: Python<'_>,
+    input_tokens: Vec<Bound<'_, PyString>>,
+    output_tokens: Vec<Bound<'_, PyString>>,
 ) -> PyResult<f64> {
-    Ok(py.allow_threads(|| compute_subsequence_retention(&input_tokens, &output_tokens)))
+    let inputs = extract_str_refs(&input_tokens)?;
+    let outputs = extract_str_refs(&output_tokens)?;
+    Ok(compute_subsequence_retention(&inputs, &outputs))
 }
 
 #[pyfunction]
 pub fn batch_jensen_shannon_divergence(
-    py: Python<'_>,
-    inputs: Vec<Vec<String>>,
-    outputs: Vec<Vec<String>>,
+    _py: Python<'_>,
+    inputs: Vec<Vec<Bound<'_, PyString>>>,
+    outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(py.allow_threads(|| {
-        inputs
-            .iter()
-            .zip(outputs.iter())
-            .map(|(input, output)| compute_jsd(input, output))
-            .collect()
-    }))
+    let input_refs = extract_batch_str_refs(&inputs)?;
+    let output_refs = extract_batch_str_refs(&outputs)?;
+
+    Ok(input_refs
+        .iter()
+        .zip(output_refs.iter())
+        .map(|(input, output)| compute_jsd(input, output))
+        .collect())
 }
 
 #[pyfunction]
 pub fn batch_normalized_edit_distance(
-    py: Python<'_>,
-    inputs: Vec<Vec<String>>,
-    outputs: Vec<Vec<String>>,
+    _py: Python<'_>,
+    inputs: Vec<Vec<Bound<'_, PyString>>>,
+    outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(py.allow_threads(|| {
-        inputs
-            .iter()
-            .zip(outputs.iter())
-            .map(|(input, output)| compute_normalized_edit_distance(input, output))
-            .collect()
-    }))
+    let input_refs = extract_batch_str_refs(&inputs)?;
+    let output_refs = extract_batch_str_refs(&outputs)?;
+
+    Ok(input_refs
+        .iter()
+        .zip(output_refs.iter())
+        .map(|(input, output)| compute_normalized_edit_distance(input, output))
+        .collect())
 }
 
 #[pyfunction]
 pub fn batch_subsequence_retention(
-    py: Python<'_>,
-    inputs: Vec<Vec<String>>,
-    outputs: Vec<Vec<String>>,
+    _py: Python<'_>,
+    inputs: Vec<Vec<Bound<'_, PyString>>>,
+    outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    Ok(py.allow_threads(|| {
-        inputs
-            .iter()
-            .zip(outputs.iter())
-            .map(|(input, output)| compute_subsequence_retention(input, output))
-            .collect()
-    }))
+    let input_refs = extract_batch_str_refs(&inputs)?;
+    let output_refs = extract_batch_str_refs(&outputs)?;
+
+    Ok(input_refs
+        .iter()
+        .zip(output_refs.iter())
+        .map(|(input, output)| compute_subsequence_retention(input, output))
+        .collect())
 }
 
-fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
+fn compute_jsd(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
     if tokens1.is_empty() && tokens2.is_empty() {
         return 0.0;
     }
@@ -91,10 +118,10 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
     let mut counts2: HashMap<&str, f64> = HashMap::new();
 
     for token in tokens1 {
-        *counts1.entry(token.as_str()).or_insert(0.0) += 1.0;
+        *counts1.entry(token.as_ref()).or_insert(0.0) += 1.0;
     }
     for token in tokens2 {
-        *counts2.entry(token.as_str()).or_insert(0.0) += 1.0;
+        *counts2.entry(token.as_ref()).or_insert(0.0) += 1.0;
     }
 
     let sum1: f64 = counts1.values().sum();
@@ -128,12 +155,16 @@ fn compute_jsd(tokens1: &[String], tokens2: &[String]) -> f64 {
     0.5 * (kl_pm + kl_qm)
 }
 
-fn compute_normalized_edit_distance(tokens1: &[String], tokens2: &[String]) -> f64 {
+fn compute_normalized_edit_distance(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
     let n = tokens1.len();
     let m = tokens2.len();
 
-    if n == 0 { return if m > 0 { 1.0 } else { 0.0 }; }
-    if m == 0 { return if n > 0 { 1.0 } else { 0.0 }; }
+    if n == 0 {
+        return if m > 0 { 1.0 } else { 0.0 };
+    }
+    if m == 0 {
+        return if n > 0 { 1.0 } else { 0.0 };
+    }
 
     // Levenshtein distance
     let mut prev: Vec<usize> = (0..=m).collect();
@@ -143,10 +174,8 @@ fn compute_normalized_edit_distance(tokens1: &[String], tokens2: &[String]) -> f
         curr[0] = i + 1;
         for (j, t2) in tokens2.iter().enumerate() {
             let cost = if t1 == t2 { 0 } else { 1 };
-            curr[j + 1] = std::cmp::min(
-                std::cmp::min(curr[j] + 1, prev[j + 1] + 1),
-                prev[j] + cost
-            );
+            curr[j + 1] =
+                std::cmp::min(std::cmp::min(curr[j] + 1, prev[j + 1] + 1), prev[j] + cost);
         }
         prev.copy_from_slice(&curr);
     }
@@ -155,17 +184,23 @@ fn compute_normalized_edit_distance(tokens1: &[String], tokens2: &[String]) -> f
     dist / (max(n, m) as f64)
 }
 
-fn compute_subsequence_retention(tokens1: &[String], tokens2: &[String]) -> f64 {
+fn compute_subsequence_retention(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
     let n = tokens1.len();
     let m = tokens2.len();
 
-    if n == 0 { return 1.0; }
+    if n == 0 {
+        return 1.0;
+    }
 
     // LCS
     // Optimization: O(min(N, M)) space.
 
     // Ensure s2 is the smaller one for space optimization
-    let (s1, s2) = if n < m { (tokens2, tokens1) } else { (tokens1, tokens2) };
+    let (s1, s2) = if n < m {
+        (tokens2, tokens1)
+    } else {
+        (tokens1, tokens2)
+    };
     let len2 = s2.len();
 
     let mut prev = vec![0; len2 + 1];

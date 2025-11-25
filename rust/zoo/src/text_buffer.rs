@@ -203,7 +203,9 @@ impl TextBuffer {
     /// Word segments have Some(word_index), separator segments have None.
     ///
     /// Uses cached segment-to-word mapping built during reindex() for O(1) lookup.
-    pub fn segments_with_word_indices(&self) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> + '_ {
+    pub fn segments_with_word_indices(
+        &self,
+    ) -> impl Iterator<Item = (usize, &TextSegment, Option<usize>)> + '_ {
         self.segments.iter().enumerate().map(|(seg_idx, segment)| {
             let word_idx = self.segment_to_word_index.get(seg_idx).copied().flatten();
             (seg_idx, segment, word_idx)
@@ -314,10 +316,7 @@ impl TextBuffer {
     /// - separator: optional separator between the two words
     ///
     /// Rebuilds the segment vector in a single pass to avoid O(N^2) behavior from repeated insertions.
-    pub fn reduplicate_words_bulk<I>(
-        &mut self,
-        reduplications: I,
-    ) -> Result<(), TextBufferError>
+    pub fn reduplicate_words_bulk<I>(&mut self, reduplications: I) -> Result<(), TextBufferError>
     where
         I: IntoIterator<Item = (usize, String, String, Option<String>)>,
     {
@@ -346,14 +345,19 @@ impl TextBuffer {
 
         for (segment_index, segment) in old_segments.into_iter().enumerate() {
             // Check if this segment corresponds to a word index we want to modify
-            let word_idx_opt = self.segment_to_word_index.get(segment_index).copied().flatten();
+            let word_idx_opt = self
+                .segment_to_word_index
+                .get(segment_index)
+                .copied()
+                .flatten();
 
             if let Some(word_idx) = word_idx_opt {
                 // Check if the next operation targets this word
                 if let Some(&(target_word_idx, _, _, _)) = ops_iter.peek() {
                     if target_word_idx == word_idx {
                         // Apply the operation
-                        let (_, first_replacement, second_word, separator) = ops_iter.next().unwrap();
+                        let (_, first_replacement, second_word, separator) =
+                            ops_iter.next().unwrap();
 
                         // 1. First word (replacement)
                         new_segments.push(TextSegment::new(first_replacement, SegmentKind::Word));
@@ -390,10 +394,7 @@ impl TextBuffer {
     ///
     /// Processes in descending index order to avoid index shifting.
     /// Only reindexes once at the end.
-    pub fn delete_words_bulk<I>(
-        &mut self,
-        deletions: I,
-    ) -> Result<(), TextBufferError>
+    pub fn delete_words_bulk<I>(&mut self, deletions: I) -> Result<(), TextBufferError>
     where
         I: IntoIterator<Item = (usize, Option<String>)>,
     {
