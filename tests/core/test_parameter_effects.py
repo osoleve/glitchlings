@@ -17,9 +17,9 @@ def test_mim1c_rate_bounds(fresh_glitchling, sample_text):
     alnum = [c for c in sample_text if c.isalnum()]
     paired_changes = sum(1 for a, b in zip(sample_text, out) if a != b and a.isalnum())
     if len(out) > len(sample_text):
-        tail_alnum = sum(1 for c in out[len(sample_text):] if c.isalnum())
+        tail_alnum = sum(1 for c in out[len(sample_text) :] if c.isalnum())
     else:
-        tail_alnum = sum(1 for c in sample_text[len(out):] if c.isalnum())
+        tail_alnum = sum(1 for c in sample_text[len(out) :] if c.isalnum())
     changed = paired_changes + tail_alnum
     assert changed <= int(len(alnum) * 0.02) + 2  # slack for discrete rounding
 

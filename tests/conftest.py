@@ -55,9 +55,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "requires_rust: requires compiled Rust extension")
     config.addinivalue_line("markers", "requires_datasets: requires datasets package")
     config.addinivalue_line("markers", "requires_torch: requires PyTorch")
-    config.addinivalue_line(
-        "markers", "requires_vectors: requires vector lexicon dependencies"
-    )
+    config.addinivalue_line("markers", "requires_vectors: requires vector lexicon dependencies")
     config.addinivalue_line("markers", "unit: unit tests (default)")
 
 
