@@ -7,9 +7,9 @@ from glitchlings import typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 
-def test_mim1c_rate_bounds(mim1c_instance, sample_text):
+def test_mim1c_rate_bounds(fresh_glitchling, sample_text):
     """Test that Mim1c respects rate parameter bounds."""
-    m = mim1c_instance
+    m = fresh_glitchling("mim1c")
     m.set_param("seed", 7)
     m.set_param("rate", 0.02)
     out = cast(str, m(sample_text))
@@ -17,16 +17,16 @@ def test_mim1c_rate_bounds(mim1c_instance, sample_text):
     alnum = [c for c in sample_text if c.isalnum()]
     paired_changes = sum(1 for a, b in zip(sample_text, out) if a != b and a.isalnum())
     if len(out) > len(sample_text):
-        tail_alnum = sum(1 for c in out[len(sample_text):] if c.isalnum())
+        tail_alnum = sum(1 for c in out[len(sample_text) :] if c.isalnum())
     else:
-        tail_alnum = sum(1 for c in sample_text[len(out):] if c.isalnum())
+        tail_alnum = sum(1 for c in sample_text[len(out) :] if c.isalnum())
     changed = paired_changes + tail_alnum
     assert changed <= int(len(alnum) * 0.02) + 2  # slack for discrete rounding
 
 
-def test_mim1c_respects_banned_characters(mim1c_instance):
+def test_mim1c_respects_banned_characters(fresh_glitchling):
     """Test that Mim1c respects banned_characters parameter."""
-    m = mim1c_instance
+    m = fresh_glitchling("mim1c")
     m.set_param("seed", 2)
     m.set_param("rate", 1.0)
     m.set_param("banned_characters", ["ａ"])
@@ -36,24 +36,25 @@ def test_mim1c_respects_banned_characters(mim1c_instance):
     assert not any(char in banned for char in out)
 
 
-def test_rushmore_rate_decreases_tokens(rushmore_instance):
+def test_rushmore_rate_decreases_tokens(fresh_glitchling):
     """Test that Rushmore respects rate parameter for token deletion."""
     text = "a b c d e f g h"
-    glitch = rushmore_instance
+    glitch = fresh_glitchling("rushmore")
     glitch.set_param("seed", 5)
     glitch.set_param("rate", 0.5)
     out = cast(str, glitch(text))
     assert len(out.split()) <= len(text.split())
 
 
-def test_rushmore_max_deletion_cap(rushmore_instance):
+def test_rushmore_max_deletion_cap(fresh_glitchling):
     """Test that Rushmore respects maximum deletion cap."""
     text = "alpha beta gamma delta epsilon zeta eta theta"
     words = text.split()
     candidate_count = max(len(words) - 1, 0)
+    rushmore = fresh_glitchling("rushmore")
 
     for rate, seed in [(0.1, 3), (0.5, 11), (1.0, 17)]:
-        glitch = rushmore_instance.clone()
+        glitch = rushmore.clone()
         glitch.set_param("seed", seed)
         glitch.set_param("rate", rate)
         out = cast(str, glitch(text))
@@ -63,11 +64,11 @@ def test_rushmore_max_deletion_cap(rushmore_instance):
         assert removed <= allowed
 
 
-def test_rushmore_preserves_leading_token_and_spacing(rushmore_instance):
+def test_rushmore_preserves_leading_token_and_spacing(fresh_glitchling):
     """Test that Rushmore preserves the leading token and spacing."""
     text = "Alpha, beta; gamma: delta epsilon zeta"
     seeds = (0, 3, 11, 21)
-    template = rushmore_instance
+    template = fresh_glitchling("rushmore")
     template.set_param("rate", 1.0)
     words = text.split()
     for seed in seeds:
@@ -85,10 +86,10 @@ def test_rushmore_preserves_leading_token_and_spacing(rushmore_instance):
         assert out == out.strip()
 
 
-def test_redactyl_replacement_char_and_merge(redactyl_instance):
+def test_redactyl_replacement_char_and_merge(fresh_glitchling):
     """Test that Redactyl respects replacement_char and merge_adjacent parameters."""
     text = "alpha beta gamma"
-    glitch = redactyl_instance
+    glitch = fresh_glitchling("redactyl")
     glitch.set_param("seed", 2)
     glitch.set_param("rate", 1.0)
     glitch.set_param("replacement_char", "#")
@@ -98,18 +99,20 @@ def test_redactyl_replacement_char_and_merge(redactyl_instance):
     assert "# #" not in out  # merged
 
 
-def test_scannequin_rate_increases_changes(scannequin_instance, sample_text):
+def test_scannequin_rate_increases_changes(fresh_glitchling, sample_text):
     """Test that Scannequin increases changes with higher rates."""
+    scannequin = fresh_glitchling("scannequin")
+
     # count character diffs vs original
     def diff_count(a: str, b: str) -> int:
         return sum(1 for x, y in zip(a, b) if x != y) + abs(len(a) - len(b))
 
-    low_glitch = scannequin_instance.clone()
+    low_glitch = scannequin.clone()
     low_glitch.set_param("seed", 7)
     low_glitch.set_param("rate", 0.005)
     low = cast(str, low_glitch(sample_text))
 
-    high_glitch = scannequin_instance.clone()
+    high_glitch = scannequin.clone()
     high_glitch.set_param("seed", 7)
     high_glitch.set_param("rate", 0.05)
     high = cast(str, high_glitch(sample_text))

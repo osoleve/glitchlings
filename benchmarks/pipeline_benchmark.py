@@ -132,9 +132,7 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
 }
 
 
-def _seeded_descriptors(
-    master_seed: int, descriptors: Sequence[Descriptor]
-) -> list[Descriptor]:
+def _seeded_descriptors(master_seed: int, descriptors: Sequence[Descriptor]) -> list[Descriptor]:
     """Return pipeline descriptors enriched with per-glitchling seeds."""
     seeded: list[Descriptor] = []
     for index, descriptor in enumerate(descriptors):
@@ -142,11 +140,7 @@ def _seeded_descriptors(
             {
                 "name": descriptor["name"],
                 "operation": dict(descriptor["operation"]),
-                "seed": int(
-                    core_module.Gaggle.derive_seed(
-                        master_seed, descriptor["name"], index
-                    )
-                ),
+                "seed": int(core_module.Gaggle.derive_seed(master_seed, descriptor["name"], index)),
             }
         )
     return seeded
@@ -226,6 +220,7 @@ def collect_benchmark_results(
 
     results: list[BenchmarkResult] = []
     for label, text in samples:
+
         def runtime_subject(text: str = text) -> str:
             return zoo_rust.compose_glitchlings(
                 text,
@@ -245,8 +240,12 @@ def collect_benchmark_results(
 
 
 def run_benchmarks(
-    scenarios: Sequence[str], texts: Iterable[tuple[str, str]], iterations: int
+    scenarios: Sequence[str],
+    texts: Iterable[tuple[str, str]],
+    iterations: int,
+    output_file: str | None = None,
 ) -> None:
+    output_lines: list[str] = []
     for scenario in scenarios:
         builder = SCENARIOS.get(scenario)
         if builder is None:
@@ -254,6 +253,23 @@ def run_benchmarks(
         descriptor_set = builder()
         results = collect_benchmark_results(texts, iterations, descriptor_set)
         _print_results(scenario, results)
+        if output_file:
+            output_lines.append(f"\n=== Scenario: {scenario} ===")
+            header = (
+                "| Text size | Characters | Runtime (ms)          |\n"
+                "| ---       | ---:       | ---:                  |"
+            )
+            output_lines.append(header)
+            for result in results:
+                row = "| {label:<9} | {char_count:10d} | {runtime:<21} |".format(
+                    label=result.label,
+                    char_count=result.char_count,
+                    runtime=_format_table_stats(result.runtime),
+                )
+                output_lines.append(row)
+    if output_file:
+        with open(output_file, "w", encoding="utf-8") as f:
+            f.write("\n".join(output_lines))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -279,6 +295,13 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="List available benchmark scenarios and exit.",
     )
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        metavar="FILE",
+        help="Write benchmark results to FILE in addition to stdout.",
+    )
     args = parser.parse_args(argv)
 
     if args.list_scenarios:
@@ -287,7 +310,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     selected_scenarios = args.scenarios or list(SCENARIOS.keys())
-    run_benchmarks(selected_scenarios, DEFAULT_TEXTS, args.iterations)
+    run_benchmarks(selected_scenarios, DEFAULT_TEXTS, args.iterations, args.output)
     return 0
 
 

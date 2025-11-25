@@ -1,7 +1,9 @@
 import random
 from typing import cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.constants import DEFAULT_SCANNEQUIN_RATE
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
@@ -21,7 +23,7 @@ def ocr_artifacts(
     if not text:
         return text
 
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_SCANNEQUIN_RATE if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
 
@@ -31,13 +33,15 @@ def ocr_artifacts(
 class Scannequin(Glitchling):
     """Glitchling that simulates OCR artifacts using common confusions."""
 
+    flavor = "Isn't it weird how the word 'bed' looks like a bed?"
+
     def __init__(
         self,
         *,
         rate: float | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_SCANNEQUIN_RATE if rate is None else rate
         super().__init__(
             name="Scannequin",
             corruption_function=ocr_artifacts,

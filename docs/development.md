@@ -1,6 +1,6 @@
 # Glitchlings development setup
 
-This guide walks through preparing a local development environment, running the automated checks, and working with the Rust acceleration layer that now powers the core runtime.
+This guide walks through preparing a local development environment, running the automated checks, and working with the Rust acceleration layer that now powers the core runtime. It is the source of truth for contributor workflow details.
 
 ## Prerequisites
 
@@ -78,4 +78,11 @@ pytest --maxfail=1 --disable-warnings -q
 
   ```bash
   maturin develop -m rust/zoo/Cargo.toml
+  ```
+
+- Regenerate the CLI reference page, Monster Manual (both repo root and docs site copies), and glitchling gallery together with:
+
+  ```bash
+  python -m glitchlings.dev.docs
+  # or, once installed: glitchlings-refresh-docs
   ```

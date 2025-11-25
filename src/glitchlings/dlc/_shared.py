@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from ..zoo.core import Gaggle, _is_transcript
+from ..util.transcripts import is_transcript
+from ..zoo.core import Gaggle
 
 
 def resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
@@ -89,7 +90,7 @@ def is_textual_candidate(value: Any) -> bool:
     if isinstance(value, str):
         return True
 
-    if _is_transcript(value, allow_empty=False, require_all_content=True):
+    if is_transcript(value, allow_empty=False, require_all_content=True):
         return True
 
     if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray, str)):
@@ -97,7 +98,7 @@ def is_textual_candidate(value: Any) -> bool:
             return False
         if all(isinstance(item, str) for item in value):
             return True
-        if _is_transcript(list(value), allow_empty=False, require_all_content=True):
+        if is_transcript(list(value), allow_empty=False, require_all_content=True):
             return True
 
     return False
@@ -116,7 +117,7 @@ def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
     if isinstance(value, str):
         return gaggle.corrupt(value)
 
-    if _is_transcript(value, allow_empty=True):
+    if is_transcript(value, allow_empty=True):
         return gaggle.corrupt(value)
 
     if isinstance(value, list) and value and all(isinstance(item, str) for item in value):

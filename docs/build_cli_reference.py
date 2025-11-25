@@ -1,4 +1,4 @@
-"""Regenerate README CLI examples so the documented outputs stay current."""
+"""Regenerate the CLI reference page so it mirrors the live contract."""
 
 from __future__ import annotations
 
@@ -8,9 +8,8 @@ import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-README = ROOT / "README.md"
-MARKER_START = "<!-- BEGIN: CLI_USAGE -->"
-MARKER_END = "<!-- END: CLI_USAGE -->"
+CLI_DOC = ROOT / "docs" / "cli.md"
+HELP_PREVIEW_LINES = 40
 
 
 def run_cli(command: list[str]) -> str:
@@ -30,58 +29,69 @@ def run_cli(command: list[str]) -> str:
     return result.stdout.rstrip()
 
 
-def build_cli_usage_block() -> str:
-    """Construct the Markdown block inserted into the README."""
-    glitchling_list = run_cli(["glitchlings", "--list"])
-    help_lines = run_cli(["glitchlings", "--help"]).splitlines()
+def _build_help_preview(help_output: str) -> str:
+    """Truncate the CLI help text for a concise preview block."""
+
+    help_lines = help_output.splitlines()
     if help_lines:
         help_lines[0] = help_lines[0].replace("__main__.py", "glitchlings")
 
-    help_preview = "\n".join(help_lines[:30]).rstrip()
-    if len(help_lines) > 30:
-        help_preview += "\n…"
+    preview = "\n".join(help_lines[:HELP_PREVIEW_LINES]).rstrip()
+    if len(help_lines) > HELP_PREVIEW_LINES:
+        preview += "\n..."
+    return preview
 
-    block = f"""
+
+def build_cli_reference() -> str:
+    """Construct the Markdown for the CLI reference page."""
+
+    glitchling_list = run_cli(["glitchlings", "--list"])
+    help_preview = _build_help_preview(run_cli(["glitchlings", "--help"]))
+    quickstart = """
 ```bash
-# Discover which glitchlings are currently on the loose.
+# Discover all built-in glitchlings.
 glitchlings --list
+
+# Glitch an entire file with Typogre and inspect the unified diff.
+glitchlings -g typogre --file documents/report.txt --diff
+
+# Configure glitchlings inline with keyword arguments.
+glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
+
+# Pipe text through Mim1c for on-the-fly homoglyph swaps.
+echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 ```
+""".strip()
+
+    return textwrap.dedent(
+        f"""\
+# Command Line Interface
+
+The `glitchlings` CLI mirrors the Python API for corruption, configuration files, and dataset
+helpers. Regenerate this page with `python -m glitchlings.dev.docs` whenever the CLI contract
+changes.
+
+## Quick commands
+
+{quickstart}
+
+## Built-in glitchlings
 
 ```text
 {glitchling_list}
 ```
 
-```bash
-# Review the full CLI contract.
-glitchlings --help
-```
+## Help overview
 
 ```text
 {help_preview}
 ```
-""".strip()
-    return textwrap.dedent(block)
-
-
-def replace_section(content: str, replacement: str) -> str:
-    """Replace the block between sentinel markers with the new content."""
-    if MARKER_START not in content or MARKER_END not in content:
-        raise RuntimeError(
-            "README is missing CLI usage markers. Expected "
-            f"{MARKER_START!r} and {MARKER_END!r}."
-        )
-
-    before, _, remainder = content.partition(MARKER_START)
-    _, _, after = remainder.partition(MARKER_END)
-
-    return f"{before}{MARKER_START}\n{replacement}\n{MARKER_END}{after}"
+"""
+    )
 
 
 def main() -> None:
-    block = build_cli_usage_block()
-    current = README.read_text(encoding="utf-8")
-    updated = replace_section(current, block)
-    README.write_text(updated, encoding="utf-8")
+    CLI_DOC.write_text(build_cli_reference(), encoding="utf-8")
 
 
 if __name__ == "__main__":

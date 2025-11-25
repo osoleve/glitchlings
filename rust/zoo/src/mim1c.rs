@@ -166,7 +166,10 @@ impl GlitchOp for Mim1cOp {
         // Group replacements by segment
         let mut by_segment: HashMap<usize, Vec<(usize, char)>> = HashMap::new();
         for (seg_idx, char_offset, replacement_char) in replacements {
-            by_segment.entry(seg_idx).or_default().push((char_offset, replacement_char));
+            by_segment
+                .entry(seg_idx)
+                .or_default()
+                .push((char_offset, replacement_char));
         }
 
         // Build replacement map: segment_index -> modified_text

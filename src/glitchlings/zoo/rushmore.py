@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from enum import Enum, unique
 from typing import Any, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.constants import RUSHMORE_DEFAULT_RATES
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from ._text_utils import WordToken
 from .core import AttackWave, Glitchling
 
@@ -35,12 +37,6 @@ _MODE_ALIASES: dict[str, RushmoreMode] = {
     "repeat": RushmoreMode.DUPLICATE,
     "swap": RushmoreMode.SWAP,
     "adjacent": RushmoreMode.SWAP,
-}
-
-_DEFAULT_RATES: dict[RushmoreMode, float] = {
-    RushmoreMode.DELETE: 0.01,
-    RushmoreMode.DUPLICATE: 0.01,
-    RushmoreMode.SWAP: 0.05,
 }
 
 
@@ -172,7 +168,7 @@ def _resolve_mode_rate(
     if baseline is None:
         if not allow_default:
             return None
-        baseline = _DEFAULT_RATES[mode]
+        baseline = RUSHMORE_DEFAULT_RATES[mode.value]
 
     value = float(baseline)
     value = max(0.0, value)
@@ -239,7 +235,7 @@ def delete_random_words(
     unweighted: bool = False,
 ) -> str:
     """Delete random words from the input text."""
-    effective_rate = 0.01 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["delete"] if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
@@ -257,7 +253,7 @@ def reduplicate_words(
     unweighted: bool = False,
 ) -> str:
     """Randomly reduplicate words in the text."""
-    effective_rate = 0.01 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["duplicate"] if rate is None else rate
 
     clamped_rate = max(0.0, effective_rate)
     unweighted_flag = bool(unweighted)
@@ -273,7 +269,7 @@ def swap_adjacent_words(
     rng: random.Random | None = None,
 ) -> str:
     """Swap adjacent word cores while preserving spacing and punctuation."""
-    effective_rate = 0.5 if rate is None else rate
+    effective_rate = RUSHMORE_DEFAULT_RATES["swap"] if rate is None else rate
     clamped_rate = max(0.0, min(effective_rate, 1.0))
 
     seed_value = resolve_seed(seed, rng)
@@ -365,6 +361,11 @@ def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | No
 
 class Rushmore(Glitchling):
     """Glitchling that bundles deletion, duplication, and swap attacks."""
+
+    flavor = (
+        "You shouldn't have waited for the last minute to write that paper, anon. "
+        "Sure hope everything is in the right place."
+    )
 
     _param_aliases = {"mode": "modes"}
 

@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import importlib
-import sys
-import types
 from random import Random
+from typing import Any
 
 import pytest
 
-from glitchlings.compat import reset_optional_dependencies
 from glitchlings.dlc.pytorch import GlitchedDataLoader
 from glitchlings.zoo import Gaggle, Glitchling
 from glitchlings.zoo.core import AttackWave

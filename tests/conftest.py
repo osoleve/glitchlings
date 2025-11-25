@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# ruff: noqa: E402,F401
 import importlib
 import sys
 from pathlib import Path
@@ -54,9 +55,7 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "requires_rust: requires compiled Rust extension")
     config.addinivalue_line("markers", "requires_datasets: requires datasets package")
     config.addinivalue_line("markers", "requires_torch: requires PyTorch")
-    config.addinivalue_line(
-        "markers", "requires_vectors: requires vector lexicon dependencies"
-    )
+    config.addinivalue_line("markers", "requires_vectors: requires vector lexicon dependencies")
     config.addinivalue_line("markers", "unit: unit tests (default)")
 
 
@@ -84,78 +83,5 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 
 # Note: sample_text fixture is now imported from tests.fixtures.glitchlings
-# The fresh_glitchling factory fixture is also imported and can replace
-# individual glitchling fixtures.
-
-# Legacy glitchling fixtures - kept for backward compatibility
-# New tests should use fresh_glitchling("name") instead
-
-
-@pytest.fixture()
-def typogre_instance():
-    """Fixture providing a fresh Typogre instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("typogre") instead.
-    """
-    from glitchlings import typogre
-    return typogre.clone()
-
-
-@pytest.fixture()
-def mim1c_instance():
-    """Fixture providing a fresh Mim1c instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("mim1c") instead.
-    """
-    from glitchlings import mim1c
-    return mim1c.clone()
-
-
-@pytest.fixture()
-def jargoyle_instance():
-    """Fixture providing a fresh Jargoyle instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("jargoyle") instead.
-    """
-    from glitchlings import jargoyle
-    return jargoyle.clone()
-
-
-@pytest.fixture()
-def rushmore_instance():
-    """Fixture providing a fresh Rushmore instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("rushmore") instead.
-    """
-    from glitchlings import rushmore
-    return rushmore.clone()
-
-
-@pytest.fixture()
-def redactyl_instance():
-    """Fixture providing a fresh Redactyl instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("redactyl") instead.
-    """
-    from glitchlings import redactyl
-    return redactyl.clone()
-
-
-@pytest.fixture()
-def scannequin_instance():
-    """Fixture providing a fresh Scannequin instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("scannequin") instead.
-    """
-    from glitchlings import scannequin
-    return scannequin.clone()
-
-
-@pytest.fixture()
-def zeedub_instance():
-    """Fixture providing a fresh Zeedub instance for each test.
-
-    DEPRECATED: Use fresh_glitchling("zeedub") instead.
-    """
-    from glitchlings import zeedub
-    return zeedub.clone()
+# The fresh_glitchling factory fixture is also imported and provides
+# fresh glitchling instances - use fresh_glitchling("name") in tests.

@@ -26,9 +26,7 @@ def redactyl_full_block() -> str:
 
 def zero_width_characters() -> List[str]:
     """Return the default zero-width characters used by Zeedub."""
-    characters = getattr(
-        _glitchling_module("Zeedub"), "_DEFAULT_ZERO_WIDTH_CHARACTERS"
-    )
+    characters = getattr(_glitchling_module("Zeedub"), "_DEFAULT_ZERO_WIDTH_CHARACTERS")
     return list(characters)
 
 
@@ -117,9 +115,7 @@ MASTER_SEED = 151
 
 SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "baseline": "Default six-glitch pipeline mirroring the public benchmark configuration.",
-    "shuffle_mix": (
-        "Adds Rushmore's swap mode alongside deletion to stress mixed workloads."
-    ),
+    "shuffle_mix": ("Adds Rushmore's swap mode alongside deletion to stress mixed workloads."),
     "aggressive_cleanup": "Heavy redaction and deletion pass to emulate worst-case sanitisation.",
     "stealth_noise": "Lightweight typo and zero-width noise focused on subtle obfuscations.",
 }

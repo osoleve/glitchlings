@@ -1,9 +1,9 @@
+use _zoo_rust::{
+    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, ReduplicateWordsOp,
+    SwapAdjacentWordsOp, TextBuffer, TypoOp,
+};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
-use _zoo_rust::{
-    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation,
-    ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer, TypoOp,
-};
 
 /// Generate test text of approximately target_chars length
 fn generate_test_text(target_chars: usize) -> String {
@@ -11,10 +11,27 @@ fn generate_test_text(target_chars: usize) -> String {
     let word_count = target_chars / 6;
 
     let words = vec![
-        "the", "quick", "brown", "fox", "jumps", "over", "lazy", "dog",
-        "performance", "optimization", "requires", "careful", "measurement",
-        "benchmarking", "critical", "infrastructure", "improvements",
-        "tokenization", "segmentation", "operations", "pipeline",
+        "the",
+        "quick",
+        "brown",
+        "fox",
+        "jumps",
+        "over",
+        "lazy",
+        "dog",
+        "performance",
+        "optimization",
+        "requires",
+        "careful",
+        "measurement",
+        "benchmarking",
+        "critical",
+        "infrastructure",
+        "improvements",
+        "tokenization",
+        "segmentation",
+        "operations",
+        "pipeline",
     ];
 
     let mut text = String::with_capacity(target_chars);
@@ -39,9 +56,7 @@ fn create_typical_pipeline() -> Vec<GlitchOperation> {
             rate: 0.03,
             unweighted: false,
         }),
-        GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp {
-            rate: 0.04,
-        }),
+        GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.04 }),
     ]
 }
 
@@ -122,7 +137,10 @@ fn bench_reindex(c: &mut Criterion) {
                     // This will trigger reindex in current implementation
                     let word_count = buffer.word_count();
                     if word_count > 0 {
-                        let word = buffer.word_segment(0).map(|s| s.text().to_string()).unwrap_or_default();
+                        let word = buffer
+                            .word_segment(0)
+                            .map(|s| s.text().to_string())
+                            .unwrap_or_default();
                         let _ = buffer.replace_word(0, &word);
                         buffer.reindex_if_needed();
                     }

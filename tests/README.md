@@ -28,11 +28,13 @@ tests/
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 pytest tests/ -v
 ```
 
 ### Run by Category
+
 ```bash
 # Core tests
 pytest tests/core/ -v
@@ -48,6 +50,7 @@ pytest tests/integration/ -v
 ```
 
 ### Run by Marker
+
 ```bash
 # Fast tests only (exclude slow tests)
 pytest -m "not slow" -v
@@ -63,6 +66,7 @@ pytest -m "not requires_torch and not requires_datasets" -v
 ```
 
 ### With Coverage
+
 ```bash
 pytest tests/ --cov=glitchlings --cov-report=html
 ```
@@ -82,6 +86,7 @@ pytest tests/ --cov=glitchlings --cov-report=html
 ### Using Fixtures
 
 #### Glitchling Factory Fixture
+
 ```python
 def test_something(fresh_glitchling):
     """Use the factory fixture to get any glitchling."""
@@ -92,6 +97,7 @@ def test_something(fresh_glitchling):
 ```
 
 #### Sample Text
+
 ```python
 def test_something(sample_text):
     """Use the canonical sample text."""
@@ -138,6 +144,7 @@ def test_with_torch(torch_stub):
 ## Test Patterns
 
 ### Determinism Testing
+
 ```python
 from tests.helpers.assertions import assert_deterministic
 
@@ -148,6 +155,7 @@ def test_glitchling_determinism(fresh_glitchling, sample_text):
 ```
 
 ### Rate Parameter Testing
+
 ```python
 def test_rate_bounds(fresh_glitchling, sample_text):
     glitch = fresh_glitchling("typogre")
@@ -159,6 +167,7 @@ def test_rate_bounds(fresh_glitchling, sample_text):
 ```
 
 ### CLI Testing
+
 ```python
 from tests.helpers.cli import invoke_cli
 
@@ -176,12 +185,16 @@ def test_cli_command():
 5. **Document Tests**: Add clear docstrings explaining what each test validates
 6. **Avoid Duplication**: Reuse fixtures and helpers instead of duplicating logic
 
-## Backward Compatibility
+## Glitchling Fixtures
 
-Legacy individual glitchling fixtures are still available but deprecated:
-- `typogre_instance` → Use `fresh_glitchling("typogre")` instead
-- `mim1c_instance` → Use `fresh_glitchling("mim1c")` instead
-- etc.
+Use the factory fixture `fresh_glitchling(name)` to get any glitchling:
+
+```python
+def test_something(fresh_glitchling):
+    glitch = fresh_glitchling("typogre")
+    glitch.set_param("rate", 0.1)
+    result = glitch("test text")
+```
 
 ## Migration Guide
 
@@ -193,7 +206,6 @@ If you're updating existing tests:
 4. Add appropriate markers to test files
 5. Update imports to use centralized fixtures
 
-
 ## Contributing
 
 When adding new tests:
@@ -204,4 +216,3 @@ When adding new tests:
 4. Add new test data to `tests/data/samples.py` if defining reusable samples
 5. Mark tests appropriately based on their requirements
 6. Document test purpose clearly in docstrings
-

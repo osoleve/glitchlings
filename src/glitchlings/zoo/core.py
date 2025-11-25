@@ -6,10 +6,17 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, TypeGuard, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Protocol, TypedDict, Union, cast
+
+from glitchlings.internal.rust import get_rust_operation
 
 from ..compat import get_datasets_dataset, require_datasets
-from ._rust_extensions import get_rust_operation
+from ..util.transcripts import (
+    Transcript,
+    TranscriptTarget,
+    is_transcript,
+    resolve_transcript_indices,
+)
 
 _DatasetsDataset = get_datasets_dataset()
 
@@ -20,10 +27,9 @@ class PlanSpecification(TypedDict):
     order: int
 
 
-TranscriptTurn = dict[str, Any]
-Transcript = list[TranscriptTurn]
-
 PlanEntry = Union["Glitchling", Mapping[str, Any]]
+
+_is_transcript = is_transcript
 
 
 class PipelineOperationPayload(TypedDict, total=False):
@@ -155,28 +161,6 @@ else:
         def with_transform(self, function: Any) -> "Dataset": ...
 
 
-def _is_transcript(
-    value: Any,
-    *,
-    allow_empty: bool = True,
-    require_all_content: bool = False,
-) -> TypeGuard[Transcript]:
-    """Return ``True`` when ``value`` appears to be a chat transcript."""
-    if not isinstance(value, list):
-        return False
-
-    if not value:
-        return allow_empty
-
-    if not all(isinstance(turn, dict) for turn in value):
-        return False
-
-    if require_all_content:
-        return all("content" in turn for turn in value)
-
-    return "content" in value[-1]
-
-
 class CorruptionCallable(Protocol):
     """Protocol describing a callable capable of corrupting text."""
 
@@ -219,6 +203,7 @@ class Glitchling:
         order: AttackOrder = AttackOrder.NORMAL,
         seed: int | None = None,
         pipeline_operation: Callable[["Glitchling"], Mapping[str, Any] | None] | None = None,
+        transcript_target: TranscriptTarget = "last",
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -229,6 +214,14 @@ class Glitchling:
             scope: Text granularity on which the glitchling operates.
             order: Relative ordering within the same scope.
             seed: Optional seed for deterministic random behaviour.
+            pipeline_operation: Optional factory for Rust pipeline descriptors.
+            transcript_target: Which transcript turns to corrupt. Accepts:
+                - ``"last"`` (default): corrupt only the last turn
+                - ``"all"``: corrupt all turns
+                - ``"assistant"``: corrupt only assistant turns
+                - ``"user"``: corrupt only user turns
+                - ``int``: corrupt a specific index (negative indexing supported)
+                - ``Sequence[int]``: corrupt specific indices
             **kwargs: Additional parameters forwarded to the corruption callable.
 
         """
@@ -241,6 +234,7 @@ class Glitchling:
         self.level: AttackWave = scope
         self.order: AttackOrder = order
         self._pipeline_descriptor_factory = pipeline_operation
+        self.transcript_target: TranscriptTarget = transcript_target
         self.kwargs: dict[str, Any] = {}
         self._cached_rng_callable: CorruptionCallable | None = None
         self._cached_rng_expectation: bool | None = None
@@ -331,13 +325,25 @@ class Glitchling:
         return corrupted
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
-        """Apply the corruption function to text or conversational transcripts."""
+        """Apply the corruption function to text or conversational transcripts.
+
+        When the input is a transcript, the ``transcript_target`` setting
+        controls which turns are corrupted:
+
+        - ``"last"``: corrupt only the last turn (default)
+        - ``"all"``: corrupt all turns
+        - ``"assistant"``: corrupt only turns with ``role="assistant"``
+        - ``"user"``: corrupt only turns with ``role="user"``
+        - ``int``: corrupt a specific turn by index
+        - ``Sequence[int]``: corrupt specific turns by index
+        """
         if _is_transcript(text):
             transcript: Transcript = [dict(turn) for turn in text]
-            if transcript:
-                content = transcript[-1].get("content")
+            indices = resolve_transcript_indices(transcript, self.transcript_target)
+            for idx in indices:
+                content = transcript[idx].get("content")
                 if isinstance(content, str):
-                    transcript[-1]["content"] = self.__corrupt(content, **self.kwargs)
+                    transcript[idx]["content"] = self.__corrupt(content, **self.kwargs)
             return transcript
 
         return self.__corrupt(cast(str, text), **self.kwargs)
@@ -380,18 +386,38 @@ class Glitchling:
         cls = self.__class__
         filtered_kwargs = {k: v for k, v in self.kwargs.items() if k != "seed"}
         clone_seed = seed if seed is not None else self.seed
-        if clone_seed is not None:
-            filtered_kwargs["seed"] = clone_seed
 
         if cls is Glitchling:
+            if clone_seed is not None:
+                filtered_kwargs["seed"] = clone_seed
             return Glitchling(
                 self.name,
                 self.corruption_function,
                 self.level,
                 self.order,
                 pipeline_operation=self._pipeline_descriptor_factory,
+                transcript_target=self.transcript_target,
                 **filtered_kwargs,
             )
+
+        # Check which kwargs subclass accepts via **kwargs or explicit params
+        try:
+            signature = inspect.signature(cls.__init__)
+            params = signature.parameters
+            has_var_keyword = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params.values())
+        except (TypeError, ValueError):
+            # If we can't introspect, play it safe and pass nothing extra
+            return cls(**filtered_kwargs)
+
+        # Only include seed if subclass accepts it
+        if clone_seed is not None:
+            if has_var_keyword or "seed" in params:
+                filtered_kwargs["seed"] = clone_seed
+
+        # Only include transcript_target if subclass accepts it
+        if "transcript_target" not in filtered_kwargs:
+            if has_var_keyword or "transcript_target" in params:
+                filtered_kwargs["transcript_target"] = self.transcript_target
 
         return cls(**filtered_kwargs)
 
@@ -444,15 +470,33 @@ def _build_pipeline_descriptor(
 class Gaggle(Glitchling):
     """A collection of glitchlings executed in a deterministic order."""
 
-    def __init__(self, glitchlings: list[Glitchling], seed: int = 151):
+    def __init__(
+        self,
+        glitchlings: list[Glitchling],
+        seed: int = 151,
+        transcript_target: TranscriptTarget = "last",
+    ):
         """Initialize the gaggle and derive per-glitchling RNG seeds.
 
         Args:
             glitchlings: Glitchlings to orchestrate.
             seed: Master seed used to derive per-glitchling seeds.
+            transcript_target: Which transcript turns to corrupt. Accepts:
+                - ``"last"`` (default): corrupt only the last turn
+                - ``"all"``: corrupt all turns
+                - ``"assistant"``: corrupt only assistant turns
+                - ``"user"``: corrupt only user turns
+                - ``int``: corrupt a specific index (negative indexing supported)
+                - ``Sequence[int]``: corrupt specific indices
 
         """
-        super().__init__("Gaggle", self._corrupt_text, AttackWave.DOCUMENT, seed=seed)
+        super().__init__(
+            "Gaggle",
+            self._corrupt_text,
+            AttackWave.DOCUMENT,
+            seed=seed,
+            transcript_target=transcript_target,
+        )
         self._clones_by_index: list[Glitchling] = []
         for idx, glitchling in enumerate(glitchlings):
             clone = glitchling.clone()
@@ -463,6 +507,14 @@ class Gaggle(Glitchling):
         self.apply_order: list[Glitchling] = []
         self._plan: list[tuple[int, int]] = []
         self.sort_glitchlings()
+
+    def clone(self, seed: int | None = None) -> "Gaggle":
+        """Create a copy of this gaggle, cloning member glitchlings."""
+        clone_seed = seed if seed is not None else self.seed
+        if clone_seed is None:
+            clone_seed = 151  # Default seed for Gaggle
+        cloned_members = [glitchling.clone() for glitchling in self._clones_by_index]
+        return Gaggle(cloned_members, seed=clone_seed, transcript_target=self.transcript_target)
 
     @staticmethod
     def derive_seed(master_seed: int, glitchling_name: str, index: int) -> int:
@@ -530,38 +582,106 @@ class Gaggle(Glitchling):
 
         return descriptors, missing
 
-    def _corrupt_text(self, text: str) -> str:
-        """Apply each glitchling to string input sequentially."""
+    def _build_execution_plan(
+        self,
+    ) -> list[tuple[list[PipelineDescriptor], Glitchling | None]]:
+        """Build an execution plan that batches consecutive pipeline-supported glitchlings.
+
+        Returns a list of tuples where each tuple contains:
+        - A list of pipeline descriptors (may be empty for single fallback items)
+        - A single glitchling to execute via fallback (None when using pipeline)
+
+        This enables partial pipeline execution when only some glitchlings lack
+        pipeline support, reducing tokenization overhead compared to full fallback.
+        """
         master_seed = self.seed
-        descriptors, missing = self._pipeline_descriptors()
+        plan: list[tuple[list[PipelineDescriptor], Glitchling | None]] = []
+        current_batch: list[PipelineDescriptor] = []
 
-        if missing:
-            result = text
-            for glitchling in self.apply_order:
-                result = cast(str, glitchling.corrupt(result))
-            return result
+        for glitchling in self.apply_order:
+            descriptor = _build_pipeline_descriptor(glitchling, master_seed=master_seed)
+            if descriptor is not None:
+                current_batch.append(descriptor.as_mapping())
+            else:
+                # Flush any accumulated batch before the fallback item
+                if current_batch:
+                    plan.append((current_batch, None))
+                    current_batch = []
+                # Add the fallback item
+                plan.append(([], glitchling))
 
+        # Flush any remaining batch
+        if current_batch:
+            plan.append((current_batch, None))
+
+        return plan
+
+    def _corrupt_text(self, text: str) -> str:
+        """Apply each glitchling to string input sequentially.
+
+        This method uses a batched execution strategy to minimize tokenization
+        overhead. Consecutive glitchlings with pipeline support are grouped and
+        executed together via the Rust pipeline, while glitchlings without
+        pipeline support are executed individually. This hybrid approach ensures
+        the text is tokenized fewer times compared to executing every glitchling
+        individually.
+        """
+        master_seed = self.seed
         if master_seed is None:
             message = "Gaggle orchestration requires a master seed"
             raise RuntimeError(message)
 
+        execution_plan = self._build_execution_plan()
+
+        # Fast path: all glitchlings support pipeline
+        if len(execution_plan) == 1 and execution_plan[0][1] is None:
+            descriptors = execution_plan[0][0]
+            compose_glitchlings = get_rust_operation("compose_glitchlings")
+            try:
+                return cast(str, compose_glitchlings(text, descriptors, master_seed))
+            except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+                raise RuntimeError("Rust pipeline execution failed") from error
+
+        # Hybrid path: mix of pipeline batches and individual fallbacks
         compose_glitchlings = get_rust_operation("compose_glitchlings")
-        try:
-            return cast(str, compose_glitchlings(text, descriptors, master_seed))
-        except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
-            raise RuntimeError("Rust pipeline execution failed") from error
+        result = text
+
+        for descriptors, fallback_glitchling in execution_plan:
+            if descriptors:
+                # Execute the batch through the pipeline
+                try:
+                    result = cast(str, compose_glitchlings(result, descriptors, master_seed))
+                except (TypeError, ValueError, AttributeError) as error:  # pragma: no cover
+                    raise RuntimeError("Rust pipeline execution failed") from error
+            elif fallback_glitchling is not None:
+                # Execute single glitchling via fallback
+                result = cast(str, fallback_glitchling.corrupt(result))
+
+        return result
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
-        """Apply each glitchling to the provided text sequentially."""
+        """Apply each glitchling to the provided text sequentially.
+
+        When the input is a transcript, the ``transcript_target`` setting
+        controls which turns are corrupted:
+
+        - ``"last"``: corrupt only the last turn (default)
+        - ``"all"``: corrupt all turns
+        - ``"assistant"``: corrupt only turns with ``role="assistant"``
+        - ``"user"``: corrupt only turns with ``role="user"``
+        - ``int``: corrupt a specific turn by index
+        - ``Sequence[int]``: corrupt specific turns by index
+        """
         if isinstance(text, str):
             return self._corrupt_text(text)
 
         if _is_transcript(text):
             transcript: Transcript = [dict(turn) for turn in text]
-            if transcript and "content" in transcript[-1]:
-                content = transcript[-1]["content"]
+            indices = resolve_transcript_indices(transcript, self.transcript_target)
+            for idx in indices:
+                content = transcript[idx].get("content")
                 if isinstance(content, str):
-                    transcript[-1]["content"] = self._corrupt_text(content)
+                    transcript[idx]["content"] = self._corrupt_text(content)
             return transcript
 
         message = f"Unsupported text type for Gaggle corruption: {type(text)!r}"

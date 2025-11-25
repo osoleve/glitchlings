@@ -4,7 +4,9 @@ import random
 from collections.abc import Sequence
 from typing import Callable, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.constants import DEFAULT_ZEEDUB_RATE, ZEEDUB_DEFAULT_ZERO_WIDTHS
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 # Load the mandatory Rust implementation
@@ -13,13 +15,8 @@ _inject_zero_widths_rust = cast(
     get_rust_operation("inject_zero_widths"),
 )
 
-_DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = (
-    "\u200b",  # ZERO WIDTH SPACE
-    "\u200c",  # ZERO WIDTH NON-JOINER
-    "\u200d",  # ZERO WIDTH JOINER
-    "\ufeff",  # ZERO WIDTH NO-BREAK SPACE
-    "\u2060",  # WORD JOINER
-)
+
+_DEFAULT_ZERO_WIDTH_CHARACTERS: tuple[str, ...] = ZEEDUB_DEFAULT_ZERO_WIDTHS
 
 
 def insert_zero_widths(
@@ -31,10 +28,10 @@ def insert_zero_widths(
     characters: Sequence[str] | None = None,
 ) -> str:
     """Inject zero-width characters between non-space character pairs."""
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_ZEEDUB_RATE if rate is None else rate
 
     palette: Sequence[str] = (
-        tuple(characters) if characters is not None else _DEFAULT_ZERO_WIDTH_CHARACTERS
+        tuple(characters) if characters is not None else ZEEDUB_DEFAULT_ZERO_WIDTHS
     )
 
     cleaned_palette = tuple(char for char in palette if char)
@@ -52,6 +49,8 @@ def insert_zero_widths(
 class Zeedub(Glitchling):
     """Glitchling that plants zero-width glyphs inside words."""
 
+    flavor = "I'm invoking my right to remain silent."
+
     def __init__(
         self,
         *,
@@ -59,7 +58,7 @@ class Zeedub(Glitchling):
         seed: int | None = None,
         characters: Sequence[str] | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_ZEEDUB_RATE if rate is None else rate
         super().__init__(
             name="Zeedub",
             corruption_function=insert_zero_widths,
@@ -72,11 +71,11 @@ class Zeedub(Glitchling):
 
     def pipeline_operation(self) -> PipelineOperationPayload | None:
         rate_value = self.kwargs.get("rate")
-        rate = 0.02 if rate_value is None else float(rate_value)
+        rate = DEFAULT_ZEEDUB_RATE if rate_value is None else float(rate_value)
 
         raw_characters = self.kwargs.get("characters")
         if raw_characters is None:
-            palette = tuple(_DEFAULT_ZERO_WIDTH_CHARACTERS)
+            palette = tuple(ZEEDUB_DEFAULT_ZERO_WIDTHS)
         else:
             palette = tuple(str(char) for char in raw_characters if char)
 

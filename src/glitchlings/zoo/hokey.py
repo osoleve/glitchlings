@@ -5,7 +5,8 @@ from __future__ import annotations
 import random
 from typing import Any, Callable, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
 
@@ -66,6 +67,8 @@ def extend_vowels(
 
 class Hokey(GlitchlingBase):
     """Glitchling that stretches words using linguistic heuristics."""
+
+    flavor = "Sooooo excited to meet you! We reeeeeally missed you last week."
 
     seed: int | None
 

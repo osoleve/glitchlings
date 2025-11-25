@@ -2,9 +2,7 @@ use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
-use crate::resources::{
-    ekkokin_homophone_sets, is_whitespace_only, split_affixes,
-};
+use crate::resources::{ekkokin_homophone_sets, is_whitespace_only, split_affixes};
 use crate::text_buffer::TextBuffer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

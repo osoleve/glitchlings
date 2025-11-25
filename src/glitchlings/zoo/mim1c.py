@@ -6,12 +6,12 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Callable, Literal, cast
 
-from ._rust_extensions import get_rust_operation, resolve_seed
+from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
+from glitchlings.internal.rust import get_rust_operation, resolve_seed
+
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
-
-_DEFAULT_CLASS_NAMES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
 
 def _normalise_classes(
@@ -64,13 +64,13 @@ def swap_homoglyphs(
 ) -> str:
     """Replace characters with visually confusable homoglyphs via the Rust engine."""
 
-    effective_rate = 0.02 if rate is None else rate
+    effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
 
     normalised_classes = _normalise_classes(classes)
     normalised_banned = _normalise_banned(banned_characters)
 
     if normalised_classes is None:
-        payload_classes: list[str] | Literal["all"] | None = list(_DEFAULT_CLASS_NAMES)
+        payload_classes: list[str] | Literal["all"] | None = list(MIM1C_DEFAULT_CLASSES)
     else:
         payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
@@ -87,6 +87,11 @@ def swap_homoglyphs(
 class Mim1c(Glitchling):
     """Glitchling that swaps characters for visually similar homoglyphs."""
 
+    flavor = (
+        "Breaks your parser by replacing some characters in strings with "
+        "doppelgangers. Don't worry, this text is clean. ;)"
+    )
+
     def __init__(
         self,
         *,
@@ -95,7 +100,7 @@ class Mim1c(Glitchling):
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
     ) -> None:
-        effective_rate = 0.02 if rate is None else rate
+        effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
         normalised_classes = _normalise_classes(classes)
         normalised_banned = _normalise_banned(banned_characters)
         super().__init__(
@@ -111,7 +116,7 @@ class Mim1c(Glitchling):
 
     def pipeline_operation(self) -> PipelineOperationPayload:
         rate_value = self.kwargs.get("rate")
-        rate = 0.02 if rate_value is None else float(rate_value)
+        rate = DEFAULT_MIM1C_RATE if rate_value is None else float(rate_value)
 
         descriptor: dict[str, object] = {"type": "mimic", "rate": rate}
 

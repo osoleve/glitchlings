@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from glitchlings.config import reload_config, reset_config
+from glitchlings.conf import reload_config, reset_config
 from glitchlings.lexicon import (
     Lexicon,
     get_default_lexicon,

@@ -39,13 +39,19 @@ After all, what good is general intelligence if it can't handle a little chaos?
 
 -_The Curator_
 
+## Motivation
+
+If your model performs well on a particular task, but not when `Glitchling`s are present, it's a sign that it hasn't actually generalized to the problem.
+
+Conversely, training a model to perform well in the presence of the types of perturbations introduced by `Glitchling`s should help it generalize better.
+
 ## Quickstart
 
 ```python
 pip install -U glitchlings
 ```
 
-> Glitchlings requires Python 3.10 or newer.
+The fastest way to get started is to ask my assistant, `Auggie`, to prepare a custom mix of glitchlings for you:
 
 ```python
 from glitchlings import Auggie, SAMPLE_TEXT
@@ -62,7 +68,7 @@ print(auggie(SAMPLE_TEXT))
 
 > One morning, when Gregor Samsa woke from troubld dreams, he found himself transformed in his bed into a horible vermin. He layed on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
 
-**Or, the equivalent using `Gaggle` directly:**
+**You're more than welcome to summon them directly, if you're feeling brave:**
 
 ```python
 from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Ekkokin
@@ -75,19 +81,11 @@ gaggle = Gaggle(
     ],
     seed=404
 )
-
-print(gaggle(SAMPLE_TEXT))
 ```
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
 for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
 integrations, and the compiled Rust pipeline (always enabled).
-
-## Motivation
-
-If your model performs well on a particular task, but not when `Glitchling`s are present, it's a sign that it hasn't actually generalized to the problem.
-
-Conversely, training a model to perform well in the presence of the types of perturbations introduced by `Glitchling`s should help it generalize better.
 
 ## Your First Battle
 
@@ -119,68 +117,15 @@ They're horrible little gremlins, but they're not _unreasonable_.
 
 ## Command-Line Interface (CLI)
 
-Keyboard warriors can challenge them directly via the `glitchlings` command:
+Keyboard warriors can challenge them directly via the `glitchlings` command (see the generated CLI reference in `docs/cli.md` for the full contract):
 
-<!-- BEGIN: CLI_USAGE -->
 ```bash
 # Discover which glitchlings are currently on the loose.
 glitchlings --list
-```
-
-```text
-   Typogre — scope: Character, order: early
-     Hokey — scope: Character, order: first
-     Mim1c — scope: Character, order: last
-   Ekkokin — scope: Word, order: early
-    Pedant — scope: Word, order: late
-  Jargoyle — scope: Word, order: normal
-  Rushmore — scope: Word, order: normal
-  Redactyl — scope: Word, order: normal
- Spectroll — scope: Word, order: normal
-Scannequin — scope: Character, order: late
-    Zeedub — scope: Character, order: last
-```
-
-```bash
+ 
 # Review the full CLI contract.
 glitchlings --help
-```
-
-```text
-usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG]
-                   [text ...] {build-lexicon} ...
-
-Summon glitchlings to corrupt text. Provide input text as an argument, via
---file, or pipe it on stdin.
-
-positional arguments:
-  text                  Text to corrupt. If omitted, stdin is used or --sample
-                        provides fallback text.
-  {build-lexicon}
-    build-lexicon       Generate synonym caches backed by vector embeddings.
-
-options:
-  -h, --help            show this help message and exit
-  -g SPEC, --glitchling SPEC
-                        Glitchling to apply, optionally with parameters like
-                        Typogre(rate=0.05). Repeat for multiples; defaults to
-                        all built-ins.
-  -s SEED, --seed SEED  Seed controlling deterministic corruption order
-                        (default: 151).
-  -f FILE, --file FILE  Read input text from a file instead of the command
-                        line argument.
-  --sample              Use the included SAMPLE_TEXT when no other input is
-                        provided.
-  --diff                Show a unified diff between the original and corrupted
-                        text.
-  --list                List available glitchlings and exit.
-  -c CONFIG, --config CONFIG
-                        Load glitchlings from a YAML configuration file.
-```
-<!-- END: CLI_USAGE -->
-
-```bash
+ 
 # Run Typogre against the contents of a file and inspect the diff.
 glitchlings -g typogre --file documents/report.txt --diff
 
@@ -189,12 +134,16 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
+```
 
+## Attack Configurations
+
+Attack configurations live in plain YAML files so you can version-control experiments without touching code:
+
+```bash
 # Load a roster from a YAML attack configuration.
 glitchlings --config experiments/chaos.yaml "Let slips the glitchlings of war"
 ```
-
-Attack configurations live in plain YAML files so you can version-control experiments without touching code:
 
 ```yaml
 # experiments/chaos.yaml
@@ -209,7 +158,9 @@ glitchlings:
       characters: ["\u200b", "\u2060"]
 ```
 
-Pass the file to `glitchlings --config` or load it from Python with `glitchlings.load_attack_config` and `glitchlings.build_gaggle`.
+## Attack on Token
+
+Looking to compare before/after corruption with metrics and stable seeds? Reach for the [`Attack` helper](docs/attack.md), which bundles tokenization, metrics, and transcript batching into a single utility.
 
 ## Development
 
@@ -224,137 +175,56 @@ For maintainability reasons, all `Glitchling` have consented to be given nicknam
 _What a nice word, would be a shame if something happened to it._
 
 > _**Fatfinger.**_ Typogre introduces character-level errors (duplicating, dropping, adding, or swapping) based on the layout of a keyboard (QWERTY by default, with Dvorak and Colemak variants built-in).
->
-> Args
->
-> - `rate (float)`: The maximum number of edits to make as a percentage of the length (default: 0.02, 2%).
-> - `keyboard (str)`: Keyboard layout key-neighbor map to use (default: "CURATOR_QWERTY"; also accepts "QWERTY", "DVORAK", "COLEMAK", and "AZERTY").
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
-### Apostrofae
-
-_It looks like you're trying to paste some text. Can I help?_
-
-> _**Paperclip Manager.**_ Apostrofae scans for balanced runs of straight quotes, apostrophes, and backticks before replacing them with randomly sampled smart-quote pairs from a curated lookup table. The swap happens in-place so contractions and unpaired glyphs remain untouched.
->
-> Args
->
-> - `seed (int)`: Optional seed controlling the deterministic smart-quote sampling (default: 151).
 
 ### Mim1c
 
 _Wait, was that...?_
 
 > _**Confusion.**_ Mim1c replaces non-space characters with Unicode Confusables, characters that are distinct but would not usually confuse a human reader.
->
-> Args
->
-> - `rate (float)`: The maximum proportion of characters to replace (default: 0.02, 2%).
-> - `classes (list[str] | "all")`: Restrict replacements to these Unicode script classes (default: ["LATIN", "GREEK", "CYRILLIC"]).
-> - `banned_characters (Collection[str])`: Characters that must never appear as replacements (default: none).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Hokey
 
 _She's soooooo coooool!_
 
-> _**Passionista.**_ Hokey sometimes gets a little excited and elongates words for emphasis.
+> _**Passionista.**_ Hokey gets a little excited and streeeeetches words for emphasis.
 >
-> Args
->
-> - `rate (float)`: Share of high-scoring tokens to stretch (default: 0.3).
-> - `extension_min` / `extension_max (int)`: Bounds for extra repetitions (defaults: 2 / 5).
-> - `word_length_threshold (int)`: Preferred maximum alphabetic length; longer words are damped instead of excluded (default: 6).
-> - `base_p (float)`: Base probability for the heavy-tailed sampler (default: 0.45).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
-_Apocryphal Glitchling contributed by Chloé Nunes_
+> _Apocryphal Glitchling contributed by Chloé Nunes_
 
 ### Scannequin
 
 _How can a computer need reading glasses?_
 
 > _**OCR Artifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
->
-> Args
->
-> - `rate (float)`: The maximum proportion of eligible confusion spans to replace (default: 0.02, 2%).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Zeedub
 
 _Watch your step around here._
 
 > _**Invisible Ink.**_ Zeedub slips zero-width codepoints between non-space character pairs, forcing models to reason about text whose visible form masks hidden glyphs.
->
-> Args
->
-> - `rate (float)`: Expected number of zero-width insertions as a proportion of eligible bigrams (default: 0.02, 2%).
-> - `characters (Sequence[str])`: Optional override for the pool of zero-width strings to inject (default: curated invisibles such as U+200B, U+200C, U+200D, U+FEFF, U+2060).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Ekkokin
 
 _Did you hear what I heard?_
 
 > _**Echo Chamber.**_ Ekkokin swaps words with curated homophones so the text still sounds right while the spelling drifts. Groups are normalised to prevent duplicates and casing is preserved when substitutions fire.
->
-> Args
->
-> - `rate (float)`: Maximum proportion of eligible words to replace with homophones (default: 0.02, 2%).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
 
 ### Jargoyle
 
 _Uh oh. The worst person you know just bought a thesaurus._
 
-> _**Sesquipedalianism.**_ Jargoyle, the insufferable `Glitchling`, replaces words from selected parts of speech with synonyms at random, without regard for connotational or denotational differences.
->
-> Args
->
-> - `rate (float)`: The maximum proportion of words to replace (default: 0.01, 1%).
->
-- `part_of_speech`: The WordNet-style part(s) of speech to target (default: nouns). Accepts `wn.NOUN`, `wn.VERB`, `wn.ADJ`, `wn.ADV`, any iterable of those tags, or the string `"any"` to include them all. Vector/graph backends ignore this filter while still honouring deterministic sampling.
->
-> - `seed (int)`: The random seed for reproducibility (default: 151).
+> _**Sesquipedalianism.**_ Jargoyle insufferably replaces words from selected parts of speech with synonyms at random, without regard for connotational or denotational differences.
 
 ### Rushmore
 
 _I accidentally an entire word._
 
-> _**Tactical Scrambler.**_ Rushmore now orchestrates the full word-level triad—deletions, duplications, and adjacent swaps—that previously lived in separate glitchlings. Select the behaviours you need with the `modes` parameter (or pass `"all"`) and Rushmore executes them in a deterministic order while sharing one RNG.
->
-> Args
->
-> - `modes`: Choose which word-level attacks to enable. Accepts `"delete"`, `"duplicate"`, `"swap"`, any iterable of those tokens, a corresponding `RushmoreMode`, or the string `"all"`.
-> - `rate (float)`: Global rate applied when per-mode rates are unspecified (default: 0.01, 1%).
-> - `delete_rate`, `duplicate_rate`, `swap_rate (float)`: Optional per-mode overrides.
-> - `unweighted (bool)`: Apply uniform sampling to all modes (default: False).
-> - `delete_unweighted`, `duplicate_unweighted (bool | None)`: Per-mode overrides for weighting strategy.
-> - `seed (int)`: The random seed for reproducibility (default: 151).
+> _**Tactical Scrambler.**_ Rushmore randomly drops, duplicates, or swaps words in the text to simulate hasty writing, editing mistakes, or transmission errors.
 
 ### Redactyl
 
 _Oops, that was my black highlighter._
 
 > _**FOIA Reply.**_ Redactyl obscures random words in your document like an NSA analyst with a bad sense of humor.
->
-> ### Args
->
-> - `replacement_char (str)`: The character to use for redaction (default: FULL_BLOCK).
-> - `rate (float)`: The maximum proportion of words to redact (default: 0.025, 2.5%).
-> - `merge_adjacent (bool)`: Whether to redact the space between adjacent redacted words (default: False).
-> - `unweighted (bool)`: Sample words uniformly instead of biasing toward longer tokens (default: False).
-> - `seed (int)`: The random seed for reproducibility (default: 151).
-
-## Field Report: Uncontained Specimens
-
-### _Containment procedures pending_
-
-- `nylingual` backtranslates portions of text.
-- `glothopper` introduces code-switching effects, blending languages or dialects.
-- `palimpsest` rewrites, but leaves accidental traces of the past.
-- `vesuvius` is an apocryphal `Glitchling` with ties to _[Nosy, aren't we? -The Curator]_
 
 ## Apocrypha
 

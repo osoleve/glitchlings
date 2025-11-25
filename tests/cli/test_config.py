@@ -4,13 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from glitchlings import build_gaggle, load_attack_config
-from glitchlings.config import (
+from glitchlings.conf import (
     CONFIG_ENV_VAR,
     DEFAULT_ATTACK_SEED,
     LexiconConfig,
     RuntimeConfig,
+    build_gaggle,
     get_config,
+    load_attack_config,
     parse_attack_config,
     reload_config,
     reset_config,
@@ -78,7 +79,7 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
         calls += 1
         return RuntimeConfig(lexicon=LexiconConfig(), path=Path(tmp_path / "config.toml"))
 
-    monkeypatch.setattr("glitchlings.config._load_runtime_config", _fake_loader)
+    monkeypatch.setattr("glitchlings.conf.runtime_config._load_runtime_config", _fake_loader)
     reset_config()
 
     config_one = get_config()

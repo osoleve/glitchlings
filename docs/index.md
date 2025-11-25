@@ -6,13 +6,14 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 
 1. [Installation](#installation)
 2. [Quickstart](#quickstart)
-3. [Rust pipeline acceleration](#rust-pipeline-acceleration)
+3. [Guide map](#guide-map)
 4. [The Gaggle orchestrator](#the-gaggle-orchestrator)
-5. [Declarative attack configurations](#declarative-attack-configurations)
-6. [Glitchling reference](#glitchling-reference)
+5. [Attack helper](#attack-helper)
+6. [Command line interface](#command-line-interface)
+7. [Glitchling reference](#glitchling-reference)
    - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
-   - [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md)
+   - [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
@@ -22,13 +23,14 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
-7. [Dataset workflows](#dataset-workflows)
-8. [Prime Intellect integration](#prime-intellect-integration)
-9. [Ensuring determinism](#ensuring-determinism)
-10. [Testing checklist](#testing-checklist)
-11. [Additional resources](#additional-resources)
-    - [Glitchling gallery](glitchling-gallery.md)
-    - [Keyboard layout reference](keyboard-layouts.md)
+8. [Testing checklist](#testing-checklist)
+9. [Additional resources](#additional-resources)
+   - [Glitchling gallery](glitchling-gallery.md)
+   - [Keyboard layout reference](keyboard-layouts.md)
+   - [Attack helper reference](attack.md)
+   - [Dataset workflows](datasets.md)
+   - [Integrations and DLC](integrations.md)
+   - [Determinism guide](determinism.md)
 
 ## Installation
 
@@ -107,9 +109,16 @@ Glitchlings slot neatly into existing pipelines:
 - **Dataset corruption** – After ``import glitchlings.dlc.huggingface`` registers the extension, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
 - **PyTorch data loaders** – Import ``glitchlings.dlc.pytorch`` to patch ``torch.utils.data.DataLoader.glitch(...)``. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
 
+## Guide map
+
+- [Attack helper](attack.md) – single-call corruption plus metrics, with transcript-aware batching and tokenizer selection.
+- [Dataset workflows](datasets.md) – how to glitch Hugging Face datasets and PyTorch data loaders with column inference.
+- [Integrations and DLC](integrations.md) – Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
+- [Determinism guide](determinism.md) – seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
+
 ### Command line interface
 
-Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality:
+Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality. Consult the generated [CLI reference](cli.md) for the full contract and live help output:
 
 ```bash
 # Discover all built-in glitchlings.
@@ -139,37 +148,9 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 
 Deep integration tests for the orchestration stack live in `tests/test_glitchling_core.py`, and the CLI argument matrix in `tests/test_parameter_effects.py`.
 
-## Declarative attack configurations
+## Attack helper
 
-Keep repeatable experiments outside your codebase by describing rosters in YAML. Each entry can either reference a built-in glitchling by name (with optional keyword arguments) or provide a mapping with `name` plus parameters:
-
-```yaml
-seed: 2024
-glitchlings:
-  - "Typogre(rate=0.03)"
-  - name: Rushmore
-    parameters:
-      rate: 0.08
-      unweighted: true
-  - name: Zeedub
-    rate: 0.01          # top-level keys become parameters when `parameters` is omitted
-```
-
-Feed the file to the CLI with:
-
-```bash
-glitchlings --config experiments/story-mode.yaml --diff "Here be dragons."
-```
-
-Omit `--seed` to honour the configuration's `seed`; supply `--seed` to override it on the fly while keeping the same roster. In Python, load the same file with `glitchlings.load_attack_config(path)` and convert it into a callable `Gaggle` via `glitchlings.build_gaggle(...)`.
-
-Configuration files are now validated against a JSON Schema before any glitchlings are instantiated. Unknown top-level keys raise an error, and each mapping entry must define a `name`. The schema is exposed as `glitchlings.config.ATTACK_CONFIG_SCHEMA` if you want to reuse it in external tooling.
-
-## Rust pipeline acceleration
-
-The refactored Rust pipeline batches compatible glitchlings in a single PyO3 call so large datasets spend less time bouncing between Python and Rust. The orchestrator now requires this compiled extension, so build the PyO3 crate before running Glitchlings.
-
-`tests/test_rust_backed_glitchlings.py` exercises the Rust-backed glitchlings to ensure the accelerated implementations remain stable.
+Use `glitchlings.attack.Attack` when you want a single call that corrupts text, tokenises the before/after, and emits similarity metrics. It mirrors the determinism guarantees of the `Gaggle` and understands chat transcripts. See the dedicated [Attack helper reference](attack.md) for parameters, tokenizer options, and examples.
 
 ## Glitchling reference
 
@@ -187,80 +168,6 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 
-## Dataset workflows
-
-Leverage the Hugging Face integration to perturb large corpora reproducibly:
-
-```python
-from datasets import load_dataset
-from glitchlings import Gaggle, Typogre, Mim1c
-
-dataset = load_dataset("ag_news")
-gaggle = Gaggle([Typogre(rate=0.02), Mim1c(rate=0.01)], seed=404)
-
-corrupted = gaggle.corrupt_dataset(
-    dataset,
-    columns=["text"],
-    description="ag_news with typographic noise",
-)
-```
-
-Key points:
-
-- When `columns` is omitted, Glitchlings infers targets (`prompt`, `question`, or all string columns) using `_resolve_columns` semantics from the Prime loader.
-- The returned dataset is a shallow copy containing both clean and corrupted columns-persist it with `corrupted.push_to_hub(...)` or `corrupted.save_to_disk(...)`.
-- Use dataset-level seeds (`seed=` on the gaggle) so repeated corruptions are stable across machines.
-
-Integration coverage for Hugging Face datasets lives in `tests/test_dataset_corruption.py`, while the DLC-specific loaders are exercised in `tests/test_huggingface_dlc.py`.
-
-## Prime Intellect integration
-
-Installing the `prime` extra exposes `glitchlings.dlc.prime.load_environment`, a convenience wrapper around `verifiers.load_environment` that lets you pre-inject glitchlings into benchmark datasets.
-
-```python
-from glitchlings import Mim1c, Typogre
-from glitchlings.dlc.prime import (
-    Difficulty,
-    echo_chamber,
-    load_environment,
-    tutorial_level,
-)
-
-# Load an existing environment and apply custom corruption
-custom_env = load_environment(
-    "osoleve/syllabify-en",
-    glitchlings=[Mim1c(rate=0.01), Typogre(rate=0.02)],
-    seed=404,
-    columns=["prompt"],  # optional; inferred when omitted
-)
-
-# Or convert a Hugging Face dataset column into an Echo Chamber
-restoration_env = echo_chamber(
-    "osoleve/clean-room",
-    column="text",
-    glitchlings=["Typogre", "Mim1c"],
-    reward_function=lambda prompt, completion, answer: float(completion == answer),
-)
-```
-
-Capabilities at a glance:
-
-- **Flexible inputs** – pass a string environment slug, an instantiated `verifiers.Environment`, a single glitchling, a list of glitchlings or names, or a pre-built `Gaggle`.
-- **Column inference** – when `columns` is `None`, the loader searches for `prompt`/`question` columns, otherwise falls back to all string-valued columns. Explicitly list columns to target subsets (e.g., prompts but not references).
-- **Deterministic summoning** – non-`Gaggle` inputs are normalised via `summon(...)` with the provided `seed`, so repeated calls produce matching corruption ensembles.
-- **Tutorial difficulty scaling** – `tutorial_level` wires in tuned Mim1c/Typogre parameters multiplied by the selected `Difficulty` enum. Use `Difficulty.Easy` for gentle practice or `Difficulty.Extreme` to hammer robustness.
-- **Dataset mutation** – environments are returned with their dataset replaced by the corrupted clone. Skip the `glitchlings` argument to leave the dataset untouched.
-- **Echo Chambers** – bootstrap text-cleaning challenges straight from Hugging Face datasets; the environment instructs models to restore glitch-corrupted text, scores responses with a symmetric Damerau–Levenshtein rubric by default, and lets you swap in bespoke reward functions when needed.
-
-## Ensuring determinism
-
-- Derive seeds from the surrounding context (`Gaggle.derive_seed`) when spawning new RNGs.
-- Stabilise candidate order before sampling subsets to keep runs reproducible.
-- Use `set_param` to expose tunable values so they can be reset between tests.
-- When writing new glitchlings, route randomness through the instance RNG rather than module-level state.
-
-These determinism checks are enforced in `tests/test_glitchlings_determinism.py`.
-
 ## Testing checklist
 
 Before publishing changes or documenting new glitchlings, run the Pytest suite from the repository root:
@@ -277,8 +184,12 @@ Want to compare against the legacy WordNet lexicon? Install `nltk` and download 
 
 ## Additional resources
 
-- Monster Manual (`MONSTER_MANUAL.md` in the repository root) - complete bestiary with flavour text.
+- [Monster Manual](monster-manual.md) - complete bestiary with flavour text.
 - Repository README (`README.md` in the repository root) - project overview and ASCII ambience.
 - [Development setup](development.md) - local environment, testing, and Rust acceleration guide.
 - [Glitchling gallery](glitchling-gallery.md) - side-by-side outputs for each glitchling at multiple rates.
 - [Keyboard layout reference](keyboard-layouts.md) - available adjacency maps for Typogre and related features.
+- [Attack helper reference](attack.md) - single-call corruption + metrics.
+- [Dataset workflows](datasets.md) - dataset and loader corruption patterns.
+- [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras.
+- [Determinism guide](determinism.md) - seeds and RNG guidance.

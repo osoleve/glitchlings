@@ -8,7 +8,7 @@ from hashlib import blake2s
 from pathlib import Path
 from typing import Callable, Iterable
 
-from glitchlings.config import get_config
+from glitchlings.conf import get_config
 
 from ._cache import CacheEntries, CacheSnapshot
 

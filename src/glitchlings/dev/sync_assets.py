@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 from typing import Iterator, Sequence
 
-PIPELINE_ASSETS: frozenset[str] = frozenset(
-    {
-        "apostrofae_pairs.json",
-        "ekkokin_homophones.json",
-        "hokey_assets.json",
-        "ocr_confusions.tsv",
-    }
-)
+from glitchlings.assets import PIPELINE_ASSETS
 
 
 def _project_root(default: Path | None = None) -> Path:
@@ -32,6 +26,10 @@ def _canonical_asset_dir(project_root: Path) -> Path:
     return canonical
 
 
+def _package_asset_dir(project_root: Path) -> Path:
+    return project_root / "src" / "glitchlings" / "assets"
+
+
 def _legacy_rust_asset_dir(project_root: Path) -> Path:
     return project_root / "rust" / "zoo" / "assets"
 
@@ -44,6 +42,10 @@ def _iter_legacy_assets(rust_dir: Path) -> Iterator[Path]:
             yield path
 
 
+def _asset_copy_in_sync(source: Path, target: Path) -> bool:
+    return target.is_file() and source.read_bytes() == target.read_bytes()
+
+
 def sync_assets(
     project_root: Path | None = None,
     *,
@@ -54,6 +56,7 @@ def sync_assets(
 
     root = _project_root(project_root)
     canonical_dir = _canonical_asset_dir(root)
+    package_dir = _package_asset_dir(root)
     rust_dir = _legacy_rust_asset_dir(root)
 
     missing_sources = [name for name in PIPELINE_ASSETS if not (canonical_dir / name).is_file()]
@@ -61,10 +64,20 @@ def sync_assets(
         missing_list = ", ".join(sorted(missing_sources))
         raise RuntimeError(f"missing canonical assets: {missing_list}")
 
+    if not check:
+        package_dir.mkdir(parents=True, exist_ok=True)
+
     legacy_assets = list(_iter_legacy_assets(rust_dir))
+    stale_package_assets = [
+        name
+        for name in PIPELINE_ASSETS
+        if not _asset_copy_in_sync(canonical_dir / name, package_dir / name)
+    ]
 
     if check:
+        issues_found = False
         if legacy_assets:
+            issues_found = True
             if not quiet:
                 for duplicate in legacy_assets:
                     message = (
@@ -73,10 +86,19 @@ def sync_assets(
                         "run sync_assets to remove it"
                     )
                     print(message, file=sys.stderr)
-            return False
-        if not quiet:
+        if stale_package_assets:
+            issues_found = True
+            if not quiet:
+                for name in stale_package_assets:
+                    message = (
+                        f"packaged asset copy {name} is missing or stale; "
+                        "run sync_assets to refresh src/glitchlings/assets"
+                    )
+                    print(message, file=sys.stderr)
+        if not issues_found and not quiet:
             print("No legacy Rust asset copies detected.")
-        return True
+            print("Packaged asset copies are up to date.")
+        return not issues_found
 
     removed_any = False
     for duplicate in legacy_assets:
@@ -92,6 +114,16 @@ def sync_assets(
             pass
     elif not quiet:
         print("No legacy Rust asset copies to remove.")
+
+    updated_any = False
+    for name in stale_package_assets:
+        shutil.copy2(canonical_dir / name, package_dir / name)
+        updated_any = True
+        if not quiet:
+            print(f"Refreshed packaged asset copy for {name}")
+
+    if not updated_any and not quiet:
+        print("Packaged asset copies already up to date.")
 
     return True
 

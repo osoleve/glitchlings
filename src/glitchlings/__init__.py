@@ -1,6 +1,7 @@
 from .auggie import Auggie
-from .config import AttackConfig, build_gaggle, load_attack_config
+from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
+from .util.transcripts import TranscriptTarget
 from .zoo import (
     Ekkokin,
     Gaggle,
@@ -66,4 +67,5 @@ __all__ = [
     "AttackConfig",
     "build_gaggle",
     "load_attack_config",
+    "TranscriptTarget",
 ]
