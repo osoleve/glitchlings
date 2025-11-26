@@ -3,6 +3,7 @@
 This module provides lexicon-specific fixtures for testing lexicon backends
 and related functionality.
 """
+
 from __future__ import annotations
 
 # Import shared fixtures from centralized locations

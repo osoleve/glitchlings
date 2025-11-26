@@ -1,4 +1,5 @@
 """Shared test fixtures for the glitchlings test suite."""
+
 from __future__ import annotations
 
 from tests.fixtures.glitchlings import fresh_glitchling, sample_text

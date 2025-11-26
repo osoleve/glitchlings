@@ -7,8 +7,8 @@ from glitchlings import typogre, zeedub
 from glitchlings.zoo.zeedub import _DEFAULT_ZERO_WIDTH_CHARACTERS
 
 
-def test_mim1c_rate_bounds(fresh_glitchling, sample_text):
-    """Test that Mim1c respects rate parameter bounds."""
+def test_mim1c_rate_enforces_maximum_changes(fresh_glitchling, sample_text):
+    """Test that Mim1c respects the rate parameter as an upper bound on changes."""
     m = fresh_glitchling("mim1c")
     m.set_param("seed", 7)
     m.set_param("rate", 0.02)
@@ -36,8 +36,8 @@ def test_mim1c_respects_banned_characters(fresh_glitchling):
     assert not any(char in banned for char in out)
 
 
-def test_rushmore_rate_decreases_tokens(fresh_glitchling):
-    """Test that Rushmore respects rate parameter for token deletion."""
+def test_rushmore_never_increases_token_count(fresh_glitchling):
+    """Test that Rushmore never adds tokens - only deletes or preserves."""
     text = "a b c d e f g h"
     glitch = fresh_glitchling("rushmore")
     glitch.set_param("seed", 5)

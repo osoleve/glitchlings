@@ -1,4 +1,5 @@
 """Shared lexicon test infrastructure."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -26,13 +27,10 @@ class MockLexicon(Lexicon):
         synonyms = lexicon.get_synonyms("happy", n=2)
     """
 
-    def __init__(
-        self, mapping: dict[str, Iterable[str]], *, seed: int | None = None
-    ) -> None:
+    def __init__(self, mapping: dict[str, Iterable[str]], *, seed: int | None = None) -> None:
         super().__init__(seed=seed)
         self._mapping = {
-            key.lower(): [str(value) for value in values]
-            for key, values in mapping.items()
+            key.lower(): [str(value) for value in values] for key, values in mapping.items()
         }
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
