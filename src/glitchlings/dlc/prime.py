@@ -27,7 +27,7 @@ class VerifierSingleTurnEnv(Protocol):
 
 vf = require_verifiers("verifiers is not installed; install glitchlings[prime]")
 _jellyfish = require_jellyfish("jellyfish is not installed; install glitchlings[prime]")
-damerau_levenshtein_distance = _jellyfish.damerau_levenshtein_distance
+levenshtein_distance = _jellyfish.levenshtein_distance
 
 
 def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
@@ -116,16 +116,16 @@ def _extract_completion_text(completion: Any) -> str:
     return str(completion)
 
 
-def symmetric_damerau_levenshtein_similarity(
+def normalized_edit_distance(
     _: Any,
     completion: Any,
     answer: str,
 ) -> float:
-    """Return ``1 - (distance / max_len)`` using Damerau-Levenshtein distance."""
+    """Return ``1 - (distance / max_len)`` using Levenshtein distance."""
     completion_text = _extract_completion_text(completion)
     target = answer or ""
     denominator = max(len(completion_text), len(target), 1)
-    distance = cast(int, damerau_levenshtein_distance(completion_text, target))
+    distance = cast(int, levenshtein_distance(completion_text, target))
     score = 1.0 - (distance / denominator)
     return max(0.0, min(1.0, score))
 
@@ -155,7 +155,7 @@ def echo_chamber(
         seed: RNG seed forwarded to :func:`glitchlings.util.adapters.coerce_gaggle`.
         instructions: System instructions supplied to the environment prompts.
         reward_function: Optional callable used to score completions. Defaults to
-            :func:`symmetric_damerau_levenshtein_similarity` when omitted.
+            :func:`symmetric_levenshtein_similarity` when omitted.
         split: Optional dataset split to load.
         **load_dataset_kwargs: Extra keyword arguments forwarded to
             :func:`datasets.load_dataset`.
@@ -232,7 +232,7 @@ def echo_chamber(
     gaggle = _as_gaggle(glitchlings, seed=seed)
     glitched_dataset = gaggle.corrupt_dataset(base_dataset, ["prompt"])
 
-    rubric_func = reward_function or symmetric_damerau_levenshtein_similarity
+    rubric_func = reward_function or normalized_edit_distance
     rubric = vf.Rubric(funcs=[rubric_func], weights=[1.0])
     return cast(
         VerifierSingleTurnEnv,

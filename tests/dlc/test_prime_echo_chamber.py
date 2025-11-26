@@ -76,10 +76,7 @@ class FakeDataset:
                 f"{dict(zip(keys, lengths))}"
             )
         length = lengths[0] if lengths else 0
-        rows = [
-            {key: columns[key][index] for key in keys}
-            for index in range(length)
-        ]
+        rows = [{key: columns[key][index] for key in keys} for index in range(length)]
         return cls(rows, keys, streaming=streaming)
 
     def __len__(self) -> int:
@@ -201,7 +198,6 @@ def test_resolve_environment_rejects_invalid_type():
         prime._resolve_environment(object())
 
 
-
 def test_prime_resolve_columns_handles_streaming_dataset():
     row = {"context": "alpha", "score": 1, "response": "beta"}
 
@@ -225,13 +221,12 @@ def test_prime_resolve_columns_handles_streaming_dataset():
 
     assert inferred == ["context", "response"]
 
+
 def test_load_environment_respects_explicit_columns(monkeypatch):
     dataset = Dataset.from_dict({"prompt": ["alpha"], "extra": ["beta"]})
     stub = _RecordingGaggle()
 
-    monkeypatch.setattr(
-        prime, "_resolve_environment", lambda _env: _FakeEnvironment(dataset)
-    )
+    monkeypatch.setattr(prime, "_resolve_environment", lambda _env: _FakeEnvironment(dataset))
     monkeypatch.setattr(prime, "coerce_gaggle", lambda specs, seed: stub)
 
     env = prime.load_environment(
@@ -257,21 +252,21 @@ def test_similarity_scores_expected_fraction_for_single_edit() -> None:
     expected_distance = 1
     expected_score = 1 - (expected_distance / max(len(completion), len(answer), 1))
 
-    score = prime.symmetric_damerau_levenshtein_similarity(None, completion, answer)
+    score = prime.symmetric_levenshtein_similarity(None, completion, answer)
 
     assert score == pytest.approx(expected_score)
 
 
 def test_similarity_handles_identical_and_extreme_inputs() -> None:
-    assert prime.symmetric_damerau_levenshtein_similarity(None, "same", "same") == 1.0
+    assert prime.symmetric_levenshtein_similarity(None, "same", "same") == 1.0
 
-    shorter = prime.symmetric_damerau_levenshtein_similarity(None, "a", "a" * 10)
-    longer = prime.symmetric_damerau_levenshtein_similarity(None, "a" * 10, "a")
+    shorter = prime.symmetric_levenshtein_similarity(None, "a", "a" * 10)
+    longer = prime.symmetric_levenshtein_similarity(None, "a" * 10, "a")
     assert 0.0 <= shorter <= 1.0
     assert 0.0 <= longer <= 1.0
 
-    empty_answer = prime.symmetric_damerau_levenshtein_similarity(None, "abc", "")
-    both_empty = prime.symmetric_damerau_levenshtein_similarity(None, "", "")
+    empty_answer = prime.symmetric_levenshtein_similarity(None, "abc", "")
+    both_empty = prime.symmetric_levenshtein_similarity(None, "", "")
     assert empty_answer == 0.0
     assert both_empty == 1.0
 
@@ -357,11 +352,16 @@ def test_echo_chamber_requires_non_empty_column(monkeypatch: pytest.MonkeyPatch)
             column="text",
             glitchlings=["Typogre"],
         )
+
+
 def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
-    base_dataset = Dataset.from_dict({
-        "text": ["alpha", None, "beta"],
-        "other": [1, 2, 3],
-    }, streaming=True)
+    base_dataset = Dataset.from_dict(
+        {
+            "text": ["alpha", None, "beta"],
+            "other": [1, 2, 3],
+        },
+        streaming=True,
+    )
 
     def _fake_load_dataset(*args, **kwargs):
         return base_dataset
@@ -404,8 +404,3 @@ def test_echo_chamber_streams_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     assert rows[0]["answer"] == "alpha"
     assert rows[0]["prompt"][0]["content"] == "Restore the text."
     assert rows[0]["prompt"][1]["content"] == "Corrupted text:\nalpha"
-
-
-
-
-
