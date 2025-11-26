@@ -204,6 +204,40 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     # Note: Jargoyle (synonym replacement) is not supported by the Rust pipeline
 }
 
+# Categorize scenarios for display purposes
+MULTI_GLITCHLING_SCENARIOS = {"baseline", "shuffle_mix", "aggressive_cleanup", "stealth_noise"}
+INDIVIDUAL_GLITCHLING_SCENARIOS = {
+    "typogre_only",
+    "rushmore_delete",
+    "rushmore_duplicate",
+    "rushmore_swap",
+    "redactyl_only",
+    "scannequin_only",
+    "zeedub_only",
+    "mim1c_only",
+    "ekkokin_only",
+}
+
+# Display names for individual glitchlings
+INDIVIDUAL_DISPLAY_NAMES = {
+    "typogre_only": "Typogre",
+    "rushmore_delete": "Rush-Del",
+    "rushmore_duplicate": "Rush-Dup",
+    "rushmore_swap": "Rush-Swap",
+    "redactyl_only": "Redactyl",
+    "scannequin_only": "Scannequin",
+    "zeedub_only": "Zeedub",
+    "mim1c_only": "Mim1c",
+    "ekkokin_only": "Ekkokin",
+}
+
+# Grouped display order for individual glitchlings
+INDIVIDUAL_GROUPS: list[tuple[str, list[str]]] = [
+    ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only"]),
+    ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "scannequin_only"]),
+    ("Rushmore Variants", ["rushmore_delete", "rushmore_duplicate", "rushmore_swap"]),
+]
+
 
 def _seeded_descriptors(master_seed: int, descriptors: Sequence[Descriptor]) -> list[Descriptor]:
     """Return pipeline descriptors enriched with per-glitchling seeds."""
@@ -261,23 +295,139 @@ def _format_stats(stats: BenchmarkStatistics) -> str:
 
 
 def _format_table_stats(stats: BenchmarkStatistics) -> str:
-    return f"{stats.mean_ms:7.3f} ms (σ={stats.stdev_ms:5.3f})"
+    return f"{stats.mean_ms:7.3f} (σ={stats.stdev_ms:5.3f})"
+
+
+def _format_compact_stats(stats: BenchmarkStatistics) -> str:
+    return f"{stats.mean_ms:6.2f}"
+
+
+def _print_header(title: str, width: int = 60) -> None:
+    """Print a styled section header."""
+    print()
+    print("═" * width)
+    print(f"  {title}")
+    print("═" * width)
+
+
+def _print_subheader(title: str, width: int = 60) -> None:
+    """Print a styled subsection header."""
+    print()
+    print(f"  ┌{'─' * (len(title) + 2)}┐")
+    print(f"  │ {title} │")
+    print(f"  └{'─' * (len(title) + 2)}┘")
 
 
 def _print_results(scenario: str, results: Sequence[BenchmarkResult]) -> None:
-    print(f"\n=== Scenario: {scenario} ===")
-    header = (
-        "| Text size | Characters | Runtime (ms)          |\n"
-        "| ---       | ---:       | ---:                  |"
-    )
-    print(header)
+    _print_subheader(f"Scenario: {scenario}")
+    print()
+    print("  ┌───────────┬──────────┬────────────────────────┐")
+    print("  │ Text Size │    Chars │ Runtime (ms)           │")
+    print("  ├───────────┼──────────┼────────────────────────┤")
     for result in results:
-        row = "| {label:<9} | {char_count:10d} | {runtime:<21} |".format(
+        row = "  │ {label:<9} │ {char_count:>8,} │ {runtime:<22} │".format(
             label=result.label,
             char_count=result.char_count,
             runtime=_format_table_stats(result.runtime),
         )
         print(row)
+    print("  └───────────┴──────────┴────────────────────────┘")
+
+
+def _print_grouped_individual_table(
+    group_name: str,
+    scenario_keys: list[str],
+    scenario_results: dict[str, list[BenchmarkResult]],
+) -> None:
+    """Print a single grouped table for related glitchlings."""
+    # Filter to scenarios that were actually run
+    available = [s for s in scenario_keys if s in scenario_results]
+    if not available:
+        return
+
+    col_names = [INDIVIDUAL_DISPLAY_NAMES.get(s, s) for s in available]
+    col_width = 10
+
+    _print_subheader(group_name)
+    print()
+
+    # Top border
+    top = "  ┌───────────┬──────────┬"
+    for _ in col_names:
+        top += "─" * (col_width + 2) + "┬"
+    top = top[:-1] + "┐"
+    print(top)
+
+    # Header row
+    header = "  │ Text Size │    Chars │"
+    for name in col_names:
+        header += f" {name:^{col_width}} │"
+    print(header)
+
+    # Separator
+    sep = "  ├───────────┼──────────┼"
+    for _ in col_names:
+        sep += "─" * (col_width + 2) + "┼"
+    sep = sep[:-1] + "┤"
+    print(sep)
+
+    # Get text labels from first scenario's results
+    first_results = scenario_results[available[0]]
+
+    # Data rows
+    for i, result in enumerate(first_results):
+        row = "  │ {label:<9} │ {chars:>8,} │".format(
+            label=result.label,
+            chars=result.char_count,
+        )
+        for scenario in available:
+            stats = scenario_results[scenario][i].runtime
+            cell = f"{stats.mean_ms:>6.2f} ms"
+            row += f" {cell:^{col_width}} │"
+        print(row)
+
+    # Footer
+    footer = "  └───────────┴──────────┴"
+    for _ in col_names:
+        footer += "─" * (col_width + 2) + "┴"
+    footer = footer[:-1] + "┘"
+    print(footer)
+
+
+def _print_combined_individual_results(
+    scenario_results: dict[str, list[BenchmarkResult]],
+    scenarios: Sequence[str],
+) -> None:
+    """Print grouped tables for individual glitchling benchmarks."""
+    _print_header("Individual Glitchling Benchmarks")
+
+    # Filter to only requested scenarios
+    available_scenarios = set(scenarios) & INDIVIDUAL_GLITCHLING_SCENARIOS
+    if not available_scenarios:
+        return
+
+    for group_name, group_scenarios in INDIVIDUAL_GROUPS:
+        # Only print groups that have at least one requested scenario
+        group_available = [s for s in group_scenarios if s in available_scenarios]
+        if group_available:
+            _print_grouped_individual_table(group_name, group_scenarios, scenario_results)
+
+    # Print standard deviation summary
+    print()
+    print("  σ (standard deviation) in ms:")
+
+    ordered_scenarios = [
+        s for s in scenarios if s in INDIVIDUAL_GLITCHLING_SCENARIOS and s in scenario_results
+    ]
+    stdev_content_width = 56
+    print("  ┌" + "─" * stdev_content_width + "┐")
+    for scenario in ordered_scenarios:
+        name = INDIVIDUAL_DISPLAY_NAMES.get(scenario, scenario)
+        results = scenario_results[scenario]
+        stdevs = ", ".join(f"{r.runtime.stdev_ms:.3f}" for r in results)
+        content = f" {name:<10}: [{stdevs}]"
+        print(f"  │{content:<{stdev_content_width}}│")
+    print("  └" + "─" * stdev_content_width + "┘")
 
 
 def collect_benchmark_results(
@@ -319,30 +469,68 @@ def run_benchmarks(
     output_file: str | None = None,
 ) -> None:
     output_lines: list[str] = []
+    texts_tuple = tuple(texts)
+
+    # Separate multi-glitchling and individual scenarios
+    multi_scenarios = [s for s in scenarios if s in MULTI_GLITCHLING_SCENARIOS]
+    individual_scenarios = [s for s in scenarios if s in INDIVIDUAL_GLITCHLING_SCENARIOS]
+
+    # Collect all results first
+    all_results: dict[str, list[BenchmarkResult]] = {}
     for scenario in scenarios:
         builder = SCENARIOS.get(scenario)
         if builder is None:
             raise KeyError(f"Unknown scenario: {scenario}")
         descriptor_set = builder()
-        results = collect_benchmark_results(texts, iterations, descriptor_set)
-        _print_results(scenario, results)
+        all_results[scenario] = collect_benchmark_results(texts_tuple, iterations, descriptor_set)
+
+    # Print individual glitchling scenarios first as grouped tables
+    if individual_scenarios:
+        _print_combined_individual_results(all_results, individual_scenarios)
         if output_file:
-            output_lines.append(f"\n=== Scenario: {scenario} ===")
-            header = (
-                "| Text size | Characters | Runtime (ms)          |\n"
-                "| ---       | ---:       | ---:                  |"
-            )
-            output_lines.append(header)
-            for result in results:
-                row = "| {label:<9} | {char_count:10d} | {runtime:<21} |".format(
-                    label=result.label,
-                    char_count=result.char_count,
-                    runtime=_format_table_stats(result.runtime),
-                )
-                output_lines.append(row)
+            output_lines.append("\n=== Individual Glitchling Comparison ===")
+            for group_name, group_scenarios in INDIVIDUAL_GROUPS:
+                available = [s for s in group_scenarios if s in individual_scenarios]
+                if not available:
+                    continue
+                output_lines.append(f"\n{group_name}:")
+                col_names = [INDIVIDUAL_DISPLAY_NAMES.get(s, s) for s in available]
+                header = "| Text size | Characters | " + " | ".join(col_names) + " |"
+                output_lines.append(header)
+                sep = "| --- | ---: | " + " | ".join(["---:" for _ in col_names]) + " |"
+                output_lines.append(sep)
+                first_results = all_results[available[0]]
+                for i, result in enumerate(first_results):
+                    row_parts = [result.label, str(result.char_count)]
+                    for scenario in available:
+                        stats = all_results[scenario][i].runtime
+                        row_parts.append(f"{stats.mean_ms:.2f} ms")
+                    output_lines.append("| " + " | ".join(row_parts) + " |")
+
+    # Print multi-glitchling scenarios
+    if multi_scenarios:
+        _print_header("Multi-Glitchling Pipeline Benchmarks")
+        for scenario in multi_scenarios:
+            _print_results(scenario, all_results[scenario])
+            if output_file:
+                output_lines.append(f"\n=== Scenario: {scenario} ===")
+                output_lines.append("| Text size | Characters | Runtime (ms) |")
+                output_lines.append("| --- | ---: | ---: |")
+                for result in all_results[scenario]:
+                    output_lines.append(
+                        f"| {result.label} | {result.char_count} | {_format_table_stats(result.runtime)} |"
+                    )
+
+    # Summary
+    print()
+    print("═" * 60)
+    print(f"  Benchmark complete: {len(scenarios)} scenario(s), {iterations} iterations each")
+    print("═" * 60)
+
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
             f.write("\n".join(output_lines))
+        print(f"\n  Results written to: {output_file}")
 
 
 def main(argv: list[str] | None = None) -> int:
