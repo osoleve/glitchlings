@@ -134,6 +134,7 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "mim1c_only": "Mim1c-only benchmark for homoglyph substitution.",
     "ekkokin_only": "Ekkokin-only benchmark for homophone substitution.",
     "hokey_only": "Hokey-only benchmark for expressive lengthening.",
+    "jargoyle_only": "Jargoyle-only benchmark for dictionary-based synonym substitution.",
 }
 
 

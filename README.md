@@ -89,7 +89,7 @@ for end-to-end instructions spanning the Python API, CLI, and third-party integr
 ## Your First Battle
 
 Summon your chosen `Glitchling` (_or a few, if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.
-Glitchlings are standard Python classes, so you can instantiate them with whatever parameters fit your scenario:
+Glitchlings are standard Python classes:
 
 ```python
 from glitchlings import Gaggle, Typogre, Mim1c
