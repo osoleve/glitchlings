@@ -1,13 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
-from typing import Mapping, cast
+from typing import cast
 
 from ..conf import DEFAULT_ATTACK_SEED
 from ..util.adapters import coerce_gaggle
 from ..util.transcripts import Transcript, TranscriptTarget, is_transcript
 from ..zoo.core import Glitchling
+from .compose import (
+    build_batch_result,
+    build_empty_result,
+    build_single_result,
+    extract_transcript_contents,
+)
+from .encode import describe_tokenizer, encode_batch
 from .metrics import (
     Metric,
     jensen_shannon_divergence,
@@ -30,6 +37,18 @@ class AttackResult:
 
 
 class Attack:
+    """Orchestrator for applying glitchling corruptions and measuring impact.
+
+    Attack is a thin orchestrator that coordinates:
+    - Glitchling invocation (impure: may use Rust FFI)
+    - Tokenization (impure: resolves tokenizers)
+    - Metric computation (impure: calls Rust metrics)
+    - Result composition (delegated to pure compose.py helpers)
+
+    The class validates inputs at construction time (boundary layer)
+    and delegates pure operations to compose.py and encode.py modules.
+    """
+
     def __init__(
         self,
         glitchlings: Glitchling | str | Iterable[str | Glitchling],
@@ -60,6 +79,7 @@ class Attack:
                 - int: corrupt a specific index (negative indexing supported)
                 - Sequence[int]: corrupt specific indices
         """
+        # Boundary validation and resolution (impure)
         gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
         cloned_glitchlings = self._clone_glitchling_specs(glitchlings)
         self.glitchlings = coerce_gaggle(
@@ -69,9 +89,11 @@ class Attack:
             transcript_target=transcript_target,
         )
 
+        # Impure tokenizer resolution
         self.tokenizer = resolve_tokenizer(tokenizer)
-        self.tokenizer_info = self._describe_tokenizer(tokenizer)
+        self.tokenizer_info = describe_tokenizer(self.tokenizer, tokenizer)
 
+        # Metrics setup
         if metrics is None:
             self.metrics: dict[str, Metric] = {
                 "jensen_shannon_divergence": jensen_shannon_divergence,
@@ -103,103 +125,64 @@ class Attack:
 
         return glitchlings
 
-    def _describe_tokenizer(self, raw: str | Tokenizer | None) -> str:
-        if isinstance(raw, str):
-            return raw
-
-        name = getattr(self.tokenizer, "name", None)
-        if isinstance(name, str) and name:
-            return name
-
-        if raw is None:
-            return self.tokenizer.__class__.__name__
-
-        return str(raw)
-
-    def _encode(self, text: str) -> tuple[list[str], list[int]]:
-        tokens, ids = self.tokenizer.encode(text)
-        return list(tokens), list(ids)
-
-    def _encode_batch(self, texts: list[str]) -> tuple[list[list[str]], list[list[int]]]:
-        batch_encode = getattr(self.tokenizer, "encode_batch", None)
-        if callable(batch_encode):
-            try:
-                encoded = batch_encode(texts)
-            except (TypeError, AttributeError, NotImplementedError):
-                # Fall back to per-item encoding if a custom tokenizer's batch
-                # implementation is missing or mis-specified.
-                pass
-            else:
-                fast_token_batches: list[list[str]] = []
-                fast_id_batches: list[list[int]] = []
-                for tokens, ids in encoded:
-                    fast_token_batches.append(list(tokens))
-                    fast_id_batches.append(list(ids))
-                return fast_token_batches, fast_id_batches
-
-        token_batches: list[list[str]] = []
-        id_batches: list[list[int]] = []
-        for entry in texts:
-            tokens, ids = self._encode(entry)
-            token_batches.append(tokens)
-            id_batches.append(ids)
-        return token_batches, id_batches
-
-    @staticmethod
-    def _extract_transcript_contents(transcript: Transcript) -> list[str]:
-        contents: list[str] = []
-        for index, turn in enumerate(transcript):
-            if not isinstance(turn, Mapping):
-                raise TypeError(f"Transcript turn #{index + 1} must be a mapping.")
-            content = turn.get("content")
-            if not isinstance(content, str):
-                raise TypeError(f"Transcript turn #{index + 1} is missing string content.")
-            contents.append(content)
-        return contents
-
     def run(self, text: str | Transcript) -> AttackResult:
-        """Apply corruptions and calculate metrics, supporting transcripts as batches."""
+        """Apply corruptions and calculate metrics.
+
+        Supports both single strings and chat transcripts. For transcripts,
+        metrics are computed per-turn and returned as lists.
+
+        Args:
+            text: Input text or transcript to corrupt.
+
+        Returns:
+            AttackResult containing original, corrupted, tokens, and metrics.
+        """
+        # Impure: apply corruptions
         result = self.glitchlings.corrupt(text)
 
+        # Validate type consistency
         input_is_transcript = is_transcript(text)
         output_is_transcript = is_transcript(result)
         if input_is_transcript != output_is_transcript:
             raise ValueError("Attack expected output type to mirror input type.")
 
-        original_payload: str | Transcript
-        corrupted_payload: str | Transcript
+        # Extract contents for tokenization
         if input_is_transcript:
-            original_payload = cast(Transcript, text)
-            corrupted_payload = cast(Transcript, result)
-            original_contents = self._extract_transcript_contents(original_payload)
-            corrupted_contents = self._extract_transcript_contents(corrupted_payload)
+            original_transcript = cast(Transcript, text)
+            corrupted_transcript = cast(Transcript, result)
+            original_contents = extract_transcript_contents(original_transcript)
+            corrupted_contents = extract_transcript_contents(corrupted_transcript)
         else:
             assert isinstance(text, str)
             assert isinstance(result, str)
-            original_payload = text
-            corrupted_payload = result
+            original_str = text
+            corrupted_str = result
             original_contents = [text]
             corrupted_contents = [result]
 
         if len(original_contents) != len(corrupted_contents):
             raise ValueError("Transcript inputs and outputs must contain the same number of turns.")
 
+        # Handle empty transcripts using pure helper
         if not original_contents:
-            empty_metrics: dict[str, float | list[float]] = {name: [] for name in self.metrics}
-            return AttackResult(
-                original=original_payload,
-                corrupted=corrupted_payload,
-                input_tokens=[],
-                output_tokens=[],
-                input_token_ids=[],
-                output_token_ids=[],
-                tokenizer_info=self.tokenizer_info,
-                metrics=empty_metrics,
+            # Empty transcript case - must be transcript type
+            fields = build_empty_result(
+                cast(Transcript, text),
+                cast(Transcript, result),
+                self.tokenizer_info,
+                list(self.metrics.keys()),
             )
+            return AttackResult(**fields)  # type: ignore[arg-type]
 
-        batched_input_tokens, batched_input_token_ids = self._encode_batch(original_contents)
-        batched_output_tokens, batched_output_token_ids = self._encode_batch(corrupted_contents)
+        # Impure: tokenize contents
+        batched_input_tokens, batched_input_token_ids = encode_batch(
+            self.tokenizer, original_contents
+        )
+        batched_output_tokens, batched_output_token_ids = encode_batch(
+            self.tokenizer, corrupted_contents
+        )
 
+        # Prepare metric inputs (single vs batch)
         metric_inputs: list[str] | list[list[str]]
         metric_outputs: list[str] | list[list[str]]
         if input_is_transcript:
@@ -209,35 +192,33 @@ class Attack:
             metric_inputs = batched_input_tokens[0]
             metric_outputs = batched_output_tokens[0]
 
+        # Impure: compute metrics
         computed_metrics: dict[str, float | list[float]] = {}
         for name, metric_fn in self.metrics.items():
             computed_metrics[name] = metric_fn(metric_inputs, metric_outputs)
 
+        # Pure: compose result using helpers
         if not input_is_transcript:
-            return AttackResult(
-                original=original_payload,
-                corrupted=corrupted_payload,
+            fields = build_single_result(
+                original=original_str,
+                corrupted=corrupted_str,
                 input_tokens=batched_input_tokens[0],
-                output_tokens=batched_output_tokens[0],
                 input_token_ids=batched_input_token_ids[0],
+                output_tokens=batched_output_tokens[0],
                 output_token_ids=batched_output_token_ids[0],
                 tokenizer_info=self.tokenizer_info,
-                metrics={
-                    name: cast(
-                        float,
-                        value if not isinstance(value, list) else value[0] if value else value,
-                    )
-                    for name, value in computed_metrics.items()
-                },
+                metrics=computed_metrics,
             )
+            return AttackResult(**fields)  # type: ignore[arg-type]
 
-        return AttackResult(
-            original=original_payload,
-            corrupted=corrupted_payload,
+        fields = build_batch_result(
+            original=original_transcript,
+            corrupted=corrupted_transcript,
             input_tokens=batched_input_tokens,
-            output_tokens=batched_output_tokens,
             input_token_ids=batched_input_token_ids,
+            output_tokens=batched_output_tokens,
             output_token_ids=batched_output_token_ids,
             tokenizer_info=self.tokenizer_info,
             metrics=computed_metrics,
         )
+        return AttackResult(**fields)  # type: ignore[arg-type]

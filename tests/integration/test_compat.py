@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from glitchlings import compat
+from glitchlings.compat import loaders as compat_loaders
 
 
 def _force_missing(monkeypatch: pytest.MonkeyPatch, module_name: str) -> None:
@@ -20,7 +21,7 @@ def _force_missing(monkeypatch: pytest.MonkeyPatch, module_name: str) -> None:
             raise ModuleNotFoundError(f"{module_name} unavailable")
         return original_import(name, *args, **kwargs)
 
-    monkeypatch.setattr(compat, "import_module", _raising_import)
+    monkeypatch.setattr(compat_loaders, "import_module", _raising_import)
 
 
 def test_require_datasets_reports_missing(monkeypatch: pytest.MonkeyPatch) -> None:

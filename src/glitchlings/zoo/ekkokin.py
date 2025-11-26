@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import math
 import random
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Mapping, Sequence, cast
+from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 
 from glitchlings.assets import load_homophone_groups
 from glitchlings.constants import DEFAULT_EKKOKIN_RATE, DEFAULT_EKKOKIN_WEIGHTING
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import ekkokin_homophones_rust, resolve_seed
 
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -37,10 +37,6 @@ def _build_lookup(groups: Iterable[Sequence[str]]) -> Mapping[str, tuple[str, ..
 
 
 _homophone_lookup = _build_lookup(_homophone_groups)
-_ekkokin_rust = cast(
-    Callable[[str, float, str, int | None], str],
-    get_rust_operation("ekkokin_homophones"),
-)
 
 
 class _GlitchlingProtocol:
@@ -71,7 +67,7 @@ def substitute_homophones(
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
 
-    return _ekkokin_rust(
+    return ekkokin_homophones_rust(
         text,
         clamped_rate,
         DEFAULT_EKKOKIN_WEIGHTING,

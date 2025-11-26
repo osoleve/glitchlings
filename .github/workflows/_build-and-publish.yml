@@ -170,7 +170,7 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        runner: ['macos-13', 'macos-14']  # macos-13 is Intel, macos-14 is ARM64
+        runner: ['macos-latest', 'macos-14']  # macos-latest is Intel x86_64, macos-14 is ARM64
 
     steps:
       - uses: actions/checkout@v4
@@ -220,8 +220,12 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           pattern: dist-*
-          path: dist
-          merge-multiple: true
+          path: artifacts
+
+      - name: Prepare distribution directory
+        run: |
+          mkdir -p dist
+          find artifacts -type f \( -name '*.whl' -o -name '*.tar.gz' \) -exec mv {} dist/ \;
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

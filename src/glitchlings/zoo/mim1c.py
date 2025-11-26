@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import random
 from collections.abc import Collection, Iterable
-from typing import Callable, Literal, cast
+from typing import Literal, cast
 
 from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import mim1c_rust, resolve_seed
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
-
-_MIM1C_RUST = cast(Callable[..., str], get_rust_operation("mim1c"))
 
 
 def _normalise_classes(
@@ -75,7 +73,7 @@ def swap_homoglyphs(
         payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
 
-    return _MIM1C_RUST(
+    return mim1c_rust(
         text,
         effective_rate,
         payload_classes,

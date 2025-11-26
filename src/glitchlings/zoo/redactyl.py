@@ -2,15 +2,12 @@ import random
 from typing import cast
 
 from glitchlings.constants import DEFAULT_REDACTYL_CHAR, DEFAULT_REDACTYL_RATE
-from glitchlings.internal.rust import get_rust_operation, resolve_seed
+from glitchlings.internal.rust_ffi import redact_words_rust, resolve_seed
 
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
 # Backwards compatibility alias
 FULL_BLOCK = DEFAULT_REDACTYL_CHAR
-
-# Load the mandatory Rust implementation
-_redact_words_rust = get_rust_operation("redact_words")
 
 
 def redact_words(
@@ -32,16 +29,13 @@ def redact_words(
     clamped_rate = max(0.0, min(effective_rate, 1.0))
     unweighted_flag = bool(unweighted)
 
-    return cast(
-        str,
-        _redact_words_rust(
-            text,
-            replacement,
-            clamped_rate,
-            merge,
-            unweighted_flag,
-            resolve_seed(seed, rng),
-        ),
+    return redact_words_rust(
+        text,
+        replacement,
+        clamped_rate,
+        merge,
+        unweighted_flag,
+        resolve_seed(seed, rng),
     )
 
 

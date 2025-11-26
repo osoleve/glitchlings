@@ -1,22 +1,21 @@
-"""Shared cache helpers for lexicon backends."""
+"""Shared cache helpers for lexicon backends.
+
+This module contains the impure cache IO operations. Pure types are
+defined in types.py.
+
+Impure operations:
+- load_cache: File IO to read cache from disk
+- write_cache: File IO to persist cache to disk
+"""
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from hashlib import blake2s
 from pathlib import Path
 from typing import Mapping, Sequence, cast
 
-CacheEntries = dict[str, list[str]]
-
-
-@dataclass(frozen=True)
-class CacheSnapshot:
-    """Materialised cache data and its integrity checksum."""
-
-    entries: CacheEntries
-    checksum: str | None = None
+from .types import CacheEntries, CacheSnapshot
 
 
 def _normalize_entries(payload: Mapping[str, object]) -> CacheEntries:

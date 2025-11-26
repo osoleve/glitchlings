@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any, Protocol, Sequence, TypeGuard, cast
+from typing import Any, Protocol, cast
 
-TokenSequence = Sequence[str]
-TokenBatch = Sequence[TokenSequence]
+from .metrics_dispatch import TokenBatch, TokenSequence, is_batch, validate_batch_consistency
 
 
 class Metric(Protocol):
@@ -35,20 +34,6 @@ _batch_ned = cast(BatchMetric, getattr(_rust, "batch_normalized_edit_distance"))
 _batch_sr = cast(BatchMetric, getattr(_rust, "batch_subsequence_retention"))
 
 
-def _is_batch(tokens: TokenSequence | TokenBatch) -> TypeGuard[TokenBatch]:
-    """Determine if tokens represent a batch of sequences.
-
-    An empty list is treated as an empty batch (returning True) so that
-    ``metric([], [])`` returns ``[]`` rather than ``0.0``. This matches
-    the behavior of :meth:`Attack.run` when processing empty transcripts.
-    """
-    if not tokens:
-        return True  # Empty list is an empty batch
-
-    first = tokens[0]
-    return isinstance(first, Sequence) and not isinstance(first, (str, bytes))
-
-
 def _dispatch_metric(
     original: TokenSequence | TokenBatch,
     corrupted: TokenSequence | TokenBatch,
@@ -57,15 +42,14 @@ def _dispatch_metric(
     batch: BatchMetric,
     name: str,
 ) -> float | list[float]:
-    if _is_batch(original):
-        if not _is_batch(corrupted):
-            message = f"{name} expects either both batch inputs or both single sequences"
-            raise TypeError(message)
-        return batch(original, corrupted)
+    """Dispatch metric computation to single or batch implementation.
 
-    if _is_batch(corrupted):
-        message = f"{name} expects either both batch inputs or both single sequences"
-        raise TypeError(message)
+    Uses the pure is_batch function to determine which implementation to call.
+    """
+    validate_batch_consistency(original, corrupted, name)
+
+    if is_batch(original):
+        return batch(original, corrupted)
 
     return single(original, corrupted)
 

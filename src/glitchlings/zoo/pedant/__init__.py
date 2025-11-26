@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any, cast
 
-from glitchlings.internal.rust import resolve_seed
+from glitchlings.internal.rust_ffi import resolve_seed
 
 from ..core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 from .core import EVOLUTIONS, PedantBase, apply_pedant

@@ -7,7 +7,8 @@ use crate::ekkokin::EkkokinOp;
 use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
-    affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, split_affixes,
+    affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, ocr_automaton,
+    split_affixes,
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::spectroll::SpectrollOp;
@@ -126,6 +127,10 @@ struct RedactCandidate {
     weight: f64,
 }
 
+/// Weighted sampling without replacement using the Efraimidis-Spirakis algorithm.
+///
+/// This is O(N log k) instead of the naive O(k * N) approach.
+/// Each item gets a key = random^(1/weight), and we select the k items with highest keys.
 fn weighted_sample_without_replacement(
     rng: &mut dyn GlitchRng,
     items: &[(usize, f64)],
@@ -135,42 +140,39 @@ fn weighted_sample_without_replacement(
         return Ok(Vec::new());
     }
 
-    let mut pool: Vec<(usize, f64)> = items
-        .iter()
-        .map(|(index, weight)| (*index, *weight))
-        .collect();
-
-    if k > pool.len() {
+    if k > items.len() {
         return Err(GlitchOpError::ExcessiveRedaction {
             requested: k,
-            available: pool.len(),
+            available: items.len(),
         });
     }
 
-    let mut selections: Vec<usize> = Vec::with_capacity(k);
-    for _ in 0..k {
-        if pool.is_empty() {
-            break;
-        }
-        let total_weight: f64 = pool.iter().map(|(_, weight)| weight.max(0.0)).sum();
-        let chosen_index = if total_weight <= f64::EPSILON {
-            rng.rand_index(pool.len())?
-        } else {
-            let threshold = rng.random()? * total_weight;
-            let mut cumulative = 0.0;
-            let mut selected = pool.len() - 1;
-            for (idx, (_, weight)) in pool.iter().enumerate() {
-                cumulative += weight.max(0.0);
-                if cumulative >= threshold {
-                    selected = idx;
-                    break;
-                }
-            }
-            selected
-        };
-        let (value, _) = pool.remove(chosen_index);
-        selections.push(value);
+    // Generate keys for all items: key = u^(1/w) where u is uniform random (0,1)
+    // Higher weight = higher expected key = more likely to be selected
+    let mut keyed_items: Vec<(usize, f64)> = Vec::with_capacity(items.len());
+
+    for &(index, weight) in items {
+        let w = weight.max(f64::EPSILON); // Avoid division by zero
+        let u = rng.random()?;
+        // Use log form for numerical stability: log(key) = log(u) / w
+        // Higher log(key) means higher key
+        let log_key = if u > 0.0 { u.ln() / w } else { f64::NEG_INFINITY };
+        keyed_items.push((index, log_key));
     }
+
+    // Partial sort to get the k items with highest keys
+    // We use select_nth_unstable_by to partition around the k-th largest element
+    if k < keyed_items.len() {
+        let pivot = keyed_items.len() - k;
+        keyed_items.select_nth_unstable_by(pivot, |a, b| {
+            a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal)
+        });
+        // The elements from pivot onwards are the k largest
+        keyed_items.drain(0..pivot);
+    }
+
+    // Extract the indices
+    let selections: Vec<usize> = keyed_items.iter().map(|(idx, _)| *idx).collect();
 
     Ok(selections)
 }
@@ -600,121 +602,58 @@ impl GlitchOp for RedactWordsOp {
             weighted_sample_without_replacement(rng, &weighted_indices, num_to_redact)?;
         selections.sort_unstable_by_key(|candidate_idx| candidates[*candidate_idx].index);
 
-        // Build map of word_index -> RedactCandidate for selected words
-        use std::collections::HashMap;
-        let mut redact_map: HashMap<usize, &RedactCandidate> = HashMap::new();
+        // Collect (word_index, new_text) pairs for bulk replacement
+        let mut replacements: SmallVec<[(usize, String); 16]> = SmallVec::new();
+
         for selection in selections {
             let candidate = &candidates[selection];
-            redact_map.insert(candidate.index, candidate);
-        }
+            let word_idx = candidate.index;
 
-        // Build output string in a single pass
-        let mut result = String::new();
-        let mut pending_tokens = 0usize;
-        let mut pending_suffix = String::new();
+            // Get current word text (buffer hasn't been modified yet)
+            let Some(segment) = buffer.word_segment(word_idx) else {
+                continue;
+            };
+            let text = segment.text();
 
-        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
-            match segment.kind() {
-                SegmentKind::Word => {
-                    // Check if this word should be redacted
-                    if let Some(word_idx) = word_idx_opt {
-                        if let Some(candidate) = redact_map.get(&word_idx) {
-                            let text = segment.text();
-
-                            // Re-validate bounds in case segment changed
-                            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
-                                && candidate.core_start <= candidate.core_end
-                                && candidate.core_start <= text.len()
-                            {
-                                (candidate.core_start, candidate.core_end, candidate.repeat)
-                            } else if let Some((start, end)) = affix_bounds(text) {
-                                let repeat = text[start..end].chars().count();
-                                if repeat == 0 {
-                                    // Can't redact - treat as non-redacted
-                                    if pending_tokens > 0 {
-                                        result.push_str(
-                                            &self.replacement_char.repeat(pending_tokens),
-                                        );
-                                        result.push_str(&pending_suffix);
-                                        pending_tokens = 0;
-                                        pending_suffix.clear();
-                                    }
-                                    result.push_str(text);
-                                    continue;
-                                }
-                                (start, end, repeat)
-                            } else {
-                                // Can't redact - treat as non-redacted
-                                if pending_tokens > 0 {
-                                    result.push_str(&self.replacement_char.repeat(pending_tokens));
-                                    result.push_str(&pending_suffix);
-                                    pending_tokens = 0;
-                                    pending_suffix.clear();
-                                }
-                                result.push_str(text);
-                                continue;
-                            };
-
-                            let prefix = &text[..core_start];
-                            let suffix = &text[core_end..];
-
-                            if self.merge_adjacent {
-                                // Accumulate tokens for merging
-                                if pending_tokens == 0 {
-                                    // Start of new redaction block
-                                    result.push_str(prefix);
-                                }
-                                pending_tokens += repeat;
-                                pending_suffix = suffix.to_string();
-                            } else {
-                                // Not merging - emit immediately
-                                result.push_str(prefix);
-                                result.push_str(&self.replacement_char.repeat(repeat));
-                                result.push_str(suffix);
-                            }
-                            continue;
-                        }
-                    }
-
-                    // Not redacted - flush any pending redaction first
-                    if pending_tokens > 0 {
-                        result.push_str(&self.replacement_char.repeat(pending_tokens));
-                        result.push_str(&pending_suffix);
-                        pending_tokens = 0;
-                        pending_suffix.clear();
-                    }
-                    result.push_str(segment.text());
+            // Re-validate bounds in case of any edge cases
+            let (core_start, core_end, repeat) = if candidate.core_end <= text.len()
+                && candidate.core_start <= candidate.core_end
+                && candidate.core_start <= text.len()
+            {
+                (candidate.core_start, candidate.core_end, candidate.repeat)
+            } else if let Some((start, end)) = affix_bounds(text) {
+                let repeat = text[start..end].chars().count();
+                if repeat == 0 {
+                    continue; // Skip this word - can't redact
                 }
-                SegmentKind::Separator => {
-                    if self.merge_adjacent && pending_tokens > 0 {
-                        // Check if this separator should be skipped (merged across)
-                        let sep_text = segment.text();
-                        // Skip if separator is only punctuation/whitespace (non-word characters)
-                        if sep_text.chars().all(|c| !c.is_alphanumeric() && c != '_') {
-                            continue; // Skip this separator - we're merging across it
-                        }
-                    }
+                (start, end, repeat)
+            } else {
+                continue; // Skip this word - can't redact
+            };
 
-                    // Not merging or separator contains word characters - flush pending
-                    if pending_tokens > 0 {
-                        result.push_str(&self.replacement_char.repeat(pending_tokens));
-                        result.push_str(&pending_suffix);
-                        pending_tokens = 0;
-                        pending_suffix.clear();
-                    }
-                    result.push_str(segment.text());
-                }
-            }
+            let prefix = &text[..core_start];
+            let suffix = &text[core_end..];
+            let redacted = format!(
+                "{}{}{}",
+                prefix,
+                self.replacement_char.repeat(repeat),
+                suffix
+            );
+            replacements.push((word_idx, redacted));
         }
 
-        // Flush any final pending redaction
-        if pending_tokens > 0 {
-            result.push_str(&self.replacement_char.repeat(pending_tokens));
-            result.push_str(&pending_suffix);
+        // Apply all redactions in a single bulk operation
+        buffer.replace_words_bulk(replacements.into_iter())?;
+
+        // If merging is enabled, consolidate adjacent redacted words
+        if self.merge_adjacent {
+            buffer.reindex_if_needed();
+            buffer.merge_repeated_char_words(&self.replacement_char);
         }
 
-        *buffer = TextBuffer::from_owned(result);
         buffer.reindex_if_needed();
+        // Timing instrumentation disabled
+        
         Ok(())
     }
 }
@@ -732,16 +671,22 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        // Find candidates across all segments
-        // Track (segment_index, start_byte_in_segment, end_byte_in_segment, choices)
-        let mut candidates: Vec<(usize, usize, usize, &'static [&'static str])> = Vec::new();
+        // Pre-fetch the confusion table and automaton for efficient lookup
+        let table = confusion_table();
+        let automaton = ocr_automaton();
+
+        // Estimate candidate capacity based on text length
+        let total_chars: usize = segments.iter().map(|s| s.text().len()).sum();
+        let estimated_candidates = total_chars / 3;
+
+        // Find candidates across all segments using Aho-Corasick
+        let mut candidates: Vec<(usize, usize, usize, usize)> =
+            Vec::with_capacity(estimated_candidates);
 
         for (seg_idx, segment) in segments.iter().enumerate() {
             let seg_text = segment.text();
-            for &(src, choices) in confusion_table() {
-                for (start, _) in seg_text.match_indices(src) {
-                    candidates.push((seg_idx, start, start + src.len(), choices));
-                }
+            for mat in automaton.find_iter(seg_text) {
+                candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize()));
             }
         }
 
@@ -749,40 +694,47 @@ impl GlitchOp for OcrArtifactsOp {
             return Ok(());
         }
 
-        let to_select = ((candidates.len() as f64) * self.rate).floor() as usize;
+        let total_candidates = candidates.len();
+        let to_select = ((total_candidates as f64) * self.rate).floor() as usize;
         if to_select == 0 {
             return Ok(());
         }
 
-        let mut order: Vec<usize> = (0..candidates.len()).collect();
-        // Hand-roll Fisher–Yates to mirror Python's random.shuffle for test parity
-        for idx in (1..order.len()).rev() {
+        // Fisher-Yates shuffle - must complete for RNG determinism
+        let mut order: Vec<usize> = (0..total_candidates).collect();
+        for idx in (1..total_candidates).rev() {
             let swap_with = rng.rand_index(idx + 1)?;
             order.swap(idx, swap_with);
         }
 
-        let mut chosen: Vec<(usize, usize, usize, &'static str)> = Vec::new();
-        let mut occupied: std::collections::HashMap<usize, Vec<(usize, usize)>> =
-            std::collections::HashMap::new();
+        // Now select candidates in shuffled order
+        let num_segments = segments.len();
+        let mut occupied: Vec<Vec<(usize, usize)>> = vec![Vec::new(); num_segments];
+        let mut chosen: Vec<(usize, usize, usize, &'static str)> =
+            Vec::with_capacity(to_select.min(1024));
 
-        for idx in order {
+        for &candidate_idx in &order {
             if chosen.len() >= to_select {
                 break;
             }
-            let (seg_idx, start, end, choices) = candidates[idx];
+
+            let (seg_idx, start, end, pattern_idx) = candidates[candidate_idx];
+            let (_, choices) = table[pattern_idx];
             if choices.is_empty() {
                 continue;
             }
 
-            // Check for overlap within the same segment
-            let seg_occupied = occupied.entry(seg_idx).or_default();
-            if seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start)) {
+            // Check for overlap - use simple linear scan (few items per segment)
+            let seg_occupied = &occupied[seg_idx];
+            let overlaps = seg_occupied.iter().any(|&(s, e)| !(end <= s || e <= start));
+
+            if overlaps {
                 continue;
             }
 
             let choice_idx = rng.rand_index(choices.len())?;
             chosen.push((seg_idx, start, end, choices[choice_idx]));
-            seg_occupied.push((start, end));
+            occupied[seg_idx].push((start, end));
         }
 
         if chosen.is_empty() {
@@ -803,7 +755,6 @@ impl GlitchOp for OcrArtifactsOp {
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
         for (seg_idx, mut seg_replacements) in by_segment {
-            // Sort by start position
             seg_replacements.sort_by_key(|&(start, _, _)| start);
 
             let seg_text = segments[seg_idx].text();
@@ -824,9 +775,7 @@ impl GlitchOp for OcrArtifactsOp {
             segment_replacements.push((seg_idx, output));
         }
 
-        // Apply all segment replacements in bulk without reparsing
         buffer.replace_segments_bulk(segment_replacements);
-
         buffer.reindex_if_needed();
         Ok(())
     }

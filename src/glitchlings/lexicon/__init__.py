@@ -2,18 +2,30 @@
 
 from __future__ import annotations
 
-import random
 from abc import ABC, abstractmethod
-from hashlib import blake2s
 from pathlib import Path
 from typing import Callable, Iterable
 
 from glitchlings.conf import get_config
 
 from ._cache import CacheEntries, CacheSnapshot
+from .sampling import (
+    compute_sample_indices,
+    derive_sampling_seed,
+    deterministic_sample,
+    sample_values,
+)
+from .types import (
+    CacheableSynonymBackend,
+    SynonymBackend,
+    SynonymProvider,
+    SynonymQuery,
+    SynonymResult,
+    empty_cache,
+)
 
 
-class Lexicon(ABC):
+class Lexicon(ABC, SynonymProvider):
     """Abstract interface describing synonym lookup backends.
 
     Parameters
@@ -37,32 +49,21 @@ class Lexicon(ABC):
         """Update the base seed driving deterministic synonym sampling."""
         self._seed = seed
 
-    def _derive_rng(self, word: str, pos: str | None) -> random.Random:
-        """Return an RNG derived from the base seed, word, and POS tag."""
-        seed_material = blake2s(digest_size=8)
-        seed_material.update(word.lower().encode("utf8"))
-        if pos is not None:
-            seed_material.update(pos.lower().encode("utf8"))
-        seed_repr = "None" if self._seed is None else str(self._seed)
-        seed_material.update(seed_repr.encode("utf8"))
-        derived_seed = int.from_bytes(seed_material.digest(), "big", signed=False)
-        return random.Random(derived_seed)
-
     def _deterministic_sample(
         self, values: Iterable[str], *, limit: int, word: str, pos: str | None
     ) -> list[str]:
-        """Return up to ``limit`` values sampled deterministically."""
-        if limit <= 0:
-            return []
+        """Return up to ``limit`` values sampled deterministically.
 
-        items = list(values)
-        if len(items) <= limit:
-            return items
-
-        rng = self._derive_rng(word, pos)
-        indices = rng.sample(range(len(items)), k=limit)
-        indices.sort()
-        return [items[index] for index in indices]
+        This method delegates to the pure sampling module functions,
+        passing the base seed for deterministic behavior.
+        """
+        return deterministic_sample(
+            list(values),
+            limit=limit,
+            word=word,
+            pos=pos,
+            base_seed=self._seed,
+        )
 
     @abstractmethod
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
@@ -176,15 +177,34 @@ def get_default_lexicon(seed: int | None = None) -> Lexicon:
 
 
 __all__ = [
+    # Core ABCs
     "Lexicon",
     "LexiconBackend",
+    # Protocols
+    "SynonymProvider",
+    "SynonymBackend",
+    "CacheableSynonymBackend",
+    # Pure types
+    "SynonymQuery",
+    "SynonymResult",
+    "CacheEntries",
+    "CacheSnapshot",
+    "empty_cache",
+    # Sampling functions
+    "derive_sampling_seed",
+    "compute_sample_indices",
+    "sample_values",
+    "deterministic_sample",
+    # Backends
     "VectorLexicon",
     "WordNetLexicon",
     "build_vector_cache",
+    # Metrics
     "compare_lexicons",
     "coverage_ratio",
     "mean_cosine_similarity",
     "synonym_diversity",
+    # Registration
     "get_default_lexicon",
     "register_backend",
     "unregister_backend",
