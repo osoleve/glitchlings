@@ -84,15 +84,25 @@ fn negative_lexicon() -> &'static HashSet<String> {
     &assets().negative_lexicon
 }
 
-/// Token information with zero-copy text reference where possible.
-/// Uses Cow to avoid allocations when the token text can be borrowed
-/// directly from the source string.
-#[derive(Clone)]
+/// Token information with lazy-computed cached values.
+/// Only computes lowercase/chars/etc. when actually needed.
 struct TokenInfo<'a> {
     text: Cow<'a, str>,
     start: usize,
     is_word: bool,
     clause_index: usize,
+    /// Whether this token is at the start of a clause (after .?!; or at index 0)
+    at_clause_start: bool,
+    /// Pre-computed lowercase for sentiment lookup (only set for word tokens)
+    lowercase: Option<String>,
+}
+
+/// Cached analysis data, computed lazily only for tokens that become candidates
+struct TokenCache {
+    lowercase: String,
+    lowercase_chars: Vec<char>,
+    chars: Vec<char>,
+    alpha_indices: Vec<usize>,
 }
 
 #[derive(Clone)]
@@ -118,6 +128,8 @@ struct StretchCandidate {
     token_index: usize,
     score: f64,
     features: StretchFeatures,
+    /// Pre-computed stretch site to avoid recomputation during apply
+    stretch_site: Option<StretchSite>,
 }
 
 #[derive(Clone, Copy)]
@@ -140,6 +152,8 @@ impl HokeyOp {
         let regex = token_regex();
         let mut tokens = Vec::new();
         let mut clause_index = 0usize;
+        let mut at_clause_start = true; // First token is always at clause start
+        
         for mat in regex.find_iter(text) {
             let token_text = mat.as_str();
             // Check is_word by examining characters once
@@ -156,34 +170,71 @@ impl HokeyOp {
             }
             let is_word = has_alpha && !has_non_alnum;
             
+            // Pre-compute lowercase for word tokens (needed for sentiment lookups)
+            let lowercase = if is_word {
+                Some(token_text.to_lowercase())
+            } else {
+                None
+            };
+            
             // Use Cow::Borrowed to avoid allocation - the token_text lives as long as input text
             tokens.push(TokenInfo {
                 text: Cow::Borrowed(token_text),
                 start: mat.start(),
                 is_word,
                 clause_index,
+                at_clause_start,
+                lowercase,
             });
-            if token_text.chars().any(|c| CLAUSE_PUNCT.contains(&c)) {
+            
+            // Check for clause punctuation to update state for next token
+            let has_clause_punct = token_text.chars().any(|c| CLAUSE_PUNCT.contains(&c));
+            if has_clause_punct {
                 clause_index += 1;
+                at_clause_start = true;
+            } else if !token_text.trim().is_empty() {
+                // Non-empty, non-punct token means next token is not at clause start
+                at_clause_start = false;
             }
         }
         tokens
     }
 
+    /// Build cached analysis data for a token. Called lazily only for candidates.
+    fn build_cache(&self, token: &TokenInfo<'_>) -> TokenCache {
+        // Use pre-computed lowercase if available
+        let lower = token.lowercase.clone().unwrap_or_else(|| token.text.to_lowercase());
+        let lower_chars: Vec<char> = lower.chars().collect();
+        let original_chars: Vec<char> = token.text.chars().collect();
+        let alpha_idx: Vec<usize> = original_chars
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, ch)| if ch.is_alphabetic() { Some(idx) } else { None })
+            .collect();
+        TokenCache {
+            lowercase: lower,
+            lowercase_chars: lower_chars,
+            chars: original_chars,
+            alpha_indices: alpha_idx,
+        }
+    }
+
     fn excluded(&self, tokens: &[TokenInfo<'_>], index: usize) -> bool {
         let token = &tokens[index];
         let text: &str = &token.text;
+        
+        // Check alpha count - most common exclusion reason, check first
         let alpha_count = text.chars().filter(|c| c.is_alphabetic()).count();
         if alpha_count < 2 {
             return true;
         }
+        
+        // Check for digits
         if text.chars().any(|c| c.is_ascii_digit()) {
             return true;
         }
-        let lowered = text.to_lowercase();
-        if lowered.contains("http") || lowered.contains("www") || lowered.contains("//") {
-            return true;
-        }
+        
+        // Check for special characters (cheap byte-level check)
         if text.contains('#')
             || text.contains('@')
             || text.contains('&')
@@ -197,6 +248,14 @@ impl HokeyOp {
         {
             return true;
         }
+        
+        // URL check - use text directly (case insensitive contains)
+        let text_lower = text.to_lowercase();
+        if text_lower.contains("http") || text_lower.contains("www") || text_lower.contains("//") {
+            return true;
+        }
+        
+        // Title case check - use cached at_clause_start flag
         if text
             .chars()
             .next()
@@ -204,38 +263,21 @@ impl HokeyOp {
             .unwrap_or(false)
             && text.chars().skip(1).all(|c| c.is_lowercase())
         {
-            let mut at_clause_start = index == 0;
-            if !at_clause_start {
-                for prior in tokens[..index].iter().rev() {
-                    let trimmed = prior.text.trim();
-                    if trimmed.is_empty() {
-                        continue;
-                    }
-                    if trimmed
-                        .chars()
-                        .last()
-                        .map(|ch| CLAUSE_PUNCT.contains(&ch))
-                        .unwrap_or(false)
-                    {
-                        at_clause_start = true;
-                    }
-                    break;
-                }
-            }
-            if !at_clause_start {
+            // Use pre-computed clause start flag instead of backward scan
+            if !token.at_clause_start {
                 return true;
             }
         }
         false
     }
 
-    fn compute_features(&self, tokens: &[TokenInfo<'_>], index: usize) -> StretchFeatures {
+    fn compute_features(&self, tokens: &[TokenInfo<'_>], index: usize, cache: &TokenCache) -> StretchFeatures {
         let token = &tokens[index];
-        let normalised = token.text.to_lowercase();
+        let normalised = &cache.lowercase;
         let lexical = *lexical_prior().get(normalised.as_str()).unwrap_or(&0.12);
-        let pos = self.pos_score(&token.text, normalised.as_str());
+        let pos = self.pos_score(&token.text, normalised);
         let (sentiment, swing) = self.sentiment(tokens, index);
-        let phonotactic = self.phonotactic(normalised.as_str());
+        let phonotactic = self.phonotactic_with_cache(&cache.lowercase_chars);
         let context = self.context_score(tokens, index);
         StretchFeatures {
             lexical,
@@ -264,34 +306,92 @@ impl HokeyOp {
     }
 
     fn sentiment(&self, tokens: &[TokenInfo<'_>], index: usize) -> (f64, f64) {
-        let mut window = Vec::new();
         let start = index.saturating_sub(2);
         let end = (index + 3).min(tokens.len());
+        
+        // Count sentiment hits using pre-computed lowercase
+        let mut pos_hits = 0usize;
+        let mut neg_hits = 0usize;
+        let mut word_count = 0usize;
+        
         for token in &tokens[start..end] {
             if token.is_word {
-                window.push(token.text.to_lowercase());
+                word_count += 1;
+                // Use pre-computed lowercase
+                if let Some(ref lower) = token.lowercase {
+                    if positive_lexicon().contains(lower.as_str()) {
+                        pos_hits += 1;
+                    }
+                    if negative_lexicon().contains(lower.as_str()) {
+                        neg_hits += 1;
+                    }
+                }
             }
         }
-        if window.is_empty() {
+        
+        if word_count == 0 {
             return (0.5, 0.0);
         }
-        let pos_hits = window
-            .iter()
-            .filter(|word| positive_lexicon().contains(word.as_str()))
-            .count() as f64;
-        let neg_hits = window
-            .iter()
-            .filter(|word| negative_lexicon().contains(word.as_str()))
-            .count() as f64;
-        let total = window.len() as f64;
-        let balance = if total > 0.0 {
-            (pos_hits - neg_hits) / total
-        } else {
-            0.0
-        };
+        
+        let total = word_count as f64;
+        let balance = (pos_hits as f64 - neg_hits as f64) / total;
         let sentiment_score = 0.5 + 0.5 * balance.clamp(-1.0, 1.0);
         let swing = balance.abs();
         (sentiment_score, swing)
+    }
+
+    /// Phonotactic scoring using pre-computed lowercase chars from cache
+    fn phonotactic_with_cache(&self, chars: &[char]) -> f64 {
+        if chars.is_empty() || !chars.iter().any(|&c| is_vowel(c)) {
+            return 0.0;
+        }
+        
+        let mut score: f64 = 0.25;
+        
+        // Check sonorant codas using last char
+        if let Some(&last) = chars.last() {
+            if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
+                score += 0.2;
+            }
+            // Check sibilant codas
+            if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
+                score += 0.18;
+            }
+        }
+        
+        // Check two-char sibilant codas
+        if chars.len() >= 2 {
+            let len = chars.len();
+            let last_two = (chars[len - 2], chars[len - 1]);
+            if last_two == ('s', 'h') || last_two == ('z', 'h') {
+                score += 0.18;
+            }
+        }
+        
+        // Check digraphs using windows (faster than string contains for each)
+        let digraph_pairs: [(char, char); 15] = [
+            ('a', 'a'), ('a', 'e'), ('a', 'i'), ('a', 'y'), ('e', 'e'), 
+            ('e', 'i'), ('e', 'y'), ('i', 'e'), ('o', 'a'), ('o', 'e'),
+            ('o', 'i'), ('o', 'o'), ('o', 'u'), ('u', 'e'), ('u', 'i'),
+        ];
+        if chars.windows(2).any(|pair| {
+            let p = (pair[0], pair[1]);
+            digraph_pairs.contains(&p)
+        }) {
+            score += 0.22;
+        }
+        
+        // Check adjacent vowels
+        if chars.windows(2).any(|pair| is_vowel(pair[0]) && is_vowel(pair[1])) {
+            score += 0.22;
+        }
+        
+        // Check ABA pattern
+        if chars.windows(3).any(|triple| triple[0] == triple[2] && triple[0] != triple[1]) {
+            score += 0.08;
+        }
+        
+        score.clamp(0.0, 1.0)
     }
 
     fn phonotactic(&self, normalised: &str) -> f64 {
@@ -388,7 +488,9 @@ impl HokeyOp {
             if self.excluded(tokens, idx) {
                 continue;
             }
-            let features = self.compute_features(tokens, idx);
+            // Build cache lazily only for non-excluded word tokens
+            let cache = self.build_cache(token);
+            let features = self.compute_features(tokens, idx, &cache);
             let weights = (0.32, 0.18, 0.14, 0.22, 0.14);
             let weighted = weights.0 * features.lexical
                 + weights.1 * features.pos
@@ -397,10 +499,13 @@ impl HokeyOp {
                 + weights.4 * features.context;
             let score = weighted / (weights.0 + weights.1 + weights.2 + weights.3 + weights.4);
             if score >= 0.18 {
+                // Pre-compute stretch site using cached token data
+                let stretch_site = self.find_stretch_site_with_cache(&cache);
                 candidates.push(StretchCandidate {
                     token_index: idx,
                     score: score.clamp(0.0, 1.0),
                     features,
+                    stretch_site,
                 });
             }
         }
@@ -413,84 +518,124 @@ impl HokeyOp {
         tokens: &[TokenInfo<'_>],
         rate: f64,
         rng: &mut dyn GlitchRng,
-    ) -> Result<Vec<StretchCandidate>, GlitchOpError> {
+    ) -> Result<Vec<usize>, GlitchOpError> {
         if candidates.is_empty() || rate <= 0.0 {
             return Ok(Vec::new());
         }
-        let mut grouped: HashMap<usize, Vec<StretchCandidate>> = HashMap::new();
-        for candidate in candidates {
+        
+        // Group candidate indices by clause instead of cloning candidates
+        let mut grouped: HashMap<usize, Vec<usize>> = HashMap::new();
+        for (idx, candidate) in candidates.iter().enumerate() {
             grouped
                 .entry(tokens[candidate.token_index].clause_index)
                 .or_default()
-                .push(candidate.clone());
+                .push(idx);
         }
-        let mut selected = Vec::new();
+        
+        let mut selected_indices: Vec<usize> = Vec::new();
         let total_expected = (candidates.len() as f64 * rate).round() as usize;
         let mut grouped_keys: Vec<usize> = grouped.keys().copied().collect();
         grouped_keys.sort_unstable();
 
         for clause in grouped_keys {
-            let mut clause_candidates = grouped.remove(&clause).unwrap();
-            clause_candidates.sort_by(|a, b| {
-                let score_order = b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal);
+            let mut clause_candidate_indices = grouped.remove(&clause).unwrap();
+            // Sort by score descending, then by position
+            clause_candidate_indices.sort_by(|&a, &b| {
+                let score_order = candidates[b].score.partial_cmp(&candidates[a].score).unwrap_or(Ordering::Equal);
                 if score_order == Ordering::Equal {
-                    tokens[a.token_index]
+                    tokens[candidates[a].token_index]
                         .start
-                        .cmp(&tokens[b.token_index].start)
+                        .cmp(&tokens[candidates[b].token_index].start)
                 } else {
                     score_order
                 }
             });
-            clause_candidates.truncate(4);
-            let clause_quota = ((clause_candidates.len() as f64) * rate).round() as usize;
-            let mut provisional = Vec::new();
-            for candidate in &clause_candidates {
+            clause_candidate_indices.truncate(4);
+            let clause_quota = ((clause_candidate_indices.len() as f64) * rate).round() as usize;
+            let mut provisional: Vec<usize> = Vec::new();
+            
+            for &cand_idx in &clause_candidate_indices {
+                let candidate = &candidates[cand_idx];
                 let probability = (rate * (0.35 + 0.65 * candidate.score)).clamp(0.0, 1.0);
                 if rng.random()? < probability {
-                    provisional.push(candidate.clone());
+                    provisional.push(cand_idx);
                 }
                 if provisional.len() >= clause_quota {
                     break;
                 }
             }
+            
             if provisional.len() < clause_quota {
-                for candidate in clause_candidates.iter() {
-                    if provisional
-                        .iter()
-                        .any(|c| c.token_index == candidate.token_index)
-                    {
+                for &cand_idx in clause_candidate_indices.iter() {
+                    if provisional.contains(&cand_idx) {
                         continue;
                     }
-                    provisional.push(candidate.clone());
+                    provisional.push(cand_idx);
                     if provisional.len() >= clause_quota {
                         break;
                     }
                 }
             }
-            selected.extend(provisional);
+            selected_indices.extend(provisional);
         }
 
-        if selected.len() < total_expected {
-            let mut remaining: Vec<_> = candidates
-                .iter()
-                .filter(|cand| !selected.iter().any(|s| s.token_index == cand.token_index))
-                .cloned()
+        if selected_indices.len() < total_expected {
+            let mut remaining: Vec<usize> = (0..candidates.len())
+                .filter(|idx| !selected_indices.contains(idx))
                 .collect();
-            remaining.sort_by(|a, b| {
-                let score_order = b.score.partial_cmp(&a.score).unwrap_or(Ordering::Equal);
+            remaining.sort_by(|&a, &b| {
+                let score_order = candidates[b].score.partial_cmp(&candidates[a].score).unwrap_or(Ordering::Equal);
                 if score_order == Ordering::Equal {
-                    tokens[a.token_index]
+                    tokens[candidates[a].token_index]
                         .start
-                        .cmp(&tokens[b.token_index].start)
+                        .cmp(&tokens[candidates[b].token_index].start)
                 } else {
                     score_order
                 }
             });
-            selected.extend(remaining.into_iter().take(total_expected - selected.len()));
+            selected_indices.extend(remaining.into_iter().take(total_expected - selected_indices.len()));
         }
 
-        selected.sort_by_key(|cand| tokens[cand.token_index].start);
-        Ok(selected)
+        // Sort by token position
+        selected_indices.sort_by_key(|&idx| tokens[candidates[idx].token_index].start);
+        Ok(selected_indices)
+    }
+
+    /// Find stretch site using pre-computed char vectors from TokenCache
+    fn find_stretch_site_with_cache(&self, cache: &TokenCache) -> Option<StretchSite> {
+        let lower_chars = &cache.lowercase_chars;
+        let alpha_indices = &cache.alpha_indices;
+        
+        if lower_chars.is_empty() || alpha_indices.is_empty() {
+            return None;
+        }
+        
+        let clusters = vowel_clusters(lower_chars, alpha_indices);
+
+        // Check if there's a multi-vowel cluster (for coda site logic)
+        let has_multi_vowel = clusters.iter().any(|(start, end)| {
+            let length = end - start;
+            // Don't count leading 'y' as multi-vowel
+            if length >= 2 {
+                !(*start == 0 && lower_chars[*start] == 'y')
+            } else {
+                false
+            }
+        });
+
+        if let Some(site) = coda_site(lower_chars, alpha_indices, has_multi_vowel) {
+            return Some(site);
+        }
+        if let Some(site) = cvce_site(lower_chars, alpha_indices) {
+            return Some(site);
+        }
+        if let Some(site) = vowel_site(&clusters) {
+            return Some(site);
+        }
+        alpha_indices.last().map(|&idx| StretchSite {
+            start: idx,
+            end: idx + 1,
+        })
     }
 
     fn find_stretch_site(&self, word: &str) -> Option<StretchSite> {
@@ -592,23 +737,29 @@ impl GlitchOp for HokeyOp {
 
         let tokens = self.tokenise(&text);
         let candidates = self.analyse(&tokens);
-        let selected = self.select_candidates(&candidates, &tokens, self.rate, rng)?;
-        if selected.is_empty() {
+        let selected_indices = self.select_candidates(&candidates, &tokens, self.rate, rng)?;
+        if selected_indices.is_empty() {
             return Ok(());
         }
 
         // Convert tokens to owned strings only when we need to modify them
         let mut token_strings: Vec<Cow<'_, str>> = tokens.iter().map(|t| t.text.clone()).collect();
 
-        for candidate in selected {
+        for &cand_idx in &selected_indices {
+            let candidate = &candidates[cand_idx];
             let token_idx = candidate.token_index;
-            let original = token_strings[token_idx].clone();
-            let site = match self.find_stretch_site(&original) {
+            let token = &tokens[token_idx];
+            let original = &token_strings[token_idx];
+            
+            // Use pre-computed stretch site from candidate
+            let site = match candidate.stretch_site {
                 Some(site) => site,
-                None => continue,
+                None => continue, // Skip if no stretch site was found during analysis
             };
+            
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);
-            let alpha_len = original.chars().filter(|c| c.is_alphabetic()).count();
+            // Count alpha characters
+            let alpha_len = token.text.chars().filter(|c| c.is_alphabetic()).count();
 
             // First check: skip if word is more than double the threshold
             if self.word_length_threshold > 0 && alpha_len > self.word_length_threshold * 2 {
@@ -630,7 +781,8 @@ impl GlitchOp for HokeyOp {
             if repeats <= 0 {
                 continue;
             }
-            let stretched = self.apply_stretch(&original, &site, repeats as usize);
+            // Apply stretch using the original uncached method
+            let stretched = self.apply_stretch(original, &site, repeats as usize);
             token_strings[token_idx] = Cow::Owned(stretched);
         }
 
