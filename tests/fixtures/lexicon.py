@@ -80,19 +80,6 @@ class TrackingLexicon(Lexicon):
 
 
 @pytest.fixture
-def simple_lexicon():
-    """Basic lexicon with a few test entries.
-
-    Provides a small, predictable lexicon for basic tests.
-    """
-    return MockLexicon({
-        "alpha": ["beta", "gamma", "delta"],
-        "one": ["two", "three", "four"],
-        "happy": ["joyful", "glad", "pleased"],
-    })
-
-
-@pytest.fixture
 def toy_embeddings() -> dict[str, list[float]]:
     """Small test embeddings for VectorLexicon tests.
 

@@ -6,7 +6,6 @@ from tests.fixtures.lexicon import (
     MockLexicon,
     TrackingLexicon,
     shared_vector_embeddings,
-    simple_lexicon,
     toy_embeddings,
 )
 from tests.fixtures.mocks import (
@@ -28,7 +27,6 @@ __all__ = [
     # Lexicon fixtures
     "MockLexicon",
     "TrackingLexicon",
-    "simple_lexicon",
     "toy_embeddings",
     "shared_vector_embeddings",
     # Mock fixtures
