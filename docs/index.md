@@ -20,7 +20,6 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Jargoyle](glitchlings/jargoyle.md)
    - [Ekkokin](glitchlings/ekkokin.md)
    - [Pedant](glitchlings/pedant.md)
-   - [Spectroll](glitchlings/spectroll.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
 8. [Testing checklist](#testing-checklist)

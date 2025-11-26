@@ -18,7 +18,6 @@ from glitchlings.zoo import (
     Rushmore,
     RushmoreMode,
     Scannequin,
-    Spectroll,
     Typogre,
     Zeedub,
 )
@@ -115,9 +114,11 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
         ),
         (
             "recolor",
-            Spectroll,
+            Jargoyle,
             {
+                "lexemes": "colors",
                 "mode": "drift",
+                "rate": 1.0,
                 "seed": 53,
             },
         ),
@@ -138,7 +139,6 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
                 "seed": 61,
             },
         ),
-        # Jargoyle is now always available (no lexicon dependency)
         (
             "drift",
             Jargoyle,
@@ -160,6 +160,7 @@ GLITCHLING_CASES = _available_glitchling_cases()
 _MANUAL_DEFAULTS: dict[str, dict[str, object]] = {
     "curly_quotes": {"stone": PedantStone.CURLITE},
     "drift": {"lexemes": "synonyms"},
+    "recolor": {"lexemes": "colors", "rate": 1.0},
 }
 
 
@@ -172,6 +173,10 @@ def test_auggie_builder_matches_glitchling_factory(
     builder_kwargs = dict(params)
     if method_name == "curly_quotes":
         builder_kwargs.pop("stone", None)
+    if method_name == "recolor":
+        # recolor only accepts mode and seed; it sets lexemes="colors" and rate=1.0 internally
+        builder_kwargs.pop("lexemes", None)
+        builder_kwargs.pop("rate", None)
     result = builder(**builder_kwargs)
 
     assert result is auggie

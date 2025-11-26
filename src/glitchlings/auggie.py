@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
 from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
@@ -21,7 +20,6 @@ from .zoo.pedant.stones import PedantStone
 from .zoo.redactyl import FULL_BLOCK, Redactyl
 from .zoo.rushmore import Rushmore, RushmoreMode
 from .zoo.scannequin import Scannequin
-from .zoo.spectroll import Spectroll
 from .zoo.typogre import Typogre
 from .zoo.zeedub import Zeedub
 
@@ -191,18 +189,18 @@ class Auggie(Gaggle):
             )
         )
 
-    def recolor(self, *, mode: str = "literal", seed: int | None = None) -> "Auggie":
-        """Add :class:`Spectroll` to remap colour terms.
+    def recolor(self, *, mode: JargoyleMode = "literal", seed: int | None = None) -> "Auggie":
+        """Add :class:`Jargoyle` with ``lexemes="colors"`` to remap colour terms.
 
-        .. deprecated:: 0.10.0
-            Use :meth:`drift` with ``lexemes="colors"`` instead.
+        Args:
+            mode: "literal" for deterministic first-entry swaps,
+                  "drift" for random selection from palette.
+            seed: Seed for deterministic randomness.
+
+        Returns:
+            Self for method chaining.
         """
-        warnings.warn(
-            "recolor() is deprecated. Use drift(lexemes='colors') instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        return self._enqueue(Spectroll(mode=mode, seed=seed))
+        return self._enqueue(Jargoyle(lexemes="colors", mode=mode, rate=1.0, seed=seed))
 
     def drift(
         self,
@@ -263,14 +261,15 @@ class Auggie(Gaggle):
     ) -> "Auggie":
         """Add :class:`Jargoyle` for synonym substitutions.
 
-        .. deprecated:: 0.10.0
-            Use :meth:`drift` with ``lexemes="synonyms"`` instead.
+        Args:
+            rate: Probability of transforming each matching word.
+            seed: Seed for deterministic randomness.
+            lexemes: Dictionary to use (default "synonyms").
+            mode: "literal" or "drift" (default "drift").
+
+        Returns:
+            Self for method chaining.
         """
-        warnings.warn(
-            "synonym() is deprecated. Use drift(lexemes='synonyms') instead.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
         return self._enqueue(
             Jargoyle(
                 rate=rate,

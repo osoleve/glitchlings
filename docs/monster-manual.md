@@ -36,7 +36,17 @@ Glitchling that stretches words using linguistic heuristics.
 
 ## Jargoyle
 
-Glitchling that swaps words with dictionary-driven synonyms.
+Glitchling that swaps words using bundled lexeme dictionaries.  Jargoyle replaces words
+with alternatives from one of several dictionaries:  - **colors**: Swap color terms
+(e.g., "red" → "blue"). Formerly Spectroll. - **synonyms**: General synonym substitution
+(e.g., "fast" → "rapid"). - **corporate**: Business jargon alternatives. - **academic**:
+Scholarly word substitutions.  Two modes are supported:  - **literal**: Use the first
+(canonical) entry for each word. - **drift**: Randomly select from available
+alternatives.  Example:     >>> from glitchlings import Jargoyle     >>> jargoyle =
+Jargoyle(lexemes="colors", mode="literal")     >>> jargoyle("The red balloon floated
+away.")     'The blue balloon floated away.'      >>> jargoyle =
+Jargoyle(lexemes="synonyms", mode="drift", rate=0.5, seed=42)     >>> jargoyle("The
+quick fox jumps fast.")     'The swift fox jumps rapid.'
 
 *"Oh no... The worst person you know just bought a thesaurus..."*
 
@@ -45,9 +55,9 @@ Glitchling that swaps words with dictionary-driven synonyms.
 
 ### Parameters
 
-- `lexemes` (str): default "synonyms" — dictionary to use (synonyms, colors, corporate, academic)
-- `mode` (str): default "drift" — "literal" uses first synonym, "drift" selects randomly
-- `rate` (float): default 0.01
+- `lexemes` (str): default "synonyms"
+- `mode` (JargoyleMode): default "drift"
+- `rate` (float | None): default 0.01
 - `seed` (int | None): default None
 
 ## Mim1c
@@ -131,20 +141,6 @@ Glitchling that simulates OCR artifacts using common confusions.
 ### Parameters
 
 - `rate` (float | None): default 0.02
-- `seed` (int | None): default None
-
-## Spectroll
-
-Glitchling that remaps colour terms via the Rust backend.
-
-*"The colors, Duke, the colors!</br>*I'm colorblind, kid.*"*
-
-- **Scope:** Word
-- **Order:** Normal
-
-### Parameters
-
-- `mode` (str): default "literal"
 - `seed` (int | None): default None
 
 ## Typogre

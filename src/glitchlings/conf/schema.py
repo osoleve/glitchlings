@@ -74,8 +74,7 @@ def validate_runtime_config_data(data: Any, *, source: str) -> Mapping[str, Any]
         allow_empty=True,
     )
 
-    # Configuration file is currently empty (lexicon system removed)
-    # but we still accept empty configs for forwards compatibility
+    # Accept empty configs for forwards compatibility
     return mapping
 
 

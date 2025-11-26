@@ -12,7 +12,6 @@ from .pedant import Pedant, pedant
 from .redactyl import Redactyl, redactyl
 from .rushmore import Rushmore, RushmoreMode, rushmore
 from .scannequin import Scannequin, scannequin
-from .spectroll import Spectroll, spectroll
 from .typogre import Typogre, typogre
 from .zeedub import Zeedub, zeedub
 
@@ -32,8 +31,6 @@ __all__ = [
     "rushmore",
     "Redactyl",
     "redactyl",
-    "Spectroll",
-    "spectroll",
     "Scannequin",
     "scannequin",
     "Zeedub",
@@ -51,7 +48,6 @@ __all__ = [
     "get_glitchling_class",
 ]
 
-# Jargoyle is now always available (no lexicon dependency)
 _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [
     typogre,
     hokey,
@@ -61,7 +57,6 @@ _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [
     jargoyle,
     rushmore,
     redactyl,
-    spectroll,
     scannequin,
     zeedub,
 ]
@@ -79,7 +74,6 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     jargoyle.name.lower(): Jargoyle,
     rushmore.name.lower(): Rushmore,
     redactyl.name.lower(): Redactyl,
-    spectroll.name.lower(): Spectroll,
     scannequin.name.lower(): Scannequin,
     zeedub.name.lower(): Zeedub,
 }

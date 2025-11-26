@@ -43,7 +43,6 @@ __all__ = [
     "mim1c_rust",
     "ocr_artifacts_rust",
     "inject_zero_widths_rust",
-    "swap_colors_rust",
     "hokey_rust",
     # Word-level operations
     "delete_random_words_rust",
@@ -208,25 +207,6 @@ def inject_zero_widths_rust(
     """
     fn = get_rust_operation("inject_zero_widths")
     return cast(str, fn(text, rate, characters, seed))
-
-
-def swap_colors_rust(
-    text: str,
-    mode: str,
-    seed: int | None,
-) -> str:
-    """Swap color terms via Rust.
-
-    Args:
-        text: Input text.
-        mode: Swap mode ("literal" or "drift").
-        seed: Deterministic seed (only used for "drift" mode).
-
-    Returns:
-        Text with color terms swapped.
-    """
-    fn = get_rust_operation("swap_colors")
-    return cast(str, fn(text, mode, seed))
 
 
 def hokey_rust(

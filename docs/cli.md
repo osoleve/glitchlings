@@ -31,7 +31,6 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
   Jargoyle — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
- Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late
     Zeedub — scope: Character, order: last
 ```
