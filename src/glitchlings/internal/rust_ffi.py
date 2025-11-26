@@ -66,9 +66,6 @@ __all__ = [
 PlanResult = list[tuple[int, int]]
 PipelineDescriptor = Mapping[str, Any]
 
-# Lexicon protocol for Jargoyle
-LexiconProtocol = Any  # Lexicon instance with get_synonyms() method
-
 
 # ---------------------------------------------------------------------------
 # Orchestration Operations

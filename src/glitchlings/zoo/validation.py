@@ -135,50 +135,6 @@ def normalise_mim1c_banned(value: object) -> tuple[str, ...] | None:
 
 
 # ---------------------------------------------------------------------------
-# Jargoyle Validation (Parts of Speech)
-# ---------------------------------------------------------------------------
-
-PartOfSpeech = Literal["n", "v", "a", "r"]
-PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
-NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]
-
-_VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
-
-
-def normalize_parts_of_speech(
-    part_of_speech: PartOfSpeechInput,
-) -> NormalizedPartsOfSpeech:
-    """Coerce user input into a tuple of valid WordNet POS tags.
-
-    Args:
-        part_of_speech: User input - a single POS, "any", or an iterable.
-
-    Returns:
-        Tuple of validated POS tags.
-
-    Raises:
-        ValueError: If input contains invalid POS tags or is empty.
-    """
-    if isinstance(part_of_speech, str):
-        lowered = part_of_speech.lower()
-        if lowered == "any":
-            return _VALID_POS
-        if lowered not in _VALID_POS:
-            raise ValueError("part_of_speech must be one of 'n', 'v', 'a', 'r', or 'any'")
-        return (cast(PartOfSpeech, lowered),)
-
-    normalized: list[PartOfSpeech] = []
-    for pos in part_of_speech:
-        if pos not in _VALID_POS:
-            raise ValueError("part_of_speech entries must be one of 'n', 'v', 'a', or 'r'")
-        if pos not in normalized:
-            normalized.append(pos)
-    if not normalized:
-        raise ValueError("part_of_speech iterable may not be empty")
-    return tuple(normalized)
-
-
-# ---------------------------------------------------------------------------
 # Ekkokin Validation
 # ---------------------------------------------------------------------------
 
@@ -500,11 +456,6 @@ __all__ = [
     # Mim1c
     "normalise_mim1c_classes",
     "normalise_mim1c_banned",
-    # Jargoyle
-    "PartOfSpeech",
-    "PartOfSpeechInput",
-    "NormalizedPartsOfSpeech",
-    "normalize_parts_of_speech",
     # Ekkokin
     "normalise_homophone_group",
     "build_homophone_lookup",

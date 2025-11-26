@@ -46,12 +46,10 @@ from glitchlings.zoo.transforms import (
     stable_deduplicate,
 )
 from glitchlings.zoo.validation import (
-    PartOfSpeechInput,
     clamp_rate,
     clamp_rate_unit,
     normalise_homophone_group,
     normalise_mim1c_classes,
-    normalize_parts_of_speech,
     normalize_rushmore_modes,
     normalize_string_collection,
     resolve_bool_flag,
@@ -412,27 +410,6 @@ class TestResolveRate:
         """None value resolves to default."""
         result = resolve_rate(None, default)
         assert result == default
-
-
-class TestNormalizePartsOfSpeech:
-    """Property tests for normalize_parts_of_speech."""
-
-    @given(pos=st.sampled_from(["n", "v", "a", "r", "any"]))
-    def test_valid_pos_accepted(self, pos: str) -> None:
-        """Valid POS values are accepted."""
-        # Cast is needed because hypothesis generates str, not Literal
-        result = normalize_parts_of_speech(cast("PartOfSpeechInput", pos))
-        assert isinstance(result, tuple)
-        assert len(result) >= 1
-
-    @given(pos=st.sampled_from(["n", "v", "a", "r"]))
-    def test_determinism(self, pos: str) -> None:
-        """Same input always produces same output."""
-        # Cast is needed because hypothesis generates str, not Literal
-        typed_pos = cast("PartOfSpeechInput", pos)
-        result1 = normalize_parts_of_speech(typed_pos)
-        result2 = normalize_parts_of_speech(typed_pos)
-        assert result1 == result2
 
 
 class TestNormalizeMim1cClasses:

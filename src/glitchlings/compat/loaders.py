@@ -199,13 +199,12 @@ datasets = OptionalDependency("datasets")
 verifiers = OptionalDependency("verifiers")
 jellyfish = OptionalDependency("jellyfish")
 jsonschema = OptionalDependency("jsonschema")
-nltk = OptionalDependency("nltk")
 torch = OptionalDependency("torch")
 
 
 def reset_optional_dependencies() -> None:
     """Clear cached optional dependency imports (used by tests)."""
-    for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, nltk, torch):
+    for dependency in (pytorch_lightning, datasets, verifiers, jellyfish, jsonschema, torch):
         dependency.reset()
 
 
@@ -340,7 +339,6 @@ __all__ = [
     "verifiers",
     "jellyfish",
     "jsonschema",
-    "nltk",
     "torch",
     # Accessors
     "get_datasets_dataset",
