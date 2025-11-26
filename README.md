@@ -84,8 +84,7 @@ gaggle = Gaggle(
 ```
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
-for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
-integrations, and the compiled Rust pipeline (always enabled).
+for end-to-end instructions spanning the Python API, CLI, and third-party integrations.
 
 ## Your First Battle
 
@@ -99,7 +98,8 @@ custom_typogre = Typogre(rate=0.1)
 selective_mimic = Mim1c(rate=0.05, classes=["LATIN", "GREEK"])
 
 gaggle = Gaggle([custom_typogre, selective_mimic], seed=99)
-print(gaggle("Summoned heroes do not fear the glitch."))
+corrupted = gaggle("We Await Silent Tristero's Empire.")
+print(corrupted)
 ```
 
 Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.

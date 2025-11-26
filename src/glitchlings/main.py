@@ -25,7 +25,6 @@ MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.
 
 def build_parser(
     *,
-    include_subcommands: bool = False,
     exit_on_error: bool = True,
     include_text: bool = True,
 ) -> argparse.ArgumentParser:
@@ -94,104 +93,7 @@ def build_parser(
         help="Load glitchlings from a YAML configuration file.",
     )
 
-    if include_subcommands:
-        subparsers = parser.add_subparsers(dest="command")
-        if hasattr(subparsers, "required"):
-            subparsers.required = False  # allow top-level invocation without subcommand
-        add_build_lexicon_subparser(subparsers)
-
     return parser
-
-
-def _configure_build_lexicon_parser(builder: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    """Attach ``build-lexicon`` options to ``builder`` and return it."""
-    builder.add_argument(
-        "--source",
-        required=True,
-        help=(
-            "Vector source specification. Use 'spacy:<model>' for spaCy pipelines "
-            "or provide a path to a gensim KeyedVectors/word2vec file."
-        ),
-    )
-    builder.add_argument(
-        "--output",
-        required=True,
-        type=Path,
-        help="Path to the JSON file that will receive the synonym cache.",
-    )
-    builder.add_argument(
-        "--tokens",
-        type=Path,
-        help="Optional newline-delimited vocabulary file to restrict generation.",
-    )
-    builder.add_argument(
-        "--max-neighbors",
-        type=int,
-        default=50,
-        help="Number of nearest neighbours to cache per token (default: 50).",
-    )
-    builder.add_argument(
-        "--min-similarity",
-        type=float,
-        default=0.0,
-        help="Minimum cosine similarity required to keep a synonym (default: 0.0).",
-    )
-    builder.add_argument(
-        "--seed",
-        type=int,
-        help="Optional deterministic seed to bake into the resulting cache.",
-    )
-    builder.add_argument(
-        "--case-sensitive",
-        action="store_true",
-        help="Preserve original casing instead of lower-casing cache keys.",
-    )
-    builder.add_argument(
-        "--normalizer",
-        choices=["lower", "identity"],
-        default="lower",
-        help="Token normalization strategy for cache keys (default: lower).",
-    )
-    builder.add_argument(
-        "--limit",
-        type=int,
-        help="Optional maximum number of tokens to process.",
-    )
-    builder.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Allow overwriting an existing cache file.",
-    )
-    return builder
-
-
-def add_build_lexicon_subparser(
-    subparsers: argparse._SubParsersAction[argparse.ArgumentParser],
-) -> argparse.ArgumentParser:
-    """Create the ``build-lexicon`` subcommand parser with vector cache options."""
-    builder = subparsers.add_parser(
-        "build-lexicon",
-        description=(
-            "Generate deterministic synonym caches using vector embeddings so "
-            "they can be distributed without bundling large models."
-        ),
-        help="Generate synonym caches backed by vector embeddings.",
-    )
-    _configure_build_lexicon_parser(builder)
-    builder.set_defaults(handler=run_build_lexicon)
-    return builder
-
-
-def build_lexicon_parser() -> argparse.ArgumentParser:
-    """Standalone parser matching the ``build-lexicon`` subcommand."""
-    builder = argparse.ArgumentParser(
-        prog="glitchlings build-lexicon",
-        description=(
-            "Generate deterministic synonym caches using vector embeddings so "
-            "they can be distributed without bundling large models."
-        ),
-    )
-    return _configure_build_lexicon_parser(builder)
 
 
 def list_glitchlings() -> None:
@@ -345,50 +247,6 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     return 0
 
 
-def run_build_lexicon(args: argparse.Namespace) -> int:
-    """Delegate to the vector lexicon cache builder using CLI arguments."""
-    from glitchlings.lexicon.vector import main as vector_main
-
-    vector_args = [
-        "--source",
-        args.source,
-        "--output",
-        str(args.output),
-        "--max-neighbors",
-        str(args.max_neighbors),
-        "--min-similarity",
-        str(args.min_similarity),
-        "--normalizer",
-        args.normalizer,
-    ]
-    if args.tokens is not None:
-        vector_args.extend(["--tokens", str(args.tokens)])
-    if args.seed is not None:
-        vector_args.extend(["--seed", str(args.seed)])
-    if args.case_sensitive:
-        vector_args.append("--case-sensitive")
-    if args.limit is not None:
-        vector_args.extend(["--limit", str(args.limit)])
-    if args.overwrite:
-        vector_args.append("--overwrite")
-
-    return vector_main(vector_args)
-
-
-def _exit_code(exc: SystemExit) -> int:
-    """Normalize ``SystemExit.code`` to an integer suitable for returning."""
-
-    code = exc.code
-    if isinstance(code, int):
-        return code
-    if isinstance(code, str):
-        try:
-            return int(code)
-        except ValueError:
-            return 1
-    return 0 if code is None else 1
-
-
 def main(argv: list[str] | None = None) -> int:
     """Entry point for the ``glitchlings`` command line interface.
 
@@ -404,33 +262,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         raw_args = list(argv)
 
-    if any(arg in {"-h", "--help"} for arg in raw_args):
-        first_non_option = next((arg for arg in raw_args if not arg.startswith("-")), None)
-        if first_non_option is None:
-            help_parser = build_parser(include_subcommands=True)
-            help_parser.print_help()
-            return 0
-
-    first_non_option_index = None
-    first_non_option = None
-    for index, argument in enumerate(raw_args):
-        if argument == "--":
-            break
-        if argument.startswith("-"):
-            continue
-        first_non_option_index = index
-        first_non_option = argument
-        break
-
-    if first_non_option_index is not None and first_non_option == "build-lexicon":
-        builder = build_lexicon_parser()
-        try:
-            subcommand_args = builder.parse_args(raw_args[first_non_option_index + 1 :])
-        except SystemExit as exc:
-            return _exit_code(exc)
-        return run_build_lexicon(subcommand_args)
-
-    parser = build_parser(include_subcommands=False)
+    parser = build_parser()
     args = parser.parse_args(raw_args)
     return run_cli(args, parser)
 

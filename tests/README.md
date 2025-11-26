@@ -8,8 +8,7 @@ This directory contains the test suite for the Glitchlings library.
 tests/
 ├── fixtures/           # Shared test fixtures
 │   ├── glitchlings.py # Glitchling factory fixtures
-│   ├── mocks.py       # Mock modules for optional dependencies
-│   └── lexicon.py     # Lexicon test utilities
+│   └── mocks.py       # Mock modules for optional dependencies
 ├── helpers/           # Test helper functions
 │   ├── assertions.py  # Reusable assertion helpers
 │   └── cli.py        # CLI testing utilities
@@ -17,7 +16,7 @@ tests/
 │   └── samples.py    # Canonical test samples
 ├── core/             # Core glitchling tests
 ├── dlc/              # DLC integration tests
-├── lexicon/          # Lexicon backend tests
+├── zoo/              # Glitchling implementation tests
 ├── integration/      # Integration tests
 ├── rust/             # Rust extension tests
 ├── cli/              # CLI tests
@@ -42,8 +41,8 @@ pytest tests/core/ -v
 # DLC tests
 pytest tests/dlc/ -v
 
-# Lexicon tests
-pytest tests/lexicon/ -v
+# Zoo tests (glitchling implementations)
+pytest tests/zoo/ -v
 
 # Integration tests
 pytest tests/integration/ -v
@@ -78,7 +77,6 @@ pytest tests/ --cov=glitchlings --cov-report=html
 - `requires_rust` - Tests requiring compiled Rust extension
 - `requires_datasets` - Tests requiring Hugging Face datasets package
 - `requires_torch` - Tests requiring PyTorch
-- `requires_vectors` - Tests requiring vector lexicon dependencies
 - `unit` - Unit tests (default)
 
 ## Writing Tests

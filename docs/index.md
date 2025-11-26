@@ -64,11 +64,6 @@ Add a `.glitch(...)` method to popular dataset loaders for seamless, reproducibl
 
 See [Dataset workflows](#dataset-workflows) for details.
 
-#### Lexicon Backend DLC
-
-- `vectors` for spaCy/gensim lexicon building
-- `st` for SentenceTransformer lexicon caches
-
 ### Source install
 
 When working from a local clone, install in editable mode so your changes take effect immediately:
@@ -162,7 +157,7 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
-- [Jargoyle](glitchlings/jargoyle.md) - lexicon-driven synonym substitutions tuned by part of speech.
+- [Jargoyle](glitchlings/jargoyle.md) - dictionary-driven synonym substitutions for domain drift.
 - [Ekkokin](glitchlings/ekkokin.md) - curated homophone swaps that preserve casing and cadence.
 - [Pedant](glitchlings/pedant.md) - grammar evolutions driven by themed stones (Whomst, Fewerling, Commama, Kiloa, and more).
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
@@ -177,10 +172,6 @@ pytest
 ```
 
 If the Python pipeline regression guard fails on slower hardware, raise the safety margin with `GLITCHLINGS_BENCHMARK_SAFETY_FACTOR` (default: `12`) or set `GLITCHLINGS_BENCHMARK_STRICT=1` to re-enable the historical baseline thresholds.
-
-Lexicon-specific regressions live in `tests/test_lexicon_metrics.py`; they verify that new backends stay within striking distance of the recorded synonym diversity, coverage, and cosine-similarity baselines. Pair them with `tests/test_jargoyle.py::test_jargoyle_custom_lexicon_deterministic` when validating alternative backends in the Jargoyle pipeline.
-
-Want to compare against the legacy WordNet lexicon? Install `nltk` and download the corpus manually (`python -m nltk.downloader wordnet`), then add `"wordnet"` to the `lexicon.priority` list in `config.toml`.
 
 ## Additional resources
 

@@ -1,3 +1,2 @@
-[lexicon]
-priority = ["vector", "wordnet"]
-vector_cache = "lexicon/data/default_vector_cache.json"
+# Glitchlings configuration file
+# This file is kept for backwards compatibility and future extension.

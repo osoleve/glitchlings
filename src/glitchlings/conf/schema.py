@@ -13,7 +13,6 @@ Pure guarantees:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 
@@ -75,27 +74,8 @@ def validate_runtime_config_data(data: Any, *, source: str) -> Mapping[str, Any]
         allow_empty=True,
     )
 
-    allowed_sections = {"lexicon"}
-    unexpected_sections = [str(key) for key in mapping if key not in allowed_sections]
-    if unexpected_sections:
-        extras = ", ".join(sorted(unexpected_sections))
-        raise ValueError(f"Configuration file '{source}' has unsupported sections: {extras}.")
-
-    lexicon_section = mapping.get("lexicon", {})
-    if not isinstance(lexicon_section, Mapping):
-        raise ValueError("Configuration 'lexicon' section must be a table.")
-
-    allowed_lexicon_keys = {"priority", "vector_cache"}
-    unexpected_keys = [str(key) for key in lexicon_section if key not in allowed_lexicon_keys]
-    if unexpected_keys:
-        extras = ", ".join(sorted(unexpected_keys))
-        raise ValueError(f"Unknown lexicon settings: {extras}.")
-
-    for key in ("vector_cache",):
-        value = lexicon_section.get(key)
-        if value is not None and not isinstance(value, str):
-            raise ValueError(f"lexicon.{key} must be a path or string when provided.")
-
+    # Configuration file is currently empty (lexicon system removed)
+    # but we still accept empty configs for forwards compatibility
     return mapping
 
 
@@ -170,65 +150,8 @@ def _validate_glitchling_entry(entry: Any, *, source: str, index: int) -> None:
     raise ValueError(f"{source}: glitchling #{index} must be a string or mapping.")
 
 
-def normalize_priority_list(
-    priority: Any,
-    *,
-    default: Sequence[str],
-) -> list[str]:
-    """Validate and normalize a priority list configuration value.
-
-    Args:
-        priority: The priority value from configuration.
-        default: Default priority list if not specified.
-
-    Returns:
-        A normalized list of priority strings.
-
-    Raises:
-        ValueError: If the priority value is invalid.
-    """
-    if priority is None:
-        return list(default)
-
-    if not isinstance(priority, Sequence) or isinstance(priority, (str, bytes)):
-        raise ValueError("lexicon.priority must be a sequence of strings.")
-
-    normalized: list[str] = []
-    for item in priority:
-        string_value = str(item)
-        if not string_value:
-            raise ValueError("lexicon.priority entries must be non-empty strings.")
-        normalized.append(string_value)
-
-    return normalized
-
-
-def resolve_relative_path(value: Any, *, base: Path) -> Path | None:
-    """Resolve a path value relative to a base directory.
-
-    This is a pure function that normalizes path values. It does NOT
-    check if the path exists - that would be an impure operation.
-
-    Args:
-        value: The path value (string, Path, or None).
-        base: The base directory for relative paths.
-
-    Returns:
-        The resolved absolute path, or None if value is empty.
-    """
-    if value in (None, ""):
-        return None
-
-    candidate = Path(str(value))
-    if not candidate.is_absolute():
-        candidate = (base / candidate).resolve()
-    return candidate
-
-
 __all__ = [
     "normalize_mapping",
-    "normalize_priority_list",
-    "resolve_relative_path",
     "validate_attack_config_schema",
     "validate_runtime_config_data",
 ]

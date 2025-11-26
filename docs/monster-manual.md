@@ -36,7 +36,7 @@ Glitchling that stretches words using linguistic heuristics.
 
 ## Jargoyle
 
-Glitchling that swaps words with lexicon-driven synonyms.
+Glitchling that swaps words with dictionary-driven synonyms.
 
 *"Oh no... The worst person you know just bought a thesaurus..."*
 
@@ -45,10 +45,10 @@ Glitchling that swaps words with lexicon-driven synonyms.
 
 ### Parameters
 
-- `rate` (float | None): default 0.01
-- `part_of_speech` (PartOfSpeechInput): default "n"
+- `lexemes` (str): default "synonyms" — dictionary to use (synonyms, colors, corporate, academic)
+- `mode` (str): default "drift" — "literal" uses first synonym, "drift" selects randomly
+- `rate` (float): default 0.01
 - `seed` (int | None): default None
-- `lexicon` (Lexicon | None): default VectorLexicon(source=None, max_neighbors=50, seed=None)
 
 ## Mim1c
 

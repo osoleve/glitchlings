@@ -8,7 +8,7 @@ Architecture:
 """
 
 # Re-export DEFAULT_ATTACK_SEED from constants for backward compatibility
-from glitchlings.constants import DEFAULT_ATTACK_SEED, DEFAULT_CONFIG_PATH, DEFAULT_LEXICON_PRIORITY
+from glitchlings.constants import DEFAULT_ATTACK_SEED, DEFAULT_CONFIG_PATH
 
 from .loaders import (
     CONFIG_ENV_VAR,
@@ -22,7 +22,6 @@ from .loaders import (
 from .types import (
     ATTACK_CONFIG_SCHEMA,
     AttackConfig,
-    LexiconConfig,
     RuntimeConfig,
 )
 
@@ -32,9 +31,7 @@ __all__ = [
     "CONFIG_ENV_VAR",
     "DEFAULT_ATTACK_SEED",
     "DEFAULT_CONFIG_PATH",
-    "DEFAULT_LEXICON_PRIORITY",
     "RuntimeConfig",
-    "LexiconConfig",
     "build_gaggle",
     "get_config",
     "load_attack_config",

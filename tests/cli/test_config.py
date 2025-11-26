@@ -7,7 +7,6 @@ import pytest
 from glitchlings.conf import (
     CONFIG_ENV_VAR,
     DEFAULT_ATTACK_SEED,
-    LexiconConfig,
     RuntimeConfig,
     build_gaggle,
     get_config,
@@ -77,7 +76,7 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
     def _fake_loader():
         nonlocal calls
         calls += 1
-        return RuntimeConfig(lexicon=LexiconConfig(), path=Path(tmp_path / "config.toml"))
+        return RuntimeConfig(path=Path(tmp_path / "config.toml"))
 
     monkeypatch.setattr("glitchlings.conf.loaders._load_runtime_config", _fake_loader)
     reset_config()
@@ -92,10 +91,10 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
     assert calls == 2
 
 
-def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch, tmp_path):
+def test_get_config_honours_env_override(monkeypatch, tmp_path):
     config_path = tmp_path / "custom.toml"
     config_path.write_text(
-        '[lexicon]\npriority = ["vector"]\nvector_cache = "vector.json"\n',
+        '# Custom config\n',
         encoding="utf-8",
     )
     monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
@@ -107,68 +106,6 @@ def test_get_config_honours_env_override_and_resolves_relative_paths(monkeypatch
         monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
 
     assert config.path == config_path
-    assert config.lexicon.vector_cache == (config_path.parent / "vector.json").resolve()
-
-
-def test_get_config_rejects_non_sequence_priority(monkeypatch, tmp_path):
-    config_path = tmp_path / "bad_priority.toml"
-    config_path.write_text(
-        '[lexicon]\npriority = "vector"\n',
-        encoding="utf-8",
-    )
-    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
-    reset_config()
-    try:
-        with pytest.raises(ValueError, match="priority must be a sequence"):
-            get_config()
-    finally:
-        reset_config()
-        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
-
-
-def test_get_config_rejects_unknown_sections(monkeypatch, tmp_path):
-    config_path = tmp_path / "unexpected.toml"
-    config_path.write_text(
-        '[lexicon]\npriority = ["vector"]\n[extra]\nvalue = 1\n',
-        encoding="utf-8",
-    )
-    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
-    reset_config()
-    try:
-        with pytest.raises(ValueError, match="unsupported sections"):
-            get_config()
-    finally:
-        reset_config()
-        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
-
-
-def test_get_config_requires_lexicon_table(monkeypatch, tmp_path):
-    config_path = tmp_path / "bad_lexicon.toml"
-    config_path.write_text('lexicon = "invalid"\n', encoding="utf-8")
-    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
-    reset_config()
-    try:
-        with pytest.raises(ValueError, match="lexicon' section must be a table"):
-            get_config()
-    finally:
-        reset_config()
-        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
-
-
-def test_get_config_requires_path_strings(monkeypatch, tmp_path):
-    config_path = tmp_path / "bad_paths.toml"
-    config_path.write_text(
-        "[lexicon]\nvector_cache = 123\n",
-        encoding="utf-8",
-    )
-    monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))
-    reset_config()
-    try:
-        with pytest.raises(ValueError, match="must be a path or string"):
-            get_config()
-    finally:
-        reset_config()
-        monkeypatch.delenv(CONFIG_ENV_VAR, raising=False)
 
 
 def test_load_attack_config_errors_for_missing_file(tmp_path):

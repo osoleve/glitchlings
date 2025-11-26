@@ -81,7 +81,7 @@ These modules contain only pure functions—same inputs always produce same outp
 | `zoo/transforms.py` | Text tokenization, transformation utilities, word splitting |
 | `zoo/rng.py` | Seed resolution and RNG helpers |
 | `compat/types.py` | Pure type definitions for optional dependency loading |
-| `conf/types.py` | Pure dataclass definitions for configuration (LexiconConfig, RuntimeConfig, AttackConfig) |
+| `conf/types.py` | Pure dataclass definitions for configuration (RuntimeConfig, AttackConfig) |
 | `constants.py` | Centralized default values and constants (no I/O operations) |
 | `attack/compose.py` | Pure result assembly for Attack (extract_transcript_contents, build_*_result) |
 | `attack/encode.py` | Pure encoding utilities (encode_single, encode_batch, describe_tokenizer) |

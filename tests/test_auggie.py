@@ -185,10 +185,6 @@ def test_auggie_builder_matches_glitchling_factory(
 
     actual_kwargs = dict(blueprint_entry.kwargs)
     expected_kwargs = dict(expected.kwargs)
-    if "lexicon" in actual_kwargs and "lexicon" in expected_kwargs:
-        assert type(actual_kwargs["lexicon"]) is type(expected_kwargs["lexicon"])
-        actual_kwargs.pop("lexicon")
-        expected_kwargs.pop("lexicon")
 
     assert actual_kwargs == expected_kwargs
     assert blueprint_entry.seed == expected.seed

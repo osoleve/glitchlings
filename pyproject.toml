@@ -104,7 +104,6 @@ include-package-data = true
 
 [tool.setuptools.package-data]
 "glitchlings" = ["config.toml", "assets/*.json", "assets/*.tsv", "assets/*.b64"]
-"glitchlings.lexicon" = ["data/*.json"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -186,8 +185,6 @@ module = [
     "glitchlings.config",
     "glitchlings.attack_config",
     "glitchlings.runtime_config",
-    "glitchlings.lexicon",
-    "glitchlings.lexicon.*",
 ]
 strict = true
 disallow_any_generics = true
