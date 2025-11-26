@@ -94,7 +94,7 @@ def test_get_config_caches_and_reload_invalidate(monkeypatch, tmp_path):
 def test_get_config_honours_env_override(monkeypatch, tmp_path):
     config_path = tmp_path / "custom.toml"
     config_path.write_text(
-        '# Custom config\n',
+        "# Custom config\n",
         encoding="utf-8",
     )
     monkeypatch.setenv(CONFIG_ENV_VAR, str(config_path))

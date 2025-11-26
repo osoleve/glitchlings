@@ -163,9 +163,7 @@ def test_read_text_consumes_stdin(monkeypatch):
 
 def test_run_cli_configured_glitchling_matches_library(capsys):
     parser = build_parser()
-    args = parser.parse_args(
-        ["-g", "Typogre(rate=0.2)", "Hello there"]
-    )
+    args = parser.parse_args(["-g", "Typogre(rate=0.2)", "Hello there"])
 
     exit_code = run_cli(args, parser)
     captured = capsys.readouterr()
