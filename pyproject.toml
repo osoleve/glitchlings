@@ -1,6 +1,6 @@
 [project]
 name = "glitchlings"
-version = "0.8.0"
+version = "0.8.1"
 description = "Monsters for your language games."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -204,3 +204,31 @@ module = [
     "glitchlings.zoo.*",
 ]
 strict = true
+
+[tool.coverage.run]
+source = ["src/glitchlings"]
+omit = [
+    "*/tests/*",
+    "*/benchmarks/*",
+    "*/__pycache__/*",
+    "*/site-packages/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self\\.debug",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@(abc\\.)?abstractmethod",
+]
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.coverage.html]
+directory = "htmlcov"

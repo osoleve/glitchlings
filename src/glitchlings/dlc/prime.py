@@ -130,6 +130,8 @@ def normalized_edit_distance(
     return max(0.0, min(1.0, score))
 
 
+symmetric_levenshtein_similarity = normalized_edit_distance
+
 DEFAULT_CLEANUP_INSTRUCTIONS = (
     "You are a meticulous copy editor. Restore the provided text to its original form."
 )
