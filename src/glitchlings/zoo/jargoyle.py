@@ -2,7 +2,7 @@
 
 Jargoyle swaps words with alternatives from bundled lexeme dictionaries.
 Multiple dictionaries are supported:
-- "colors": Color term swapping (formerly Spectroll)
+- "colors": Color term swapping
 - "synonyms": General synonym substitution
 - "corporate": Business jargon alternatives
 - "academic": Scholarly word substitutions
@@ -94,7 +94,7 @@ class Jargoyle(Glitchling):
 
     Jargoyle replaces words with alternatives from one of several dictionaries:
 
-    - **colors**: Swap color terms (e.g., "red" → "blue"). Formerly Spectroll.
+    - **colors**: Swap color terms (e.g., "red" → "blue").
     - **synonyms**: General synonym substitution (e.g., "fast" → "rapid").
     - **corporate**: Business jargon alternatives.
     - **academic**: Scholarly word substitutions.

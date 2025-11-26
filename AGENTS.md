@@ -103,7 +103,6 @@ These modules handle IO, FFI, and mutable state:
 - `internal/rust_ffi.py` — Centralized Rust operation wrappers (preferred entry point for FFI)
 - `compat/loaders.py` — Optional dependency loading with lazy import machinery
 - `conf/loaders.py` — Configuration file loading, caching, and Gaggle construction
-- `lexicon/` — Cache file IO
 - `attack/tokenization.py` — Tokenizer resolution (imports tiktoken, tokenizers)
 - `attack/metrics.py` — Rust FFI metric loading
 - `attack/core.py` — Attack orchestrator (coordinates impure operations)

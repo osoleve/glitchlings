@@ -38,15 +38,14 @@ Glitchling that stretches words using linguistic heuristics.
 
 Glitchling that swaps words using bundled lexeme dictionaries.  Jargoyle replaces words
 with alternatives from one of several dictionaries:  - **colors**: Swap color terms
-(e.g., "red" → "blue"). Formerly Spectroll. - **synonyms**: General synonym substitution
-(e.g., "fast" → "rapid"). - **corporate**: Business jargon alternatives. - **academic**:
-Scholarly word substitutions.  Two modes are supported:  - **literal**: Use the first
-(canonical) entry for each word. - **drift**: Randomly select from available
-alternatives.  Example:     >>> from glitchlings import Jargoyle     >>> jargoyle =
-Jargoyle(lexemes="colors", mode="literal")     >>> jargoyle("The red balloon floated
-away.")     'The blue balloon floated away.'      >>> jargoyle =
-Jargoyle(lexemes="synonyms", mode="drift", rate=0.5, seed=42)     >>> jargoyle("The
-quick fox jumps fast.")     'The swift fox jumps rapid.'
+(e.g., "red" → "blue"). - **synonyms**: General synonym substitution (e.g., "fast" →
+"rapid"). - **corporate**: Business jargon alternatives. - **academic**: Scholarly word
+substitutions.  Two modes are supported:  - **literal**: Use the first (canonical) entry
+for each word. - **drift**: Randomly select from available alternatives.  Example:
+>>> from glitchlings import Jargoyle     >>> jargoyle = Jargoyle(lexemes="colors",
+mode="literal")     >>> jargoyle("The red balloon floated away.")     'The blue balloon
+floated away.'      >>> jargoyle = Jargoyle(lexemes="synonyms", mode="drift", rate=0.5,
+seed=42)     >>> jargoyle("The quick fox jumps fast.")     'The swift fox jumps rapid.'
 
 *"Oh no... The worst person you know just bought a thesaurus..."*
 
