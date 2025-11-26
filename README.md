@@ -212,7 +212,7 @@ _Did you hear what I heard?_
 
 _Uh oh. The worst person you know just bought a thesaurus._
 
-> _**Sesquipedalianism.**_ Jargoyle insufferably replaces words with synonyms from bundled dictionaries, without regard for connotational or denotational differences.
+> _**Sesquipedalianism.**_ Jargoyle insufferably replaces words with synonyms at random, without regard for connotational or denotational differences.
 
 ### Rushmore
 
