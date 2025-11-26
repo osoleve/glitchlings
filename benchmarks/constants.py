@@ -133,6 +133,7 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "zeedub_only": "Zeedub-only benchmark for zero-width character injection.",
     "mim1c_only": "Mim1c-only benchmark for homoglyph substitution.",
     "ekkokin_only": "Ekkokin-only benchmark for homophone substitution.",
+    "hokey_only": "Hokey-only benchmark for expressive lengthening.",
 }
 
 
