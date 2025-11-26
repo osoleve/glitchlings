@@ -185,6 +185,22 @@ def _ekkokin_only_descriptors() -> list[Descriptor]:
     return [{"name": "Ekkokin", "operation": {"type": "ekkokin", "rate": 0.05}}]
 
 
+def _hokey_only_descriptors() -> list[Descriptor]:
+    return [
+        {
+            "name": "Hokey",
+            "operation": {
+                "type": "hokey",
+                "rate": 0.3,
+                "extension_min": 2,
+                "extension_max": 5,
+                "word_length_threshold": 6,
+                "base_p": 0.45,
+            },
+        }
+    ]
+
+
 SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     # Multi-glitchling scenarios
     "baseline": _baseline_descriptors,
@@ -201,6 +217,7 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     "zeedub_only": _zeedub_only_descriptors,
     "mim1c_only": _mim1c_only_descriptors,
     "ekkokin_only": _ekkokin_only_descriptors,
+    "hokey_only": _hokey_only_descriptors,
     # Note: Jargoyle (synonym replacement) is not supported by the Rust pipeline
 }
 
@@ -216,6 +233,7 @@ INDIVIDUAL_GLITCHLING_SCENARIOS = {
     "zeedub_only",
     "mim1c_only",
     "ekkokin_only",
+    "hokey_only",
 }
 
 # Display names for individual glitchlings
@@ -229,11 +247,12 @@ INDIVIDUAL_DISPLAY_NAMES = {
     "zeedub_only": "Zeedub",
     "mim1c_only": "Mim1c",
     "ekkokin_only": "Ekkokin",
+    "hokey_only": "Hokey",
 }
 
 # Grouped display order for individual glitchlings
 INDIVIDUAL_GROUPS: list[tuple[str, list[str]]] = [
-    ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only"]),
+    ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only", "hokey_only"]),
     ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "scannequin_only"]),
     ("Rushmore Variants", ["rushmore_delete", "rushmore_duplicate", "rushmore_swap"]),
 ]
