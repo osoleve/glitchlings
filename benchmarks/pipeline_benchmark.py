@@ -553,9 +553,7 @@ def run_benchmarks(
                 output_lines.append("| --- | ---: | ---: |")
                 for result in all_results[scenario]:
                     stats = _format_table_stats(result.runtime)
-                    output_lines.append(
-                        f"| {result.label} | {result.char_count} | {stats} |"
-                    )
+                    output_lines.append(f"| {result.label} | {result.char_count} | {stats} |")
 
     # Summary
     print()
