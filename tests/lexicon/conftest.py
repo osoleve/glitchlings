@@ -3,6 +3,7 @@
 This module provides lexicon-specific fixtures for testing lexicon backends
 and related functionality.
 """
+
 from __future__ import annotations
 
 # Import shared fixtures from centralized locations
@@ -12,7 +13,6 @@ from tests.fixtures.lexicon import (
     MockLexicon,
     TrackingLexicon,
     shared_vector_embeddings,
-    simple_lexicon,
     toy_embeddings,
 )
 
@@ -27,7 +27,6 @@ from tests.fixtures.mocks import (
 __all__ = [
     "MockLexicon",
     "TrackingLexicon",
-    "simple_lexicon",
     "toy_embeddings",
     "shared_vector_embeddings",
     "mock_spacy_language",

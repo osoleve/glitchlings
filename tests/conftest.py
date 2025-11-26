@@ -23,7 +23,6 @@ from tests.fixtures.lexicon import (  # noqa: E402
     MockLexicon,
     TrackingLexicon,
     shared_vector_embeddings,
-    simple_lexicon,
     toy_embeddings,
 )
 from tests.fixtures.mocks import (  # noqa: E402

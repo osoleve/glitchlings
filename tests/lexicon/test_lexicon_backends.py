@@ -27,7 +27,8 @@ def test_backend_cache_roundtrip(
     lexicon.precompute(word)
     saved_path = lexicon.save_cache()
     snapshot = backend_cls.load_cache(saved_path)
-    assert snapshot.entries  # cache contains data
+    assert word in snapshot.entries, f"cache should contain precomputed word '{word}'"
+    assert len(snapshot.entries[word]) > 0, "cached synonyms should not be empty"
     assert snapshot.checksum is not None
     restored = backend_cls(cache_path=saved_path, **restore_kwargs)
     assert restored.get_synonyms(word, n=2) == lexicon.get_synonyms(word, n=2)

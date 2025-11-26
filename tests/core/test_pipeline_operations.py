@@ -1,8 +1,45 @@
 import pytest
 
+from glitchlings import (
+    ekkokin,
+    hokey,
+    mim1c,
+    redactyl,
+    rushmore,
+    scannequin,
+    typogre,
+    zeedub,
+)
 from glitchlings.zoo.redactyl import Redactyl
 from glitchlings.zoo.rushmore import Rushmore
 from glitchlings.zoo.scannequin import Scannequin
+
+
+# Systematic test ensuring all pipeline-capable glitchlings emit pipeline descriptors
+# Note: Jargoyle is excluded as it relies on external lexicon dependencies
+# and does not implement pipeline_operation() (intentionally non-Rust-accelerated)
+@pytest.mark.parametrize(
+    ("glitchling", "required_field"),
+    [
+        pytest.param(typogre, "type", id="typogre"),
+        pytest.param(mim1c, "type", id="mim1c"),
+        pytest.param(rushmore, "type", id="rushmore"),
+        pytest.param(redactyl, "type", id="redactyl"),
+        pytest.param(scannequin, "type", id="scannequin"),
+        pytest.param(zeedub, "type", id="zeedub"),
+        pytest.param(hokey, "type", id="hokey"),
+        pytest.param(ekkokin, "type", id="ekkokin"),
+    ],
+)
+def test_all_glitchlings_emit_pipeline_descriptors(glitchling, required_field):
+    """Verify all glitchlings emit valid pipeline operation descriptors."""
+    glitch = glitchling.clone()
+    glitch.set_param("seed", 42)
+    glitch.set_param("rate", 0.1)
+    descriptor = glitch.pipeline_operation()
+    assert descriptor is not None, f"{glitchling.name} should emit a pipeline descriptor"
+    assert required_field in descriptor, f"{glitchling.name} descriptor missing '{required_field}'"
+    assert isinstance(descriptor, dict), f"{glitchling.name} descriptor should be a dict"
 
 
 @pytest.mark.parametrize(
@@ -92,4 +129,3 @@ def test_pipeline_operations_require_complete_parameters(factory, knockout):
     glitchling = factory()
     knockout(glitchling)
     assert glitchling.pipeline_operation() is None
-

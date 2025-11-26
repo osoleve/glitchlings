@@ -24,9 +24,12 @@ def test_normalize_columns_rejects_empty_sequence() -> None:
 def test_glitched_dataset_wrapper() -> None:
     """Test the new GlitchedDataset wrapper API."""
     dataset = Dataset.from_dict({"text": ["alpha"]})
-    result = list(GlitchedDataset(dataset, "typogre", column="text"))
-    
+    result = list(GlitchedDataset(dataset, "typogre", column="text", seed=42))
+
     assert len(result) == 1
+    # Verify corruption was applied (typogre may not always change short words,
+    # but result should exist and preserve structure)
+    assert "text" in result[0]
     # Original dataset should be unchanged
     assert list(dataset)[0]["text"] == "alpha"
 
@@ -54,9 +57,7 @@ def test_glitched_dataset_accepts_multiple_columns() -> None:
     corrupted = list(GlitchedDataset(dataset, gaggle, column=("text", "notes")))
 
     comparison = list(
-        Gaggle([glitchling.clone()], seed=21).corrupt_dataset(
-            dataset, ["text", "notes"]
-        )
+        Gaggle([glitchling.clone()], seed=21).corrupt_dataset(dataset, ["text", "notes"])
     )
     assert corrupted == comparison
     original_rows = list(dataset)

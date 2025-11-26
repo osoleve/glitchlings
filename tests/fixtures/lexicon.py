@@ -1,4 +1,5 @@
 """Shared lexicon test infrastructure."""
+
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -26,13 +27,10 @@ class MockLexicon(Lexicon):
         synonyms = lexicon.get_synonyms("happy", n=2)
     """
 
-    def __init__(
-        self, mapping: dict[str, Iterable[str]], *, seed: int | None = None
-    ) -> None:
+    def __init__(self, mapping: dict[str, Iterable[str]], *, seed: int | None = None) -> None:
         super().__init__(seed=seed)
         self._mapping = {
-            key.lower(): [str(value) for value in values]
-            for key, values in mapping.items()
+            key.lower(): [str(value) for value in values] for key, values in mapping.items()
         }
 
     def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
@@ -77,19 +75,6 @@ class TrackingLexicon(Lexicon):
         self.get_synonyms_calls.append((word, pos, n))
         candidates = [f"{word}_syn_{idx}" for idx in range(1, 6)]
         return self._deterministic_sample(candidates, limit=n, word=word, pos=pos)
-
-
-@pytest.fixture
-def simple_lexicon():
-    """Basic lexicon with a few test entries.
-
-    Provides a small, predictable lexicon for basic tests.
-    """
-    return MockLexicon({
-        "alpha": ["beta", "gamma", "delta"],
-        "one": ["two", "three", "four"],
-        "happy": ["joyful", "glad", "pleased"],
-    })
 
 
 @pytest.fixture

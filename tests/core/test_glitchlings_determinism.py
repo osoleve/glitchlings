@@ -3,13 +3,24 @@
 This module tests that each glitchling produces deterministic output
 when given the same seed, which is critical for reproducibility.
 """
+
 from __future__ import annotations
 
 from functools import partial
 
 import pytest
 
-from glitchlings import jargoyle, mim1c, redactyl, rushmore, scannequin, typogre, zeedub
+from glitchlings import (
+    ekkokin,
+    hokey,
+    jargoyle,
+    mim1c,
+    redactyl,
+    rushmore,
+    scannequin,
+    typogre,
+    zeedub,
+)
 from glitchlings.zoo.core import AttackWave, Glitchling
 from glitchlings.zoo.pedant import Pedant
 from glitchlings.zoo.pedant.stones import PedantStone
@@ -30,6 +41,8 @@ from tests.helpers.assertions import assert_deterministic
         pytest.param(redactyl, {"seed": 42, "rate": 0.05}, id="redactyl"),
         pytest.param(scannequin, {"seed": 42, "rate": 0.03}, id="scannequin"),
         pytest.param(zeedub, {"seed": 42, "rate": 0.03}, id="zeedub"),
+        pytest.param(hokey, {"seed": 42, "rate": 0.6}, id="hokey"),
+        pytest.param(ekkokin, {"seed": 42, "rate": 0.05}, id="ekkokin"),
     ],
 )
 def test_glitchling_is_deterministic(glitchling, params, sample_text):

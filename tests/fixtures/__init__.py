@@ -1,4 +1,5 @@
 """Shared test fixtures for the glitchlings test suite."""
+
 from __future__ import annotations
 
 from tests.fixtures.glitchlings import fresh_glitchling, sample_text
@@ -6,7 +7,6 @@ from tests.fixtures.lexicon import (
     MockLexicon,
     TrackingLexicon,
     shared_vector_embeddings,
-    simple_lexicon,
     toy_embeddings,
 )
 from tests.fixtures.mocks import (
@@ -28,7 +28,6 @@ __all__ = [
     # Lexicon fixtures
     "MockLexicon",
     "TrackingLexicon",
-    "simple_lexicon",
     "toy_embeddings",
     "shared_vector_embeddings",
     # Mock fixtures

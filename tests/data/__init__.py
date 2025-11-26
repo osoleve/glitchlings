@@ -1,49 +1,10 @@
-"""Shared test data and samples for the glitchlings test suite."""
+"""Shared test data for the glitchlings test suite.
+
+Note: This module previously contained centralized test samples but they were
+not being used by any tests. Test data is now defined locally in test files
+where needed, or uses the sample_text fixture from tests.fixtures.glitchlings.
+"""
+
 from __future__ import annotations
 
-from tests.data.samples import (
-    COMMON_WORDS,
-    EMPTY_TEXT,
-    SAMPLE_COLORS,
-    SAMPLE_EMOJI,
-    SAMPLE_HOMOPHONES,
-    SAMPLE_MIXED_CASE,
-    SAMPLE_MULTILINE,
-    SAMPLE_PARAGRAPH,
-    SAMPLE_PEDANT_TEXT,
-    SAMPLE_QUOTE_TEXT,
-    SAMPLE_REPEATED,
-    SAMPLE_UNICODE,
-    SAMPLE_WITH_NUMBERS,
-    SAMPLE_WITH_PUNCTUATION,
-    SINGLE_CHAR,
-    SINGLE_WORD,
-    WHITESPACE_ONLY,
-)
-
-__all__ = [
-    # Simple samples
-    "SAMPLE_COLORS",
-    "SAMPLE_HOMOPHONES",
-    "SAMPLE_PEDANT_TEXT",
-    "SAMPLE_QUOTE_TEXT",
-    # Complex samples
-    "SAMPLE_MULTILINE",
-    "SAMPLE_PARAGRAPH",
-    # Edge cases
-    "EMPTY_TEXT",
-    "WHITESPACE_ONLY",
-    "SINGLE_WORD",
-    "SINGLE_CHAR",
-    # Unicode samples
-    "SAMPLE_UNICODE",
-    "SAMPLE_EMOJI",
-    # Repeated patterns
-    "SAMPLE_REPEATED",
-    # Common word lists
-    "COMMON_WORDS",
-    # Structured samples
-    "SAMPLE_WITH_PUNCTUATION",
-    "SAMPLE_WITH_NUMBERS",
-    "SAMPLE_MIXED_CASE",
-]
+__all__: list[str] = []
