@@ -1,238 +1,197 @@
+"""Jargoyle glitchling: Dictionary-based word drift.
+
+Jargoyle swaps words with alternatives from bundled lexeme dictionaries.
+Multiple dictionaries are supported:
+- "colors": Color term swapping (formerly Spectroll)
+- "synonyms": General synonym substitution
+- "corporate": Business jargon alternatives
+- "academic": Scholarly word substitutions
+
+Two modes are available:
+- "literal": First entry in each word's alternatives (deterministic mapping)
+- "drift": Random selection from alternatives (probabilistic)
+"""
+
 from __future__ import annotations
 
-from collections.abc import Iterable
-from types import ModuleType
-from typing import Any, Literal, cast
+from typing import Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
-from glitchlings.internal.rust_ffi import resolve_seed, substitute_random_synonyms_rust
-from glitchlings.lexicon import Lexicon, get_default_lexicon
+from glitchlings.internal.rust_ffi import (
+    jargoyle_drift_rust,
+    list_lexeme_dictionaries_rust,
+    resolve_seed,
+)
 
-from .core import AttackWave, Glitchling
+from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-_wordnet_module: ModuleType | None
+# Valid dictionary names
+VALID_LEXEMES = ("colors", "synonyms", "corporate", "academic")
+DEFAULT_LEXEMES = "synonyms"
 
-try:  # pragma: no cover - optional WordNet dependency
-    import glitchlings.lexicon.wordnet as _wordnet_module
-except (
-    ImportError,
-    ModuleNotFoundError,
-    AttributeError,
-):  # pragma: no cover - triggered when nltk unavailable
-    _wordnet_module = None
-
-_wordnet_runtime: ModuleType | None = _wordnet_module
-
-WordNetLexicon: type[Lexicon] | None
-if _wordnet_runtime is None:
-
-    def _lexicon_dependencies_available() -> bool:
-        return False
-
-    def _lexicon_ensure_wordnet() -> None:
-        raise RuntimeError(
-            "The WordNet backend is no longer bundled by default. Install NLTK "
-            "and download its WordNet corpus manually if you need legacy synonyms."
-        )
-
-    WordNetLexicon = None
-else:
-    WordNetLexicon = cast(type[Lexicon], _wordnet_runtime.WordNetLexicon)
-    _lexicon_dependencies_available = _wordnet_runtime.dependencies_available
-    _lexicon_ensure_wordnet = _wordnet_runtime.ensure_wordnet
+# Valid modes
+JargoyleMode = Literal["literal", "drift"]
+VALID_MODES = ("literal", "drift")
+DEFAULT_MODE: JargoyleMode = "drift"
 
 
-ensure_wordnet = _lexicon_ensure_wordnet
+def list_lexeme_dictionaries() -> list[str]:
+    """Return the list of available lexeme dictionaries.
+
+    Returns:
+        List of dictionary names that can be used with Jargoyle.
+    """
+    return list_lexeme_dictionaries_rust()
 
 
-def dependencies_available() -> bool:
-    """Return ``True`` when a synonym backend is accessible."""
-    if _lexicon_dependencies_available():
-        return True
-
-    try:
-        # Fall back to the configured default lexicon (typically the bundled vector cache).
-        get_default_lexicon(seed=None)
-    except (RuntimeError, ImportError, ModuleNotFoundError, AttributeError):
-        return False
-    return True
-
-
-PartOfSpeech = Literal["n", "v", "a", "r"]
-PartOfSpeechInput = PartOfSpeech | Iterable[PartOfSpeech] | Literal["any"]
-NormalizedPartsOfSpeech = tuple[PartOfSpeech, ...]
-
-_VALID_POS: tuple[PartOfSpeech, ...] = ("n", "v", "a", "r")
-
-
-def _normalize_parts_of_speech(
-    part_of_speech: PartOfSpeechInput,
-) -> NormalizedPartsOfSpeech:
-    """Coerce user input into a tuple of valid WordNet POS tags."""
-    if isinstance(part_of_speech, str):
-        lowered = part_of_speech.lower()
-        if lowered == "any":
-            return _VALID_POS
-        if lowered not in _VALID_POS:
-            raise ValueError("part_of_speech must be one of 'n', 'v', 'a', 'r', or 'any'")
-        return (cast(PartOfSpeech, lowered),)
-
-    normalized: list[PartOfSpeech] = []
-    for pos in part_of_speech:
-        if pos not in _VALID_POS:
-            raise ValueError("part_of_speech entries must be one of 'n', 'v', 'a', or 'r'")
-        if pos not in normalized:
-            normalized.append(pos)
-    if not normalized:
-        raise ValueError("part_of_speech iterable may not be empty")
-    return tuple(normalized)
-
-
-def substitute_random_synonyms(
+def jargoyle_drift(
     text: str,
-    rate: float | None = None,
-    part_of_speech: PartOfSpeechInput = "n",
-    seed: int | None = None,
-    rng: Any | None = None,
     *,
-    lexicon: Lexicon | None = None,
+    lexemes: str = DEFAULT_LEXEMES,
+    mode: JargoyleMode = DEFAULT_MODE,
+    rate: float | None = None,
+    seed: int | None = None,
 ) -> str:
-    """Replace words with random lexicon-driven synonyms."""
+    """Apply dictionary-based word drift to text.
+
+    Args:
+        text: Input text to transform.
+        lexemes: Name of the dictionary to use.
+        mode: "literal" for deterministic first-entry swaps,
+              "drift" for random selection from alternatives.
+        rate: Probability of transforming each matching word (0.0 to 1.0).
+        seed: Seed for deterministic randomness (only used in "drift" mode).
+
+    Returns:
+        Text with word substitutions applied.
+
+    Raises:
+        ValueError: If lexemes or mode is invalid.
+    """
+    # Validate inputs
+    normalized_lexemes = lexemes.lower()
+    if normalized_lexemes not in VALID_LEXEMES:
+        raise ValueError(f"Invalid lexemes '{lexemes}'. Must be one of: {', '.join(VALID_LEXEMES)}")
+
+    normalized_mode = mode.lower()
+    if normalized_mode not in VALID_MODES:
+        raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(VALID_MODES)}")
 
     effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else float(rate)
+    resolved_seed = resolve_seed(seed, None) if normalized_mode == "drift" else None
 
-    if lexicon is not None and not isinstance(lexicon, Lexicon):
-        raise TypeError("lexicon must be a Lexicon instance or None")
-
-    active_lexicon = lexicon
-    restore_lexicon_seed = False
-    original_lexicon_seed: int | None = None
-
-    if active_lexicon is None:
-        active_lexicon = get_default_lexicon(seed=seed)
-
-    if seed is not None and isinstance(active_lexicon, Lexicon):
-        if lexicon is not None:
-            original_lexicon_seed = active_lexicon.seed
-            if original_lexicon_seed != seed:
-                active_lexicon.reseed(seed)
-                restore_lexicon_seed = True
-        elif active_lexicon.seed != seed:
-            active_lexicon.reseed(seed)
-
-    if isinstance(active_lexicon, Lexicon):
-        lexicon_seed_repr = None if active_lexicon.seed is None else str(active_lexicon.seed)
-    else:
-        lexicon_seed_repr = None if seed is None else str(seed)
-
-    try:
-        target_pos = _normalize_parts_of_speech(part_of_speech)
-        resolved_seed = resolve_seed(seed, rng)
-        return substitute_random_synonyms_rust(
-            text,
-            effective_rate,
-            list(target_pos),
-            resolved_seed,
-            active_lexicon,
-            lexicon_seed_repr,
-        )
-    finally:
-        if restore_lexicon_seed and isinstance(active_lexicon, Lexicon):
-            active_lexicon.reseed(original_lexicon_seed)
+    return jargoyle_drift_rust(
+        text,
+        normalized_lexemes,
+        normalized_mode,
+        effective_rate,
+        resolved_seed,
+    )
 
 
 class Jargoyle(Glitchling):
-    """Glitchling that swaps words with lexicon-driven synonyms."""
+    """Glitchling that swaps words using bundled lexeme dictionaries.
+
+    Jargoyle replaces words with alternatives from one of several dictionaries:
+
+    - **colors**: Swap color terms (e.g., "red" → "blue"). Formerly Spectroll.
+    - **synonyms**: General synonym substitution (e.g., "fast" → "rapid").
+    - **corporate**: Business jargon alternatives.
+    - **academic**: Scholarly word substitutions.
+
+    Two modes are supported:
+
+    - **literal**: Use the first (canonical) entry for each word.
+    - **drift**: Randomly select from available alternatives.
+
+    Example:
+        >>> from glitchlings import Jargoyle
+        >>> jargoyle = Jargoyle(lexemes="colors", mode="literal")
+        >>> jargoyle("The red balloon floated away.")
+        'The blue balloon floated away.'
+
+        >>> jargoyle = Jargoyle(lexemes="synonyms", mode="drift", rate=0.5, seed=42)
+        >>> jargoyle("The quick fox jumps fast.")
+        'The swift fox jumps rapid.'
+    """
 
     flavor = "Oh no... The worst person you know just bought a thesaurus..."
 
     def __init__(
         self,
         *,
+        lexemes: str = DEFAULT_LEXEMES,
+        mode: JargoyleMode = DEFAULT_MODE,
         rate: float | None = None,
-        part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
-        lexicon: Lexicon | None = None,
     ) -> None:
-        if lexicon is not None and not isinstance(lexicon, Lexicon):
-            raise TypeError("lexicon must be a Lexicon instance or None")
+        """Initialize Jargoyle with the specified dictionary and mode.
 
-        if lexicon is None:
-            prepared_lexicon = get_default_lexicon(seed=seed)
-            owns_lexicon = True
-            if not isinstance(prepared_lexicon, Lexicon):
-                message = "Default Jargoyle lexicon must be a Lexicon instance"
-                raise TypeError(message)
-        else:
-            prepared_lexicon = lexicon
-            owns_lexicon = False
-
-        self._owns_lexicon = owns_lexicon
-        self._external_lexicon_original_seed = None if owns_lexicon else prepared_lexicon.seed
-        self._initializing = True
-        effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else rate
-        if not owns_lexicon and seed is not None:
-            prepared_lexicon.reseed(seed)
-        try:
-            super().__init__(
-                name="Jargoyle",
-                corruption_function=substitute_random_synonyms,
-                scope=AttackWave.WORD,
-                seed=seed,
-                rate=effective_rate,
-                part_of_speech=part_of_speech,
-                lexicon=lexicon,
+        Args:
+            lexemes: Name of the dictionary to use. One of:
+                "colors", "synonyms", "corporate", "academic".
+            mode: Transformation mode. "literal" for deterministic swaps,
+                "drift" for random selection.
+            rate: Probability of transforming each matching word (0.0 to 1.0).
+                Defaults to 0.01.
+            seed: Seed for deterministic randomness.
+        """
+        # Validate inputs
+        normalized_lexemes = lexemes.lower()
+        if normalized_lexemes not in VALID_LEXEMES:
+            raise ValueError(
+                f"Invalid lexemes '{lexemes}'. Must be one of: {', '.join(VALID_LEXEMES)}"
             )
-        finally:
-            self._initializing = False
 
-        if getattr(self, "lexicon", None) is None:
-            previous_initializing = self._initializing
-            self._initializing = True
-            try:
-                self.set_param("lexicon", prepared_lexicon)
-            finally:
-                self._initializing = previous_initializing
+        normalized_mode = mode.lower()
+        if normalized_mode not in VALID_MODES:
+            raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(VALID_MODES)}")
 
-    def set_param(self, key: str, value: Any) -> None:
-        super().set_param(key, value)
+        effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else rate
 
-        aliases = getattr(self, "_param_aliases", {})
-        canonical = aliases.get(key, key)
+        super().__init__(
+            name="Jargoyle",
+            corruption_function=jargoyle_drift,
+            scope=AttackWave.WORD,
+            order=AttackOrder.NORMAL,
+            seed=seed,
+            lexemes=normalized_lexemes,
+            mode=normalized_mode,
+            rate=effective_rate,
+            # Pass seed explicitly to kwargs so corruption_function receives it
+            # (seed is stored separately in base class but needed by jargoyle_drift)
+        )
+        # Ensure seed is in kwargs for the corruption function
+        self.kwargs["seed"] = seed
 
-        if canonical == "seed":
-            current_lexicon = getattr(self, "lexicon", None)
-            if isinstance(current_lexicon, Lexicon):
-                if getattr(self, "_owns_lexicon", False):
-                    current_lexicon.reseed(self.seed)
-                else:
-                    if self.seed is not None:
-                        current_lexicon.reseed(self.seed)
-                    else:
-                        if hasattr(self, "_external_lexicon_original_seed"):
-                            original_seed = getattr(self, "_external_lexicon_original_seed", None)
-                            current_lexicon.reseed(original_seed)
-        elif canonical == "lexicon" and isinstance(value, Lexicon):
-            if getattr(self, "_initializing", False):
-                if getattr(self, "_owns_lexicon", False):
-                    if self.seed is not None:
-                        value.reseed(self.seed)
-                else:
-                    if getattr(self, "_external_lexicon_original_seed", None) is None:
-                        self._external_lexicon_original_seed = value.seed
-                    if self.seed is not None:
-                        value.reseed(self.seed)
-                return
-
-            self._owns_lexicon = False
-            self._external_lexicon_original_seed = value.seed
-            if self.seed is not None:
-                value.reseed(self.seed)
-            elif value.seed != self._external_lexicon_original_seed:
-                value.reseed(self._external_lexicon_original_seed)
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        """Return the pipeline descriptor for the Rust backend."""
+        lexemes = self.kwargs.get("lexemes", DEFAULT_LEXEMES)
+        mode = self.kwargs.get("mode", DEFAULT_MODE)
+        rate = self.kwargs.get("rate", DEFAULT_JARGOYLE_RATE)
+        return cast(
+            PipelineOperationPayload,
+            {
+                "type": "jargoyle",
+                "lexemes": str(lexemes),
+                "mode": str(mode),
+                "rate": float(rate),
+            },
+        )
 
 
+# Module-level singleton for convenience
 jargoyle = Jargoyle()
 
 
-__all__ = ["Jargoyle", "dependencies_available", "ensure_wordnet", "jargoyle"]
+__all__ = [
+    "DEFAULT_LEXEMES",
+    "DEFAULT_MODE",
+    "Jargoyle",
+    "JargoyleMode",
+    "VALID_LEXEMES",
+    "VALID_MODES",
+    "jargoyle",
+    "jargoyle_drift",
+    "list_lexeme_dictionaries",
+]

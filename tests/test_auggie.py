@@ -22,7 +22,6 @@ from glitchlings.zoo import (
     Typogre,
     Zeedub,
 )
-from glitchlings.zoo.jargoyle import dependencies_available as jargoyle_available
 from glitchlings.zoo.pedant.stones import PedantStone
 
 
@@ -139,20 +138,18 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
                 "seed": 61,
             },
         ),
+        # Jargoyle is now always available (no lexicon dependency)
+        (
+            "drift",
+            Jargoyle,
+            {
+                "lexemes": "synonyms",
+                "mode": "drift",
+                "rate": 0.02,
+                "seed": 67,
+            },
+        ),
     ]
-
-    if jargoyle_available():
-        cases.append(
-            (
-                "synonym",
-                Jargoyle,
-                {
-                    "rate": 0.02,
-                    "part_of_speech": "any",
-                    "seed": 67,
-                },
-            )
-        )
 
     return cases
 
@@ -162,6 +159,7 @@ GLITCHLING_CASES = _available_glitchling_cases()
 
 _MANUAL_DEFAULTS: dict[str, dict[str, object]] = {
     "curly_quotes": {"stone": PedantStone.CURLITE},
+    "drift": {"lexemes": "synonyms"},
 }
 
 
@@ -215,9 +213,7 @@ def test_auggie_matches_gaggle_output(sequence: Sequence[str], text: str, seed: 
     for name in sequence:
         builder = getattr(auggie, name)
         builder()
-        _, glitchling_cls, _ = next(
-            entry for entry in GLITCHLING_CASES if entry[0] == name
-        )
+        _, glitchling_cls, _ = next(entry for entry in GLITCHLING_CASES if entry[0] == name)
         manual_kwargs = dict(_MANUAL_DEFAULTS.get(name, {}))
         manual_glitchlings.append(glitchling_cls(**manual_kwargs))
 

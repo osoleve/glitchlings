@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+import warnings
 from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
-from .lexicon import Lexicon
 from .zoo.core import Gaggle, Glitchling
 from .zoo.ekkokin import Ekkokin
 from .zoo.hokey import Hokey
-from .zoo.jargoyle import Jargoyle, PartOfSpeechInput
+from .zoo.jargoyle import (
+    DEFAULT_LEXEMES,
+    DEFAULT_MODE,
+    Jargoyle,
+    JargoyleMode,
+)
 from .zoo.mim1c import Mim1c
 from .zoo.pedant import Pedant
 from .zoo.pedant.stones import PedantStone
@@ -187,9 +192,45 @@ class Auggie(Gaggle):
         )
 
     def recolor(self, *, mode: str = "literal", seed: int | None = None) -> "Auggie":
-        """Add :class:`Spectroll` to remap colour terms."""
+        """Add :class:`Spectroll` to remap colour terms.
 
+        .. deprecated:: 0.10.0
+            Use :meth:`drift` with ``lexemes="colors"`` instead.
+        """
+        warnings.warn(
+            "recolor() is deprecated. Use drift(lexemes='colors') instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._enqueue(Spectroll(mode=mode, seed=seed))
+
+    def drift(
+        self,
+        *,
+        lexemes: str = DEFAULT_LEXEMES,
+        mode: JargoyleMode = DEFAULT_MODE,
+        rate: float | None = None,
+        seed: int | None = None,
+    ) -> "Auggie":
+        """Add :class:`Jargoyle` for dictionary-based word drift.
+
+        Swaps words with alternatives from the specified lexeme dictionary.
+
+        Args:
+            lexemes: Dictionary to use. One of:
+                "colors" (color term swapping),
+                "synonyms" (general synonyms),
+                "corporate" (business jargon),
+                "academic" (scholarly terms).
+            mode: "literal" for deterministic first-entry swaps,
+                  "drift" for random selection.
+            rate: Probability of transforming each matching word.
+            seed: Seed for deterministic randomness.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self._enqueue(Jargoyle(lexemes=lexemes, mode=mode, rate=rate, seed=seed))
 
     def ocr(
         self,
@@ -216,18 +257,26 @@ class Auggie(Gaggle):
         self,
         *,
         rate: float | None = None,
-        part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
-        lexicon: Lexicon | None = None,
+        lexemes: str = "synonyms",
+        mode: JargoyleMode = "drift",
     ) -> "Auggie":
-        """Add :class:`Jargoyle` for synonym substitutions."""
+        """Add :class:`Jargoyle` for synonym substitutions.
 
+        .. deprecated:: 0.10.0
+            Use :meth:`drift` with ``lexemes="synonyms"`` instead.
+        """
+        warnings.warn(
+            "synonym() is deprecated. Use drift(lexemes='synonyms') instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return self._enqueue(
             Jargoyle(
                 rate=rate,
-                part_of_speech=part_of_speech,
                 seed=seed,
-                lexicon=lexicon,
+                lexemes=lexemes,
+                mode=mode,
             )
         )
 

@@ -22,6 +22,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use ekkokin::{EkkokinOp, HomophoneWeighting};
+use jargoyle::{JargoyleMode, JargoyleOp};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
@@ -222,6 +223,11 @@ enum PyGlitchOperation {
     Spectroll {
         mode: SpectrollMode,
     },
+    Jargoyle {
+        lexemes: String,
+        mode: JargoyleMode,
+        rate: f64,
+    },
     QuotePairs,
     Hokey {
         rate: f64,
@@ -351,6 +357,19 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 let parsed_mode = SpectrollMode::parse(&mode).map_err(PyValueError::new_err)?;
                 Ok(PyGlitchOperation::Spectroll { mode: parsed_mode })
             }
+            "jargoyle" => {
+                let lexemes = extract_optional_field(dict, "lexemes")?
+                    .unwrap_or_else(|| "synonyms".to_string());
+                let mode =
+                    extract_optional_field(dict, "mode")?.unwrap_or_else(|| "drift".to_string());
+                let parsed_mode = JargoyleMode::parse(&mode).map_err(PyValueError::new_err)?;
+                let rate = extract_required_field(dict, "jargoyle operation", "rate")?;
+                Ok(PyGlitchOperation::Jargoyle {
+                    lexemes,
+                    mode: parsed_mode,
+                    rate,
+                })
+            }
             "ekkokin" => {
                 let rate = extract_required_field(dict, "ekkokin operation", "rate")?;
                 let weighting = extract_optional_field(dict, "weighting")?
@@ -455,6 +474,11 @@ impl PyGlitchOperation {
             PyGlitchOperation::Spectroll { mode } => {
                 GlitchOperation::Spectroll(spectroll::SpectrollOp::new(mode))
             }
+            PyGlitchOperation::Jargoyle {
+                lexemes,
+                mode,
+                rate,
+            } => GlitchOperation::Jargoyle(JargoyleOp::new(&lexemes, mode, rate)),
             PyGlitchOperation::Ekkokin { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
                     PyValueError::new_err(format!("unsupported weighting: {weighting}"))
@@ -635,7 +659,8 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
-    m.add_function(wrap_pyfunction!(jargoyle::substitute_random_synonyms, m)?)?;
+    m.add_function(wrap_pyfunction!(jargoyle::jargoyle_drift, m)?)?;
+    m.add_function(wrap_pyfunction!(jargoyle::list_lexeme_dictionaries, m)?)?;
     m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;

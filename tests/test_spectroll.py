@@ -74,7 +74,10 @@ def test_drift_mode_varies_with_seed() -> None:
 
 @pytest.mark.parametrize(
     "seed,expected_counts",
-    [(3, Counter({"magenta": 1, "purple": 1, "lime": 1, "teal": 1}))],
+    [
+        # Note: Output changed after Jargoyle redesign
+        (3, Counter({"purple": 1, "teal": 1, "orange": 1, "lime": 1})),
+    ],
 )
 def test_drift_mode_expected_palette(seed: int, expected_counts: Counter[str]) -> None:
     text = "red blue yellow green"

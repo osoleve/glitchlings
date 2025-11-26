@@ -7,7 +7,6 @@ from .core import Gaggle, Glitchling, plan_glitchling_specs, plan_glitchlings
 from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
-from .jargoyle import dependencies_available as _jargoyle_available
 from .mim1c import Mim1c, mim1c
 from .pedant import Pedant, pedant
 from .redactyl import Redactyl, redactyl
@@ -52,12 +51,20 @@ __all__ = [
     "get_glitchling_class",
 ]
 
-_HAS_JARGOYLE = _jargoyle_available()
-
-_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [typogre, hokey, mim1c, ekkokin, pedant]
-if _HAS_JARGOYLE:
-    _BUILTIN_GLITCHLING_LIST.append(jargoyle)
-_BUILTIN_GLITCHLING_LIST.extend([rushmore, redactyl, spectroll, scannequin, zeedub])
+# Jargoyle is now always available (no lexicon dependency)
+_BUILTIN_GLITCHLING_LIST: list[Glitchling] = [
+    typogre,
+    hokey,
+    mim1c,
+    ekkokin,
+    pedant,
+    jargoyle,
+    rushmore,
+    redactyl,
+    spectroll,
+    scannequin,
+    zeedub,
+]
 
 BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
     glitchling.name.lower(): glitchling for glitchling in _BUILTIN_GLITCHLING_LIST
@@ -69,14 +76,13 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
     pedant.name.lower(): Pedant,
+    jargoyle.name.lower(): Jargoyle,
     rushmore.name.lower(): Rushmore,
     redactyl.name.lower(): Redactyl,
     spectroll.name.lower(): Spectroll,
     scannequin.name.lower(): Scannequin,
     zeedub.name.lower(): Zeedub,
 }
-if _HAS_JARGOYLE:
-    _BUILTIN_GLITCHLING_TYPES[jargoyle.name.lower()] = Jargoyle
 
 DEFAULT_GLITCHLING_NAMES: list[str] = list(BUILTIN_GLITCHLINGS.keys())
 

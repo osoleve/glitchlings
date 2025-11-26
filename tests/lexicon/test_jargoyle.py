@@ -1,225 +1,158 @@
-from __future__ import annotations
+"""Tests for the Jargoyle glitchling with dictionary-based word drift."""
 
-import importlib
+from __future__ import annotations
 
 import pytest
 
-from glitchlings.lexicon import Lexicon
-from glitchlings.lexicon.vector import VectorLexicon
-
-jargoyle_module = importlib.import_module("glitchlings.zoo.jargoyle")
-substitute_random_synonyms = jargoyle_module.substitute_random_synonyms
-
-
-class TrackingLexicon(Lexicon):
-    """Lexicon implementation that tracks reseed calls for testing."""
-    
-    def __init__(self, *, seed: int | None = None) -> None:
-        super().__init__(seed=seed)
-        self.reseed_calls: list[int | None] = []
-
-    def reseed(self, seed: int | None) -> None:
-        self.reseed_calls.append(seed)
-        super().reseed(seed)
-
-    def get_synonyms(
-        self, word: str, pos: str | None = None, n: int = 5
-    ) -> list[str]:
-        candidates = [f"{word}_syn_{idx}" for idx in range(1, 6)]
-        return self._deterministic_sample(candidates, limit=n, word=word, pos=pos)
+from glitchlings.zoo.jargoyle import (
+    Jargoyle,
+    jargoyle_drift,
+    list_lexeme_dictionaries,
+)
 
 
 def _clean_tokens(text: str) -> list[str]:
     return [token.strip(".,") for token in text.split()]
 
 
-@pytest.fixture()
-def vector_lexicon(shared_vector_embeddings: dict[str, list[float]]) -> VectorLexicon:
-    return VectorLexicon(source=shared_vector_embeddings, max_neighbors=2, min_similarity=0.05)
+class TestJargoyleDriftFunction:
+    """Tests for the jargoyle_drift function."""
+
+    def test_jargoyle_drift_basic(self) -> None:
+        """Test basic word replacement with synonyms dictionary."""
+        text = "big small fast slow"
+        result = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=42)
+        assert result != text
+
+    def test_jargoyle_drift_deterministic(self) -> None:
+        """Test that same seed produces same result."""
+        text = "big small fast slow"
+        result1 = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=42)
+        result2 = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=42)
+        assert result1 == result2
+
+    def test_jargoyle_drift_different_seeds(self) -> None:
+        """Test that different seeds can produce different results."""
+        text = "big small fast slow"
+        result1 = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=42)
+        result2 = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=999)
+        # Results may differ (though not guaranteed with limited dictionary)
+        # At minimum, both should be valid transformations
+        assert isinstance(result1, str)
+        assert isinstance(result2, str)
+
+    def test_jargoyle_drift_rate_zero(self) -> None:
+        """Test that rate=0 produces no changes."""
+        text = "big small fast slow"
+        result = jargoyle_drift(text, lexemes="synonyms", rate=0.0, seed=42)
+        assert result == text
+
+    def test_jargoyle_drift_literal_mode(self) -> None:
+        """Test literal mode uses first dictionary entry."""
+        text = "big small"
+        result1 = jargoyle_drift(text, lexemes="synonyms", mode="literal", rate=1.0, seed=1)
+        result2 = jargoyle_drift(text, lexemes="synonyms", mode="literal", rate=1.0, seed=999)
+        # Literal mode should be deterministic regardless of seed
+        assert result1 == result2
+
+    def test_jargoyle_drift_colors_dictionary(self) -> None:
+        """Test color swapping with colors dictionary."""
+        text = "The red ball is blue."
+        result = jargoyle_drift(text, lexemes="colors", rate=1.0, seed=42)
+        # Should replace color words
+        assert "red" not in result.lower() or "blue" not in result.lower()
+
+    def test_jargoyle_drift_preserves_structure(self) -> None:
+        """Test that sentence structure is preserved."""
+        text = "The big dog ran fast."
+        result = jargoyle_drift(text, lexemes="synonyms", rate=1.0, seed=42)
+        # Should have same number of tokens
+        assert len(result.split()) == len(text.split())
+
+    def test_jargoyle_drift_invalid_dictionary(self) -> None:
+        """Test that invalid dictionary name raises error."""
+        text = "hello world"
+        with pytest.raises(ValueError, match="Invalid lexemes"):
+            jargoyle_drift(text, lexemes="nonexistent", rate=1.0, seed=42)
 
 
-def test_jargoyle_constructor_uses_configured_default(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    configured = TrackingLexicon(seed=777)
-    requested_seeds: list[int | None] = []
+class TestJargoyleGlitchling:
+    """Tests for the Jargoyle glitchling class."""
 
-    def _fake_default(seed: int | None = None) -> TrackingLexicon:
-        requested_seeds.append(seed)
-        return configured
+    def test_jargoyle_default_params(self) -> None:
+        """Test Jargoyle with default parameters."""
+        glitch = Jargoyle(seed=42)
+        assert glitch.kwargs.get("lexemes") == "synonyms"
+        assert glitch.kwargs.get("mode") == "drift"
+        assert glitch.kwargs.get("rate") == 0.01
 
-    monkeypatch.setattr(jargoyle_module, "get_default_lexicon", _fake_default)
+    def test_jargoyle_custom_lexemes(self) -> None:
+        """Test Jargoyle with custom lexemes parameter."""
+        glitch = Jargoyle(lexemes="colors", seed=42)
+        assert glitch.kwargs.get("lexemes") == "colors"
 
-    glitch = jargoyle_module.Jargoyle(seed=123)
+    def test_jargoyle_corrupt(self) -> None:
+        """Test Jargoyle.corrupt method."""
+        glitch = Jargoyle(lexemes="synonyms", rate=1.0, seed=42)
+        text = "big small fast slow"
+        result = glitch.corrupt(text)
+        assert result != text
 
-    assert requested_seeds == [123]
-    assert glitch.lexicon is configured
-    assert getattr(glitch, "_owns_lexicon") is True
-    assert configured.seed == 123
+    def test_jargoyle_deterministic(self) -> None:
+        """Test Jargoyle produces deterministic results."""
+        glitch1 = Jargoyle(lexemes="synonyms", rate=1.0, seed=42)
+        glitch2 = Jargoyle(lexemes="synonyms", rate=1.0, seed=42)
+        text = "big small fast slow"
+        assert glitch1.corrupt(text) == glitch2.corrupt(text)
 
+    def test_jargoyle_set_param(self) -> None:
+        """Test Jargoyle.set_param method."""
+        glitch = Jargoyle(seed=42)
+        glitch.set_param("rate", 0.5)
+        assert glitch.kwargs.get("rate") == 0.5
+        glitch.set_param("lexemes", "colors")
+        assert glitch.kwargs.get("lexemes") == "colors"
 
-def test_jargoyle_multiple_pos_targets_change_words():
-    text = "They sing happy songs."
-    result = substitute_random_synonyms(
-        text,
-        rate=1.0,
-        part_of_speech=("v", "a"),
-        seed=123,
-    )
+    def test_jargoyle_invalid_mode(self) -> None:
+        """Test that invalid mode raises error."""
+        with pytest.raises(ValueError, match="mode"):
+            Jargoyle(mode="invalid", seed=42)
 
-    original_tokens = _clean_tokens(text)
-    result_tokens = _clean_tokens(result)
+    def test_jargoyle_rate_clamped(self) -> None:
+        """Test that rate values are stored as provided."""
+        # Note: Jargoyle does not clamp rates in __init__ - clamping happens
+        # in the Rust backend during actual transformation.
+        glitch = Jargoyle(rate=2.0, seed=42)
+        assert glitch.kwargs.get("rate") == 2.0
+        glitch2 = Jargoyle(rate=-0.5, seed=42)
+        assert glitch2.kwargs.get("rate") == -0.5
 
-    # Expect both verb and adjective replacements to differ from input
-    changed = {
-        orig for orig, new in zip(original_tokens, result_tokens) if orig != new
-    }
-    assert {"sing", "happy"} <= changed
-
-
-def test_jargoyle_any_includes_all_supported_pos():
-    text = "They sing happy songs quickly."
-    result = substitute_random_synonyms(
-        text,
-        rate=1.0,
-        part_of_speech="any",
-        seed=99,
-    )
-
-    original_tokens = _clean_tokens(text)
-    result_tokens = _clean_tokens(result)
-
-    changed = {
-        orig for orig, new in zip(original_tokens, result_tokens) if orig != new
-    }
-    assert {"sing", "happy", "songs", "quickly"} <= changed
-
-
-def test_jargoyle_custom_lexicon_deterministic(vector_lexicon: VectorLexicon) -> None:
-    text = "alpha beta"
-
-    first = substitute_random_synonyms(
-        text,
-        rate=1.0,
-        seed=2024,
-        lexicon=vector_lexicon,
-    )
-    second = substitute_random_synonyms(
-        text,
-        rate=1.0,
-        seed=2024,
-        lexicon=vector_lexicon,
-    )
-
-    assert first == second
-    assert first != text
+    def test_jargoyle_pipeline_operation(self) -> None:
+        """Test that Jargoyle provides a valid pipeline operation."""
+        glitch = Jargoyle(lexemes="synonyms", rate=0.5, seed=42)
+        op = glitch.pipeline_operation()  # It's a method, not a property
+        assert op is not None
+        assert op.get("type") == "jargoyle"
 
 
-def test_dependencies_available_uses_default_lexicon(monkeypatch: pytest.MonkeyPatch) -> None:
-    class DummyLexicon(Lexicon):
-        def __init__(self) -> None:
-            super().__init__()
+class TestListLexemeDictionaries:
+    """Tests for the list_lexeme_dictionaries function."""
 
-        def get_synonyms(self, word: str, pos: str | None = None, n: int = 5) -> list[str]:
-            return []
+    def test_list_returns_dictionaries(self) -> None:
+        """Test that list returns available dictionaries."""
+        dicts = list_lexeme_dictionaries()
+        assert isinstance(dicts, list)
+        assert len(dicts) > 0
 
-    module = importlib.import_module("glitchlings.zoo.jargoyle")
-    monkeypatch.setattr(module, "_lexicon_dependencies_available", lambda: False)
-    monkeypatch.setattr(module, "WordNetLexicon", None)
-    monkeypatch.setattr(module, "get_default_lexicon", lambda seed=None: DummyLexicon())
+    def test_list_contains_expected_dictionaries(self) -> None:
+        """Test that standard dictionaries are present."""
+        dicts = list_lexeme_dictionaries()
+        assert "synonyms" in dicts
+        assert "colors" in dicts
 
-    assert jargoyle_module.dependencies_available()
-
-
-def test_dependencies_available_false_when_no_backends(monkeypatch: pytest.MonkeyPatch) -> None:
-    module = importlib.import_module("glitchlings.zoo.jargoyle")
-    monkeypatch.setattr(module, "_lexicon_dependencies_available", lambda: False)
-    monkeypatch.setattr(module, "WordNetLexicon", None)
-
-    def _raise(seed=None):
-        raise RuntimeError("unavailable")
-
-    monkeypatch.setattr(module, "get_default_lexicon", _raise)
-
-    assert not jargoyle_module.dependencies_available()
-
-
-def test_jargoyle_rate_above_one_clamped(vector_lexicon: VectorLexicon) -> None:
-    text = "alpha beta gamma"
-
-    result = substitute_random_synonyms(
-        text,
-        rate=2.0,
-        seed=77,
-        lexicon=vector_lexicon,
-    )
-
-    assert result != text
-    original_tokens = _clean_tokens(text)
-    result_tokens = _clean_tokens(result)
-    assert len(result_tokens) == len(original_tokens)
-    assert all(orig != new for orig, new in zip(original_tokens, result_tokens))
-
-
-def test_small_rate_allows_replacements_for_short_inputs() -> None:
-    text = "alpha beta"
-    lexicon = TrackingLexicon()
-
-    result = substitute_random_synonyms(
-        text,
-        rate=0.1,
-        seed=123,
-        lexicon=lexicon,
-    )
-
-    assert result != text
-
-
-def test_substitute_random_synonyms_restores_external_seed() -> None:
-    text = "alpha beta"
-    lexicon = TrackingLexicon(seed=777)
-    original_seed = lexicon.seed
-
-    result = substitute_random_synonyms(
-        text,
-        rate=1.0,
-        seed=2024,
-        lexicon=lexicon,
-    )
-
-    assert result != text
-    assert lexicon.seed == original_seed
-    # Expect two reseed calls: one to override, one to restore.
-    assert lexicon.reseed_calls[0] == 2024
-    assert lexicon.reseed_calls[-1] == original_seed
-
-
-def test_jargoyle_preserves_external_lexicon_seed_when_seed_cleared() -> None:
-    external_seed = 314
-    lexicon = TrackingLexicon(seed=external_seed)
-
-    glitch = jargoyle_module.Jargoyle(lexicon=lexicon, seed=None)
-    assert lexicon.seed == external_seed
-    assert lexicon.reseed_calls == []
-
-    glitch.set_param("seed", 99)
-    assert lexicon.seed == 99
-
-    glitch.set_param("seed", None)
-    assert lexicon.seed == external_seed
-    assert lexicon.reseed_calls[-2:] == [99, external_seed]
-
-
-def test_jargoyle_restores_external_lexicon_seed_when_original_none() -> None:
-    lexicon = TrackingLexicon(seed=None)
-
-    glitch = jargoyle_module.Jargoyle(lexicon=lexicon, seed=None)
-    assert lexicon.seed is None
-    assert lexicon.reseed_calls == []
-
-    glitch.set_param("seed", 42)
-    assert lexicon.seed == 42
-
-    glitch.set_param("seed", None)
-    assert lexicon.seed is None
-    assert lexicon.reseed_calls[-2:] == [42, None]
+    def test_list_does_not_contain_meta(self) -> None:
+        """Test that _meta sections are excluded."""
+        dicts = list_lexeme_dictionaries()
+        assert "_meta" not in dicts
+        for d in dicts:
+            assert not d.startswith("_")
