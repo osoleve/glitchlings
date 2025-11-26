@@ -194,7 +194,7 @@ _She's soooooo coooool!_
 
 _How can a computer need reading glasses?_
 
-> _**OCR Artifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
+> _**OCArtifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
 
 ### Zeedub
 
