@@ -38,8 +38,8 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 
-[project.license]
-file = "LICENSE"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/osoleve/glitchlings"
@@ -93,7 +93,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=69", "wheel", "setuptools-rust>=1.8.0"]
+requires = ["setuptools>=77", "wheel", "setuptools-rust>=1.8.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]

@@ -14,9 +14,7 @@ from glitchlings.assets import PIPELINE_ASSET_SPECS, PIPELINE_ASSETS
 
 def _rel_files(root: Path) -> dict[str, bytes]:
     return {
-        str(path.relative_to(root)): path.read_bytes()
-        for path in root.rglob("*")
-        if path.is_file()
+        str(path.relative_to(root)): path.read_bytes() for path in root.rglob("*") if path.is_file()
     }
 
 
@@ -131,9 +129,7 @@ def test_pipeline_assets_exist_in_canonical_directory():
 
 def test_pipeline_assets_have_canonical_digests():
     """Verify all pipeline assets have valid SHA-256 digests."""
-    canonical_digests = {
-        name: assets.hash_asset(name) for name in sorted(PIPELINE_ASSETS)
-    }
+    canonical_digests = {name: assets.hash_asset(name) for name in sorted(PIPELINE_ASSETS)}
 
     for name, digest in canonical_digests.items():
         assert len(digest) == 64, f"unexpected digest length for {name}"

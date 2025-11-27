@@ -101,7 +101,6 @@ struct TokenInfo<'a> {
 struct TokenCache {
     lowercase: String,
     lowercase_chars: Vec<char>,
-    chars: Vec<char>,
     alpha_indices: Vec<usize>,
 }
 
@@ -205,16 +204,15 @@ impl HokeyOp {
         // Use pre-computed lowercase if available
         let lower = token.lowercase.clone().unwrap_or_else(|| token.text.to_lowercase());
         let lower_chars: Vec<char> = lower.chars().collect();
-        let original_chars: Vec<char> = token.text.chars().collect();
-        let alpha_idx: Vec<usize> = original_chars
-            .iter()
+        let alpha_idx: Vec<usize> = token
+            .text
+            .chars()
             .enumerate()
             .filter_map(|(idx, ch)| if ch.is_alphabetic() { Some(idx) } else { None })
             .collect();
         TokenCache {
             lowercase: lower,
             lowercase_chars: lower_chars,
-            chars: original_chars,
             alpha_indices: alpha_idx,
         }
     }
@@ -391,51 +389,6 @@ impl HokeyOp {
             score += 0.08;
         }
         
-        score.clamp(0.0, 1.0)
-    }
-
-    fn phonotactic(&self, normalised: &str) -> f64 {
-        // Use char-based vowel check to avoid string allocation
-        if !normalised.chars().any(is_vowel) {
-            return 0.0;
-        }
-        let mut score: f64 = 0.25;
-        
-        // Check sonorant codas using last char
-        if let Some(last) = normalised.chars().last() {
-            if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
-                score += 0.2;
-            }
-            // Check sibilant codas
-            if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
-                score += 0.18;
-            }
-        }
-        // Check two-char sibilant codas
-        if normalised.ends_with("sh") || normalised.ends_with("zh") {
-            score += 0.18;
-        }
-        
-        let digraphs = [
-            "aa", "ae", "ai", "ay", "ee", "ei", "ey", "ie", "oa", "oe", "oi", "oo", "ou", "ue",
-            "ui",
-        ];
-        if digraphs.iter().any(|d| normalised.contains(d)) {
-            score += 0.22;
-        }
-        let chars: Vec<char> = normalised.chars().collect();
-        if chars
-            .windows(2)
-            .any(|pair| is_vowel(pair[0]) && is_vowel(pair[1]))
-        {
-            score += 0.22;
-        }
-        if chars
-            .windows(3)
-            .any(|triple| triple[0] == triple[2] && triple[0] != triple[1])
-        {
-            score += 0.08;
-        }
         score.clamp(0.0, 1.0)
     }
 
@@ -627,49 +580,6 @@ impl HokeyOp {
             return Some(site);
         }
         if let Some(site) = cvce_site(lower_chars, alpha_indices) {
-            return Some(site);
-        }
-        if let Some(site) = vowel_site(&clusters) {
-            return Some(site);
-        }
-        alpha_indices.last().map(|&idx| StretchSite {
-            start: idx,
-            end: idx + 1,
-        })
-    }
-
-    fn find_stretch_site(&self, word: &str) -> Option<StretchSite> {
-        let chars: Vec<char> = word.chars().collect();
-        if chars.is_empty() {
-            return None;
-        }
-        let alpha_indices: Vec<usize> = chars
-            .iter()
-            .enumerate()
-            .filter_map(|(idx, ch)| if ch.is_alphabetic() { Some(idx) } else { None })
-            .collect();
-        if alpha_indices.is_empty() {
-            return None;
-        }
-        let lower: String = word.to_lowercase();
-        let lower_chars: Vec<char> = lower.chars().collect();
-        let clusters = vowel_clusters(&lower_chars, &alpha_indices);
-
-        // Check if there's a multi-vowel cluster (for coda site logic)
-        let has_multi_vowel = clusters.iter().any(|(start, end)| {
-            let length = end - start;
-            // Don't count leading 'y' as multi-vowel
-            if length >= 2 {
-                !(*start == 0 && lower_chars[*start] == 'y')
-            } else {
-                false
-            }
-        });
-
-        if let Some(site) = coda_site(&lower_chars, &alpha_indices, has_multi_vowel) {
-            return Some(site);
-        }
-        if let Some(site) = cvce_site(&lower_chars, &alpha_indices) {
             return Some(site);
         }
         if let Some(site) = vowel_site(&clusters) {
@@ -945,6 +855,21 @@ mod tests {
         }
     }
 
+    fn cache_from_text(text: &str) -> TokenCache {
+        let lowercase = text.to_lowercase();
+        let lowercase_chars: Vec<char> = lowercase.chars().collect();
+        let alpha_indices: Vec<usize> = text
+            .chars()
+            .enumerate()
+            .filter_map(|(idx, ch)| if ch.is_alphabetic() { Some(idx) } else { None })
+            .collect();
+        TokenCache {
+            lowercase,
+            lowercase_chars,
+            alpha_indices,
+        }
+    }
+
     // --- Helper function tests ---
 
     #[test]
@@ -1100,7 +1025,8 @@ mod tests {
     #[test]
     fn find_stretch_site_cvce_pattern() {
         let op = default_op();
-        let site = op.find_stretch_site("cute").unwrap();
+        let cache = cache_from_text("cute");
+        let site = op.find_stretch_site_with_cache(&cache).unwrap();
         // CVCe pattern: stretch the vowel before consonant-e
         assert_eq!(site.start, 1); // 'u'
         assert_eq!(site.end, 2);
@@ -1109,7 +1035,8 @@ mod tests {
     #[test]
     fn find_stretch_site_vowel_digraph() {
         let op = default_op();
-        let site = op.find_stretch_site("cool").unwrap();
+        let cache = cache_from_text("cool");
+        let site = op.find_stretch_site_with_cache(&cache).unwrap();
         // "oo" digraph
         assert_eq!(site.start, 1);
         assert_eq!(site.end, 3);
@@ -1118,7 +1045,8 @@ mod tests {
     #[test]
     fn find_stretch_site_sonorant_coda() {
         let op = default_op();
-        let site = op.find_stretch_site("yes").unwrap();
+        let cache = cache_from_text("yes");
+        let site = op.find_stretch_site_with_cache(&cache).unwrap();
         // "yes" ends in sibilant 's' after vowel -> coda site
         assert_eq!(site.start, 2); // 's'
         assert_eq!(site.end, 3);
@@ -1127,7 +1055,8 @@ mod tests {
     #[test]
     fn find_stretch_site_no_vowels() {
         let op = default_op();
-        let site = op.find_stretch_site("hmm").unwrap();
+        let cache = cache_from_text("hmm");
+        let site = op.find_stretch_site_with_cache(&cache).unwrap();
         // No vowels -> stretch last char
         assert_eq!(site.start, 2);
         assert_eq!(site.end, 3);
@@ -1136,7 +1065,8 @@ mod tests {
     #[test]
     fn find_stretch_site_empty_returns_none() {
         let op = default_op();
-        assert!(op.find_stretch_site("").is_none());
+        let cache = cache_from_text("");
+        assert!(op.find_stretch_site_with_cache(&cache).is_none());
     }
 
     // --- Stretch application tests ---
@@ -1191,22 +1121,28 @@ mod tests {
     #[test]
     fn phonotactic_vowel_words_score_above_zero() {
         let op = default_op();
-        assert!(op.phonotactic("hello") > 0.0);
-        assert!(op.phonotactic("cool") > 0.0);
+        let hello_cache = cache_from_text("hello");
+        let cool_cache = cache_from_text("cool");
+        assert!(op.phonotactic_with_cache(&hello_cache.lowercase_chars) > 0.0);
+        assert!(op.phonotactic_with_cache(&cool_cache.lowercase_chars) > 0.0);
     }
 
     #[test]
     fn phonotactic_no_vowels_returns_zero() {
         let op = default_op();
-        assert_eq!(op.phonotactic("hmm"), 0.0);
-        assert_eq!(op.phonotactic("brr"), 0.0);
+        let hmm_cache = cache_from_text("hmm");
+        let brr_cache = cache_from_text("brr");
+        assert_eq!(op.phonotactic_with_cache(&hmm_cache.lowercase_chars), 0.0);
+        assert_eq!(op.phonotactic_with_cache(&brr_cache.lowercase_chars), 0.0);
     }
 
     #[test]
     fn phonotactic_sonorant_coda_boosted() {
         let op = default_op();
-        let score_yes = op.phonotactic("yes");
-        let score_cat = op.phonotactic("cat");
+        let yes_cache = cache_from_text("yes");
+        let cat_cache = cache_from_text("cat");
+        let score_yes = op.phonotactic_with_cache(&yes_cache.lowercase_chars);
+        let score_cat = op.phonotactic_with_cache(&cat_cache.lowercase_chars);
         // "yes" ends in 's' (sibilant) after vowel -> boosted
         assert!(score_yes > score_cat);
     }
