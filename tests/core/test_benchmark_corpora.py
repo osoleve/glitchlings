@@ -15,6 +15,7 @@ EXPECTED_GUTENBERG_LABELS = [
     "ulysses",
     "beowulf_modern_english_prose",
 ]
+EXPECTED_GUTENBERG_IDS = [book_id for _, book_id in constants.PROJECT_GUTENBERG_BOOK_IDS]
 
 
 def test_default_corpus_alias() -> None:
@@ -23,11 +24,49 @@ def test_default_corpus_alias() -> None:
     assert constants.DEFAULT_TEXTS is constants.BENCHMARK_CORPORA["default"]
 
 
-def test_gutenberg_titles_corpus_contents() -> None:
-    """The Project Gutenberg corpus should expose the configured title snippets."""
+def test_gutenberg_corpus_aliases() -> None:
+    """The Project Gutenberg corpus entries should route to the loader."""
 
-    corpus = constants.BENCHMARK_CORPORA["gutenberg_titles"]
-    assert len(corpus) == len(EXPECTED_GUTENBERG_LABELS)
-    labels = [label for label, _ in corpus]
-    assert labels == EXPECTED_GUTENBERG_LABELS
-    assert all(text.strip() for _, text in corpus)
+    assert constants.BENCHMARK_CORPORA["gutenberg"] is constants.load_gutenberg_books
+    assert constants.BENCHMARK_CORPORA["gutenberg_titles"] is constants.load_gutenberg_books
+
+
+def test_gutenberg_corpus_loads_book_text() -> None:
+    """The Project Gutenberg corpus should fetch book text, not snippets."""
+
+    class FakeBook:
+        def __init__(self, book_id: int) -> None:
+            self.book_id = book_id
+
+        def get_text(self) -> str:
+            return f"full text for {self.book_id}"
+
+    class FakeAPI:
+        def __init__(self) -> None:
+            self.requested: list[int] = []
+
+        def get_book(self, book_id: int) -> FakeBook:
+            self.requested.append(book_id)
+            return FakeBook(book_id)
+
+    api = FakeAPI()
+    corpus = constants.load_gutenberg_books(api=api)
+
+    assert api.requested == EXPECTED_GUTENBERG_IDS
+    assert [label for label, _ in corpus] == EXPECTED_GUTENBERG_LABELS
+    assert all(text.startswith("full text for") for _, text in corpus)
+
+
+def test_resolve_corpus_invokes_loader() -> None:
+    """Callable corpora should be materialised by resolve_corpus."""
+
+    marker: list[str] = []
+
+    def loader() -> tuple[tuple[str, str], ...]:
+        marker.append("called")
+        return (("label", "payload"),)
+
+    resolved = constants.resolve_corpus(loader)
+
+    assert marker == ["called"]
+    assert resolved == (("label", "payload"),)

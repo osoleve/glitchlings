@@ -14,8 +14,8 @@ from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
 from ._shared import corrupt_text_value
 
-#: Default Gutendex API instance URL (public instance hosted by py-gutenberg author).
-DEFAULT_GUTENDEX_URL = "https://gutendex.devbranch.co"
+#: Default Gutendex API instance URL (public instance hosted at gutendex.com).
+DEFAULT_GUTENDEX_URL = "https://gutendex.com"
 
 if TYPE_CHECKING:  # pragma: no cover
     from gutenberg import GutenbergAPI
@@ -143,8 +143,8 @@ class GlitchenbergAPI:
             glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
             seed: RNG seed for deterministic corruption (default: 151).
             instance_url: The Gutendex instance URL to use for API requests.
-                Defaults to the public instance at gutendex.devbranch.co.
-                For production use, consider self-hosting Gutendex.
+                Defaults to the public instance at gutendex.com. For production use,
+                consider self-hosting Gutendex.
         """
         self._gaggle = coerce_gaggle(glitchlings, seed=seed)
         self._api = _get_gutenberg_api(instance_url)

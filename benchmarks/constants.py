@@ -3,13 +3,22 @@
 from __future__ import annotations
 
 import importlib
+import os
 from functools import lru_cache
+from pathlib import Path
 from types import ModuleType
-from typing import Dict, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple
+from urllib.parse import urlparse
 
+import requests
+
+from glitchlings.dlc.gutenberg import DEFAULT_GUTENDEX_URL, _get_gutenberg_api
 from glitchlings.zoo import get_glitchling_class
 
 Descriptor = Dict[str, object]
+CorpusLike = Iterable[tuple[str, str]] | Callable[[], Iterable[tuple[str, str]]]
+
+GUTENBERG_CACHE_DIR = Path(os.getenv("GUTENBERG_CACHE_DIR", ".cache/gutenberg")).expanduser()
 
 
 @lru_cache(maxsize=None)
@@ -35,6 +44,57 @@ def keyboard_layout(keyboard: str) -> Dict[str, List[str]]:
     neighbors = getattr(_glitchling_module("Typogre"), "KEYNEIGHBORS")
     layout = getattr(neighbors, keyboard)
     return {key: list(value) for key, value in layout.items()}
+
+
+def _resolve_book_text(book: Any) -> str:
+    """Return the full text for a py-gutenberg Book."""
+    book_id = getattr(book, "id", None)
+    cache_path = None
+    if isinstance(book_id, int) and book_id > 0:
+        cache_path = GUTENBERG_CACHE_DIR / f"{book_id}.txt"
+        if cache_path.exists():
+            return cache_path.read_text(encoding="utf-8", errors="ignore")
+
+    if hasattr(book, "get_text"):
+        text = book.get_text()  # type: ignore[no-any-return]
+        if cache_path is not None:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            cache_path.write_text(str(text), encoding="utf-8")
+        return text
+    text_attr = getattr(book, "text", None)
+    if isinstance(text_attr, str):
+        return text_attr
+
+    formats = getattr(book, "formats", {}) or {}
+    # Prefer plain-text variants, then any text/*
+    text_urls = [
+        url
+        for mime, url in formats.items()
+        if isinstance(mime, str) and mime.lower().startswith("text/plain")
+    ]
+    if not text_urls:
+        text_urls = [
+            url
+            for mime, url in formats.items()
+            if isinstance(mime, str) and mime.startswith("text/")
+        ]
+    if not text_urls:
+        raise AttributeError(
+            "Project Gutenberg entries must include a text/plain format to download full text."
+        )
+
+    url = text_urls[0]
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    # Response may be bytes or text; ensure str.
+    if not isinstance(response.text, str):
+        parsed = urlparse(url)
+        raise ValueError(f"Failed to decode Project Gutenberg text from {parsed.netloc}")
+
+    if cache_path is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(response.text, encoding="utf-8")
+    return response.text
 
 
 OPERATION_MODULES: Dict[str, str] = {
@@ -127,78 +187,62 @@ DEFAULT_TEXTS: Tuple[Tuple[str, str], ...] = (
     ("very_long", VERY_LONG_TEXT),
 )
 
-PROJECT_GUTENBERG_TITLES: Tuple[Tuple[str, str], ...] = (
-    (
-        "the_canterbury_tales",
-        "Whan that Aprille with his shoures soote the droghte of March hath perced to "
-        "the roote, and bathed every veyne in swich licour of which vertu engendred is "
-        "the flour.",
-    ),
-    (
-        "middlemarch",
-        "Miss Brooke had that kind of beauty which seems to be thrown into relief by poor "
-        "dress; her hand and wrist were so finely formed that she could wear sleeves not "
-        "less bare of style than those in which the Blessed Virgin appeared to Italian "
-        "painters.",
-    ),
-    (
-        "thus_spoke_zarathustra",
-        "When Zarathustra was thirty years old he left his home and the lake of his home "
-        "and went into the mountains. There he enjoyed his spirit and his solitude and "
-        "for ten years did not weary of it.",
-    ),
-    (
-        "symbolic_logic",
-        "Logic is the science of correct argumentation; a calculus of inference whose symbols and "
-        "rules allow thought to be tested by exact methods rather than by guesswork alone.",
-    ),
-    (
-        "war_and_peace",
-        "Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. "
-        "But I warn you, if you don't tell me that this means war, if you still try to "
-        "defend the infamies and horrors perpetrated by that Antichrist, I really believe "
-        "he is Antichrist, I will have nothing more to do with you and you are no longer "
-        "my friend, no longer my faithful slave!",
-    ),
-    (
-        "leaves_of_grass",
-        "I celebrate myself, and sing myself, and what I assume you shall assume, for every atom "
-        "belonging to me as good belongs to you.",
-    ),
-    (
-        "the_importance_of_being_earnest",
-        "Did you hear what I was playing, Lane? I didn't think it polite to listen, sir. "
-        "I'm sorry for that, for your sake; I don't play accurately—any one can play "
-        "accurately—but I play with wonderful expression.",
-    ),
-    (
-        "on_the_origin_of_species",
-        "When on board H.M.S. Beagle, as naturalist, I was much struck with certain facts "
-        "in the distribution of the inhabitants of South America, and in the geological "
-        "relations of the present to the past inhabitants of that continent.",
-    ),
-    (
-        "the_iliad",
-        "Sing, O goddess, the anger of Achilles son of Peleus, that brought countless ills "
-        "upon the Achaeans; many a brave soul did it send hurrying down to Hades, and many "
-        "a hero did it yield a prey to dogs and vultures.",
-    ),
-    (
-        "ulysses",
-        "Stately, plump Buck Mulligan came from the stairhead, bearing a bowl of lather on "
-        "which a mirror and a razor lay crossed. A yellow dressing gown, ungirdled, was "
-        "sustained gently behind him by the mild morning air.",
-    ),
-    (
-        "beowulf_modern_english_prose",
-        "So. The Spear-Danes in days gone by and the kings who ruled them had courage and "
-        "greatness. We have heard of those princes' heroic campaigns.",
-    ),
+# Full-text benchmarks keyed by Project Gutenberg book IDs.
+PROJECT_GUTENBERG_BOOK_IDS: Tuple[Tuple[str, int], ...] = (
+    ("the_canterbury_tales", 22120),
+    ("middlemarch", 145),
+    ("thus_spoke_zarathustra", 1998),
+    ("symbolic_logic", 28696),
+    ("war_and_peace", 2600),
+    ("leaves_of_grass", 1322),
+    ("the_importance_of_being_earnest", 844),
+    ("on_the_origin_of_species", 1228),
+    ("the_iliad", 6130),
+    ("ulysses", 4300),
+    ("beowulf_modern_english_prose", 50742),
 )
 
-BENCHMARK_CORPORA: Dict[str, Tuple[Tuple[str, str], ...]] = {
+
+def _read_gutenberg_books(api: Any) -> Tuple[Tuple[str, str], ...]:
+    """Return full texts for configured Project Gutenberg book IDs."""
+    corpus: list[tuple[str, str]] = []
+    for label, book_id in PROJECT_GUTENBERG_BOOK_IDS:
+        book = api.get_book(book_id)
+        text = _resolve_book_text(book)
+        corpus.append((label, text))
+    return tuple(corpus)
+
+
+@lru_cache(maxsize=None)
+def _load_gutenberg_books(instance_url: str) -> Tuple[Tuple[str, str], ...]:
+    """Fetch and cache full Project Gutenberg texts for benchmarking."""
+    api = _get_gutenberg_api(instance_url)
+    return _read_gutenberg_books(api)
+
+
+def load_gutenberg_books(
+    *,
+    instance_url: str | None = None,
+    api: Any | None = None,
+) -> Tuple[Tuple[str, str], ...]:
+    """Return the Project Gutenberg benchmark corpus using full book texts."""
+    resolved_url = instance_url or os.getenv("GUTENDEX_URL", DEFAULT_GUTENDEX_URL)
+    if api is not None:
+        return _read_gutenberg_books(api)
+    return _load_gutenberg_books(resolved_url)
+
+
+def resolve_corpus(corpus: CorpusLike) -> Tuple[Tuple[str, str], ...]:
+    """Materialize a corpus from either static text or a loader callable."""
+    selected = corpus() if callable(corpus) else corpus
+    return tuple(selected)
+
+
+# Keep the legacy "gutenberg_titles" key as a CLI alias.
+BENCHMARK_CORPORA: Dict[str, CorpusLike] = {
     "default": DEFAULT_TEXTS,
-    "gutenberg_titles": PROJECT_GUTENBERG_TITLES,
+    "gutenberg": load_gutenberg_books,
+    "gutenberg_titles": load_gutenberg_books,
 }
 DEFAULT_ITERATIONS = 25
 MASTER_SEED = 151
@@ -222,13 +266,13 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "hokey_only": "Hokey-only benchmark for expressive lengthening.",
     "jargoyle_only": "Jargoyle-only benchmark for dictionary-based synonym substitution.",
     # Pedant evolution scenarios
-    "pedant_whomst": "Pedant Whomst benchmark for who→whom correction.",
-    "pedant_fewerling": "Pedant Fewerling benchmark for less→fewer correction.",
+    "pedant_whomst": "Pedant Whomst benchmark for who->whom correction.",
+    "pedant_fewerling": "Pedant Fewerling benchmark for less->fewer correction.",
     "pedant_aetheria": "Pedant Aetheria benchmark for ligature and diaeresis restoration.",
     "pedant_apostrofae": "Pedant Apostrofae benchmark for curly quote normalization.",
     "pedant_subjunic": "Pedant Subjunic benchmark for subjunctive correction.",
     "pedant_commama": "Pedant Commama benchmark for Oxford comma insertion.",
-    "pedant_kiloa": "Pedant Kiloa benchmark for imperial→metric conversion.",
+    "pedant_kiloa": "Pedant Kiloa benchmark for imperial->metric conversion.",
     "pedant_correctopus": "Pedant Correctopus benchmark for uppercase transformation.",
 }
 
@@ -241,7 +285,7 @@ __all__ = [
     "BASE_DESCRIPTORS",
     "DEFAULT_ITERATIONS",
     "DEFAULT_TEXTS",
-    "PROJECT_GUTENBERG_TITLES",
+    "PROJECT_GUTENBERG_BOOK_IDS",
     "BENCHMARK_CORPORA",
     "MASTER_SEED",
     "SCENARIO_DESCRIPTIONS",
@@ -249,6 +293,8 @@ __all__ = [
     "MEDIUM_TEXT",
     "LONG_TEXT",
     "VERY_LONG_TEXT",
+    "load_gutenberg_books",
+    "resolve_corpus",
     "redactyl_full_block",
     "zero_width_characters",
     "keyboard_layout",

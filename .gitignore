@@ -29,3 +29,6 @@ rufferrors.txt
 .coverage
 .coverage.*
 htmlcov/
+
+# Local caches
+.cache/

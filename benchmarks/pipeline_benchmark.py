@@ -11,7 +11,7 @@ import time
 import types
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, Sequence
+from typing import Callable, Sequence
 
 # Support running as script or as module
 if __name__ == "__main__" and __package__ is None:
@@ -23,8 +23,10 @@ if __name__ == "__main__" and __package__ is None:
         DEFAULT_ITERATIONS,
         DEFAULT_TEXTS,
         MASTER_SEED,
+        CorpusLike,
         Descriptor,
         redactyl_full_block,
+        resolve_corpus,
     )
 else:
     from benchmarks.constants import (
@@ -33,8 +35,10 @@ else:
         DEFAULT_ITERATIONS,
         DEFAULT_TEXTS,
         MASTER_SEED,
+        CorpusLike,
         Descriptor,
         redactyl_full_block,
+        resolve_corpus,
     )
 
 
@@ -399,11 +403,11 @@ def _time_subject(subject: BenchmarkSubject, iterations: int) -> BenchmarkStatis
 
 
 def _format_stats(stats: BenchmarkStatistics) -> str:
-    return f"{stats.mean_ms:8.3f} ms (σ={stats.stdev_ms:5.3f} ms)"
+    return f"{stats.mean_ms:8.3f} ms (stdev={stats.stdev_ms:5.3f} ms)"
 
 
 def _format_table_stats(stats: BenchmarkStatistics) -> str:
-    return f"{stats.mean_ms:7.3f} (σ={stats.stdev_ms:5.3f})"
+    return f"{stats.mean_ms:7.3f} (stdev={stats.stdev_ms:5.3f})"
 
 
 def _format_compact_stats(stats: BenchmarkStatistics) -> str:
@@ -413,33 +417,52 @@ def _format_compact_stats(stats: BenchmarkStatistics) -> str:
 def _print_header(title: str, width: int = 60) -> None:
     """Print a styled section header."""
     print()
-    print("═" * width)
+    print("=" * width)
     print(f"  {title}")
-    print("═" * width)
+    print("=" * width)
 
 
 def _print_subheader(title: str, width: int = 60) -> None:
     """Print a styled subsection header."""
     print()
-    print(f"  ┌{'─' * (len(title) + 2)}┐")
-    print(f"  │ {title} │")
-    print(f"  └{'─' * (len(title) + 2)}┘")
+    print(f"  {'-' * width}")
+    print(f"  {title}")
+    print(f"  {'-' * width}")
 
 
 def _print_results(scenario: str, results: Sequence[BenchmarkResult]) -> None:
+    label_width = max(len("Text Size"), max(len(result.label) for result in results))
+    chars_width = max(len("Characters"), max(len(f"{result.char_count:,}") for result in results))
+    runtime_width = max(
+        len("Runtime (ms)"),
+        max(len(_format_table_stats(result.runtime)) for result in results),
+    )
+
+    def border(char: str = "-") -> str:
+        return (
+            f"  +{char * (label_width + 2)}+{char * (chars_width + 2)}+"
+            f"{char * (runtime_width + 2)}+"
+        )
+
     _print_subheader(f"Scenario: {scenario}")
     print()
-    print("  ┌───────────┬──────────┬────────────────────────┐")
-    print("  │ Text Size │    Chars │ Runtime (ms)           │")
-    print("  ├───────────┼──────────┼────────────────────────┤")
+    print(border())
+    header = (
+        f"  | {'Text Size':<{label_width}} | "
+        f"{'Characters':>{chars_width}} | "
+        f"{'Runtime (ms)':>{runtime_width}} |"
+    )
+    print(header)
+    print(border())
     for result in results:
-        row = "  │ {label:<9} │ {char_count:>8,} │ {runtime:<22} │".format(
-            label=result.label,
-            char_count=result.char_count,
-            runtime=_format_table_stats(result.runtime),
+        runtime = _format_table_stats(result.runtime)
+        row = (
+            f"  | {result.label:<{label_width}} | "
+            f"{result.char_count:>{chars_width},} | "
+            f"{runtime:>{runtime_width}} |"
         )
         print(row)
-    print("  └───────────┴──────────┴────────────────────────┘")
+    print(border())
 
 
 def _print_grouped_individual_table(
@@ -454,52 +477,46 @@ def _print_grouped_individual_table(
         return
 
     col_names = [INDIVIDUAL_DISPLAY_NAMES.get(s, s) for s in available]
-    col_width = 10
+    col_widths: dict[str, int] = {}
+    label_width = max(len("Text Size"), max(len(r.label) for r in scenario_results[available[0]]))
+    chars_width = max(
+        len("Characters"),
+        max(len(f"{r.char_count:,}") for r in scenario_results[available[0]]),
+    )
+    for scenario in available:
+        stats_strings = [f"{res.runtime.mean_ms:>6.2f} ms" for res in scenario_results[scenario]]
+        col_widths[scenario] = max(
+            len(INDIVIDUAL_DISPLAY_NAMES.get(scenario, scenario)),
+            *(len(s) for s in stats_strings),
+        )
 
     _print_subheader(group_name)
     print()
 
-    # Top border
-    top = "  ┌───────────┬──────────┬"
-    for _ in col_names:
-        top += "─" * (col_width + 2) + "┬"
-    top = top[:-1] + "┐"
-    print(top)
+    border = "  +" + "-" * (label_width + 2) + "+" + "-" * (chars_width + 2) + "+"
+    for scenario in available:
+        border += "-" * (col_widths[scenario] + 2) + "+"
+    print(border)
 
-    # Header row
-    header = "  │ Text Size │    Chars │"
-    for name in col_names:
-        header += f" {name:^{col_width}} │"
+    header = f"  | {'Text Size':<{label_width}} | {'Characters':>{chars_width}} |"
+    for scenario, name in zip(available, col_names):
+        header += f" {name:>{col_widths[scenario]}} |"
     print(header)
 
-    # Separator
-    sep = "  ├───────────┼──────────┼"
-    for _ in col_names:
-        sep += "─" * (col_width + 2) + "┼"
-    sep = sep[:-1] + "┤"
-    print(sep)
+    separator = border
+    print(separator)
 
-    # Get text labels from first scenario's results
     first_results = scenario_results[available[0]]
 
-    # Data rows
     for i, result in enumerate(first_results):
-        row = "  │ {label:<9} │ {chars:>8,} │".format(
-            label=result.label,
-            chars=result.char_count,
-        )
+        row = f"  | {result.label:<{label_width}} | {result.char_count:>{chars_width},} |"
         for scenario in available:
             stats = scenario_results[scenario][i].runtime
             cell = f"{stats.mean_ms:>6.2f} ms"
-            row += f" {cell:^{col_width}} │"
+            row += f" {cell:>{col_widths[scenario]}} |"
         print(row)
 
-    # Footer
-    footer = "  └───────────┴──────────┴"
-    for _ in col_names:
-        footer += "─" * (col_width + 2) + "┴"
-    footer = footer[:-1] + "┘"
-    print(footer)
+    print(separator)
 
 
 def _print_combined_individual_results(
@@ -522,29 +539,25 @@ def _print_combined_individual_results(
 
     # Print standard deviation summary
     print()
-    print("  σ (standard deviation) in ms:")
+    print("  Standard deviation (ms):")
 
     ordered_scenarios = [
         s for s in scenarios if s in INDIVIDUAL_GLITCHLING_SCENARIOS and s in scenario_results
     ]
-    stdev_content_width = 56
-    print("  ┌" + "─" * stdev_content_width + "┐")
     for scenario in ordered_scenarios:
         name = INDIVIDUAL_DISPLAY_NAMES.get(scenario, scenario)
         results = scenario_results[scenario]
         stdevs = ", ".join(f"{r.runtime.stdev_ms:.3f}" for r in results)
-        content = f" {name:<10}: [{stdevs}]"
-        print(f"  │{content:<{stdev_content_width}}│")
-    print("  └" + "─" * stdev_content_width + "┘")
+        print(f"    {name:<10}: [{stdevs}]")
 
 
 def collect_benchmark_results(
-    texts: Iterable[tuple[str, str]] | None = None,
+    texts: CorpusLike | None = None,
     iterations: int = DEFAULT_ITERATIONS,
     descriptors: Sequence[Descriptor] | None = None,
 ) -> list[BenchmarkResult]:
     """Return structured benchmark results without printing to stdout."""
-    samples = tuple(DEFAULT_TEXTS if texts is None else texts)
+    samples = resolve_corpus(DEFAULT_TEXTS if texts is None else texts)
     descriptor_template: tuple[Descriptor, ...] = tuple(
         _clone_descriptors(descriptors if descriptors is not None else BASE_DESCRIPTORS)
     )
@@ -572,12 +585,12 @@ def collect_benchmark_results(
 
 def run_benchmarks(
     scenarios: Sequence[str],
-    texts: Iterable[tuple[str, str]],
+    texts: CorpusLike,
     iterations: int,
     output_file: str | None = None,
 ) -> None:
     output_lines: list[str] = []
-    texts_tuple = tuple(texts)
+    texts_tuple = resolve_corpus(texts)
 
     # Separate multi-glitchling and individual scenarios
     multi_scenarios = [s for s in scenarios if s in MULTI_GLITCHLING_SCENARIOS]
@@ -630,9 +643,9 @@ def run_benchmarks(
 
     # Summary
     print()
-    print("═" * 60)
+    print("=" * 60)
     print(f"  Benchmark complete: {len(scenarios)} scenario(s), {iterations} iterations each")
-    print("═" * 60)
+    print("=" * 60)
 
     if output_file:
         with open(output_file, "w", encoding="utf-8") as f:
@@ -692,8 +705,8 @@ def main(argv: list[str] | None = None) -> int:
         selected_scenarios = sorted(INDIVIDUAL_GLITCHLING_SCENARIOS)
     else:
         selected_scenarios = args.scenarios or list(SCENARIOS.keys())
-    selected_corpus = BENCHMARK_CORPORA[args.corpus]
-    run_benchmarks(selected_scenarios, selected_corpus, args.iterations, args.output)
+    corpus_source = BENCHMARK_CORPORA[args.corpus]
+    run_benchmarks(selected_scenarios, corpus_source, args.iterations, args.output)
     return 0
 
 

@@ -441,7 +441,7 @@ def test_default_gutendex_url_constant(
     """Test that DEFAULT_GUTENDEX_URL is exported and used."""
     from glitchlings.dlc.gutenberg import DEFAULT_GUTENDEX_URL, GlitchenbergAPI
 
-    assert DEFAULT_GUTENDEX_URL == "https://gutendex.devbranch.co"
+    assert DEFAULT_GUTENDEX_URL == "https://gutendex.com"
 
     # API should use default URL when not specified
     api = GlitchenbergAPI("typogre")
