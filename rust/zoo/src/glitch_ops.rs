@@ -754,7 +754,12 @@ impl GlitchOp for OcrArtifactsOp {
         // Build segment replacements
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
-        for (seg_idx, mut seg_replacements) in by_segment {
+        // Sort segment indices for deterministic processing order
+        let mut seg_indices: Vec<usize> = by_segment.keys().copied().collect();
+        seg_indices.sort_unstable();
+
+        for seg_idx in seg_indices {
+            let mut seg_replacements = by_segment.remove(&seg_idx).unwrap();
             seg_replacements.sort_by_key(|&(start, _, _)| start);
 
             let seg_text = segments[seg_idx].text();
@@ -875,7 +880,12 @@ impl GlitchOp for ZeroWidthOp {
         // Build replacement text for each affected segment
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
-        for (seg_idx, mut seg_insertions) in by_segment {
+        // Sort segment indices for deterministic processing order
+        let mut seg_indices: Vec<usize> = by_segment.keys().copied().collect();
+        seg_indices.sort_unstable();
+
+        for seg_idx in seg_indices {
+            let mut seg_insertions = by_segment.remove(&seg_idx).unwrap();
             // Sort by char_idx in ascending order to build string left to right
             seg_insertions.sort_unstable_by_key(|(char_idx, _)| *char_idx);
 
@@ -1437,7 +1447,12 @@ impl GlitchOp for QuotePairsOp {
         // Build segment replacements
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
-        for (seg_idx, mut seg_replacements) in by_segment {
+        // Sort segment indices for deterministic processing order
+        let mut seg_indices: Vec<usize> = by_segment.keys().copied().collect();
+        seg_indices.sort_unstable();
+
+        for seg_idx in seg_indices {
+            let mut seg_replacements = by_segment.remove(&seg_idx).unwrap();
             seg_replacements.sort_by_key(|&(start, _, _)| start);
 
             let seg_text = segments[seg_idx].text();
