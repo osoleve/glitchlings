@@ -1,9 +1,9 @@
 name: Publish to TestPyPI
 
 on:
-  push:
+  pull_request:
     branches:
-      - test
+      - main
   workflow_dispatch:
 
 concurrency:
