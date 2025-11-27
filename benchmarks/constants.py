@@ -55,6 +55,18 @@ OPERATION_MODULES: Dict[str, str] = {
 }
 
 
+PEDANT_STONES: Dict[str, str] = {
+    "whomst": "Whom Stone",
+    "fewerling": "Fewerite",
+    "aetheria": "Coeurite",
+    "apostrofae": "Curlite",
+    "subjunic": "Subjunctite",
+    "commama": "Oxfordium",
+    "kiloa": "Metricite",
+    "correctopus": "Orthogonite",
+}
+
+
 def module_for_operation(op_type: str) -> ModuleType:
     """Return the module that backs a named pipeline operation."""
     try:
@@ -135,12 +147,22 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "ekkokin_only": "Ekkokin-only benchmark for homophone substitution.",
     "hokey_only": "Hokey-only benchmark for expressive lengthening.",
     "jargoyle_only": "Jargoyle-only benchmark for dictionary-based synonym substitution.",
+    # Pedant evolution scenarios
+    "pedant_whomst": "Pedant Whomst benchmark for who→whom correction.",
+    "pedant_fewerling": "Pedant Fewerling benchmark for less→fewer correction.",
+    "pedant_aetheria": "Pedant Aetheria benchmark for ligature and diaeresis restoration.",
+    "pedant_apostrofae": "Pedant Apostrofae benchmark for curly quote normalization.",
+    "pedant_subjunic": "Pedant Subjunic benchmark for subjunctive correction.",
+    "pedant_commama": "Pedant Commama benchmark for Oxford comma insertion.",
+    "pedant_kiloa": "Pedant Kiloa benchmark for imperial→metric conversion.",
+    "pedant_correctopus": "Pedant Correctopus benchmark for uppercase transformation.",
 }
 
 
 __all__ = [
     "Descriptor",
     "OPERATION_MODULES",
+    "PEDANT_STONES",
     "module_for_operation",
     "BASE_DESCRIPTORS",
     "DEFAULT_ITERATIONS",

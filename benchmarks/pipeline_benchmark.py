@@ -215,6 +215,39 @@ def _jargoyle_only_descriptors() -> list[Descriptor]:
     ]
 
 
+# Pedant evolution scenarios
+def _pedant_whomst_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Whomst", "operation": {"type": "pedant", "stone": "Whom Stone"}}]
+
+
+def _pedant_fewerling_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Fewerling", "operation": {"type": "pedant", "stone": "Fewerite"}}]
+
+
+def _pedant_aetheria_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Aetheria", "operation": {"type": "pedant", "stone": "Coeurite"}}]
+
+
+def _pedant_apostrofae_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Apostrofae", "operation": {"type": "pedant", "stone": "Curlite"}}]
+
+
+def _pedant_subjunic_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Subjunic", "operation": {"type": "pedant", "stone": "Subjunctite"}}]
+
+
+def _pedant_commama_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Commama", "operation": {"type": "pedant", "stone": "Oxfordium"}}]
+
+
+def _pedant_kiloa_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Kiloa", "operation": {"type": "pedant", "stone": "Metricite"}}]
+
+
+def _pedant_correctopus_descriptors() -> list[Descriptor]:
+    return [{"name": "Pedant-Correctopus", "operation": {"type": "pedant", "stone": "Orthogonite"}}]
+
+
 SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     # Multi-glitchling scenarios
     "baseline": _baseline_descriptors,
@@ -233,6 +266,15 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     "ekkokin_only": _ekkokin_only_descriptors,
     "hokey_only": _hokey_only_descriptors,
     "jargoyle_only": _jargoyle_only_descriptors,
+    # Pedant evolution scenarios
+    "pedant_whomst": _pedant_whomst_descriptors,
+    "pedant_fewerling": _pedant_fewerling_descriptors,
+    "pedant_aetheria": _pedant_aetheria_descriptors,
+    "pedant_apostrofae": _pedant_apostrofae_descriptors,
+    "pedant_subjunic": _pedant_subjunic_descriptors,
+    "pedant_commama": _pedant_commama_descriptors,
+    "pedant_kiloa": _pedant_kiloa_descriptors,
+    "pedant_correctopus": _pedant_correctopus_descriptors,
 }
 
 # Categorize scenarios for display purposes
@@ -249,6 +291,14 @@ INDIVIDUAL_GLITCHLING_SCENARIOS = {
     "ekkokin_only",
     "hokey_only",
     "jargoyle_only",
+    "pedant_whomst",
+    "pedant_fewerling",
+    "pedant_aetheria",
+    "pedant_apostrofae",
+    "pedant_subjunic",
+    "pedant_commama",
+    "pedant_kiloa",
+    "pedant_correctopus",
 }
 
 # Display names for individual glitchlings
@@ -264,6 +314,14 @@ INDIVIDUAL_DISPLAY_NAMES = {
     "ekkokin_only": "Ekkokin",
     "hokey_only": "Hokey",
     "jargoyle_only": "Jargoyle",
+    "pedant_whomst": "Whomst",
+    "pedant_fewerling": "Fewerling",
+    "pedant_aetheria": "Aetheria",
+    "pedant_apostrofae": "Apostrofae",
+    "pedant_subjunic": "Subjunic",
+    "pedant_commama": "Commama",
+    "pedant_kiloa": "Kiloa",
+    "pedant_correctopus": "Correctopus",
 }
 
 # Grouped display order for individual glitchlings
@@ -271,6 +329,19 @@ INDIVIDUAL_GROUPS: list[tuple[str, list[str]]] = [
     ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only", "scannequin_only"]),
     ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "hokey_only", "jargoyle_only"]),
     ("Rushmore Variants", ["rushmore_delete", "rushmore_duplicate", "rushmore_swap"]),
+    (
+        "Pedant Evolutions",
+        [
+            "pedant_whomst",
+            "pedant_fewerling",
+            "pedant_aetheria",
+            "pedant_apostrofae",
+            "pedant_subjunic",
+            "pedant_commama",
+            "pedant_kiloa",
+            "pedant_correctopus",
+        ],
+    ),
 ]
 
 
