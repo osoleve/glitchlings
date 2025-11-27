@@ -4,7 +4,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PySequence, PyString};
 use pyo3::Bound;
 use serde::Deserialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
 use crate::text_buffer::TextBuffer;
@@ -23,14 +23,20 @@ struct HomoglyphEntry {
     alias: String,
 }
 
-static HOMOGLYPH_TABLE: Lazy<HashMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| {
-    let raw: HashMap<String, Vec<RawHomoglyphEntry>> =
+static HOMOGLYPH_TABLE: Lazy<BTreeMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| {
+    // Parse JSON into a BTreeMap for deterministic key ordering during iteration.
+    // serde_json will deserialize objects into BTreeMap if the target type is BTreeMap.
+    let raw: BTreeMap<String, Vec<RawHomoglyphEntry>> =
         serde_json::from_str(RAW_HOMOGLYPHS).expect("mim1c homoglyph table should be valid JSON");
-    let mut table: HashMap<char, Vec<HomoglyphEntry>> = HashMap::new();
-    for (key, entries) in raw {
+    let mut table: BTreeMap<char, Vec<HomoglyphEntry>> = BTreeMap::new();
+
+    // BTreeMap iterates in sorted key order, so we don't need explicit sorting.
+    // Multiple JSON keys can map to the same first character (e.g., "E" and "E̸"
+    // both map to 'E'), and BTreeMap ensures consistent ordering.
+    for (key, entries) in &raw {
         if let Some(ch) = key.chars().next() {
             let candidates: Vec<HomoglyphEntry> = entries
-                .into_iter()
+                .iter()
                 .filter_map(|entry| {
                     let mut chars = entry.c.chars();
                     let glyph = chars.next()?;
@@ -39,15 +45,24 @@ static HOMOGLYPH_TABLE: Lazy<HashMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| 
                     }
                     Some(HomoglyphEntry {
                         glyph,
-                        alias: entry.alias,
+                        alias: entry.alias.clone(),
                     })
                 })
                 .collect();
             if !candidates.is_empty() {
-                table.insert(ch, candidates);
+                // Extend rather than replace to accumulate entries from all
+                // related keys (e.g., "E" and "E̸" both contribute to 'E').
+                table.entry(ch).or_default().extend(candidates);
             }
         }
     }
+
+    // Sort each character's entries by glyph for fully deterministic ordering.
+    // This ensures identical RNG behavior across process invocations.
+    for entries in table.values_mut() {
+        entries.sort_by_key(|e| e.glyph);
+    }
+
     table
 });
 
@@ -175,7 +190,12 @@ impl GlitchOp for Mim1cOp {
         // Build replacement map: segment_index -> modified_text
         let mut segment_replacements: Vec<(usize, String)> = Vec::new();
 
-        for (seg_idx, mut seg_replacements) in by_segment {
+        // Sort segment indices for deterministic processing order
+        let mut seg_indices: Vec<usize> = by_segment.keys().copied().collect();
+        seg_indices.sort_unstable();
+
+        for seg_idx in seg_indices {
+            let mut seg_replacements = by_segment.remove(&seg_idx).unwrap();
             // Sort by offset in reverse to replace from end to start
             seg_replacements.sort_unstable_by_key(|(offset, _)| *offset);
 
@@ -368,5 +388,51 @@ mod tests {
         }
 
         assert_eq!(differences, vec![target_char_index]);
+    }
+
+    #[test]
+    fn homoglyph_table_is_sorted_by_glyph() {
+        // Verify that the homoglyph table entries are sorted by glyph codepoint
+        for (ch, entries) in HOMOGLYPH_TABLE.iter() {
+            let mut prev_glyph: Option<char> = None;
+            for (idx, entry) in entries.iter().enumerate() {
+                if let Some(prev) = prev_glyph {
+                    assert!(
+                        entry.glyph >= prev,
+                        "Entries for '{}' not sorted: entry {} (glyph '{}' U+{:04X}) should come after entry at previous position (glyph '{}' U+{:04X})",
+                        ch, idx, entry.glyph, entry.glyph as u32, prev, prev as u32
+                    );
+                }
+                prev_glyph = Some(entry.glyph);
+            }
+        }
+    }
+
+    #[test]
+    fn e_homoglyphs_have_expected_order() {
+        let entries = HOMOGLYPH_TABLE.get(&'E').expect("E should be in table");
+        // Filter to LATIN and GREEK only
+        let filtered: Vec<_> = entries
+            .iter()
+            .filter(|e| e.alias == "LATIN" || e.alias == "GREEK")
+            .collect();
+        
+        // Should include Ɇ (582), Ε (917), Ｅ (65317) in sorted order
+        assert!(!filtered.is_empty(), "Expected some LATIN/GREEK entries for E");
+        
+        // Print for debugging
+        for entry in &filtered {
+            eprintln!("E -> '{}' (U+{:04X}) alias={}", entry.glyph, entry.glyph as u32, entry.alias);
+        }
+        
+        // Verify sorted order
+        for i in 1..filtered.len() {
+            assert!(
+                filtered[i].glyph >= filtered[i-1].glyph,
+                "Entries not sorted: {} comes after {}",
+                filtered[i].glyph as u32,
+                filtered[i-1].glyph as u32
+            );
+        }
     }
 }
