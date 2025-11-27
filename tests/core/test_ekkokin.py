@@ -12,7 +12,7 @@ ekkokin_module = importlib.import_module("glitchlings.zoo.ekkokin")
 glitchlings_package = importlib.import_module("glitchlings")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-HOMOPHONE_SOURCE = PROJECT_ROOT / "assets" / "wiki_homophones.txt"
+HOMOPHONE_SOURCE = PROJECT_ROOT / "src" / "glitchlings" / "assets" / "wiki_homophones.txt"
 
 
 def _parse_homophones(line: str) -> set[str]:

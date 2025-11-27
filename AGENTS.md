@@ -27,7 +27,7 @@ After completing a task, always:
   - `core.py` defines the `Glitchling` base class, `AttackWave`/`AttackOrder` enums, deterministic seed derivation, and the Rust pipeline bridge.
   - `typogre.py`, `mim1c.py`, `rushmore.py`, `redactyl.py`, `jargoyle.py`, `scannequin.py`, and `zeedub.py` provide concrete glitchlings. Word-level agents accept the canonical `rate` parameter and expose the `unweighted` toggle, with Rushmore covering duplication and adjacent swap modes.
 - **`src/glitchlings/util/`** - Shared helpers including `SAMPLE_TEXT`, keyboard-neighbour layouts, diff utilities, and rate parsing helpers.
-- **`assets/lexemes.json`** - Bundled dictionaries for Jargoyle (synonyms, colors, corporate, academic).
+- **`assets/lexemes/`** - Per-dictionary Jargoyle lexeme files (synonyms, colors, corporate, academic, cyberpunk, lovecraftian). Drop additional `*.json` files here to extend the bundle.
 - **`src/glitchlings/dlc/prime/`** - Optional DLC integration with the `verifiers` environments (install via `pip install -e .[prime]`).
 - **`benchmarks/`** - Performance harnesses (`pipeline_benchmark.py`, etc.) that exercise both the Python and Rust execution paths.
 - **`docs/`** - Field guide, development notes, release process, and per-glitchling reference pages. Changes to behaviour should update the relevant doc alongside code.

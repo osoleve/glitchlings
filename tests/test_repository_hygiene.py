@@ -10,13 +10,20 @@ except ModuleNotFoundError:  # Python<3.11
 
 from glitchlings import assets
 from glitchlings.assets import PIPELINE_ASSET_SPECS, PIPELINE_ASSETS
-from glitchlings.dev.sync_assets import sync_assets
+
+
+def _rel_files(root: Path) -> dict[str, bytes]:
+    return {
+        str(path.relative_to(root)): path.read_bytes()
+        for path in root.rglob("*")
+        if path.is_file()
+    }
 
 
 def test_apostrofae_pairs_asset_unique_source():
     """Verify apostrofae_pairs.json has a single canonical source."""
     repo_root = Path(__file__).resolve().parents[1]
-    canonical_asset = repo_root / "assets/apostrofae_pairs.json"
+    canonical_asset = repo_root / "src/glitchlings/assets/apostrofae_pairs.json"
     duplicate_asset = repo_root / "rust/zoo/assets/apostrofae_pairs.json"
 
     assert canonical_asset.exists(), "missing Apostrofae lookup asset"
@@ -26,7 +33,7 @@ def test_apostrofae_pairs_asset_unique_source():
 def test_ocr_confusions_asset_unique_source():
     """Verify OCR confusion table has a single canonical source."""
     repo_root = Path(__file__).resolve().parents[1]
-    canonical_asset = repo_root / "assets/ocr_confusions.tsv"
+    canonical_asset = repo_root / "src/glitchlings/assets/ocr_confusions.tsv"
     duplicate_asset = repo_root / "src/glitchlings/zoo/ocr_confusions.tsv"
     legacy_asset = repo_root / "rust/zoo/assets/ocr_confusions.tsv"
 
@@ -38,7 +45,7 @@ def test_ocr_confusions_asset_unique_source():
 def test_hokey_assets_shared_source():
     """Verify Hokey assets have a single canonical source."""
     repo_root = Path(__file__).resolve().parents[1]
-    canonical_asset = repo_root / "assets/hokey_assets.json"
+    canonical_asset = repo_root / "src/glitchlings/assets/hokey_assets.json"
     legacy_asset = repo_root / "src/glitchlings/data/hokey_assets.json"
     rust_duplicate_asset = repo_root / "rust/zoo/assets/hokey_assets.json"
 
@@ -65,7 +72,7 @@ def test_pipeline_assets_packaged_for_distribution():
     manifest_in = (repo_root / "MANIFEST.in").read_text(encoding="utf-8")
     assert "src/glitchlings/assets" in manifest_in
 
-    canonical_dir = repo_root / "assets"
+    canonical_dir = repo_root / "src/glitchlings/assets"
     packaged_dir = repo_root / "src/glitchlings/assets"
 
     manifest_candidate = "assets/pipeline_assets.json"
@@ -76,13 +83,26 @@ def test_pipeline_assets_packaged_for_distribution():
         packaged_path = packaged_dir / asset_name
         canonical_path = canonical_dir / asset_name
         assert packaged_path.exists(), f"packaged asset missing: {asset_name}"
-        assert canonical_path.read_bytes() == packaged_path.read_bytes(), (
-            f"packaged asset {asset_name} diverges from canonical copy"
-        )
-        candidate = f"assets/{asset_name}"
-        assert any(fnmatch.fnmatch(candidate, pattern) for pattern in package_patterns), (
-            f"package-data patterns missing coverage for {asset_name}"
-        )
+        if canonical_path.is_dir():
+            assert packaged_path.is_dir(), f"packaged asset {asset_name} should be a directory"
+            canonical_files = _rel_files(canonical_path)
+            packaged_files = _rel_files(packaged_path)
+            assert canonical_files == packaged_files, (
+                f"packaged asset {asset_name} diverges from canonical copy"
+            )
+            for relative_file in canonical_files:
+                candidate = f"assets/{asset_name}/{relative_file}"
+                assert any(fnmatch.fnmatch(candidate, pattern) for pattern in package_patterns), (
+                    f"package-data patterns missing coverage for {asset_name}/{relative_file}"
+                )
+        else:
+            assert canonical_path.read_bytes() == packaged_path.read_bytes(), (
+                f"packaged asset {asset_name} diverges from canonical copy"
+            )
+            candidate = f"assets/{asset_name}"
+            assert any(fnmatch.fnmatch(candidate, pattern) for pattern in package_patterns), (
+                f"package-data patterns missing coverage for {asset_name}"
+            )
 
 
 def test_pipeline_descriptors_expose_types():
@@ -102,7 +122,7 @@ def test_pipeline_descriptors_expose_types():
 def test_pipeline_assets_exist_in_canonical_directory():
     """Verify all assets listed in rust/zoo/build.rs exist in canonical assets/ directory."""
     repo_root = Path(__file__).resolve().parents[1]
-    assets_dir = repo_root / "assets"
+    assets_dir = repo_root / "src/glitchlings/assets"
 
     for asset_name in PIPELINE_ASSETS:
         asset_path = assets_dir / asset_name
@@ -129,8 +149,3 @@ def test_no_legacy_rust_assets_present():
 
     residual = [path for path in rust_asset_dir.iterdir() if path.is_file()]
     assert not residual, "legacy Rust asset directory should be empty"
-
-
-def test_sync_assets_check_passes():
-    """Verify asset synchronization check passes."""
-    assert sync_assets(check=True, quiet=True)

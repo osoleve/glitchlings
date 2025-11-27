@@ -1,0 +1,23 @@
+{
+  "_meta": {
+    "description": "Cosmic horror vocabulary drawn from Lovecraftian themes"
+  },
+  "ancient": ["eldritch", "primordial", "cyclopean", "antediluvian", "primeval"],
+  "book": ["tome", "grimoire", "codex", "forbidden text", "black book"],
+  "city": ["sunken city", "cyclopean ruin", "drowned metropolis", "forgotten port", "impossible city"],
+  "cult": ["esoteric order", "coven", "sect", "brotherhood", "obscure faith"],
+  "dream": ["nightmare", "vision", "reverie", "somnolent haze", "dreamscape"],
+  "fear": ["dread", "terror", "horror", "nameless fright", "cold panic"],
+  "fish": ["deep one", "scaled thing", "gilled horror", "abyssal spawn", "reef lurker"],
+  "monster": ["abomination", "eldritch thing", "nameless mass", "horror", "spawn"],
+  "night": ["moonless night", "voided dusk", "starless dark", "midnight", "black sky"],
+  "ocean": ["abyss", "black tide", "depths", "churning sea", "cyclopean surf"],
+  "portal": ["gateway", "rending", "breach", "threshold", "shimmering tear"],
+  "ritual": ["invocation", "rite", "ceremony", "calling", "summoning"],
+  "shadow": ["shade", "gloom", "murk", "umbra", "stalking dark"],
+  "sound": ["whisper", "chant", "ululation", "distant piping", "maddening call"],
+  "strange": ["alien", "unearthly", "uncanny", "eldritch", "inexplicable"],
+  "tentacle": ["tendrils", "appendage", "writhing limb", "coiling arm", "sucker-lined coil"],
+  "void": ["vastness", "nothingness", "outer dark", "cosmic gulf", "endless black"],
+  "whisper": ["hiss", "sibilance", "breathless murmur", "echoing susurrus", "distant call"]
+}

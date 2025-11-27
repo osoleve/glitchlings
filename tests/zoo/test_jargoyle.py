@@ -62,6 +62,18 @@ class TestJargoyleDriftFunction:
         # Should replace color words
         assert "red" not in result.lower() or "blue" not in result.lower()
 
+    def test_jargoyle_drift_cyberpunk_dictionary(self) -> None:
+        """Test cyberpunk dictionary is loaded and applied."""
+        text = "The hacker breached the network."
+        result = jargoyle_drift(text, lexemes="cyberpunk", rate=1.0, seed=7)
+        assert result != text
+
+    def test_jargoyle_drift_lovecraftian_dictionary(self) -> None:
+        """Test lovecraftian dictionary is loaded and applied."""
+        text = "The ancient ritual summoned fear."
+        result = jargoyle_drift(text, lexemes="lovecraftian", rate=1.0, seed=7)
+        assert result != text
+
     def test_jargoyle_drift_preserves_structure(self) -> None:
         """Test that sentence structure is preserved."""
         text = "The big dog ran fast."
@@ -149,6 +161,8 @@ class TestListLexemeDictionaries:
         dicts = list_lexeme_dictionaries()
         assert "synonyms" in dicts
         assert "colors" in dicts
+        assert "cyberpunk" in dicts
+        assert "lovecraftian" in dicts
 
     def test_list_does_not_contain_meta(self) -> None:
         """Test that _meta sections are excluded."""

@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use flate2::read::GzDecoder;
 use serde::Deserialize;
+use serde_json::{json, Map as JsonMap, Value as JsonValue};
 use std::env;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
@@ -49,6 +50,7 @@ fn main() {
 
     stage_pipeline_assets(&manifest_dir, &out_dir, &manifest)
         .expect("failed to stage pipeline assets for compilation");
+    build_lexeme_bundle(&manifest_dir, &out_dir).expect("failed to build lexeme bundle");
     pyo3_build_config::add_extension_module_link_args();
 
     // Only perform custom Python linking on non-Linux platforms.
@@ -94,6 +96,22 @@ fn stage_pipeline_assets(
             AssetKind::Compressed => {
                 stage_compressed_asset(manifest_dir, out_dir, &asset.name, asset.staged_name())?
             }
+        }
+    }
+
+    Ok(())
+}
+
+fn emit_rerun_if_changed(path: &Path) -> io::Result<()> {
+    if path.is_file() {
+        println!("cargo:rerun-if-changed={}", path.display());
+        return Ok(());
+    }
+
+    if path.is_dir() {
+        for entry in fs::read_dir(path)? {
+            let entry = entry?;
+            emit_rerun_if_changed(&entry.path())?;
         }
     }
 
@@ -177,7 +195,7 @@ fn query_python(python: &OsStr, command: &str) -> Option<String> {
 }
 
 fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
-    let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
+    let canonical_repo_asset = manifest_dir.join("../../src/glitchlings/assets").join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
@@ -188,10 +206,18 @@ fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Res
         ));
     }
 
-    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
+    emit_rerun_if_changed(&canonical_repo_asset)?;
 
     fs::create_dir_all(out_dir)?;
-    fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
+    let staged_target = out_dir.join(asset_name);
+    if canonical_repo_asset.is_dir() {
+        copy_directory(&canonical_repo_asset, &staged_target)?;
+    } else {
+        if let Some(parent) = staged_target.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::copy(&canonical_repo_asset, staged_target)?;
+    }
     Ok(())
 }
 
@@ -201,7 +227,7 @@ fn stage_compressed_asset(
     asset_name: &str,
     output_name: &str,
 ) -> io::Result<()> {
-    let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
+    let canonical_repo_asset = manifest_dir.join("../../src/glitchlings/assets").join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
@@ -212,7 +238,7 @@ fn stage_compressed_asset(
         ));
     }
 
-    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
+    emit_rerun_if_changed(&canonical_repo_asset)?;
 
     fs::create_dir_all(out_dir)?;
     let mut encoded = String::new();
@@ -228,7 +254,92 @@ fn stage_compressed_asset(
         .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
 
     let mut decoder = GzDecoder::new(Cursor::new(decoded));
-    let mut output = File::create(out_dir.join(output_name))?;
+    let output_path = out_dir.join(output_name);
+    if let Some(parent) = output_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let mut output = File::create(output_path)?;
     io::copy(&mut decoder, &mut output)?;
+    Ok(())
+}
+
+fn copy_directory(source: &Path, target: &Path) -> io::Result<()> {
+    if target.exists() {
+        fs::remove_dir_all(target)?;
+    }
+    fs::create_dir_all(target)?;
+
+    for entry in fs::read_dir(source)? {
+        let entry = entry?;
+        let path = entry.path();
+        let destination = target.join(entry.file_name());
+
+        if path.is_dir() {
+            copy_directory(&path, &destination)?;
+        } else {
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            fs::copy(&path, &destination)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn build_lexeme_bundle(manifest_dir: &Path, out_dir: &Path) -> io::Result<()> {
+    let lexeme_dir = manifest_dir.join("../../src/glitchlings/assets/lexemes");
+    if !lexeme_dir.is_dir() {
+        return Err(io::Error::new(
+            ErrorKind::NotFound,
+            format!(
+                "missing lexeme directory; expected {}",
+                lexeme_dir.display()
+            ),
+        ));
+    }
+
+    emit_rerun_if_changed(&lexeme_dir)?;
+
+    let mut bundle: JsonMap<String, JsonValue> = JsonMap::new();
+    bundle.insert(
+        "_meta".to_string(),
+        json!({
+            "version": "1.2.0",
+            "description": "Bundled lexeme dictionaries for Jargoyle drift operations (generated from assets/lexemes/*.json)",
+            "format": "Each file under assets/lexemes corresponds to one dictionary; keys map to arrays of replacements."
+        }),
+    );
+
+    let mut entries: Vec<PathBuf> = fs::read_dir(&lexeme_dir)?
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.extension().map_or(false, |ext| ext == "json"))
+        .collect();
+    entries.sort();
+
+    for path in entries {
+        let file_stem = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .map(|stem| stem.to_ascii_lowercase())
+            .ok_or_else(|| {
+                io::Error::new(
+                    ErrorKind::InvalidData,
+                    format!("invalid lexeme file name {}", path.display()),
+                )
+            })?;
+
+        let contents = fs::read_to_string(&path)?;
+        let value: JsonValue = serde_json::from_str(&contents)
+            .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+        bundle.insert(file_stem, value);
+    }
+
+    fs::create_dir_all(out_dir)?;
+    let output_path = out_dir.join("lexemes.json");
+    let rendered = serde_json::to_string(&bundle)
+        .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))?;
+    fs::write(&output_path, rendered)?;
     Ok(())
 }

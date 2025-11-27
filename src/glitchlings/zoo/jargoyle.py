@@ -6,6 +6,11 @@ Multiple dictionaries are supported:
 - "synonyms": General synonym substitution
 - "corporate": Business jargon alternatives
 - "academic": Scholarly word substitutions
+- "cyberpunk": Neon cyberpunk slang and gadgetry
+- "lovecraftian": Cosmic horror terminology
+You can also drop additional dictionaries into ``assets/lexemes`` to make
+them available without modifying the code. The backend discovers any
+``*.json`` file in that directory at runtime.
 
 Two modes are available:
 - "literal": First entry in each word's alternatives (deterministic mapping)
@@ -14,6 +19,9 @@ Two modes are available:
 
 from __future__ import annotations
 
+import os
+from importlib import resources
+from pathlib import Path
 from typing import Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
@@ -25,8 +33,32 @@ from glitchlings.internal.rust_ffi import (
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
-# Valid dictionary names
-VALID_LEXEMES = ("colors", "synonyms", "corporate", "academic")
+_LEXEME_ENV_VAR = "GLITCHLINGS_LEXEME_DIR"
+
+
+def _configure_lexeme_directory() -> Path | None:
+    """Expose the bundled lexeme directory to the Rust backend via an env var."""
+
+    try:
+        lexeme_root = resources.files("glitchlings.assets.lexemes")
+    except (ModuleNotFoundError, AttributeError):
+        return None
+
+    try:
+        with resources.as_file(lexeme_root) as resolved:
+            path = Path(resolved)
+    except FileNotFoundError:
+        return None
+
+    if not path.is_dir():
+        return None
+
+    os.environ.setdefault(_LEXEME_ENV_VAR, str(path))
+    return path
+
+
+_configure_lexeme_directory()
+
 DEFAULT_LEXEMES = "synonyms"
 
 # Valid modes
@@ -35,13 +67,35 @@ VALID_MODES = ("literal", "drift")
 DEFAULT_MODE: JargoyleMode = "drift"
 
 
+def _available_lexemes() -> list[str]:
+    return sorted({name.lower() for name in list_lexeme_dictionaries_rust()})
+
+
+def _validate_lexemes(name: str) -> str:
+    normalized = name.lower()
+    available = _available_lexemes()
+    if normalized not in available:
+        raise ValueError(f"Invalid lexemes '{name}'. Must be one of: {', '.join(available)}")
+    return normalized
+
+
+def _validate_mode(mode: JargoyleMode | str) -> JargoyleMode:
+    normalized = mode.lower()
+    if normalized not in VALID_MODES:
+        raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(VALID_MODES)}")
+    return cast(JargoyleMode, normalized)
+
+
+VALID_LEXEMES = tuple(_available_lexemes())
+
+
 def list_lexeme_dictionaries() -> list[str]:
     """Return the list of available lexeme dictionaries.
 
     Returns:
         List of dictionary names that can be used with Jargoyle.
     """
-    return list_lexeme_dictionaries_rust()
+    return _available_lexemes()
 
 
 def jargoyle_drift(
@@ -68,14 +122,8 @@ def jargoyle_drift(
     Raises:
         ValueError: If lexemes or mode is invalid.
     """
-    # Validate inputs
-    normalized_lexemes = lexemes.lower()
-    if normalized_lexemes not in VALID_LEXEMES:
-        raise ValueError(f"Invalid lexemes '{lexemes}'. Must be one of: {', '.join(VALID_LEXEMES)}")
-
-    normalized_mode = mode.lower()
-    if normalized_mode not in VALID_MODES:
-        raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(VALID_MODES)}")
+    normalized_lexemes = _validate_lexemes(lexemes)
+    normalized_mode = _validate_mode(mode)
 
     effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else float(rate)
     resolved_seed = resolve_seed(seed, None) if normalized_mode == "drift" else None
@@ -94,10 +142,13 @@ class Jargoyle(Glitchling):
 
     Jargoyle replaces words with alternatives from one of several dictionaries:
 
-    - **colors**: Swap color terms (e.g., "red" → "blue").
-    - **synonyms**: General synonym substitution (e.g., "fast" → "rapid").
+    - **colors**: Swap color terms (e.g., "red" -> "blue").
+    - **synonyms**: General synonym substitution (e.g., "fast" -> "rapid").
     - **corporate**: Business jargon alternatives.
     - **academic**: Scholarly word substitutions.
+    - **cyberpunk**: Neon cyberpunk slang and gadgetry.
+    - **lovecraftian**: Cosmic horror terminology.
+    - **custom**: Any ``*.json`` dictionary placed in ``assets/lexemes``.
 
     Two modes are supported:
 
@@ -128,8 +179,8 @@ class Jargoyle(Glitchling):
         """Initialize Jargoyle with the specified dictionary and mode.
 
         Args:
-            lexemes: Name of the dictionary to use. One of:
-                "colors", "synonyms", "corporate", "academic".
+            lexemes: Name of the dictionary to use. See ``list_lexeme_dictionaries()``
+                for the full, dynamic list (including any custom ``*.json`` files).
             mode: Transformation mode. "literal" for deterministic swaps,
                 "drift" for random selection.
             rate: Probability of transforming each matching word (0.0 to 1.0).
@@ -137,15 +188,8 @@ class Jargoyle(Glitchling):
             seed: Seed for deterministic randomness.
         """
         # Validate inputs
-        normalized_lexemes = lexemes.lower()
-        if normalized_lexemes not in VALID_LEXEMES:
-            raise ValueError(
-                f"Invalid lexemes '{lexemes}'. Must be one of: {', '.join(VALID_LEXEMES)}"
-            )
-
-        normalized_mode = mode.lower()
-        if normalized_mode not in VALID_MODES:
-            raise ValueError(f"Invalid mode '{mode}'. Must be one of: {', '.join(VALID_MODES)}")
+        normalized_lexemes = _validate_lexemes(lexemes)
+        normalized_mode = _validate_mode(mode)
 
         effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else rate
 

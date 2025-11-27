@@ -1,0 +1,716 @@
+{
+  "_meta": {
+    "description": "Corporate jargon and buzzword substitutions"
+  },
+  "actionable": [
+    "practical",
+    "implementable",
+    "usable",
+    "applicable",
+    "executable",
+    "concrete"
+  ],
+  "agile": [
+    "nimble",
+    "flexible",
+    "adaptive",
+    "responsive",
+    "dynamic",
+    "iterative"
+  ],
+  "alignment": [
+    "agreement",
+    "synchronization",
+    "consensus",
+    "coordination"
+  ],
+  "appetite": [
+    "willingness",
+    "interest",
+    "desire",
+    "tolerance"
+  ],
+  "ask": [
+    "request",
+    "requirement",
+    "need",
+    "demand"
+  ],
+  "baked in": [
+    "built-in",
+    "integrated",
+    "inherent",
+    "embedded"
+  ],
+  "ballpark": [
+    "estimate",
+    "approximation",
+    "rough figure",
+    "range"
+  ],
+  "bandwidth": [
+    "capacity",
+    "resources",
+    "availability",
+    "time",
+    "cycles",
+    "headspace"
+  ],
+  "benchmark": [
+    "standard",
+    "baseline",
+    "reference point",
+    "yardstick",
+    "metric"
+  ],
+  "best practices": [
+    "proven methods",
+    "recommended approaches",
+    "industry standards"
+  ],
+  "bleeding edge": [
+    "cutting edge",
+    "state-of-the-art",
+    "avant-garde",
+    "frontier"
+  ],
+  "boil the ocean": [
+    "overreach",
+    "take on too much",
+    "bite off more than you can chew"
+  ],
+  "boilerplate": [
+    "standard language",
+    "template",
+    "stock text",
+    "canned response"
+  ],
+  "bottleneck": [
+    "constraint",
+    "chokepoint",
+    "limitation",
+    "impediment"
+  ],
+  "brownfield": [
+    "existing system",
+    "legacy",
+    "incumbent",
+    "established"
+  ],
+  "burn rate": [
+    "spending rate",
+    "cash consumption",
+    "expenditure velocity"
+  ],
+  "buy-in": [
+    "agreement",
+    "support",
+    "approval",
+    "acceptance",
+    "endorsement"
+  ],
+  "cadence": [
+    "rhythm",
+    "frequency",
+    "pace",
+    "schedule"
+  ],
+  "churn": [
+    "turnover",
+    "attrition",
+    "loss",
+    "rotation",
+    "change"
+  ],
+  "circle back": [
+    "follow up",
+    "revisit",
+    "return to",
+    "reconnect"
+  ],
+  "core competency": [
+    "strength",
+    "expertise",
+    "specialty",
+    "forte"
+  ],
+  "deck": [
+    "presentation",
+    "slides",
+    "powerpoint",
+    "pitch",
+    "proposal"
+  ],
+  "deep dive": [
+    "thorough analysis",
+    "detailed examination",
+    "in-depth review"
+  ],
+  "deliverable": [
+    "output",
+    "result",
+    "product",
+    "outcome",
+    "artifact",
+    "work product"
+  ],
+  "delta": [
+    "change",
+    "difference",
+    "variance",
+    "gap"
+  ],
+  "disambiguate": [
+    "clarify",
+    "distinguish",
+    "differentiate",
+    "specify"
+  ],
+  "disrupt": [
+    "innovate",
+    "revolutionize",
+    "transform",
+    "shake",
+    "upend",
+    "reimagine"
+  ],
+  "dogfooding": [
+    "internal testing",
+    "using your own product",
+    "self-testing"
+  ],
+  "double-click": [
+    "examine more closely",
+    "dive deeper",
+    "elaborate on"
+  ],
+  "drill down": [
+    "examine closely",
+    "investigate",
+    "get into the weeds",
+    "unpack"
+  ],
+  "ecosystem": [
+    "environment",
+    "network",
+    "community",
+    "system",
+    "landscape",
+    "sphere"
+  ],
+  "empower": [
+    "enable",
+    "authorize",
+    "strengthen",
+    "equip",
+    "uplift",
+    "unleash"
+  ],
+  "evergreen": [
+    "perpetual",
+    "ongoing",
+    "timeless",
+    "always relevant"
+  ],
+  "future-proof": [
+    "sustainable",
+    "adaptable",
+    "forward-compatible",
+    "long-lasting"
+  ],
+  "go-to-market": [
+    "launch strategy",
+    "commercialization",
+    "market entry"
+  ],
+  "granular": [
+    "detailed",
+    "specific",
+    "fine-grained",
+    "in-depth"
+  ],
+  "greenfield": [
+    "new territory",
+    "blank slate",
+    "fresh start",
+    "untapped"
+  ],
+  "guardrails": [
+    "guidelines",
+    "boundaries",
+    "constraints",
+    "limits"
+  ],
+  "hard stop": [
+    "deadline",
+    "end time",
+    "cutoff",
+    "limit",
+    "finish"
+  ],
+  "hardcoded": [
+    "fixed",
+    "inflexible",
+    "static",
+    "unchangeable"
+  ],
+  "headcount": [
+    "staff",
+    "employees",
+    "personnel",
+    "workforce"
+  ],
+  "headwind": [
+    "obstacle",
+    "challenge",
+    "resistance",
+    "barrier"
+  ],
+  "helicopter view": [
+    "high-level overview",
+    "big picture",
+    "executive summary"
+  ],
+  "holistic": [
+    "comprehensive",
+    "complete",
+    "integrated",
+    "unified",
+    "end-to-end",
+    "360-degree"
+  ],
+  "horizontal": [
+    "cross-industry",
+    "universal",
+    "broad-based",
+    "general"
+  ],
+  "ideate": [
+    "brainstorm",
+    "conceptualize",
+    "envision",
+    "think up",
+    "dream up"
+  ],
+  "impactful": [
+    "effective",
+    "influential",
+    "meaningful",
+    "significant",
+    "transformative",
+    "game-changing"
+  ],
+  "incentivize": [
+    "motivate",
+    "encourage",
+    "reward",
+    "stimulate",
+    "drive",
+    "galvanize"
+  ],
+  "initiative": [
+    "project",
+    "program",
+    "effort",
+    "undertaking",
+    "endeavor",
+    "campaign"
+  ],
+  "innovative": [
+    "creative",
+    "inventive",
+    "original",
+    "groundbreaking",
+    "cutting-edge",
+    "disruptive"
+  ],
+  "ladder up": [
+    "connect to strategy",
+    "align with goals",
+    "tie to objectives"
+  ],
+  "learnings": [
+    "lessons",
+    "insights",
+    "takeaways",
+    "knowledge",
+    "findings"
+  ],
+  "level set": [
+    "align expectations",
+    "calibrate",
+    "synchronize understanding"
+  ],
+  "leverage": [
+    "utilize",
+    "exploit",
+    "harness",
+    "capitalize",
+    "monetize",
+    "weaponize"
+  ],
+  "lift": [
+    "effort",
+    "work required",
+    "investment",
+    "undertaking"
+  ],
+  "low-hanging fruit": [
+    "easy wins",
+    "quick wins",
+    "simple opportunities"
+  ],
+  "milestone": [
+    "checkpoint",
+    "target",
+    "goal",
+    "achievement",
+    "benchmark",
+    "waypoint"
+  ],
+  "mindshare": [
+    "awareness",
+    "attention",
+    "recognition",
+    "visibility"
+  ],
+  "mission-critical": [
+    "essential",
+    "vital",
+    "crucial",
+    "indispensable"
+  ],
+  "monetize": [
+    "commercialize",
+    "capitalize",
+    "profit from",
+    "generate revenue"
+  ],
+  "move the needle": [
+    "make progress",
+    "create impact",
+    "drive results"
+  ],
+  "net new": [
+    "additional",
+    "incremental",
+    "fresh",
+    "brand new"
+  ],
+  "net-net": [
+    "bottom line",
+    "in summary",
+    "key takeaway",
+    "ultimately"
+  ],
+  "north star": [
+    "guiding principle",
+    "ultimate goal",
+    "vision",
+    "direction"
+  ],
+  "offboard": [
+    "transition out",
+    "separate",
+    "exit",
+    "wind down"
+  ],
+  "onboard": [
+    "integrate",
+    "orient",
+    "train",
+    "welcome",
+    "bring up to speed"
+  ],
+  "operationalize": [
+    "implement",
+    "execute",
+    "deploy",
+    "activate",
+    "put into practice"
+  ],
+  "optics": [
+    "perception",
+    "appearance",
+    "how it looks",
+    "public image"
+  ],
+  "optimize": [
+    "improve",
+    "enhance",
+    "refine",
+    "streamline",
+    "maximize",
+    "fine-tune"
+  ],
+  "out of pocket": [
+    "unavailable",
+    "busy",
+    "away",
+    "unreachable",
+    "offline"
+  ],
+  "pain point": [
+    "challenge",
+    "problem",
+    "issue",
+    "obstacle",
+    "friction"
+  ],
+  "paradigm": [
+    "model",
+    "framework",
+    "approach",
+    "pattern",
+    "mindset",
+    "worldview"
+  ],
+  "parking lot": [
+    "deferred items",
+    "backlog",
+    "topics to revisit"
+  ],
+  "ping": [
+    "contact",
+    "message",
+    "email",
+    "call",
+    "notify"
+  ],
+  "pivot": [
+    "shift",
+    "change",
+    "redirect",
+    "adjust",
+    "realign",
+    "reorient"
+  ],
+  "proactive": [
+    "forward-thinking",
+    "anticipatory",
+    "preemptive",
+    "preventive",
+    "ahead-of-the-curve"
+  ],
+  "reach out": [
+    "contact",
+    "email",
+    "call",
+    "message",
+    "connect"
+  ],
+  "reskill": [
+    "retrain",
+    "redevelop",
+    "transition",
+    "pivot skills"
+  ],
+  "rightsizing": [
+    "restructuring",
+    "optimization",
+    "downsizing",
+    "adjustment"
+  ],
+  "roadmap": [
+    "plan",
+    "strategy",
+    "timeline",
+    "blueprint",
+    "vision"
+  ],
+  "robust": [
+    "strong",
+    "solid",
+    "sturdy",
+    "resilient",
+    "bulletproof",
+    "enterprise-grade"
+  ],
+  "runway": [
+    "time remaining",
+    "resources available",
+    "buffer",
+    "cushion"
+  ],
+  "sanity check": [
+    "validation",
+    "verification",
+    "reality check",
+    "gut check"
+  ],
+  "scalable": [
+    "expandable",
+    "flexible",
+    "adaptable",
+    "elastic",
+    "extensible",
+    "modular"
+  ],
+  "socialize": [
+    "share widely",
+    "communicate",
+    "disseminate",
+    "spread the word"
+  ],
+  "soup-to-nuts": [
+    "end-to-end",
+    "comprehensive",
+    "complete",
+    "full-service"
+  ],
+  "stakeholder": [
+    "participant",
+    "investor",
+    "partner",
+    "contributor",
+    "decision-maker",
+    "influencer"
+  ],
+  "strategic": [
+    "planned",
+    "calculated",
+    "deliberate",
+    "tactical",
+    "mission-critical",
+    "high-level"
+  ],
+  "streamline": [
+    "simplify",
+    "optimize",
+    "improve",
+    "accelerate",
+    "automate",
+    "eliminate friction"
+  ],
+  "sunset": [
+    "phase out",
+    "retire",
+    "discontinue",
+    "end-of-life"
+  ],
+  "swimlane": [
+    "responsibility area",
+    "domain",
+    "jurisdiction",
+    "scope"
+  ],
+  "sync": [
+    "meeting",
+    "discussion",
+    "update",
+    "coordination",
+    "alignment"
+  ],
+  "synergize": [
+    "collaborate",
+    "integrate",
+    "align",
+    "converge",
+    "harmonize",
+    "coordinate"
+  ],
+  "synergy": [
+    "collaboration",
+    "cooperation",
+    "teamwork",
+    "partnership",
+    "alignment",
+    "convergence"
+  ],
+  "table stakes": [
+    "minimum requirements",
+    "baseline",
+    "entry-level expectations"
+  ],
+  "tailwind": [
+    "advantage",
+    "momentum",
+    "boost",
+    "favorable condition"
+  ],
+  "take offline": [
+    "discuss separately",
+    "handle privately",
+    "address later"
+  ],
+  "thought leadership": [
+    "expertise",
+    "influence",
+    "authority",
+    "knowledge sharing"
+  ],
+  "touchpoint": [
+    "interaction",
+    "contact point",
+    "interface",
+    "connection"
+  ],
+  "traction": [
+    "progress",
+    "momentum",
+    "success",
+    "growth",
+    "movement"
+  ],
+  "turnkey": [
+    "ready-to-use",
+    "plug-and-play",
+    "out-of-the-box",
+    "complete solution"
+  ],
+  "unpack": [
+    "analyze",
+    "break down",
+    "examine",
+    "explore",
+    "dissect"
+  ],
+  "upskill": [
+    "train",
+    "develop",
+    "improve",
+    "enhance capabilities",
+    "level up"
+  ],
+  "value proposition": [
+    "benefit statement",
+    "unique offering",
+    "selling point"
+  ],
+  "value-add": [
+    "benefit",
+    "contribution",
+    "enhancement",
+    "advantage"
+  ],
+  "vertical": [
+    "industry",
+    "sector",
+    "market segment",
+    "niche"
+  ],
+  "visibility": [
+    "awareness",
+    "exposure",
+    "transparency",
+    "insight"
+  ],
+  "wheelhouse": [
+    "expertise",
+    "specialty",
+    "strength",
+    "area",
+    "domain"
+  ],
+  "whitespace": [
+    "opportunity",
+    "gap",
+    "untapped area",
+    "potential"
+  ],
+  "win-win": [
+    "mutually beneficial",
+    "advantageous for all",
+    "positive-sum"
+  ]
+}

@@ -13,7 +13,7 @@
       "kind": "copy"
     },
     {
-      "name": "lexemes.json",
+      "name": "lexemes",
       "kind": "copy"
     },
     {
