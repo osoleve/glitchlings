@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 import pytest
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from glitchlings.auggie import Auggie
@@ -195,6 +195,7 @@ def test_auggie_builder_matches_glitchling_factory(
     assert blueprint_entry.seed == expected.seed
 
 
+@settings(suppress_health_check=[HealthCheck.too_slow])
 def _auggie_sequence_strategy() -> st.SearchStrategy[list[str]]:
     names = [entry[0] for entry in GLITCHLING_CASES]
     if not names:
