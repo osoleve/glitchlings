@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import TYPE_CHECKING, Any, cast
 
 from ..util.adapters import coerce_gaggle
@@ -89,11 +90,18 @@ class GlitchedBook:
             _gaggle=gaggle,
         )
 
+    @cached_property
+    def _text_content(self) -> str:
+        """Lazily fetch and corrupt the full text content of the book."""
+        original_text: str = self._original_book.get_text()
+        return cast(str, corrupt_text_value(original_text, self._gaggle))
+
     def get_text(self) -> str:
         """Fetch and corrupt the full text content of the book.
 
         This method fetches the book's text from Project Gutenberg and applies
-        glitchlings corruption to it. The text is fetched fresh each call.
+        glitchlings corruption to it. The text is fetched fresh on the first call
+        and cached for subsequent calls.
 
         Returns:
             The corrupted full text of the book.
@@ -101,8 +109,7 @@ class GlitchedBook:
         Raises:
             AttributeError: If the underlying Book doesn't support get_text().
         """
-        original_text: str = self._original_book.get_text()
-        return cast(str, corrupt_text_value(original_text, self._gaggle))
+        return self._text_content
 
     def __repr__(self) -> str:
         """Return a concise representation of the GlitchedBook."""
@@ -262,11 +269,12 @@ class GlitchenbergAPI:
         """Get oldest books with glitchling corruption applied."""
         return self._corrupt_books(self._api.get_oldest())
 
-    def get_latest(self, topic: str) -> list[GlitchedBook]:
+    def get_latest(self, topic: str = "recent") -> list[GlitchedBook]:
         """Get latest books by topic with glitchling corruption applied.
 
         Args:
             topic: Topic string to filter books by (e.g., "fiction", "science").
+                Defaults to "recent".
 
         Returns:
             List of GlitchedBook objects with corrupted text.
