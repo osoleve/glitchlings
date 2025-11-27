@@ -8,10 +8,11 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
+from ._shared import corrupt_text_value
 
 #: Default Gutendex API instance URL (public instance hosted by py-gutenberg author).
 DEFAULT_GUTENDEX_URL = "https://gutendex.devbranch.co"
@@ -69,8 +70,8 @@ class GlitchedBook:
         Returns:
             A GlitchedBook that corrupts text with the provided gaggle.
         """
-        # gaggle.corrupt() returns str for string inputs; cast tells mypy this
-        corrupted_title = cast(str, gaggle.corrupt(book.title))
+        # Use shared utility for consistent corruption; cast tells mypy this is str
+        corrupted_title = cast(str, corrupt_text_value(book.title, gaggle))
         return cls(
             id=book.id,
             title=corrupted_title,
@@ -87,6 +88,32 @@ class GlitchedBook:
             _original_book=book,
             _gaggle=gaggle,
         )
+
+    def get_text(self) -> str:
+        """Fetch and corrupt the full text content of the book.
+
+        This method fetches the book's text from Project Gutenberg and applies
+        glitchlings corruption to it. The text is fetched fresh each call.
+
+        Returns:
+            The corrupted full text of the book.
+
+        Raises:
+            AttributeError: If the underlying Book doesn't support get_text().
+        """
+        original_text: str = self._original_book.get_text()
+        return cast(str, corrupt_text_value(original_text, self._gaggle))
+
+    def __repr__(self) -> str:
+        """Return a concise representation of the GlitchedBook."""
+        return (
+            f"GlitchedBook(id={self.id}, title={self.title!r}, "
+            f"authors={[a.name for a in self.authors]!r})"
+        )
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the original book."""
+        return getattr(self._original_book, name)
 
 
 class GlitchenbergAPI:
@@ -127,6 +154,11 @@ class GlitchenbergAPI:
         """Return the Gutendex instance URL."""
         return str(self._api.instance_url)
 
+    @property
+    def gaggle(self) -> Gaggle:
+        """Return the gaggle used for corruption."""
+        return self._gaggle
+
     def _corrupt_book(self, book: Book) -> GlitchedBook:
         """Apply glitchlings to a Book object."""
         return GlitchedBook.from_book(book, self._gaggle)
@@ -134,6 +166,25 @@ class GlitchenbergAPI:
     def _corrupt_books(self, books: list[Book]) -> list[GlitchedBook]:
         """Apply glitchlings to a list of Book objects."""
         return [self._corrupt_book(book) for book in books]
+
+    def corrupt_books(self, books: list[Book]) -> list[GlitchedBook]:
+        """Apply glitchlings to a list of Book objects.
+
+        This method allows batch corruption of books fetched from other sources
+        or the underlying API.
+
+        Args:
+            books: List of py-gutenberg Book objects to corrupt.
+
+        Returns:
+            List of GlitchedBook objects with corrupted text.
+
+        Example:
+            >>> # Fetch from underlying API and corrupt separately
+            >>> raw_books = api._api.get_books_by_author("Austen")
+            >>> glitched = api.corrupt_books(raw_books)
+        """
+        return self._corrupt_books(books)
 
     # Methods that return lists of books
     def get_all_books(self) -> list[GlitchedBook]:
@@ -147,6 +198,17 @@ class GlitchenbergAPI:
     def get_copyrighted_books(self) -> list[GlitchedBook]:
         """Get copyrighted books with glitchling corruption applied."""
         return self._corrupt_books(self._api.get_copyrighted_books())
+
+    def get_books_by_author(self, author: str) -> list[GlitchedBook]:
+        """Get books by author with glitchling corruption applied.
+
+        Args:
+            author: Author name to search for.
+
+        Returns:
+            List of GlitchedBook objects with corrupted text.
+        """
+        return self._corrupt_books(self._api.get_books_by_author(author))
 
     def get_books_by_ids(self, ids: list[int]) -> list[GlitchedBook]:
         """Get books by IDs with glitchling corruption applied.
@@ -244,6 +306,10 @@ class GlitchenbergAPI:
             GlitchedBook with corrupted text.
         """
         return self._corrupt_book(self._api.get_book_text(book_id))
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate attribute access to the underlying API."""
+        return getattr(self._api, name)
 
 
 def _get_gutenberg_api(instance_url: str) -> GutenbergAPI:

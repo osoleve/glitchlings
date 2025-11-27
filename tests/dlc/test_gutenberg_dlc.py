@@ -35,6 +35,11 @@ class MockBook:
     media_type: str
     formats: dict[str, str]
     download_count: int
+    _text: str = "This is the full text content of the book."
+
+    def get_text(self) -> str:
+        """Return the mock book text."""
+        return self._text
 
 
 @pytest.fixture
@@ -455,3 +460,130 @@ def test_import_error_message_format() -> None:
         with patch("builtins.__import__", side_effect=ImportError("No module named 'gutenberg'")):
             with pytest.raises(ImportError, match="py-gutenberg is required"):
                 _get_gutenberg_api("https://example.com")
+
+
+def test_glitched_book_get_text(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that get_text() fetches and corrupts the book's full text."""
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    # Use Mim1c with high rate to ensure visible corruption
+    api = GlitchenbergAPI("Mim1c(rate=0.5)", seed=42)
+    book = api.get_book(1)
+
+    # get_text should return corrupted text
+    text = book.get_text()
+    assert isinstance(text, str)
+    assert len(text) > 0
+
+
+def test_glitched_book_get_text_deterministic(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that get_text() produces deterministic results with same seed."""
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    api1 = GlitchenbergAPI("typogre", seed=42)
+    api2 = GlitchenbergAPI("typogre", seed=42)
+
+    book1 = api1.get_book(1)
+    book2 = api2.get_book(1)
+
+    # Same seed should produce same corrupted text
+    assert book1.get_text() == book2.get_text()
+
+
+def test_glitched_book_repr(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that GlitchedBook has a useful repr."""
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    api = GlitchenbergAPI("typogre", seed=42)
+    book = api.get_book(1)
+
+    repr_str = repr(book)
+    assert "GlitchedBook" in repr_str
+    assert "id=1" in repr_str
+    assert "Jane Austen" in repr_str
+
+
+def test_glitchenberg_api_corrupt_books(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test the public corrupt_books method for batch processing."""
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    api = GlitchenbergAPI("typogre", seed=42)
+
+    # Create raw mock books
+    raw_books = [
+        MockBook(
+            id=i,
+            title=f"Book Title {i}",
+            authors=[MockPerson(1800, 1850, f"Author {i}")],
+            translators=[],
+            subjects=["Fiction"],
+            bookshelves=["Shelf"],
+            languages=["en"],
+            copyright=False,
+            media_type="Text",
+            formats={"text/plain": f"https://example.com/book{i}.txt"},
+            download_count=100,
+        )
+        for i in range(1, 4)
+    ]
+
+    glitched = api.corrupt_books(raw_books)  # type: ignore[arg-type]
+
+    assert len(glitched) == 3
+    for i, book in enumerate(glitched, 1):
+        assert book.id == i
+        assert isinstance(book.title, str)
+        assert book.original_title == f"Book Title {i}"
+
+
+def test_glitchenberg_api_gaggle_property(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that the gaggle property returns the internal gaggle."""
+    from glitchlings import Gaggle, Typogre
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    gaggle = Gaggle([Typogre(rate=0.1)], seed=99)
+    api = GlitchenbergAPI(gaggle)
+
+    # Should return the same gaggle
+    assert api.gaggle is gaggle
+
+
+def test_glitched_book_uses_shared_corrupt_text_value(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that GlitchedBook uses _shared.corrupt_text_value for consistency."""
+    from glitchlings import Gaggle, Typogre
+    from glitchlings.dlc._shared import corrupt_text_value
+    from glitchlings.dlc.gutenberg import GlitchedBook
+
+    original = MockBook(
+        id=1,
+        title="Test Title",
+        authors=[MockPerson(1800, 1850, "Author")],
+        translators=[],
+        subjects=[],
+        bookshelves=[],
+        languages=["en"],
+        copyright=False,
+        media_type="Text",
+        formats={},
+        download_count=0,
+    )
+    gaggle = Gaggle([Typogre(rate=0.1)], seed=42)
+
+    # Create glitched book
+    glitched = GlitchedBook.from_book(original, gaggle)  # type: ignore[arg-type]
+
+    # Verify it's using the same corruption mechanism
+    assert isinstance(glitched.title, str)
+    assert glitched.original_title == "Test Title"
