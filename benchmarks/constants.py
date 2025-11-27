@@ -126,6 +126,80 @@ DEFAULT_TEXTS: Tuple[Tuple[str, str], ...] = (
     ("long", LONG_TEXT),
     ("very_long", VERY_LONG_TEXT),
 )
+
+PROJECT_GUTENBERG_TITLES: Tuple[Tuple[str, str], ...] = (
+    (
+        "the_canterbury_tales",
+        "Whan that Aprille with his shoures soote the droghte of March hath perced to "
+        "the roote, and bathed every veyne in swich licour of which vertu engendred is "
+        "the flour.",
+    ),
+    (
+        "middlemarch",
+        "Miss Brooke had that kind of beauty which seems to be thrown into relief by poor "
+        "dress; her hand and wrist were so finely formed that she could wear sleeves not "
+        "less bare of style than those in which the Blessed Virgin appeared to Italian "
+        "painters.",
+    ),
+    (
+        "thus_spoke_zarathustra",
+        "When Zarathustra was thirty years old he left his home and the lake of his home "
+        "and went into the mountains. There he enjoyed his spirit and his solitude and "
+        "for ten years did not weary of it.",
+    ),
+    (
+        "symbolic_logic",
+        "Logic is the science of correct argumentation; a calculus of inference whose symbols and "
+        "rules allow thought to be tested by exact methods rather than by guesswork alone.",
+    ),
+    (
+        "war_and_peace",
+        "Well, Prince, so Genoa and Lucca are now just family estates of the Buonapartes. "
+        "But I warn you, if you don't tell me that this means war, if you still try to "
+        "defend the infamies and horrors perpetrated by that Antichrist, I really believe "
+        "he is Antichrist, I will have nothing more to do with you and you are no longer "
+        "my friend, no longer my faithful slave!",
+    ),
+    (
+        "leaves_of_grass",
+        "I celebrate myself, and sing myself, and what I assume you shall assume, for every atom "
+        "belonging to me as good belongs to you.",
+    ),
+    (
+        "the_importance_of_being_earnest",
+        "Did you hear what I was playing, Lane? I didn't think it polite to listen, sir. "
+        "I'm sorry for that, for your sake; I don't play accurately—any one can play "
+        "accurately—but I play with wonderful expression.",
+    ),
+    (
+        "on_the_origin_of_species",
+        "When on board H.M.S. Beagle, as naturalist, I was much struck with certain facts "
+        "in the distribution of the inhabitants of South America, and in the geological "
+        "relations of the present to the past inhabitants of that continent.",
+    ),
+    (
+        "the_iliad",
+        "Sing, O goddess, the anger of Achilles son of Peleus, that brought countless ills "
+        "upon the Achaeans; many a brave soul did it send hurrying down to Hades, and many "
+        "a hero did it yield a prey to dogs and vultures.",
+    ),
+    (
+        "ulysses",
+        "Stately, plump Buck Mulligan came from the stairhead, bearing a bowl of lather on "
+        "which a mirror and a razor lay crossed. A yellow dressing gown, ungirdled, was "
+        "sustained gently behind him by the mild morning air.",
+    ),
+    (
+        "beowulf_modern_english_prose",
+        "So. The Spear-Danes in days gone by and the kings who ruled them had courage and "
+        "greatness. We have heard of those princes' heroic campaigns.",
+    ),
+)
+
+BENCHMARK_CORPORA: Dict[str, Tuple[Tuple[str, str], ...]] = {
+    "default": DEFAULT_TEXTS,
+    "gutenberg_titles": PROJECT_GUTENBERG_TITLES,
+}
 DEFAULT_ITERATIONS = 25
 MASTER_SEED = 151
 
@@ -167,6 +241,8 @@ __all__ = [
     "BASE_DESCRIPTORS",
     "DEFAULT_ITERATIONS",
     "DEFAULT_TEXTS",
+    "PROJECT_GUTENBERG_TITLES",
+    "BENCHMARK_CORPORA",
     "MASTER_SEED",
     "SCENARIO_DESCRIPTIONS",
     "SHORT_TEXT",

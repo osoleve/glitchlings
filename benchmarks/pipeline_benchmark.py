@@ -19,6 +19,7 @@ if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, str(Path(__file__).parent))
     from constants import (
         BASE_DESCRIPTORS,
+        BENCHMARK_CORPORA,
         DEFAULT_ITERATIONS,
         DEFAULT_TEXTS,
         MASTER_SEED,
@@ -28,6 +29,7 @@ if __name__ == "__main__" and __package__ is None:
 else:
     from benchmarks.constants import (
         BASE_DESCRIPTORS,
+        BENCHMARK_CORPORA,
         DEFAULT_ITERATIONS,
         DEFAULT_TEXTS,
         MASTER_SEED,
@@ -662,6 +664,12 @@ def main(argv: list[str] | None = None) -> int:
         help="List available benchmark scenarios and exit.",
     )
     parser.add_argument(
+        "--corpus",
+        choices=sorted(BENCHMARK_CORPORA.keys()),
+        default="default",
+        help="Text corpus to benchmark against (default: default).",
+    )
+    parser.add_argument(
         "--singles-only",
         action="store_true",
         help="Run only individual glitchling scenarios (excludes multi-glitchling pipelines).",
@@ -684,7 +692,8 @@ def main(argv: list[str] | None = None) -> int:
         selected_scenarios = sorted(INDIVIDUAL_GLITCHLING_SCENARIOS)
     else:
         selected_scenarios = args.scenarios or list(SCENARIOS.keys())
-    run_benchmarks(selected_scenarios, DEFAULT_TEXTS, args.iterations, args.output)
+    selected_corpus = BENCHMARK_CORPORA[args.corpus]
+    run_benchmarks(selected_scenarios, selected_corpus, args.iterations, args.output)
     return 0
 
 
