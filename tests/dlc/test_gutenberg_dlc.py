@@ -409,8 +409,39 @@ def test_glitched_book_from_book(
 
     assert glitched.id == 1
     assert isinstance(glitched.title, str)
+    assert glitched.original_title == "Original Title"
     assert glitched._original_book is original
     assert glitched._gaggle is gaggle
+
+
+def test_glitched_book_preserves_original_title(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that original_title is preserved while title is corrupted."""
+    from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+    # Use a high rate to ensure corruption happens
+    api = GlitchenbergAPI("Mim1c(rate=0.99)", seed=42)
+    book = api.get_book(1)
+
+    # Original title should always be preserved
+    assert book.original_title == "Pride and Prejudice"
+    # Title might be different (corrupted)
+    assert isinstance(book.title, str)
+
+
+def test_default_gutendex_url_constant(
+    install_mock_gutenberg: types.ModuleType,
+) -> None:
+    """Test that DEFAULT_GUTENDEX_URL is exported and used."""
+    from glitchlings.dlc.gutenberg import DEFAULT_GUTENDEX_URL, GlitchenbergAPI
+
+    assert DEFAULT_GUTENDEX_URL == "https://gutendex.devbranch.co"
+
+    # API should use default URL when not specified
+    api = GlitchenbergAPI("typogre")
+    # Note: the mock overrides this, but we verify the constant exists
+    assert isinstance(api.instance_url, str)
 
 
 def test_import_error_message_format() -> None:

@@ -7,11 +7,14 @@ glitchlings to book text as it's fetched.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, cast
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, cast
 
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
+
+#: Default Gutendex API instance URL (public instance hosted by py-gutenberg author).
+DEFAULT_GUTENDEX_URL = "https://gutendex.devbranch.co"
 
 if TYPE_CHECKING:  # pragma: no cover
     from gutenberg import GutenbergAPI
@@ -24,10 +27,25 @@ class GlitchedBook:
 
     This class wraps a py-gutenberg Book object but provides corrupted text
     when accessed. The original Book attributes are preserved.
+
+    Attributes:
+        id: The Gutenberg book ID.
+        title: The corrupted book title.
+        original_title: The original (uncorrupted) book title.
+        authors: List of book authors.
+        translators: List of book translators.
+        subjects: List of subject categories.
+        bookshelves: List of bookshelf categories.
+        languages: List of language codes.
+        copyright: Whether the book is under copyright.
+        media_type: The media type of the book.
+        formats: Dictionary mapping MIME types to download URLs.
+        download_count: Number of times the book has been downloaded.
     """
 
     id: int
     title: str
+    original_title: str
     authors: list[Person]
     translators: list[Person]
     subjects: list[str]
@@ -37,8 +55,8 @@ class GlitchedBook:
     media_type: str
     formats: dict[str, str]
     download_count: int
-    _original_book: Book
-    _gaggle: Gaggle
+    _original_book: Book = field(repr=False)
+    _gaggle: Gaggle = field(repr=False)
 
     @classmethod
     def from_book(cls, book: Book, gaggle: Gaggle) -> GlitchedBook:
@@ -51,9 +69,12 @@ class GlitchedBook:
         Returns:
             A GlitchedBook that corrupts text with the provided gaggle.
         """
+        # gaggle.corrupt() returns str for string inputs; cast tells mypy this
+        corrupted_title = cast(str, gaggle.corrupt(book.title))
         return cls(
             id=book.id,
-            title=cast(str, gaggle.corrupt(book.title)),
+            title=corrupted_title,
+            original_title=book.title,
             authors=book.authors,
             translators=book.translators,
             subjects=book.subjects,
@@ -87,7 +108,7 @@ class GlitchenbergAPI:
         glitchlings: Glitchling | Gaggle | str | Iterable[str | Glitchling],
         *,
         seed: int = 151,
-        instance_url: str = "https://gutendex.devbranch.co",
+        instance_url: str = DEFAULT_GUTENDEX_URL,
     ) -> None:
         """Initialize the GlitchenbergAPI.
 
@@ -95,7 +116,8 @@ class GlitchenbergAPI:
             glitchlings: A glitchling, gaggle, or specification of glitchlings to apply.
             seed: RNG seed for deterministic corruption (default: 151).
             instance_url: The Gutendex instance URL to use for API requests.
-                Defaults to "https://gutendex.devbranch.co".
+                Defaults to the public instance at gutendex.devbranch.co.
+                For production use, consider self-hosting Gutendex.
         """
         self._gaggle = coerce_gaggle(glitchlings, seed=seed)
         self._api = _get_gutenberg_api(instance_url)
@@ -178,11 +200,11 @@ class GlitchenbergAPI:
         """Get oldest books with glitchling corruption applied."""
         return self._corrupt_books(self._api.get_oldest())
 
-    def get_latest(self, topic: Any) -> list[GlitchedBook]:
+    def get_latest(self, topic: str) -> list[GlitchedBook]:
         """Get latest books by topic with glitchling corruption applied.
 
         Args:
-            topic: Topic to filter books by.
+            topic: Topic string to filter books by (e.g., "fiction", "science").
 
         Returns:
             List of GlitchedBook objects with corrupted text.
@@ -190,38 +212,38 @@ class GlitchenbergAPI:
         return self._corrupt_books(self._api.get_latest(topic))
 
     # Methods that return single books
-    def get_book(self, id: int) -> GlitchedBook:
+    def get_book(self, book_id: int) -> GlitchedBook:
         """Get a book by ID with glitchling corruption applied.
 
         Args:
-            id: Gutenberg book ID.
+            book_id: Gutenberg book ID.
 
         Returns:
             GlitchedBook with corrupted text.
         """
-        return self._corrupt_book(self._api.get_book(id))
+        return self._corrupt_book(self._api.get_book(book_id))
 
-    def get_book_metadata(self, id: int) -> GlitchedBook:
+    def get_book_metadata(self, book_id: int) -> GlitchedBook:
         """Get book metadata by ID with glitchling corruption applied.
 
         Args:
-            id: Gutenberg book ID.
+            book_id: Gutenberg book ID.
 
         Returns:
             GlitchedBook with corrupted metadata.
         """
-        return self._corrupt_book(self._api.get_book_metadata(id))
+        return self._corrupt_book(self._api.get_book_metadata(book_id))
 
-    def get_book_text(self, id: int) -> GlitchedBook:
+    def get_book_text(self, book_id: int) -> GlitchedBook:
         """Get book text by ID with glitchling corruption applied.
 
         Args:
-            id: Gutenberg book ID.
+            book_id: Gutenberg book ID.
 
         Returns:
             GlitchedBook with corrupted text.
         """
-        return self._corrupt_book(self._api.get_book_text(id))
+        return self._corrupt_book(self._api.get_book_text(book_id))
 
 
 def _get_gutenberg_api(instance_url: str) -> GutenbergAPI:
@@ -241,4 +263,4 @@ def _get_gutenberg_api(instance_url: str) -> GutenbergAPI:
     return GutenbergAPI(instance_url=instance_url)
 
 
-__all__ = ["GlitchenbergAPI", "GlitchedBook"]
+__all__ = ["DEFAULT_GUTENDEX_URL", "GlitchenbergAPI", "GlitchedBook"]

@@ -25,6 +25,22 @@ Optional extras patch popular libraries to make corruption frictionless.
 - `echo_chamber` bootstraps text-cleaning challenges directly from Hugging Face datasets.
 - Pass `seed=` to keep corrupted environments deterministic.
 
+## Project Gutenberg (`gutenberg` extra)
+
+- Install the `gutenberg` extra for `glitchlings.dlc.gutenberg`.
+- `GlitchenbergAPI` wraps the py-gutenberg `GutenbergAPI` and corrupts book titles on fetch.
+- Accepts glitchling names, instances, or gaggles; seeds for deterministic corruption.
+- Original titles are preserved in `original_title` for comparison.
+
+```python
+from glitchlings.dlc.gutenberg import GlitchenbergAPI
+
+api = GlitchenbergAPI("typogre", seed=42)
+book = api.get_book(1342)  # Pride and Prejudice
+print(book.title)           # Corrupted title
+print(book.original_title)  # "Pride and Prejudice"
+```
+
 ## Installing extras
 
 ```bash
@@ -32,5 +48,6 @@ pip install 'glitchlings[hf]'          # datasets
 pip install 'glitchlings[torch]'       # PyTorch DataLoader
 pip install 'glitchlings[lightning]'   # Lightning DataModule
 pip install 'glitchlings[prime]'       # Prime Intellect DLC
+pip install 'glitchlings[gutenberg]'   # Project Gutenberg
 pip install 'glitchlings[all]'         # everything
 ```
