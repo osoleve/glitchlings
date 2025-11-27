@@ -24,8 +24,8 @@ struct HomoglyphEntry {
 }
 
 static HOMOGLYPH_TABLE: Lazy<BTreeMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| {
-    // Parse JSON into a BTreeMap for deterministic key ordering during iteration.
-    // serde_json will deserialize objects into BTreeMap if the target type is BTreeMap.
+    // Parse JSON into a BTreeMap by explicitly specifying the target type.
+    // We use BTreeMap here to ensure deterministic key ordering during iteration.
     let raw: BTreeMap<String, Vec<RawHomoglyphEntry>> =
         serde_json::from_str(RAW_HOMOGLYPHS).expect("mim1c homoglyph table should be valid JSON");
     let mut table: BTreeMap<char, Vec<HomoglyphEntry>> = BTreeMap::new();
@@ -419,11 +419,6 @@ mod tests {
         
         // Should include Ɇ (582), Ε (917), Ｅ (65317) in sorted order
         assert!(!filtered.is_empty(), "Expected some LATIN/GREEK entries for E");
-        
-        // Print for debugging
-        for entry in &filtered {
-            eprintln!("E -> '{}' (U+{:04X}) alias={}", entry.glyph, entry.glyph as u32, entry.alias);
-        }
         
         // Verify sorted order
         for i in 1..filtered.len() {
