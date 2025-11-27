@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
@@ -53,7 +53,7 @@ class GlitchedBook:
         """
         return cls(
             id=book.id,
-            title=gaggle.corrupt(book.title),
+            title=cast(str, gaggle.corrupt(book.title)),
             authors=book.authors,
             translators=book.translators,
             subjects=book.subjects,
