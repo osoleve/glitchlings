@@ -6,6 +6,11 @@
 //! - "synonyms": General synonym substitution
 //! - "corporate": Business jargon alternatives
 //! - "academic": Scholarly word substitutions
+//! - "cyberpunk": Neon cyberpunk slang and gadgetry
+//! - "lovecraftian": Cosmic horror terminology
+//! Additional dictionaries can be dropped into the assets/lexemes directory
+//! (or another directory pointed to by the GLITCHLINGS_LEXEME_DIR environment
+//! variable) without changing the code.
 //!
 //! Two modes are supported:
 //! - "literal": First entry in each word's alternatives (deterministic mapping)
@@ -19,53 +24,114 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use regex::Regex;
 use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 const RAW_LEXEMES: &str = include_str!(concat!(env!("OUT_DIR"), "/lexemes.json"));
 
 const VALID_MODE_MESSAGE: &str = "drift, literal";
-const VALID_LEXEMES: &[&str] = &["colors", "synonyms", "corporate", "academic"];
+const LEXEME_ENV_VAR: &str = "GLITCHLINGS_LEXEME_DIR";
 
 /// A single dictionary mapping words to their alternatives.
 type LexemeDict = HashMap<String, Vec<String>>;
 
 /// All loaded lexeme dictionaries, keyed by dictionary name.
 static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
+    if let Some(dir) = lexeme_directory_from_env() {
+        if let Ok(dicts) = load_lexemes_from_directory(&dir) {
+            if !dicts.is_empty() {
+                return dicts;
+            }
+        }
+    }
+
+    load_bundled_lexemes()
+});
+
+/// Sorted lexeme names available for use.
+static VALID_LEXEMES: Lazy<Vec<String>> = Lazy::new(|| {
+    let mut names: Vec<String> = LEXEME_DICTIONARIES.keys().cloned().collect();
+    names.sort();
+    names
+});
+
+fn lexeme_directory_from_env() -> Option<PathBuf> {
+    env::var_os(LEXEME_ENV_VAR)
+        .map(PathBuf::from)
+        .filter(|path| path.is_dir())
+}
+
+fn load_bundled_lexemes() -> HashMap<String, LexemeDict> {
     let raw: HashMap<String, serde_json::Value> =
         serde_json::from_str(RAW_LEXEMES).expect("lexemes.json should be valid JSON");
+    load_lexeme_map(raw)
+}
 
+fn load_lexemes_from_directory(dir: &Path) -> Result<HashMap<String, LexemeDict>, String> {
+    let mut files: Vec<PathBuf> = fs::read_dir(dir)
+        .map_err(|err| format!("failed to read lexeme directory: {err}"))?
+        .filter_map(|entry| entry.ok().map(|e| e.path()))
+        .filter(|path| path.extension().map_or(false, |ext| ext == "json"))
+        .collect();
+
+    files.sort();
+
+    let mut dictionaries: HashMap<String, serde_json::Value> = HashMap::new();
+    for path in files {
+        let name = path
+            .file_stem()
+            .and_then(|stem| stem.to_str())
+            .map(|stem| stem.to_ascii_lowercase())
+            .ok_or_else(|| format!("invalid lexeme file name {}", path.display()))?;
+
+        let contents = fs::read_to_string(&path)
+            .map_err(|err| format!("failed to read {}: {err}", path.display()))?;
+        let value: serde_json::Value = serde_json::from_str(&contents)
+            .map_err(|err| format!("invalid JSON in {}: {err}", path.display()))?;
+        dictionaries.insert(name, value);
+    }
+
+    Ok(load_lexeme_map(dictionaries))
+}
+
+fn load_lexeme_map(raw: HashMap<String, serde_json::Value>) -> HashMap<String, LexemeDict> {
     let mut dictionaries: HashMap<String, LexemeDict> = HashMap::new();
 
     for (dict_name, dict_value) in raw {
-        // Skip metadata entries
         if dict_name.starts_with('_') {
             continue;
         }
 
         if let serde_json::Value::Object(entries) = dict_value {
-            let mut dict: LexemeDict = HashMap::new();
-            for (word, alternatives) in entries {
-                // Skip metadata entries within dictionaries
-                if word.starts_with('_') {
-                    continue;
-                }
-                if let serde_json::Value::Array(arr) = alternatives {
-                    let words: Vec<String> = arr
-                        .into_iter()
-                        .filter_map(|v| v.as_str().map(String::from))
-                        .collect();
-                    if !words.is_empty() {
-                        dict.insert(word.to_lowercase(), words);
-                    }
-                }
-            }
-            if !dict.is_empty() {
-                dictionaries.insert(dict_name, dict);
+            let parsed = parse_dictionary_entries(entries);
+            if !parsed.is_empty() {
+                dictionaries.insert(dict_name.to_ascii_lowercase(), parsed);
             }
         }
     }
 
     dictionaries
-});
+}
+
+fn parse_dictionary_entries(entries: serde_json::Map<String, serde_json::Value>) -> LexemeDict {
+    let mut dict: LexemeDict = HashMap::new();
+    for (word, alternatives) in entries {
+        if word.starts_with('_') {
+            continue;
+        }
+        if let serde_json::Value::Array(arr) = alternatives {
+            let words: Vec<String> = arr
+                .into_iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect();
+            if !words.is_empty() {
+                dict.insert(word.to_ascii_lowercase(), words);
+            }
+        }
+    }
+    dict
+}
 
 /// Pre-compiled regex patterns for each dictionary.
 /// We build word-boundary patterns for efficient matching.
@@ -397,23 +463,26 @@ pub(crate) fn jargoyle_drift(
     seed: Option<u64>,
 ) -> PyResult<String> {
     let parsed_mode = JargoyleMode::parse(mode).map_err(PyValueError::new_err)?;
+    let normalized_lexemes = lexemes.to_ascii_lowercase();
 
     // Validate lexemes
-    if !LEXEME_DICTIONARIES.contains_key(lexemes) {
+    if !LEXEME_DICTIONARIES.contains_key(&normalized_lexemes) {
+        let available = VALID_LEXEMES.join(", ");
         return Err(PyValueError::new_err(format!(
-            "Unknown lexemes dictionary '{}'. Available: {:?}",
-            lexemes, VALID_LEXEMES
+            "Unknown lexemes dictionary '{}'. Available: {available}",
+            lexemes
         )));
     }
 
     match parsed_mode {
         JargoyleMode::Literal => {
-            transform_text(text, lexemes, parsed_mode, rate, None).map_err(|e| e.into_pyerr())
+            transform_text(text, &normalized_lexemes, parsed_mode, rate, None)
+                .map_err(|e| e.into_pyerr())
         }
         JargoyleMode::Drift => {
             let seed_value = seed.unwrap_or(0);
             let mut rng = DeterministicRng::new(seed_value);
-            transform_text(text, lexemes, parsed_mode, rate, Some(&mut rng))
+            transform_text(text, &normalized_lexemes, parsed_mode, rate, Some(&mut rng))
                 .map_err(|e| e.into_pyerr())
         }
     }
@@ -422,7 +491,7 @@ pub(crate) fn jargoyle_drift(
 /// List available lexeme dictionaries.
 #[pyfunction]
 pub(crate) fn list_lexeme_dictionaries() -> Vec<String> {
-    LEXEME_DICTIONARIES.keys().cloned().collect()
+    VALID_LEXEMES.clone()
 }
 
 #[cfg(test)]

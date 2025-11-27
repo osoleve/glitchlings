@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import math
 import string
-from typing import cast
 
 import pytest
 from hypothesis import assume, given

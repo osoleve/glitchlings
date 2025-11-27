@@ -341,7 +341,8 @@ def jargoyle_drift_rust(
 
     Args:
         text: Input text.
-        lexemes: Name of the dictionary to use (colors, synonyms, corporate, academic).
+        lexemes: Name of the dictionary to use (colors, synonyms, corporate, academic, cyberpunk,
+            lovecraftian, or any custom dictionary discovered in the lexemes directory).
         mode: Drift mode ("literal" or "drift").
         rate: Probability of transforming each matching word.
         seed: Deterministic seed (only used for "drift" mode).

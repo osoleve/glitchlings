@@ -1,6 +1,6 @@
 [project]
 name = "glitchlings"
-version = "0.9.0"
+version = "0.9.1"
 description = "Monsters for your language games."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,8 +38,8 @@ classifiers = [
     "Topic :: Software Development :: Testing",
 ]
 
-[project.license]
-file = "LICENSE"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
 
 [project.urls]
 Homepage = "https://github.com/osoleve/glitchlings"
@@ -93,7 +93,7 @@ dev = [
 ]
 
 [build-system]
-requires = ["setuptools>=69", "wheel", "setuptools-rust>=1.8.0"]
+requires = ["setuptools>=77", "wheel", "setuptools-rust>=1.8.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
@@ -101,7 +101,13 @@ package-dir = {"" = "src"}
 include-package-data = true
 
 [tool.setuptools.package-data]
-"glitchlings" = ["config.toml", "assets/*.json", "assets/*.tsv", "assets/*.b64"]
+"glitchlings" = [
+    "config.toml",
+    "assets/*.json",
+    "assets/*.tsv",
+    "assets/*.b64",
+    "assets/lexemes/*.json",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

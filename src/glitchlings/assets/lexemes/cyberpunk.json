@@ -1,0 +1,22 @@
+{
+  "_meta": {
+    "description": "Neon-drenched cyberpunk slang and techno-jargon substitutions"
+  },
+  "ally": ["runner", "chum", "crew", "partner", "associate"],
+  "augmentation": ["chrome", "implant", "mod", "upgrade", "cyberware"],
+  "car": ["hovercar", "rig", "bike", "crawler", "maglev"],
+  "city": ["sprawl", "megalopolis", "arcology", "neon grid", "stack"],
+  "computer": ["deck", "rig", "terminal", "console", "dataslate"],
+  "corporation": ["megacorp", "zaibatsu", "conglomerate", "the board", "macrocorp"],
+  "enemy": ["rival", "hunter", "corp hound", "black ice", "pursuer"],
+  "glasses": ["augvisors", "hud shades", "holo lenses", "ar specs", "smart optics"],
+  "hack": ["breach", "jack in", "backdoor", "splice", "ghost"],
+  "hacker": ["netrunner", "decker", "console cowboy", "intruder", "codebreaker"],
+  "implants": ["cyberware", "mods", "wetware", "hardware", "upgrades"],
+  "money": ["cred", "chits", "scrip", "crypto", "tokens"],
+  "network": ["grid", "matrix", "datastream", "mesh", "neuronet"],
+  "police": ["corpsec", "enforcers", "security detail", "peacekeepers", "drones"],
+  "street": ["alley", "backline", "underrun", "walkway", "sidestreets"],
+  "television": ["holovid", "feed", "streamwall", "broadcast", "vidline"],
+  "weapon": ["smartgun", "rail pistol", "hand cannon", "flechette gun", "shock baton"]
+}

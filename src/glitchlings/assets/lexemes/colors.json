@@ -1,0 +1,1333 @@
+{
+  "_meta": {
+    "description": "Color terms mapped to adjacent/related colors",
+    "modes": {
+      "drift": "Random selection from the entire array (adjacent colors in the palette)",
+      "literal": "First entry in each array is the canonical swap (used for deterministic mapping)"
+    }
+  },
+  "amber": [
+    "gold",
+    "yellow",
+    "honey",
+    "ochre",
+    "topaz"
+  ],
+  "antique": [
+    "gold",
+    "brass",
+    "bronze",
+    "vintage",
+    "aged"
+  ],
+  "apricot": [
+    "peach",
+    "salmon",
+    "coral",
+    "orange",
+    "cantaloupe"
+  ],
+  "aqua": [
+    "cyan",
+    "turquoise",
+    "teal",
+    "seafoam",
+    "mint"
+  ],
+  "ash": [
+    "gray",
+    "charcoal",
+    "soot",
+    "cinder",
+    "pale gray"
+  ],
+  "aubergine": [
+    "purple",
+    "eggplant",
+    "plum",
+    "burgundy",
+    "dark purple"
+  ],
+  "auburn": [
+    "brown",
+    "rust",
+    "copper",
+    "chestnut",
+    "ginger"
+  ],
+  "azure": [
+    "blue",
+    "sky",
+    "cerulean",
+    "cobalt",
+    "sapphire"
+  ],
+  "baby": [
+    "blue",
+    "pink",
+    "powder",
+    "pastel",
+    "soft"
+  ],
+  "beige": [
+    "cream",
+    "tan",
+    "khaki",
+    "sand",
+    "buff"
+  ],
+  "berry": [
+    "purple",
+    "magenta",
+    "mulberry",
+    "raspberry",
+    "cranberry"
+  ],
+  "black": [
+    "white",
+    "purple",
+    "blue",
+    "teal",
+    "ebony",
+    "onyx",
+    "charcoal"
+  ],
+  "blood": [
+    "red",
+    "crimson",
+    "ruby",
+    "dark red",
+    "maroon"
+  ],
+  "blue": [
+    "red",
+    "cyan",
+    "teal",
+    "purple",
+    "azure",
+    "cobalt",
+    "sapphire"
+  ],
+  "blush": [
+    "pink",
+    "rose",
+    "peach",
+    "salmon",
+    "nude"
+  ],
+  "bold": [
+    "bright",
+    "vivid",
+    "striking",
+    "intense",
+    "vibrant"
+  ],
+  "bone": [
+    "white",
+    "ivory",
+    "cream",
+    "off-white",
+    "ecru"
+  ],
+  "brass": [
+    "gold",
+    "bronze",
+    "copper",
+    "metallic",
+    "antique gold"
+  ],
+  "brick": [
+    "red",
+    "terracotta",
+    "rust",
+    "clay",
+    "auburn"
+  ],
+  "bronze": [
+    "gold",
+    "copper",
+    "brown",
+    "tan",
+    "rust"
+  ],
+  "brown": [
+    "maroon",
+    "orange",
+    "olive",
+    "tan",
+    "chocolate",
+    "coffee",
+    "umber"
+  ],
+  "buff": [
+    "beige",
+    "tan",
+    "cream",
+    "sand",
+    "khaki"
+  ],
+  "burgundy": [
+    "maroon",
+    "wine",
+    "crimson",
+    "cherry",
+    "plum"
+  ],
+  "butterscotch": [
+    "caramel",
+    "honey",
+    "amber",
+    "gold",
+    "toffee"
+  ],
+  "camel": [
+    "tan",
+    "beige",
+    "sand",
+    "khaki",
+    "taupe"
+  ],
+  "canary": [
+    "yellow",
+    "lemon",
+    "gold",
+    "sunshine",
+    "daffodil"
+  ],
+  "cantaloupe": [
+    "apricot",
+    "peach",
+    "orange",
+    "melon",
+    "tangerine"
+  ],
+  "caramel": [
+    "honey",
+    "brown",
+    "tan",
+    "butterscotch",
+    "toffee"
+  ],
+  "cardinal": [
+    "red",
+    "scarlet",
+    "crimson",
+    "vermilion",
+    "cherry"
+  ],
+  "cerulean": [
+    "azure",
+    "sky",
+    "blue",
+    "turquoise",
+    "aqua"
+  ],
+  "charcoal": [
+    "gray",
+    "black",
+    "slate",
+    "graphite",
+    "ash"
+  ],
+  "chartreuse": [
+    "olive",
+    "lime",
+    "yellow",
+    "neon",
+    "fluorescent"
+  ],
+  "cherry": [
+    "red",
+    "crimson",
+    "burgundy",
+    "scarlet",
+    "cranberry"
+  ],
+  "chestnut": [
+    "brown",
+    "mahogany",
+    "auburn",
+    "russet",
+    "cinnamon"
+  ],
+  "chocolate": [
+    "brown",
+    "cocoa",
+    "coffee",
+    "espresso",
+    "mocha"
+  ],
+  "chrome": [
+    "silver",
+    "steel",
+    "metallic",
+    "platinum",
+    "mirror"
+  ],
+  "cinnamon": [
+    "brown",
+    "ginger",
+    "rust",
+    "caramel",
+    "spice"
+  ],
+  "citrine": [
+    "yellow",
+    "gold",
+    "amber",
+    "topaz",
+    "lemon"
+  ],
+  "clay": [
+    "brown",
+    "terracotta",
+    "brick",
+    "earth",
+    "mud"
+  ],
+  "cloud": [
+    "white",
+    "gray",
+    "mist",
+    "fog",
+    "pale"
+  ],
+  "coal": [
+    "black",
+    "charcoal",
+    "jet",
+    "soot",
+    "dark"
+  ],
+  "cobalt": [
+    "sapphire",
+    "blue",
+    "navy",
+    "azure",
+    "indigo"
+  ],
+  "cocoa": [
+    "brown",
+    "chocolate",
+    "coffee",
+    "mocha",
+    "umber"
+  ],
+  "coffee": [
+    "chocolate",
+    "brown",
+    "espresso",
+    "mocha",
+    "cocoa"
+  ],
+  "copper": [
+    "bronze",
+    "orange",
+    "brown",
+    "rust",
+    "auburn"
+  ],
+  "coral": [
+    "pink",
+    "salmon",
+    "peach",
+    "orange",
+    "rose"
+  ],
+  "cranberry": [
+    "red",
+    "berry",
+    "burgundy",
+    "wine",
+    "cherry"
+  ],
+  "cream": [
+    "ivory",
+    "white",
+    "beige",
+    "vanilla",
+    "eggshell"
+  ],
+  "crimson": [
+    "red",
+    "scarlet",
+    "maroon",
+    "ruby",
+    "blood"
+  ],
+  "crystal": [
+    "clear",
+    "ice",
+    "transparent",
+    "diamond",
+    "glass"
+  ],
+  "cyan": [
+    "orange",
+    "blue",
+    "green",
+    "teal",
+    "aqua",
+    "turquoise"
+  ],
+  "daffodil": [
+    "yellow",
+    "canary",
+    "gold",
+    "sunshine",
+    "marigold"
+  ],
+  "desert": [
+    "sand",
+    "tan",
+    "beige",
+    "camel",
+    "dune"
+  ],
+  "diamond": [
+    "white",
+    "crystal",
+    "clear",
+    "sparkle",
+    "brilliant"
+  ],
+  "dune": [
+    "sand",
+    "tan",
+    "beige",
+    "desert",
+    "buff"
+  ],
+  "earth": [
+    "brown",
+    "soil",
+    "dirt",
+    "clay",
+    "umber"
+  ],
+  "ebony": [
+    "black",
+    "onyx",
+    "jet",
+    "raven",
+    "obsidian"
+  ],
+  "ecru": [
+    "cream",
+    "beige",
+    "ivory",
+    "off-white",
+    "natural"
+  ],
+  "eggplant": [
+    "purple",
+    "plum",
+    "aubergine",
+    "violet",
+    "dark purple"
+  ],
+  "eggshell": [
+    "white",
+    "cream",
+    "ivory",
+    "off-white",
+    "pale"
+  ],
+  "electric": [
+    "neon",
+    "vivid",
+    "bright",
+    "shocking",
+    "vibrant"
+  ],
+  "emerald": [
+    "green",
+    "jade",
+    "forest",
+    "mint",
+    "kelly"
+  ],
+  "espresso": [
+    "brown",
+    "coffee",
+    "chocolate",
+    "mocha",
+    "cocoa"
+  ],
+  "evergreen": [
+    "green",
+    "pine",
+    "forest",
+    "hunter",
+    "perennial"
+  ],
+  "fern": [
+    "green",
+    "sage",
+    "moss",
+    "forest",
+    "verdant"
+  ],
+  "fluorescent": [
+    "neon",
+    "electric",
+    "glowing",
+    "phosphorescent",
+    "luminescent"
+  ],
+  "fog": [
+    "gray",
+    "mist",
+    "haze",
+    "smoke",
+    "cloudy"
+  ],
+  "forest": [
+    "emerald",
+    "green",
+    "hunter",
+    "pine",
+    "moss"
+  ],
+  "frost": [
+    "white",
+    "ice",
+    "snow",
+    "pale",
+    "icy"
+  ],
+  "fuchsia": [
+    "magenta",
+    "pink",
+    "purple",
+    "rose",
+    "hot pink"
+  ],
+  "garnet": [
+    "ruby",
+    "crimson",
+    "maroon",
+    "burgundy",
+    "wine"
+  ],
+  "ginger": [
+    "orange",
+    "auburn",
+    "rust",
+    "cinnamon",
+    "copper"
+  ],
+  "gold": [
+    "yellow",
+    "amber",
+    "bronze",
+    "brass",
+    "copper"
+  ],
+  "granite": [
+    "gray",
+    "stone",
+    "charcoal",
+    "slate",
+    "speckled"
+  ],
+  "grape": [
+    "purple",
+    "plum",
+    "violet",
+    "mulberry",
+    "wine"
+  ],
+  "graphite": [
+    "gray",
+    "charcoal",
+    "slate",
+    "lead",
+    "dark gray"
+  ],
+  "grass": [
+    "green",
+    "lawn",
+    "kelly",
+    "lime",
+    "spring"
+  ],
+  "gray": [
+    "silver",
+    "white",
+    "black",
+    "slate",
+    "charcoal",
+    "ash"
+  ],
+  "green": [
+    "lime",
+    "teal",
+    "cyan",
+    "yellow",
+    "emerald",
+    "jade",
+    "olive"
+  ],
+  "greige": [
+    "gray",
+    "beige",
+    "taupe",
+    "neutral",
+    "stone"
+  ],
+  "grey": [
+    "silver",
+    "white",
+    "black",
+    "slate",
+    "charcoal",
+    "ash"
+  ],
+  "gunmetal": [
+    "gray",
+    "lead",
+    "pewter",
+    "steel",
+    "dark gray"
+  ],
+  "honey": [
+    "amber",
+    "gold",
+    "yellow",
+    "caramel",
+    "butterscotch"
+  ],
+  "hunter": [
+    "green",
+    "forest",
+    "dark green",
+    "pine",
+    "bottle green"
+  ],
+  "ice": [
+    "white",
+    "frost",
+    "pale",
+    "crystal",
+    "frozen"
+  ],
+  "imperial": [
+    "purple",
+    "royal",
+    "regal",
+    "violet",
+    "majestic"
+  ],
+  "indigo": [
+    "navy",
+    "purple",
+    "blue",
+    "violet",
+    "iris"
+  ],
+  "iris": [
+    "purple",
+    "violet",
+    "indigo",
+    "periwinkle",
+    "lavender"
+  ],
+  "ivory": [
+    "white",
+    "cream",
+    "beige",
+    "pearl",
+    "bone"
+  ],
+  "jade": [
+    "emerald",
+    "green",
+    "mint",
+    "sage",
+    "seafoam"
+  ],
+  "jet": [
+    "black",
+    "ebony",
+    "onyx",
+    "obsidian",
+    "coal"
+  ],
+  "kelly": [
+    "green",
+    "emerald",
+    "bright green",
+    "grass",
+    "shamrock"
+  ],
+  "khaki": [
+    "tan",
+    "olive",
+    "beige",
+    "sand",
+    "buff"
+  ],
+  "latte": [
+    "beige",
+    "cream",
+    "mocha",
+    "tan",
+    "coffee"
+  ],
+  "lavender": [
+    "violet",
+    "purple",
+    "lilac",
+    "periwinkle",
+    "mauve"
+  ],
+  "lead": [
+    "gray",
+    "graphite",
+    "pewter",
+    "gunmetal",
+    "dark gray"
+  ],
+  "lemon": [
+    "yellow",
+    "citrine",
+    "lime",
+    "chartreuse",
+    "canary"
+  ],
+  "lilac": [
+    "lavender",
+    "violet",
+    "purple",
+    "mauve",
+    "orchid"
+  ],
+  "lime": [
+    "green",
+    "yellow",
+    "white",
+    "cyan",
+    "chartreuse",
+    "mint"
+  ],
+  "magenta": [
+    "teal",
+    "purple",
+    "red",
+    "blue",
+    "fuchsia",
+    "rose"
+  ],
+  "mahogany": [
+    "brown",
+    "maroon",
+    "chestnut",
+    "burgundy",
+    "auburn"
+  ],
+  "mandarin": [
+    "tangerine",
+    "orange",
+    "saffron",
+    "amber",
+    "gold"
+  ],
+  "marigold": [
+    "yellow",
+    "gold",
+    "saffron",
+    "mustard",
+    "sunflower"
+  ],
+  "maroon": [
+    "brown",
+    "purple",
+    "red",
+    "burgundy",
+    "wine",
+    "crimson"
+  ],
+  "mauve": [
+    "lavender",
+    "lilac",
+    "purple",
+    "violet",
+    "orchid"
+  ],
+  "midnight": [
+    "blue",
+    "navy",
+    "dark blue",
+    "deep blue",
+    "indigo"
+  ],
+  "mint": [
+    "jade",
+    "green",
+    "aqua",
+    "seafoam",
+    "lime"
+  ],
+  "mist": [
+    "gray",
+    "fog",
+    "haze",
+    "pale",
+    "ethereal"
+  ],
+  "mocha": [
+    "brown",
+    "coffee",
+    "chocolate",
+    "espresso",
+    "latte"
+  ],
+  "moonstone": [
+    "white",
+    "opal",
+    "pearl",
+    "iridescent",
+    "ethereal"
+  ],
+  "moss": [
+    "green",
+    "sage",
+    "fern",
+    "forest",
+    "olive"
+  ],
+  "mulberry": [
+    "purple",
+    "grape",
+    "wine",
+    "berry",
+    "burgundy"
+  ],
+  "mushroom": [
+    "taupe",
+    "gray",
+    "beige",
+    "stone",
+    "greige"
+  ],
+  "mustard": [
+    "yellow",
+    "gold",
+    "ochre",
+    "saffron",
+    "dijon"
+  ],
+  "muted": [
+    "soft",
+    "pastel",
+    "subdued",
+    "dull",
+    "faded"
+  ],
+  "navy": [
+    "indigo",
+    "blue",
+    "teal",
+    "midnight",
+    "sapphire"
+  ],
+  "neon": [
+    "fluorescent",
+    "electric",
+    "vivid",
+    "bright",
+    "luminous"
+  ],
+  "nude": [
+    "beige",
+    "tan",
+    "blush",
+    "cream",
+    "flesh"
+  ],
+  "obsidian": [
+    "black",
+    "ebony",
+    "jet",
+    "onyx",
+    "volcanic"
+  ],
+  "ochre": [
+    "yellow",
+    "amber",
+    "mustard",
+    "sienna",
+    "gold"
+  ],
+  "olive": [
+    "chartreuse",
+    "green",
+    "yellow",
+    "khaki",
+    "sage"
+  ],
+  "onyx": [
+    "ebony",
+    "black",
+    "jet",
+    "obsidian",
+    "charcoal"
+  ],
+  "opal": [
+    "pearl",
+    "white",
+    "iridescent",
+    "moonstone",
+    "shell"
+  ],
+  "orange": [
+    "cyan",
+    "red",
+    "yellow",
+    "magenta",
+    "tangerine",
+    "coral",
+    "peach"
+  ],
+  "orchid": [
+    "lilac",
+    "lavender",
+    "purple",
+    "magenta",
+    "fuchsia"
+  ],
+  "pastel": [
+    "soft",
+    "muted",
+    "pale",
+    "light",
+    "delicate"
+  ],
+  "patina": [
+    "green",
+    "bronze",
+    "verdigris",
+    "aged",
+    "oxidized"
+  ],
+  "peach": [
+    "pink",
+    "orange",
+    "yellow",
+    "apricot",
+    "salmon",
+    "coral"
+  ],
+  "pearl": [
+    "white",
+    "ivory",
+    "cream",
+    "opal",
+    "shell"
+  ],
+  "periwinkle": [
+    "lavender",
+    "blue",
+    "violet",
+    "iris",
+    "cornflower"
+  ],
+  "pewter": [
+    "gray",
+    "silver",
+    "lead",
+    "tin",
+    "dull silver"
+  ],
+  "pine": [
+    "green",
+    "forest",
+    "hunter",
+    "evergreen",
+    "spruce"
+  ],
+  "pink": [
+    "peach",
+    "magenta",
+    "red",
+    "rose",
+    "salmon",
+    "coral",
+    "blush"
+  ],
+  "platinum": [
+    "silver",
+    "white",
+    "chrome",
+    "gray",
+    "pearl"
+  ],
+  "plum": [
+    "purple",
+    "violet",
+    "burgundy",
+    "eggplant",
+    "grape"
+  ],
+  "powder": [
+    "blue",
+    "sky",
+    "baby blue",
+    "light blue",
+    "pale blue"
+  ],
+  "purple": [
+    "yellow",
+    "magenta",
+    "red",
+    "blue",
+    "violet",
+    "lavender",
+    "plum"
+  ],
+  "raspberry": [
+    "pink",
+    "red",
+    "berry",
+    "magenta",
+    "fuchsia"
+  ],
+  "red": [
+    "blue",
+    "orange",
+    "magenta",
+    "purple",
+    "crimson",
+    "scarlet",
+    "vermilion"
+  ],
+  "regal": [
+    "purple",
+    "royal",
+    "imperial",
+    "majestic",
+    "noble"
+  ],
+  "rose": [
+    "pink",
+    "magenta",
+    "coral",
+    "salmon",
+    "blush"
+  ],
+  "royal": [
+    "blue",
+    "purple",
+    "regal",
+    "imperial",
+    "sapphire"
+  ],
+  "ruby": [
+    "red",
+    "crimson",
+    "garnet",
+    "cherry",
+    "blood"
+  ],
+  "rust": [
+    "copper",
+    "orange",
+    "brown",
+    "auburn",
+    "sienna"
+  ],
+  "saffron": [
+    "yellow",
+    "gold",
+    "amber",
+    "marigold",
+    "turmeric"
+  ],
+  "sage": [
+    "olive",
+    "green",
+    "moss",
+    "fern",
+    "khaki"
+  ],
+  "salmon": [
+    "coral",
+    "pink",
+    "peach",
+    "rose",
+    "apricot"
+  ],
+  "sand": [
+    "beige",
+    "tan",
+    "khaki",
+    "buff",
+    "desert"
+  ],
+  "sapphire": [
+    "blue",
+    "navy",
+    "cobalt",
+    "azure",
+    "royal"
+  ],
+  "scarlet": [
+    "crimson",
+    "red",
+    "vermilion",
+    "cherry",
+    "cardinal"
+  ],
+  "seafoam": [
+    "green",
+    "mint",
+    "aqua",
+    "teal",
+    "turquoise"
+  ],
+  "sepia": [
+    "brown",
+    "umber",
+    "tan",
+    "beige",
+    "coffee"
+  ],
+  "shamrock": [
+    "green",
+    "kelly",
+    "clover",
+    "grass",
+    "lime"
+  ],
+  "shell": [
+    "white",
+    "cream",
+    "pearl",
+    "ivory",
+    "nacre"
+  ],
+  "sienna": [
+    "brown",
+    "rust",
+    "ochre",
+    "terra cotta",
+    "umber"
+  ],
+  "silver": [
+    "gray",
+    "white",
+    "cyan",
+    "platinum",
+    "chrome",
+    "pewter"
+  ],
+  "sky": [
+    "blue",
+    "azure",
+    "cerulean",
+    "powder blue",
+    "light blue"
+  ],
+  "slate": [
+    "gray",
+    "charcoal",
+    "graphite",
+    "stone",
+    "pewter"
+  ],
+  "smoke": [
+    "gray",
+    "charcoal",
+    "haze",
+    "foggy",
+    "misty"
+  ],
+  "snow": [
+    "white",
+    "frost",
+    "ice",
+    "pale",
+    "pure"
+  ],
+  "soot": [
+    "black",
+    "coal",
+    "charcoal",
+    "ash",
+    "dark"
+  ],
+  "spring": [
+    "green",
+    "grass",
+    "lime",
+    "fresh",
+    "verdant"
+  ],
+  "spruce": [
+    "green",
+    "pine",
+    "forest",
+    "teal",
+    "blue-green"
+  ],
+  "steel": [
+    "gray",
+    "silver",
+    "chrome",
+    "metal",
+    "gunmetal"
+  ],
+  "stone": [
+    "gray",
+    "slate",
+    "pewter",
+    "rock",
+    "granite"
+  ],
+  "sunshine": [
+    "yellow",
+    "gold",
+    "canary",
+    "bright yellow",
+    "daffodil"
+  ],
+  "tan": [
+    "beige",
+    "brown",
+    "khaki",
+    "sand",
+    "camel"
+  ],
+  "tangerine": [
+    "orange",
+    "coral",
+    "cantaloupe",
+    "persimmon",
+    "mandarin"
+  ],
+  "taupe": [
+    "gray",
+    "beige",
+    "brown",
+    "greige",
+    "mushroom"
+  ],
+  "teal": [
+    "magenta",
+    "cyan",
+    "green",
+    "blue",
+    "aquamarine",
+    "turquoise"
+  ],
+  "terracotta": [
+    "orange",
+    "brick",
+    "clay",
+    "rust",
+    "sienna"
+  ],
+  "tin": [
+    "gray",
+    "pewter",
+    "silver",
+    "metallic",
+    "lead"
+  ],
+  "toffee": [
+    "butterscotch",
+    "caramel",
+    "brown",
+    "tan",
+    "amber"
+  ],
+  "topaz": [
+    "amber",
+    "gold",
+    "yellow",
+    "honey",
+    "citrine"
+  ],
+  "turquoise": [
+    "teal",
+    "cyan",
+    "aqua",
+    "cerulean",
+    "seafoam"
+  ],
+  "umber": [
+    "brown",
+    "sienna",
+    "sepia",
+    "coffee",
+    "mahogany"
+  ],
+  "vanilla": [
+    "cream",
+    "white",
+    "ivory",
+    "beige",
+    "off-white"
+  ],
+  "verdant": [
+    "green",
+    "lush",
+    "leafy",
+    "grassy",
+    "emerald"
+  ],
+  "verdigris": [
+    "green",
+    "patina",
+    "copper",
+    "teal",
+    "oxidized"
+  ],
+  "vermilion": [
+    "red",
+    "scarlet",
+    "crimson",
+    "cinnabar",
+    "flame"
+  ],
+  "vibrant": [
+    "vivid",
+    "bright",
+    "bold",
+    "intense",
+    "saturated"
+  ],
+  "violet": [
+    "purple",
+    "lavender",
+    "indigo",
+    "lilac",
+    "plum"
+  ],
+  "white": [
+    "black",
+    "yellow",
+    "lime",
+    "cyan",
+    "ivory",
+    "cream",
+    "pearl"
+  ],
+  "wine": [
+    "burgundy",
+    "maroon",
+    "crimson",
+    "merlot",
+    "claret"
+  ],
+  "yellow": [
+    "purple",
+    "orange",
+    "lime",
+    "white",
+    "gold",
+    "amber",
+    "lemon"
+  ]
+}

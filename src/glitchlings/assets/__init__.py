@@ -8,7 +8,7 @@ from functools import cache
 from hashlib import blake2b
 from importlib import resources
 from pathlib import Path
-from typing import Any, BinaryIO, Iterable, Literal, TextIO, cast
+from typing import Any, BinaryIO, Iterable, Iterator, Literal, TextIO, cast
 
 try:
     from importlib.resources.abc import Traversable  # Python 3.11+
@@ -54,7 +54,7 @@ def _asset(name: str) -> Traversable:
     asset_roots = list(_iter_asset_roots())
     for root in asset_roots:
         candidate = root.joinpath(name)
-        if candidate.is_file():
+        if candidate.is_file() or candidate.is_dir():
             return candidate
 
     searched = ", ".join(str(root.joinpath(name)) for root in asset_roots) or "<unavailable>"
@@ -86,11 +86,33 @@ def load_json(name: str, *, encoding: str = "utf-8") -> Any:
         return json.load(handle)
 
 
+def _iter_asset_files(root: Traversable, prefix: str = "") -> Iterator[tuple[str, Traversable]]:
+    """Yield file entries within an asset directory with deterministic ordering."""
+
+    entries = sorted(root.iterdir(), key=lambda entry: entry.name)
+    for entry in entries:
+        relative = f"{prefix}{entry.name}"
+        if entry.is_dir():
+            yield from _iter_asset_files(entry, prefix=f"{relative}/")
+        else:
+            yield relative, entry
+
+
 def hash_asset(name: str) -> str:
     """Return a BLAKE2b digest for the bundled asset ``name``."""
 
     digest = blake2b(digest_size=_DEFAULT_DIGEST_SIZE)
-    with open_binary(name) as handle:
+    asset = _asset(name)
+
+    if asset.is_dir():
+        for relative, entry in _iter_asset_files(asset):
+            digest.update(relative.encode("utf-8"))
+            with entry.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(8192), b""):
+                    digest.update(chunk)
+        return digest.hexdigest()
+
+    with asset.open("rb") as handle:
         for chunk in iter(lambda: handle.read(8192), b""):
             digest.update(chunk)
     return digest.hexdigest()

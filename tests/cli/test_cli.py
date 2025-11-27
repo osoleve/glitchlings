@@ -15,9 +15,6 @@ from glitchlings.main import (
     read_text,
     run_cli,
 )
-from glitchlings.main import (
-    main as cli_main,
-)
 
 
 def invoke_cli(arguments: list[str]):

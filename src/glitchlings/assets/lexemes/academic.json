@@ -1,0 +1,1049 @@
+{
+  "_meta": {
+    "description": "Academic and scholarly word substitutions"
+  },
+  "a posteriori": [
+    "empirically",
+    "inductively",
+    "from experience",
+    "retroactively"
+  ],
+  "a priori": [
+    "presumptively",
+    "theoretically",
+    "beforehand",
+    "deductively"
+  ],
+  "abstract": [
+    "summary",
+    "synopsis",
+    "outline",
+    "brief",
+    "digest"
+  ],
+  "ameliorate": [
+    "improve",
+    "enhance",
+    "better",
+    "upgrade",
+    "remedy",
+    "rectify"
+  ],
+  "analogous": [
+    "similar",
+    "comparable",
+    "parallel",
+    "corresponding",
+    "equivalent"
+  ],
+  "analyze": [
+    "examine",
+    "investigate",
+    "scrutinize",
+    "assess",
+    "dissect",
+    "evaluate"
+  ],
+  "antecedent": [
+    "predecessor",
+    "precursor",
+    "forerunner",
+    "prior",
+    "preceding",
+    "earlier"
+  ],
+  "antithetical": [
+    "opposed",
+    "contrary",
+    "opposite",
+    "conflicting",
+    "incompatible"
+  ],
+  "apropos": [
+    "relevant",
+    "pertinent",
+    "appropriate",
+    "fitting",
+    "germane",
+    "apt"
+  ],
+  "articulate": [
+    "express",
+    "convey",
+    "communicate",
+    "verbalize",
+    "enunciate",
+    "formulate"
+  ],
+  "attenuate": [
+    "weaken",
+    "reduce",
+    "diminish",
+    "lessen",
+    "decrease",
+    "dilute"
+  ],
+  "axiological": [
+    "value-based",
+    "ethical",
+    "evaluative",
+    "normative",
+    "moral"
+  ],
+  "axiom": [
+    "principle",
+    "postulate",
+    "premise",
+    "truth",
+    "tenet",
+    "fundamental"
+  ],
+  "bifurcate": [
+    "divide",
+    "split",
+    "separate",
+    "branch",
+    "fork",
+    "diverge"
+  ],
+  "canonical": [
+    "authoritative",
+    "standard",
+    "orthodox",
+    "accepted",
+    "established",
+    "classical"
+  ],
+  "causality": [
+    "cause and effect",
+    "determination",
+    "influence",
+    "agency",
+    "mechanism"
+  ],
+  "causation": [
+    "cause",
+    "origin",
+    "source",
+    "reason",
+    "etiology",
+    "determinant"
+  ],
+  "citation": [
+    "reference",
+    "source",
+    "quote",
+    "mention",
+    "credit"
+  ],
+  "codification": [
+    "systematization",
+    "formalization",
+    "standardization",
+    "compilation"
+  ],
+  "cohort": [
+    "group",
+    "class",
+    "category",
+    "set",
+    "batch"
+  ],
+  "conceptualization": [
+    "formulation",
+    "theorization",
+    "abstraction",
+    "ideation"
+  ],
+  "conceptualize": [
+    "envision",
+    "imagine",
+    "formulate",
+    "conceive",
+    "theorize",
+    "ideate"
+  ],
+  "conclude": [
+    "infer",
+    "deduce",
+    "decide",
+    "determine",
+    "resolve"
+  ],
+  "conflate": [
+    "combine",
+    "merge",
+    "blend",
+    "fuse",
+    "confuse",
+    "mix up"
+  ],
+  "congruent": [
+    "consistent",
+    "compatible",
+    "harmonious",
+    "aligned",
+    "corresponding"
+  ],
+  "conjecture": [
+    "hypothesis",
+    "speculation",
+    "supposition",
+    "guess",
+    "theory",
+    "surmise"
+  ],
+  "consequent": [
+    "result",
+    "outcome",
+    "effect",
+    "subsequent",
+    "following",
+    "ensuing"
+  ],
+  "contextualization": [
+    "framing",
+    "situating",
+    "positioning",
+    "grounding",
+    "embedding"
+  ],
+  "contextualize": [
+    "situate",
+    "frame",
+    "position",
+    "relate",
+    "ground",
+    "anchor"
+  ],
+  "corollary": [
+    "consequence",
+    "result",
+    "implication",
+    "deduction",
+    "inference",
+    "conclusion"
+  ],
+  "correlation": [
+    "relationship",
+    "connection",
+    "association",
+    "link",
+    "correspondence",
+    "interdependence"
+  ],
+  "corroborate": [
+    "confirm",
+    "verify",
+    "substantiate",
+    "support",
+    "validate",
+    "authenticate"
+  ],
+  "critique": [
+    "analyze",
+    "evaluate",
+    "assess",
+    "appraise",
+    "review",
+    "examine"
+  ],
+  "data": [
+    "information",
+    "facts",
+    "statistics",
+    "figures",
+    "evidence"
+  ],
+  "de facto": [
+    "in practice",
+    "actually",
+    "in reality",
+    "effectively",
+    "virtually"
+  ],
+  "de jure": [
+    "by law",
+    "legally",
+    "officially",
+    "formally",
+    "rightfully"
+  ],
+  "decontextualize": [
+    "isolate",
+    "abstract",
+    "remove context",
+    "separate",
+    "extract"
+  ],
+  "delineate": [
+    "outline",
+    "describe",
+    "define",
+    "specify",
+    "demarcate",
+    "characterize"
+  ],
+  "demonstrate": [
+    "show",
+    "illustrate",
+    "prove",
+    "exhibit",
+    "manifest",
+    "evince"
+  ],
+  "descriptive": [
+    "observational",
+    "factual",
+    "empirical",
+    "objective",
+    "representational"
+  ],
+  "desideratum": [
+    "requirement",
+    "need",
+    "necessity",
+    "essential",
+    "prerequisite"
+  ],
+  "dialectic": [
+    "dialogue",
+    "debate",
+    "discourse",
+    "exchange",
+    "argumentation",
+    "reasoning"
+  ],
+  "dichotomy": [
+    "division",
+    "split",
+    "contrast",
+    "opposition",
+    "duality",
+    "bifurcation"
+  ],
+  "discourse": [
+    "discussion",
+    "dialogue",
+    "debate",
+    "conversation",
+    "exchange",
+    "treatise"
+  ],
+  "disparate": [
+    "different",
+    "distinct",
+    "dissimilar",
+    "divergent",
+    "unequal",
+    "varied"
+  ],
+  "elucidate": [
+    "clarify",
+    "explain",
+    "illuminate",
+    "explicate",
+    "expound",
+    "interpret"
+  ],
+  "empirical": [
+    "experimental",
+    "observational",
+    "practical",
+    "evidence-based",
+    "experiential",
+    "factual"
+  ],
+  "enumerate": [
+    "list",
+    "count",
+    "itemize",
+    "catalog",
+    "specify",
+    "detail"
+  ],
+  "epistemology": [
+    "knowledge theory",
+    "cognition",
+    "understanding",
+    "perception",
+    "awareness"
+  ],
+  "establish": [
+    "prove",
+    "confirm",
+    "validate",
+    "verify",
+    "substantiate",
+    "corroborate"
+  ],
+  "exacerbate": [
+    "worsen",
+    "aggravate",
+    "intensify",
+    "amplify",
+    "escalate",
+    "inflame"
+  ],
+  "examine": [
+    "analyze",
+    "investigate",
+    "study",
+    "explore",
+    "inspect",
+    "probe"
+  ],
+  "explicate": [
+    "explain",
+    "clarify",
+    "interpret",
+    "analyze",
+    "expound",
+    "elaborate"
+  ],
+  "extant": [
+    "existing",
+    "surviving",
+    "remaining",
+    "current",
+    "present",
+    "in existence"
+  ],
+  "extrapolate": [
+    "infer",
+    "deduce",
+    "project",
+    "extend",
+    "generalize",
+    "estimate"
+  ],
+  "framework": [
+    "structure",
+    "system",
+    "model",
+    "scheme",
+    "plan"
+  ],
+  "gestalt": [
+    "whole",
+    "totality",
+    "configuration",
+    "pattern",
+    "structure"
+  ],
+  "hermeneutics": [
+    "interpretation",
+    "exegesis",
+    "analysis",
+    "explanation",
+    "understanding"
+  ],
+  "heterogeneous": [
+    "diverse",
+    "varied",
+    "mixed",
+    "assorted",
+    "disparate",
+    "multifarious"
+  ],
+  "heuristic": [
+    "rule of thumb",
+    "guideline",
+    "approach",
+    "method",
+    "strategy",
+    "technique"
+  ],
+  "homogeneous": [
+    "uniform",
+    "consistent",
+    "alike",
+    "similar",
+    "identical",
+    "undifferentiated"
+  ],
+  "hypothesis": [
+    "theory",
+    "conjecture",
+    "proposition",
+    "assumption",
+    "postulate",
+    "supposition"
+  ],
+  "implication": [
+    "consequence",
+    "result",
+    "effect",
+    "outcome",
+    "inference"
+  ],
+  "inference": [
+    "conclusion",
+    "deduction",
+    "interpretation",
+    "judgment",
+    "extrapolation",
+    "derivation"
+  ],
+  "instantiate": [
+    "exemplify",
+    "illustrate",
+    "represent",
+    "embody",
+    "realize",
+    "manifest"
+  ],
+  "interpolate": [
+    "insert",
+    "estimate",
+    "calculate",
+    "fill in",
+    "approximate"
+  ],
+  "ipso facto": [
+    "by that very fact",
+    "by definition",
+    "inherently",
+    "necessarily"
+  ],
+  "juxtapose": [
+    "compare",
+    "contrast",
+    "place side by side",
+    "set against",
+    "parallel"
+  ],
+  "lacuna": [
+    "gap",
+    "omission",
+    "deficiency",
+    "void",
+    "missing element"
+  ],
+  "latent": [
+    "hidden",
+    "dormant",
+    "potential",
+    "underlying",
+    "implicit",
+    "covert"
+  ],
+  "leitmotif": [
+    "theme",
+    "motif",
+    "recurring element",
+    "central idea",
+    "thread"
+  ],
+  "literature": [
+    "writings",
+    "papers",
+    "studies",
+    "research",
+    "publications"
+  ],
+  "longitudinal": [
+    "long-term",
+    "extended",
+    "prolonged",
+    "lengthy",
+    "continuous"
+  ],
+  "manifest": [
+    "evident",
+    "obvious",
+    "apparent",
+    "visible",
+    "overt",
+    "clear"
+  ],
+  "matrix": [
+    "grid",
+    "array",
+    "structure",
+    "framework",
+    "pattern"
+  ],
+  "methodology": [
+    "approach",
+    "technique",
+    "procedure",
+    "method",
+    "framework",
+    "protocol"
+  ],
+  "mitigate": [
+    "reduce",
+    "lessen",
+    "alleviate",
+    "diminish",
+    "moderate",
+    "temper"
+  ],
+  "modus operandi": [
+    "method",
+    "procedure",
+    "approach",
+    "way of working",
+    "technique"
+  ],
+  "nascent": [
+    "emerging",
+    "developing",
+    "incipient",
+    "budding",
+    "embryonic",
+    "fledgling"
+  ],
+  "normative": [
+    "prescriptive",
+    "standard",
+    "regulatory",
+    "evaluative",
+    "ideal"
+  ],
+  "nuance": [
+    "subtlety",
+    "detail",
+    "distinction",
+    "shade",
+    "refinement"
+  ],
+  "nuanced": [
+    "subtle",
+    "refined",
+    "sophisticated",
+    "complex",
+    "intricate",
+    "delicate"
+  ],
+  "obfuscate": [
+    "confuse",
+    "obscure",
+    "muddle",
+    "complicate",
+    "cloud",
+    "bewilder"
+  ],
+  "obviate": [
+    "prevent",
+    "preclude",
+    "eliminate",
+    "avoid",
+    "avert",
+    "forestall"
+  ],
+  "ontology": [
+    "existence",
+    "being",
+    "reality",
+    "nature",
+    "essence",
+    "metaphysics"
+  ],
+  "operant": [
+    "active",
+    "operative",
+    "functional",
+    "effective",
+    "working"
+  ],
+  "operationalization": [
+    "definition",
+    "measurement",
+    "specification",
+    "implementation"
+  ],
+  "operationalize": [
+    "define",
+    "measure",
+    "quantify",
+    "specify",
+    "implement",
+    "execute"
+  ],
+  "outcome": [
+    "result",
+    "consequence",
+    "effect",
+    "finding",
+    "product",
+    "upshot"
+  ],
+  "paradigm": [
+    "framework",
+    "model",
+    "pattern",
+    "approach",
+    "archetype",
+    "exemplar"
+  ],
+  "parsimonious": [
+    "economical",
+    "frugal",
+    "simple",
+    "minimal",
+    "efficient",
+    "streamlined"
+  ],
+  "peer review": [
+    "evaluation",
+    "assessment",
+    "appraisal",
+    "check",
+    "audit"
+  ],
+  "per se": [
+    "in itself",
+    "intrinsically",
+    "as such",
+    "by itself",
+    "essentially"
+  ],
+  "phenomenology": [
+    "experience study",
+    "consciousness",
+    "perception",
+    "subjective analysis"
+  ],
+  "phenomenon": [
+    "occurrence",
+    "event",
+    "observation",
+    "manifestation",
+    "instance",
+    "happening"
+  ],
+  "posit": [
+    "propose",
+    "assume",
+    "hypothesize",
+    "suggest",
+    "assert",
+    "postulate"
+  ],
+  "postulate": [
+    "assume",
+    "hypothesize",
+    "propose",
+    "posit",
+    "theorize",
+    "conjecture"
+  ],
+  "praxis": [
+    "practice",
+    "application",
+    "action",
+    "implementation",
+    "exercise",
+    "execution"
+  ],
+  "predicate": [
+    "base",
+    "found",
+    "ground",
+    "establish",
+    "rest",
+    "hinge"
+  ],
+  "premise": [
+    "assumption",
+    "presupposition",
+    "basis",
+    "foundation",
+    "starting point"
+  ],
+  "prescriptive": [
+    "normative",
+    "directive",
+    "authoritative",
+    "mandatory",
+    "regulatory"
+  ],
+  "problematize": [
+    "question",
+    "challenge",
+    "interrogate",
+    "critique",
+    "complicate",
+    "examine"
+  ],
+  "proposition": [
+    "statement",
+    "assertion",
+    "thesis",
+    "claim",
+    "contention",
+    "argument"
+  ],
+  "qua": [
+    "as",
+    "in the capacity of",
+    "in the role of",
+    "considered as"
+  ],
+  "qualitative": [
+    "descriptive",
+    "interpretive",
+    "subjective",
+    "observational",
+    "phenomenological"
+  ],
+  "quantitative": [
+    "numerical",
+    "statistical",
+    "measurable",
+    "countable",
+    "computational",
+    "metric"
+  ],
+  "raison d'etre": [
+    "purpose",
+    "reason for being",
+    "justification",
+    "rationale"
+  ],
+  "recontextualize": [
+    "reframe",
+    "reposition",
+    "reinterpret",
+    "reimagine",
+    "resituate"
+  ],
+  "refute": [
+    "disprove",
+    "rebut",
+    "contradict",
+    "counter",
+    "deny",
+    "negate"
+  ],
+  "reification": [
+    "objectification",
+    "materialization",
+    "concretization",
+    "embodiment"
+  ],
+  "reliability": [
+    "consistency",
+    "dependability",
+    "stability",
+    "trustworthiness",
+    "reproducibility",
+    "replicability"
+  ],
+  "rigorous": [
+    "thorough",
+    "meticulous",
+    "systematic",
+    "stringent",
+    "exacting",
+    "precise"
+  ],
+  "robust": [
+    "strong",
+    "rigorous",
+    "sound",
+    "solid",
+    "reliable",
+    "substantial"
+  ],
+  "rubric": [
+    "standard",
+    "guide",
+    "criteria",
+    "rule",
+    "measure"
+  ],
+  "salient": [
+    "prominent",
+    "notable",
+    "conspicuous",
+    "striking",
+    "significant",
+    "important"
+  ],
+  "scope": [
+    "range",
+    "extent",
+    "reach",
+    "capacity",
+    "breadth"
+  ],
+  "seminal": [
+    "influential",
+    "groundbreaking",
+    "pioneering",
+    "foundational",
+    "formative",
+    "pivotal"
+  ],
+  "significant": [
+    "notable",
+    "important",
+    "substantial",
+    "meaningful",
+    "consequential",
+    "appreciable"
+  ],
+  "sine qua non": [
+    "essential",
+    "prerequisite",
+    "requirement",
+    "necessity",
+    "must-have"
+  ],
+  "status quo": [
+    "current state",
+    "existing condition",
+    "present situation",
+    "norm"
+  ],
+  "stratification": [
+    "layering",
+    "hierarchy",
+    "classification",
+    "ranking",
+    "ordering"
+  ],
+  "substantiate": [
+    "verify",
+    "confirm",
+    "prove",
+    "support",
+    "validate",
+    "document"
+  ],
+  "subsume": [
+    "include",
+    "encompass",
+    "incorporate",
+    "contain",
+    "absorb",
+    "embrace"
+  ],
+  "sui generis": [
+    "unique",
+    "one of a kind",
+    "distinctive",
+    "peculiar",
+    "singular"
+  ],
+  "synthesis": [
+    "combination",
+    "mixture",
+    "fusion",
+    "blend",
+    "integration"
+  ],
+  "synthesize": [
+    "combine",
+    "integrate",
+    "amalgamate",
+    "consolidate",
+    "unify",
+    "merge"
+  ],
+  "systematization": [
+    "organization",
+    "ordering",
+    "structuring",
+    "arrangement",
+    "codification"
+  ],
+  "tantamount": [
+    "equivalent",
+    "equal",
+    "synonymous",
+    "comparable",
+    "identical"
+  ],
+  "tautology": [
+    "redundancy",
+    "repetition",
+    "pleonasm",
+    "circular reasoning",
+    "truism"
+  ],
+  "taxonomy": [
+    "classification",
+    "categorization",
+    "typology",
+    "system",
+    "hierarchy",
+    "schema"
+  ],
+  "teleology": [
+    "purpose",
+    "goal",
+    "end",
+    "objective",
+    "aim",
+    "design"
+  ],
+  "theoretical": [
+    "conceptual",
+    "abstract",
+    "hypothetical",
+    "speculative",
+    "notional",
+    "academic"
+  ],
+  "thesis": [
+    "argument",
+    "proposition",
+    "theory",
+    "premise",
+    "idea"
+  ],
+  "triangulation": [
+    "cross-validation",
+    "verification",
+    "multi-method approach",
+    "corroboration"
+  ],
+  "ubiquitous": [
+    "pervasive",
+    "omnipresent",
+    "widespread",
+    "universal",
+    "prevalent",
+    "common"
+  ],
+  "validity": [
+    "accuracy",
+    "correctness",
+    "soundness",
+    "legitimacy",
+    "authenticity",
+    "credibility"
+  ],
+  "variable": [
+    "factor",
+    "element",
+    "component",
+    "parameter",
+    "attribute",
+    "dimension"
+  ],
+  "vis-a-vis": [
+    "regarding",
+    "concerning",
+    "in relation to",
+    "compared with",
+    "versus"
+  ],
+  "weltanschauung": [
+    "worldview",
+    "philosophy",
+    "outlook",
+    "perspective",
+    "ideology"
+  ],
+  "zeitgeist": [
+    "spirit of the age",
+    "cultural climate",
+    "prevailing attitude",
+    "ethos"
+  ]
+}
