@@ -31,7 +31,6 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
   Jargoyle — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
   Redactyl — scope: Word, order: normal
- Spectroll — scope: Word, order: normal
 Scannequin — scope: Character, order: late
     Zeedub — scope: Character, order: last
 ```
@@ -41,7 +40,7 @@ Scannequin — scope: Character, order: late
 ```text
 usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
                    [--list] [-c CONFIG]
-                   [text ...] {build-lexicon} ...
+                   [text ...]
 
 Summon glitchlings to corrupt text. Provide input text as an argument, via
 --file, or pipe it on stdin.
@@ -49,8 +48,6 @@ Summon glitchlings to corrupt text. Provide input text as an argument, via
 positional arguments:
   text                  Text to corrupt. If omitted, stdin is used or --sample
                         provides fallback text.
-  {build-lexicon}
-    build-lexicon       Generate synonym caches backed by vector embeddings.
 
 options:
   -h, --help            show this help message and exit

@@ -4,6 +4,7 @@ use smallvec::SmallVec;
 use std::collections::HashMap;
 
 use crate::ekkokin::EkkokinOp;
+use crate::jargoyle::JargoyleOp;
 use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
 use crate::resources::{
@@ -11,7 +12,6 @@ use crate::resources::{
     split_affixes,
 };
 use crate::rng::{DeterministicRng, RngError};
-use crate::spectroll::SpectrollOp;
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
 
 /// Errors produced while applying a [`GlitchOp`].
@@ -1478,7 +1478,7 @@ pub enum GlitchOperation {
     Typo(TypoOp),
     Mimic(Mim1cOp),
     ZeroWidth(ZeroWidthOp),
-    Spectroll(SpectrollOp),
+    Jargoyle(JargoyleOp),
     QuotePairs(QuotePairsOp),
     Hokey(crate::hokey::HokeyOp),
     Ekkokin(EkkokinOp),
@@ -1497,7 +1497,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Typo(op) => op.apply(buffer, rng),
             GlitchOperation::Mimic(op) => op.apply(buffer, rng),
             GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
-            GlitchOperation::Spectroll(op) => op.apply(buffer, rng),
+            GlitchOperation::Jargoyle(op) => op.apply(buffer, rng),
             GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
             GlitchOperation::Hokey(op) => op.apply(buffer, rng),
             GlitchOperation::Ekkokin(op) => op.apply(buffer, rng),

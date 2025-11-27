@@ -43,14 +43,14 @@ __all__ = [
     "mim1c_rust",
     "ocr_artifacts_rust",
     "inject_zero_widths_rust",
-    "swap_colors_rust",
     "hokey_rust",
     # Word-level operations
     "delete_random_words_rust",
     "reduplicate_words_rust",
     "swap_adjacent_words_rust",
     "redact_words_rust",
-    "substitute_random_synonyms_rust",
+    "jargoyle_drift_rust",
+    "list_lexeme_dictionaries_rust",
     "ekkokin_homophones_rust",
     # Grammar operations
     "pedant_rust",
@@ -64,9 +64,6 @@ __all__ = [
 # Orchestration types
 PlanResult = list[tuple[int, int]]
 PipelineDescriptor = Mapping[str, Any]
-
-# Lexicon protocol for Jargoyle
-LexiconProtocol = Any  # Lexicon instance with get_synonyms() method
 
 
 # ---------------------------------------------------------------------------
@@ -212,25 +209,6 @@ def inject_zero_widths_rust(
     return cast(str, fn(text, rate, characters, seed))
 
 
-def swap_colors_rust(
-    text: str,
-    mode: str,
-    seed: int | None,
-) -> str:
-    """Swap color terms via Rust.
-
-    Args:
-        text: Input text.
-        mode: Swap mode ("literal" or "drift").
-        seed: Deterministic seed (only used for "drift" mode).
-
-    Returns:
-        Text with color terms swapped.
-    """
-    fn = get_rust_operation("swap_colors")
-    return cast(str, fn(text, mode, seed))
-
-
 def hokey_rust(
     text: str,
     rate: float,
@@ -352,29 +330,37 @@ def redact_words_rust(
     return cast(str, fn(text, replacement, rate, merge, unweighted, seed))
 
 
-def substitute_random_synonyms_rust(
+def jargoyle_drift_rust(
     text: str,
+    lexemes: str,
+    mode: str,
     rate: float,
-    parts_of_speech: list[str],
-    seed: int,
-    lexicon: LexiconProtocol,
-    lexicon_seed_repr: str | None,
+    seed: int | None,
 ) -> str:
-    """Substitute words with synonyms via Rust.
+    """Apply Jargoyle dictionary-based word drift via Rust.
 
     Args:
         text: Input text.
-        rate: Probability of substituting each word.
-        parts_of_speech: List of POS tags to target.
-        seed: Deterministic seed.
-        lexicon: Lexicon instance for synonym lookup.
-        lexicon_seed_repr: String representation of lexicon seed.
+        lexemes: Name of the dictionary to use (colors, synonyms, corporate, academic).
+        mode: Drift mode ("literal" or "drift").
+        rate: Probability of transforming each matching word.
+        seed: Deterministic seed (only used for "drift" mode).
 
     Returns:
-        Text with synonym substitutions.
+        Text with word substitutions applied.
     """
-    fn = get_rust_operation("substitute_random_synonyms")
-    return cast(str, fn(text, rate, parts_of_speech, seed, lexicon, lexicon_seed_repr))
+    fn = get_rust_operation("jargoyle_drift")
+    return cast(str, fn(text, lexemes, mode, rate, seed))
+
+
+def list_lexeme_dictionaries_rust() -> list[str]:
+    """List available lexeme dictionaries.
+
+    Returns:
+        List of dictionary names available for Jargoyle.
+    """
+    fn = get_rust_operation("list_lexeme_dictionaries")
+    return cast(list[str], fn())
 
 
 def ekkokin_homophones_rust(

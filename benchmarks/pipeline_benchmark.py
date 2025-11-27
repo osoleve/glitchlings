@@ -201,6 +201,20 @@ def _hokey_only_descriptors() -> list[Descriptor]:
     ]
 
 
+def _jargoyle_only_descriptors() -> list[Descriptor]:
+    return [
+        {
+            "name": "Jargoyle",
+            "operation": {
+                "type": "jargoyle",
+                "lexemes": "synonyms",
+                "mode": "drift",
+                "rate": 0.05,
+            },
+        }
+    ]
+
+
 SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     # Multi-glitchling scenarios
     "baseline": _baseline_descriptors,
@@ -218,7 +232,7 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     "mim1c_only": _mim1c_only_descriptors,
     "ekkokin_only": _ekkokin_only_descriptors,
     "hokey_only": _hokey_only_descriptors,
-    # Note: Jargoyle (synonym replacement) is not supported by the Rust pipeline
+    "jargoyle_only": _jargoyle_only_descriptors,
 }
 
 # Categorize scenarios for display purposes
@@ -234,6 +248,7 @@ INDIVIDUAL_GLITCHLING_SCENARIOS = {
     "mim1c_only",
     "ekkokin_only",
     "hokey_only",
+    "jargoyle_only",
 }
 
 # Display names for individual glitchlings
@@ -248,12 +263,13 @@ INDIVIDUAL_DISPLAY_NAMES = {
     "mim1c_only": "Mim1c",
     "ekkokin_only": "Ekkokin",
     "hokey_only": "Hokey",
+    "jargoyle_only": "Jargoyle",
 }
 
 # Grouped display order for individual glitchlings
 INDIVIDUAL_GROUPS: list[tuple[str, list[str]]] = [
-    ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only", "hokey_only"]),
-    ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "scannequin_only"]),
+    ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only", "scannequin_only"]),
+    ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "hokey_only", "jargoyle_only"]),
     ("Rushmore Variants", ["rushmore_delete", "rushmore_duplicate", "rushmore_swap"]),
 ]
 
@@ -536,9 +552,8 @@ def run_benchmarks(
                 output_lines.append("| Text size | Characters | Runtime (ms) |")
                 output_lines.append("| --- | ---: | ---: |")
                 for result in all_results[scenario]:
-                    output_lines.append(
-                        f"| {result.label} | {result.char_count} | {_format_table_stats(result.runtime)} |"
-                    )
+                    stats = _format_table_stats(result.runtime)
+                    output_lines.append(f"| {result.label} | {result.char_count} | {stats} |")
 
     # Summary
     print()
@@ -576,6 +591,11 @@ def main(argv: list[str] | None = None) -> int:
         help="List available benchmark scenarios and exit.",
     )
     parser.add_argument(
+        "--singles-only",
+        action="store_true",
+        help="Run only individual glitchling scenarios (excludes multi-glitchling pipelines).",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         default=None,
@@ -589,7 +609,10 @@ def main(argv: list[str] | None = None) -> int:
             print(key)
         return 0
 
-    selected_scenarios = args.scenarios or list(SCENARIOS.keys())
+    if args.singles_only:
+        selected_scenarios = sorted(INDIVIDUAL_GLITCHLING_SCENARIOS)
+    else:
+        selected_scenarios = args.scenarios or list(SCENARIOS.keys())
     run_benchmarks(selected_scenarios, DEFAULT_TEXTS, args.iterations, args.output)
     return 0
 

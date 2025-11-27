@@ -18,17 +18,15 @@ from io import TextIOBase
 from pathlib import Path
 from typing import IO, TYPE_CHECKING, Any, Callable, Mapping, Protocol, cast
 
-from glitchlings.constants import DEFAULT_ATTACK_SEED, DEFAULT_CONFIG_PATH, DEFAULT_LEXICON_PRIORITY
+from glitchlings.constants import DEFAULT_ATTACK_SEED, DEFAULT_CONFIG_PATH
 
 from ..compat import jsonschema
 from .schema import (
     normalize_mapping,
-    normalize_priority_list,
-    resolve_relative_path,
     validate_attack_config_schema,
     validate_runtime_config_data,
 )
-from .types import ATTACK_CONFIG_SCHEMA, AttackConfig, LexiconConfig, RuntimeConfig
+from .types import ATTACK_CONFIG_SCHEMA, AttackConfig, RuntimeConfig
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..zoo import Gaggle, Glitchling
@@ -203,25 +201,9 @@ def _load_runtime_config() -> RuntimeConfig:
         allow_missing=path == DEFAULT_CONFIG_PATH,
         allow_empty=True,
     )
-    mapping = validate_runtime_config_data(data, source=str(path))
+    validate_runtime_config_data(data, source=str(path))
 
-    lexicon_section = mapping.get("lexicon", {})
-
-    priority = normalize_priority_list(
-        lexicon_section.get("priority"),
-        default=DEFAULT_LEXICON_PRIORITY,
-    )
-
-    vector_cache = resolve_relative_path(
-        lexicon_section.get("vector_cache"),
-        base=path.parent,
-    )
-    lexicon_config = LexiconConfig(
-        priority=priority,
-        vector_cache=vector_cache,
-    )
-
-    return RuntimeConfig(lexicon=lexicon_config, path=path)
+    return RuntimeConfig(path=path)
 
 
 # ---------------------------------------------------------------------------

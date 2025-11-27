@@ -6,17 +6,17 @@ from glitchlings.zoo.core import Gaggle
 
 
 def test_gaggle_determinism(sample_text):
-    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=777)
+    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "jargoyle"], seed=777)
     out1 = g1(sample_text)
-    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=777)
+    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "jargoyle"], seed=777)
     out2 = g2(sample_text)
     assert out1 == out2
 
 
 def test_gaggle_seed_changes_output(sample_text):
-    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=1)
+    g1 = summon(["rushmore", "mim1c", "typogre", "redactyl", "jargoyle"], seed=1)
     out1 = g1(sample_text)
-    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "spectroll"], seed=2)
+    g2 = summon(["rushmore", "mim1c", "typogre", "redactyl", "jargoyle"], seed=2)
     out2 = g2(sample_text)
     assert out1 != out2
 

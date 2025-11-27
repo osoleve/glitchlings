@@ -1,11 +1,15 @@
 # Jargoyle
 
-Jargoyle swaps words with deterministic synonyms supplied by the active lexicon backend to inject domain drift and vocabulary variety.
+Jargoyle swaps words with synonyms from bundled dictionaries to inject domain drift and vocabulary variety.
 
 - **Scope**: word level.
-- **Signature**: `Jargoyle(rate=0.01, part_of_speech="n", seed=None)`.
-- **Behaviour**: swaps nouns/verbs/adjectives/adverbs with synonyms sourced from the configured lexicon priority. The default install ships a lightweight cache derived from the `sentence-transformers/all-mpnet-base-v2` checkpoint; add WordNet or bespoke caches (vector or transformer-backed) by editing `config.toml`.
+- **Signature**: `Jargoyle(lexemes="synonyms", mode="drift", rate=0.01, seed=None)`.
+- **Behaviour**: swaps words with synonyms from the selected lexeme dictionary. Available dictionaries: `synonyms` (general), `colors` (color names), `corporate` (business jargon), `academic` (scholarly terms).
+- **Modes**:
+  - `literal` — always uses the first synonym in the dictionary entry (deterministic regardless of seed).
+  - `drift` — randomly selects among available synonyms using the seed for determinism.
 - **Usage tips**:
-  - Target specific POS tags (e.g., `part_of_speech=("n", "v")`) to limit changes to content words.
+  - Use `lexemes="colors"` to swap color words (e.g., "red" → "crimson").
+  - Use `mode="literal"` for fully deterministic output when seed independence is required.
   - Use the default `rate=0.01` for gentle lexical drift; raise it (0.02–0.05) when you need bolder paraphrases.
-  - Rebuild the vector cache with `glitchlings build-lexicon` when you have richer embeddings or bespoke vocabularies. Pass `--source sentence-transformers:sentence-transformers/all-mpnet-base-v2 --tokens words.txt` to mirror the bundled behaviour, and install `nltk`/WordNet if you want the legacy synonym set as a fallback.
+  - List available dictionaries with `list_lexeme_dictionaries()` from `glitchlings.zoo.jargoyle`.

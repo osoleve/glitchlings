@@ -31,7 +31,6 @@ from .loaders import (
     get_torch_dataloader,
     jellyfish,
     jsonschema,
-    nltk,
     pytorch_lightning,
     require_datasets,
     require_jellyfish,
@@ -57,7 +56,6 @@ __all__ = [
     "verifiers",
     "jellyfish",
     "jsonschema",
-    "nltk",
     "pytorch_lightning",
     "torch",
     # Accessors

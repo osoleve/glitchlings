@@ -13,6 +13,10 @@
       "kind": "copy"
     },
     {
+      "name": "lexemes.json",
+      "kind": "copy"
+    },
+    {
       "name": "ocr_confusions.tsv",
       "kind": "copy"
     },

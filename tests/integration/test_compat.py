@@ -51,16 +51,6 @@ def test_require_jellyfish_reports_missing(monkeypatch: pytest.MonkeyPatch) -> N
     compat.reset_optional_dependencies()
 
 
-def test_optional_nltk_handles_absence(monkeypatch: pytest.MonkeyPatch) -> None:
-    compat.reset_optional_dependencies()
-    _force_missing(monkeypatch, "nltk")
-
-    assert compat.nltk.get() is None
-    with pytest.raises(ModuleNotFoundError, match="nltk is not installed"):
-        compat.nltk.require("nltk is not installed")
-    compat.reset_optional_dependencies()
-
-
 def test_get_installed_extras_reflects_available_dependencies(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

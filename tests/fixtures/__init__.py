@@ -3,12 +3,6 @@
 from __future__ import annotations
 
 from tests.fixtures.glitchlings import fresh_glitchling, sample_text
-from tests.fixtures.lexicon import (
-    MockLexicon,
-    TrackingLexicon,
-    shared_vector_embeddings,
-    toy_embeddings,
-)
 from tests.fixtures.mocks import (
     _load_environment,
     _Rubric,
@@ -25,11 +19,6 @@ __all__ = [
     # Glitchling fixtures
     "fresh_glitchling",
     "sample_text",
-    # Lexicon fixtures
-    "MockLexicon",
-    "TrackingLexicon",
-    "toy_embeddings",
-    "shared_vector_embeddings",
     # Mock fixtures
     "mock_module",
     "torch_stub",

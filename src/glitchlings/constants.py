@@ -7,7 +7,6 @@ from pathlib import Path
 # Global configuration defaults
 DEFAULT_ATTACK_SEED = 151
 DEFAULT_CONFIG_PATH = Path(__file__).with_name("config.toml")
-DEFAULT_LEXICON_PRIORITY = ["vector", "wordnet"]
 
 # Character-level glitchling default rates
 DEFAULT_TYPOGRE_RATE = 0.02
@@ -47,7 +46,6 @@ __all__ = [
     "DEFAULT_EKKOKIN_RATE",
     "DEFAULT_EKKOKIN_WEIGHTING",
     "DEFAULT_JARGOYLE_RATE",
-    "DEFAULT_LEXICON_PRIORITY",
     "DEFAULT_MIM1C_RATE",
     "DEFAULT_REDACTYL_CHAR",
     "DEFAULT_REDACTYL_RATE",

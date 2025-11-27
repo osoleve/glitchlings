@@ -19,23 +19,6 @@ if str(ROOT) not in sys.path:
 # Import shared fixtures from the fixtures modules
 # These are now available to all tests via conftest.py
 from tests.fixtures.glitchlings import fresh_glitchling, sample_text  # noqa: E402
-from tests.fixtures.lexicon import (  # noqa: E402
-    MockLexicon,
-    TrackingLexicon,
-    shared_vector_embeddings,
-    toy_embeddings,
-)
-from tests.fixtures.mocks import (  # noqa: E402
-    _load_environment,
-    _Rubric,
-    _SingleTurnEnv,
-    _VerifierEnvironment,
-    mock_gensim_vectors,
-    mock_module,
-    mock_sentence_transformers,
-    mock_spacy_language,
-    torch_stub,
-)
 
 try:
     importlib.import_module("pytest_cov")
@@ -54,7 +37,6 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line("markers", "requires_rust: requires compiled Rust extension")
     config.addinivalue_line("markers", "requires_datasets: requires datasets package")
     config.addinivalue_line("markers", "requires_torch: requires PyTorch")
-    config.addinivalue_line("markers", "requires_vectors: requires vector lexicon dependencies")
     config.addinivalue_line("markers", "unit: unit tests (default)")
 
 

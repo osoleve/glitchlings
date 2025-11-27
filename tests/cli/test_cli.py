@@ -11,10 +11,8 @@ from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
     MAX_NAME_WIDTH,
-    build_lexicon_parser,
     build_parser,
     read_text,
-    run_build_lexicon,
     run_cli,
 )
 from glitchlings.main import (
@@ -46,111 +44,6 @@ def render_expected_list_output() -> str:
 def render_expected_corruption(text: str, seed: int = 151) -> str:
     gaggle = summon(DEFAULT_GLITCHLING_NAMES, seed=seed)
     return gaggle(text)
-
-
-def test_cli_build_lexicon_delegates(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, list[str]] = {}
-
-    def fake_main(argv: list[str]) -> int:
-        captured["argv"] = argv
-        return 0
-
-    monkeypatch.setattr("glitchlings.lexicon.vector.main", fake_main)
-
-    exit_code = cli_main(
-        [
-            "build-lexicon",
-            "--source",
-            "spacy:en_core_web_md",
-            "--output",
-            "cache.json",
-            "--max-neighbors",
-            "20",
-            "--min-similarity",
-            "0.1",
-            "--normalizer",
-            "identity",
-            "--overwrite",
-        ]
-    )
-
-    assert exit_code == 0
-    assert captured["argv"] == [
-        "--source",
-        "spacy:en_core_web_md",
-        "--output",
-        "cache.json",
-        "--max-neighbors",
-        "20",
-        "--min-similarity",
-        "0.1",
-        "--normalizer",
-        "identity",
-        "--overwrite",
-    ]
-
-
-def test_run_build_lexicon_passes_optional_arguments(
-    monkeypatch: pytest.MonkeyPatch, tmp_path
-) -> None:
-    captured: dict[str, list[str]] = {}
-
-    def fake_main(argv: list[str]) -> int:
-        captured["argv"] = argv
-        return 0
-
-    monkeypatch.setattr("glitchlings.lexicon.vector.main", fake_main)
-
-    builder = build_lexicon_parser()
-    tokens_path = tmp_path / "tokens.txt"
-    tokens_path.write_text("alpha\n", encoding="utf-8")
-    output_path = tmp_path / "cache.json"
-
-    args = builder.parse_args(
-        [
-            "--source",
-            "vectors.kv",
-            "--output",
-            str(output_path),
-            "--tokens",
-            str(tokens_path),
-            "--max-neighbors",
-            "25",
-            "--min-similarity",
-            "0.3",
-            "--seed",
-            "7",
-            "--case-sensitive",
-            "--normalizer",
-            "identity",
-            "--limit",
-            "123",
-            "--overwrite",
-        ]
-    )
-
-    exit_code = run_build_lexicon(args)
-    assert exit_code == 0
-    assert captured["argv"] == [
-        "--source",
-        "vectors.kv",
-        "--output",
-        str(output_path),
-        "--max-neighbors",
-        "25",
-        "--min-similarity",
-        "0.3",
-        "--normalizer",
-        "identity",
-        "--tokens",
-        str(tokens_path),
-        "--seed",
-        "7",
-        "--case-sensitive",
-        "--limit",
-        "123",
-        "--overwrite",
-    ]
 
 
 def test_run_cli_lists_glitchlings(capsys):
@@ -270,9 +163,7 @@ def test_read_text_consumes_stdin(monkeypatch):
 
 def test_run_cli_configured_glitchling_matches_library(capsys):
     parser = build_parser()
-    args = parser.parse_args(
-        ["-g", "Typogre(rate=0.2)", "Hello there"]
-    )
+    args = parser.parse_args(["-g", "Typogre(rate=0.2)", "Hello there"])
 
     exit_code = run_cli(args, parser)
     captured = capsys.readouterr()

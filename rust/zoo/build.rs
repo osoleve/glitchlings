@@ -49,8 +49,6 @@ fn main() {
 
     stage_pipeline_assets(&manifest_dir, &out_dir, &manifest)
         .expect("failed to stage pipeline assets for compilation");
-    stage_lexicon_asset(&manifest_dir, &out_dir, "default_vector_cache.json")
-        .expect("failed to stage Jargoyle vector cache for compilation");
     pyo3_build_config::add_extension_module_link_args();
 
     // Only perform custom Python linking on non-Linux platforms.
@@ -180,27 +178,6 @@ fn query_python(python: &OsStr, command: &str) -> Option<String> {
 
 fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
     let canonical_repo_asset = manifest_dir.join("../../assets").join(asset_name);
-    if !canonical_repo_asset.exists() {
-        return Err(io::Error::new(
-            ErrorKind::NotFound,
-            format!(
-                "missing asset {asset_name}; expected {}",
-                canonical_repo_asset.display()
-            ),
-        ));
-    }
-
-    println!("cargo:rerun-if-changed={}", canonical_repo_asset.display());
-
-    fs::create_dir_all(out_dir)?;
-    fs::copy(&canonical_repo_asset, out_dir.join(asset_name))?;
-    Ok(())
-}
-
-fn stage_lexicon_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
-    let canonical_repo_asset = manifest_dir
-        .join("../../src/glitchlings/lexicon/data")
-        .join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,

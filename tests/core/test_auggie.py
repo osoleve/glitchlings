@@ -18,11 +18,9 @@ from glitchlings.zoo import (
     Rushmore,
     RushmoreMode,
     Scannequin,
-    Spectroll,
     Typogre,
     Zeedub,
 )
-from glitchlings.zoo.jargoyle import dependencies_available as jargoyle_available
 from glitchlings.zoo.pedant.stones import PedantStone
 
 
@@ -116,9 +114,11 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
         ),
         (
             "recolor",
-            Spectroll,
+            Jargoyle,
             {
+                "lexemes": "colors",
                 "mode": "drift",
+                "rate": 1.0,
                 "seed": 53,
             },
         ),
@@ -139,20 +139,17 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
                 "seed": 61,
             },
         ),
+        (
+            "drift",
+            Jargoyle,
+            {
+                "lexemes": "synonyms",
+                "mode": "drift",
+                "rate": 0.02,
+                "seed": 67,
+            },
+        ),
     ]
-
-    if jargoyle_available():
-        cases.append(
-            (
-                "synonym",
-                Jargoyle,
-                {
-                    "rate": 0.02,
-                    "part_of_speech": "any",
-                    "seed": 67,
-                },
-            )
-        )
 
     return cases
 
@@ -162,6 +159,8 @@ GLITCHLING_CASES = _available_glitchling_cases()
 
 _MANUAL_DEFAULTS: dict[str, dict[str, object]] = {
     "curly_quotes": {"stone": PedantStone.CURLITE},
+    "drift": {"lexemes": "synonyms"},
+    "recolor": {"lexemes": "colors", "rate": 1.0},
 }
 
 
@@ -174,6 +173,10 @@ def test_auggie_builder_matches_glitchling_factory(
     builder_kwargs = dict(params)
     if method_name == "curly_quotes":
         builder_kwargs.pop("stone", None)
+    if method_name == "recolor":
+        # recolor only accepts mode and seed; it sets lexemes="colors" and rate=1.0 internally
+        builder_kwargs.pop("lexemes", None)
+        builder_kwargs.pop("rate", None)
     result = builder(**builder_kwargs)
 
     assert result is auggie
@@ -187,10 +190,6 @@ def test_auggie_builder_matches_glitchling_factory(
 
     actual_kwargs = dict(blueprint_entry.kwargs)
     expected_kwargs = dict(expected.kwargs)
-    if "lexicon" in actual_kwargs and "lexicon" in expected_kwargs:
-        assert type(actual_kwargs["lexicon"]) is type(expected_kwargs["lexicon"])
-        actual_kwargs.pop("lexicon")
-        expected_kwargs.pop("lexicon")
 
     assert actual_kwargs == expected_kwargs
     assert blueprint_entry.seed == expected.seed
@@ -215,9 +214,7 @@ def test_auggie_matches_gaggle_output(sequence: Sequence[str], text: str, seed: 
     for name in sequence:
         builder = getattr(auggie, name)
         builder()
-        _, glitchling_cls, _ = next(
-            entry for entry in GLITCHLING_CASES if entry[0] == name
-        )
+        _, glitchling_cls, _ = next(entry for entry in GLITCHLING_CASES if entry[0] == name)
         manual_kwargs = dict(_MANUAL_DEFAULTS.get(name, {}))
         manual_glitchlings.append(glitchling_cls(**manual_kwargs))
 

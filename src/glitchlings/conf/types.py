@@ -13,29 +13,18 @@ Pure guarantees:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-
-from glitchlings.constants import DEFAULT_LEXICON_PRIORITY
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
     from ..zoo import Glitchling
 
 
 @dataclass(slots=True)
-class LexiconConfig:
-    """Lexicon-specific configuration section."""
-
-    priority: list[str] = field(default_factory=lambda: list(DEFAULT_LEXICON_PRIORITY))
-    vector_cache: Path | None = None
-
-
-@dataclass(slots=True)
 class RuntimeConfig:
     """Top-level runtime configuration loaded from ``config.toml``."""
 
-    lexicon: LexiconConfig
     path: Path
 
 
@@ -79,6 +68,5 @@ ATTACK_CONFIG_SCHEMA: dict[str, Any] = {
 __all__ = [
     "ATTACK_CONFIG_SCHEMA",
     "AttackConfig",
-    "LexiconConfig",
     "RuntimeConfig",
 ]

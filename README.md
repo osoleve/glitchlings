@@ -84,13 +84,12 @@ gaggle = Gaggle(
 ```
 
 Consult the [Glitchlings Usage Guide](docs/index.md)
-for end-to-end instructions spanning the Python API, CLI, HuggingFace, PyTorch, and Prime Intellect
-integrations, and the compiled Rust pipeline (always enabled).
+for end-to-end instructions spanning the Python API, CLI, and third-party integrations.
 
 ## Your First Battle
 
 Summon your chosen `Glitchling` (_or a few, if ya nasty_) and call it on your text or slot it into `Dataset.map(...)`, supplying a seed if desired.
-Glitchlings are standard Python classes, so you can instantiate them with whatever parameters fit your scenario:
+Glitchlings are standard Python classes:
 
 ```python
 from glitchlings import Gaggle, Typogre, Mim1c
@@ -99,7 +98,8 @@ custom_typogre = Typogre(rate=0.1)
 selective_mimic = Mim1c(rate=0.05, classes=["LATIN", "GREEK"])
 
 gaggle = Gaggle([custom_typogre, selective_mimic], seed=99)
-print(gaggle("Summoned heroes do not fear the glitch."))
+corrupted = gaggle("We Await Silent Tristero's Empire.")
+print(corrupted)
 ```
 
 Calling a `Glitchling` on a `str` transparently calls `.corrupt(str, ...) -> str`.
@@ -194,7 +194,7 @@ _She's soooooo coooool!_
 
 _How can a computer need reading glasses?_
 
-> _**OCR Artifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
+> _**OCArtifacts.**_ Scannequin mimics optical character recognition errors by swapping visually similar character sequences (like rn↔m, cl↔d, O↔0, l/I/1).
 
 ### Zeedub
 
@@ -212,7 +212,7 @@ _Did you hear what I heard?_
 
 _Uh oh. The worst person you know just bought a thesaurus._
 
-> _**Sesquipedalianism.**_ Jargoyle insufferably replaces words from selected parts of speech with synonyms at random, without regard for connotational or denotational differences.
+> _**Sesquipedalianism.**_ Jargoyle insufferably replaces words with synonyms at random, without regard for connotational or denotational differences.
 
 ### Rushmore
 

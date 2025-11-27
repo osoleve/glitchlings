@@ -1,247 +1,512 @@
-use crate::resources::{split_affixes, split_with_separators};
-use crate::rng::{DeterministicRng, RngError};
-use blake2::{Blake2s256, Digest};
+//! Jargoyle: Dictionary-based word drift (synonym/color/jargon substitution).
+//!
+//! This module implements Jargoyle, which swaps words with alternatives from
+//! bundled lexeme dictionaries. It supports multiple dictionary types:
+//! - "colors": Color term swapping (formerly Spectroll)
+//! - "synonyms": General synonym substitution
+//! - "corporate": Business jargon alternatives
+//! - "academic": Scholarly word substitutions
+//!
+//! Two modes are supported:
+//! - "literal": First entry in each word's alternatives (deterministic mapping)
+//! - "drift": Random selection from alternatives (probabilistic)
+
+use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::rng::DeterministicRng;
+use crate::text_buffer::TextBuffer;
 use once_cell::sync::Lazy;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
-use pyo3::PyErr;
+use regex::Regex;
 use std::collections::HashMap;
 
-static RAW_DEFAULT_VECTOR_CACHE: &str =
-    include_str!(concat!(env!("OUT_DIR"), "/default_vector_cache.json"));
+const RAW_LEXEMES: &str = include_str!(concat!(env!("OUT_DIR"), "/lexemes.json"));
 
-static DEFAULT_VECTOR_CACHE: Lazy<HashMap<String, Vec<String>>> = Lazy::new(|| {
-    serde_json::from_str(RAW_DEFAULT_VECTOR_CACHE)
-        .expect("default vector cache should be valid JSON")
+const VALID_MODE_MESSAGE: &str = "drift, literal";
+const VALID_LEXEMES: &[&str] = &["colors", "synonyms", "corporate", "academic"];
+
+/// A single dictionary mapping words to their alternatives.
+type LexemeDict = HashMap<String, Vec<String>>;
+
+/// All loaded lexeme dictionaries, keyed by dictionary name.
+static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
+    let raw: HashMap<String, serde_json::Value> =
+        serde_json::from_str(RAW_LEXEMES).expect("lexemes.json should be valid JSON");
+
+    let mut dictionaries: HashMap<String, LexemeDict> = HashMap::new();
+
+    for (dict_name, dict_value) in raw {
+        // Skip metadata entries
+        if dict_name.starts_with('_') {
+            continue;
+        }
+
+        if let serde_json::Value::Object(entries) = dict_value {
+            let mut dict: LexemeDict = HashMap::new();
+            for (word, alternatives) in entries {
+                // Skip metadata entries within dictionaries
+                if word.starts_with('_') {
+                    continue;
+                }
+                if let serde_json::Value::Array(arr) = alternatives {
+                    let words: Vec<String> = arr
+                        .into_iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect();
+                    if !words.is_empty() {
+                        dict.insert(word.to_lowercase(), words);
+                    }
+                }
+            }
+            if !dict.is_empty() {
+                dictionaries.insert(dict_name, dict);
+            }
+        }
+    }
+
+    dictionaries
 });
 
-#[derive(Debug)]
-struct Candidate {
-    token_index: usize,
-    prefix: String,
-    suffix: String,
-    synonyms: Vec<String>,
+/// Pre-compiled regex patterns for each dictionary.
+/// We build word-boundary patterns for efficient matching.
+static LEXEME_PATTERNS: Lazy<HashMap<String, Regex>> = Lazy::new(|| {
+    let mut patterns: HashMap<String, Regex> = HashMap::new();
+
+    for (dict_name, dict) in LEXEME_DICTIONARIES.iter() {
+        let mut words: Vec<&str> = dict.keys().map(|s| s.as_str()).collect();
+        // Sort by length descending to match longer words first
+        words.sort_by_key(|w| std::cmp::Reverse(w.len()));
+
+        if words.is_empty() {
+            continue;
+        }
+
+        // Escape any regex special characters in words
+        let escaped: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
+        let joined = escaped.join("|");
+
+        // Build a pattern that:
+        // - Matches word boundaries
+        // - Captures the base word and optional suffix (for colors: "reddish", "greenery")
+        let pattern = format!(r"(?i)\b(?P<word>{joined})(?P<suffix>[a-zA-Z]*)\b");
+
+        if let Ok(re) = Regex::new(&pattern) {
+            patterns.insert(dict_name.clone(), re);
+        }
+    }
+
+    patterns
+});
+
+/// Jargoyle operating mode.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JargoyleMode {
+    /// First entry in alternatives (deterministic swap)
+    Literal,
+    /// Random selection from alternatives
+    Drift,
 }
 
-fn rng_error(err: RngError) -> PyErr {
-    PyValueError::new_err(err.to_string())
+impl JargoyleMode {
+    pub fn parse(mode: &str) -> Result<Self, String> {
+        let normalized = mode.to_ascii_lowercase();
+        match normalized.as_str() {
+            "" | "literal" => Ok(JargoyleMode::Literal),
+            "drift" => Ok(JargoyleMode::Drift),
+            _ => Err(format!(
+                "Unsupported Jargoyle mode '{mode}'. Expected one of: {VALID_MODE_MESSAGE}"
+            )),
+        }
+    }
 }
 
-fn deterministic_sample(
-    values: &[String],
-    limit: usize,
+/// Get the canonical (first) replacement for a word.
+fn literal_replacement<'a>(dict: &'a LexemeDict, word: &str) -> Option<&'a str> {
+    dict.get(&word.to_lowercase())
+        .and_then(|alts| alts.first())
+        .map(|s| s.as_str())
+}
+
+/// Get a random replacement from alternatives.
+fn drift_replacement<'a>(
+    dict: &'a LexemeDict,
     word: &str,
-    pos: Option<&str>,
-    base_seed: Option<&str>,
-) -> Vec<String> {
-    if limit == 0 {
-        return Vec::new();
+    rng: &mut dyn GlitchRng,
+) -> Result<Option<&'a str>, GlitchOpError> {
+    if let Some(alternatives) = dict.get(&word.to_lowercase()) {
+        if alternatives.is_empty() {
+            return Ok(None);
+        }
+        let index = rng.rand_index(alternatives.len())?;
+        return Ok(Some(&alternatives[index]));
     }
+    Ok(None)
+}
 
-    if values.len() <= limit {
-        return values.to_vec();
-    }
+/// Case preservation helpers.
+fn is_all_ascii_uppercase(value: &str) -> bool {
+    !value.is_empty()
+        && value.chars().all(|ch| {
+            !ch.is_ascii_lowercase() && (!ch.is_ascii_alphabetic() || ch.is_ascii_uppercase())
+        })
+}
 
-    let mut hasher = Blake2s256::new();
-    hasher.update(word.to_lowercase());
-    if let Some(tag) = pos {
-        hasher.update(tag.to_lowercase());
-    }
-    let seed_repr = base_seed.unwrap_or("None");
-    hasher.update(seed_repr.as_bytes());
-    let digest = hasher.finalize();
-    let mut seed_bytes = [0u8; 8];
-    seed_bytes.copy_from_slice(&digest[..8]);
-    let derived_seed = u64::from_be_bytes(seed_bytes);
+fn is_all_ascii_lowercase(value: &str) -> bool {
+    !value.is_empty()
+        && value.chars().all(|ch| {
+            !ch.is_ascii_uppercase() && (!ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
+        })
+}
 
-    let mut rng = DeterministicRng::new(derived_seed);
-    let mut indices = match rng.sample_indices(values.len(), limit) {
-        Ok(indices) => indices,
-        Err(_) => return values[..limit].to_vec(),
+fn is_title_case(value: &str) -> bool {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return false;
     };
-    indices.sort_unstable();
-    indices
-        .into_iter()
-        .map(|index| values[index].clone())
-        .collect()
+    if !first.is_ascii_uppercase() {
+        return false;
+    }
+    chars.all(|ch| !ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
 }
 
-fn cache_synonyms_for(word: &str, pos: Option<&str>, base_seed: Option<&str>) -> Vec<String> {
-    let lookup = word.to_lowercase();
-    let Some(values) = DEFAULT_VECTOR_CACHE.get(&lookup) else {
-        return Vec::new();
+fn capitalize_ascii(value: &str) -> String {
+    let mut chars = value.chars();
+    let Some(first) = chars.next() else {
+        return String::new();
     };
-
-    deterministic_sample(values.as_slice(), 5, word, pos, base_seed)
-}
-
-fn python_supports_pos(
-    py: Python<'_>,
-    lexicon: &Bound<'_, PyAny>,
-    pos: Option<&str>,
-) -> PyResult<bool> {
-    if let Some(tag) = pos {
-        lexicon.call_method1("supports_pos", (tag,))?.extract()
-    } else {
-        lexicon
-            .call_method1("supports_pos", (py.None(),))?
-            .extract()
+    let mut result = String::with_capacity(value.len());
+    result.push(first.to_ascii_uppercase());
+    for ch in chars {
+        result.push(ch.to_ascii_lowercase());
     }
+    result
 }
 
-fn python_synonyms_for(
-    py: Python<'_>,
-    lexicon: &Bound<'_, PyAny>,
-    word: &str,
-    pos: Option<&str>,
-) -> PyResult<Vec<String>> {
-    let kwargs = PyDict::new(py);
-    match pos {
-        Some(tag) => kwargs.set_item("pos", tag)?,
-        None => kwargs.set_item("pos", py.None())?,
+/// Apply case from template to replacement.
+fn apply_case(template: &str, replacement: &str) -> String {
+    if template.is_empty() {
+        return replacement.to_string();
     }
-    let synonyms = lexicon.call_method("get_synonyms", (word,), Some(&kwargs))?;
-    synonyms.extract()
-}
+    if is_all_ascii_uppercase(template) {
+        return replacement.to_ascii_uppercase();
+    }
+    if is_all_ascii_lowercase(template) {
+        return replacement.to_ascii_lowercase();
+    }
+    if is_title_case(template) {
+        return capitalize_ascii(replacement);
+    }
 
-fn collect_synonyms(
-    py: Python<'_>,
-    lexicon: Option<&Bound<'_, PyAny>>,
-    word: &str,
-    part_of_speech: &[String],
-    base_seed: Option<&str>,
-) -> PyResult<Vec<String>> {
-    if let Some(python_lexicon) = lexicon {
-        let mut chosen: Vec<String> = Vec::new();
-        for tag in part_of_speech {
-            if !python_supports_pos(py, python_lexicon, Some(tag))? {
-                continue;
+    // Character-by-character case mapping for mixed case
+    let mut template_chars = template.chars();
+    let mut adjusted = String::with_capacity(replacement.len());
+    for repl_char in replacement.chars() {
+        let mapped = if let Some(template_char) = template_chars.next() {
+            if template_char.is_ascii_uppercase() {
+                repl_char.to_ascii_uppercase()
+            } else if template_char.is_ascii_lowercase() {
+                repl_char.to_ascii_lowercase()
+            } else {
+                repl_char
             }
-            let synonyms = python_synonyms_for(py, python_lexicon, word, Some(tag))?;
-            if !synonyms.is_empty() {
-                chosen = synonyms;
-                return Ok(chosen);
-            }
-        }
-
-        if python_supports_pos(py, python_lexicon, None)? {
-            chosen = python_synonyms_for(py, python_lexicon, word, None)?;
-        }
-        return Ok(chosen);
+        } else {
+            repl_char
+        };
+        adjusted.push(mapped);
     }
-
-    for tag in part_of_speech {
-        let synonyms = cache_synonyms_for(word, Some(tag), base_seed);
-        if !synonyms.is_empty() {
-            return Ok(synonyms);
-        }
-    }
-
-    Ok(cache_synonyms_for(word, None, base_seed))
+    adjusted
 }
 
-#[pyfunction(signature = (text, rate, part_of_speech, seed, lexicon=None, lexicon_seed=None))]
-pub(crate) fn substitute_random_synonyms(
-    py: Python<'_>,
+/// Handle suffix harmonization (e.g., "reddish" -> "blueish", not "bluereddish").
+fn harmonize_suffix(original: &str, replacement: &str, suffix: &str) -> String {
+    if suffix.is_empty() {
+        return String::new();
+    }
+
+    let original_last = original.chars().rev().find(|ch| ch.is_ascii_alphabetic());
+    let suffix_first = suffix.chars().next();
+    let replacement_last = replacement
+        .chars()
+        .rev()
+        .find(|ch| ch.is_ascii_alphabetic());
+
+    if let (Some(orig), Some(suff), Some(repl)) = (original_last, suffix_first, replacement_last) {
+        if orig.eq_ignore_ascii_case(&suff) && !repl.eq_ignore_ascii_case(&suff) {
+            return suffix.chars().skip(1).collect();
+        }
+    }
+
+    suffix.to_string()
+}
+
+/// Transform text using the specified dictionary and mode.
+fn transform_text(
     text: &str,
+    dict_name: &str,
+    mode: JargoyleMode,
     rate: f64,
-    part_of_speech: Vec<String>,
-    seed: u64,
-    lexicon: Option<Bound<'_, PyAny>>,
-    lexicon_seed: Option<String>,
-) -> PyResult<String> {
+    mut rng: Option<&mut dyn GlitchRng>,
+) -> Result<String, GlitchOpError> {
     if text.is_empty() {
         return Ok(String::new());
     }
 
-    if part_of_speech.is_empty() {
+    let dict = match LEXEME_DICTIONARIES.get(dict_name) {
+        Some(d) => d,
+        None => return Ok(text.to_string()), // Unknown dictionary, return unchanged
+    };
+
+    let pattern = match LEXEME_PATTERNS.get(dict_name) {
+        Some(p) => p,
+        None => return Ok(text.to_string()),
+    };
+
+    // Collect all matches first
+    let matches: Vec<_> = pattern.captures_iter(text).collect();
+    if matches.is_empty() {
         return Ok(text.to_string());
     }
 
-    let mut tokens = split_with_separators(text);
-    let base_seed = lexicon_seed.as_deref();
+    // For rate-based selection, determine which matches to transform
+    let indices_to_transform: Vec<usize> = if rate >= 1.0 {
+        (0..matches.len()).collect()
+    } else if let Some(ref mut r) = rng {
+        let clamped_rate = rate.max(0.0).min(1.0);
+        let expected = (matches.len() as f64) * clamped_rate;
+        let mut max_count = expected.floor() as usize;
+        let remainder = expected - (max_count as f64);
 
-    let mut candidates: Vec<Candidate> = Vec::new();
-    for (index, token) in tokens.iter().enumerate() {
-        if index % 2 != 0 {
-            continue;
-        }
-        if token.is_empty() || token.chars().all(char::is_whitespace) {
-            continue;
-        }
-
-        let (prefix, core, suffix) = split_affixes(token);
-        if core.is_empty() {
-            continue;
+        if remainder > 0.0 && r.random()? < remainder {
+            max_count += 1;
         }
 
-        let synonyms = collect_synonyms(py, lexicon.as_ref(), &core, &part_of_speech, base_seed)?;
-        if synonyms.is_empty() {
-            continue;
+        // Ensure at least 1 replacement if rate > 0 and we have matches
+        if max_count == 0 && rate > 0.0 && !matches.is_empty() {
+            max_count = 1;
         }
 
-        candidates.push(Candidate {
-            token_index: index,
-            prefix,
-            suffix,
-            synonyms,
-        });
-    }
+        max_count = max_count.min(matches.len());
+        if max_count == 0 {
+            return Ok(text.to_string());
+        }
 
-    if candidates.is_empty() {
-        return Ok(text.to_string());
-    }
-
-    let clamped_rate = rate.max(0.0);
-    if clamped_rate == 0.0 {
-        return Ok(text.to_string());
-    }
-
-    let population = candidates.len();
-    let effective_fraction = clamped_rate.min(1.0);
-    let expected = (population as f64) * effective_fraction;
-    let mut max_replacements = expected.floor() as usize;
-    let remainder = expected - (max_replacements as f64);
-
-    let mut rng = DeterministicRng::new(seed);
-    if clamped_rate >= 1.0 {
-        max_replacements = population;
+        // Sample indices
+        let selected = r.sample_indices(matches.len(), max_count)?;
+        let mut sorted: Vec<usize> = selected;
+        sorted.sort();
+        sorted
     } else {
-        if remainder > 0.0 && rng.random() < remainder {
-            max_replacements += 1;
+        // No RNG, literal mode transforms all
+        (0..matches.len()).collect()
+    };
+
+    // Build result with replacements
+    let mut result = String::with_capacity(text.len());
+    let mut cursor = 0usize;
+    let mut transform_index = 0usize;
+
+    for (match_index, captures) in matches.iter().enumerate() {
+        let matched = captures.get(0).expect("match with full capture");
+
+        // Check if this match should be transformed
+        let should_transform = transform_index < indices_to_transform.len()
+            && indices_to_transform[transform_index] == match_index;
+
+        if should_transform {
+            transform_index += 1;
         }
-        if clamped_rate > 0.0 && max_replacements == 0 && population > 0 {
-            max_replacements = 1;
+
+        // Copy text before this match
+        result.push_str(&text[cursor..matched.start()]);
+
+        let base = captures.name("word").map(|m| m.as_str()).unwrap_or("");
+        let suffix = captures.name("suffix").map(|m| m.as_str()).unwrap_or("");
+
+        if should_transform {
+            let replacement_base = match mode {
+                JargoyleMode::Literal => literal_replacement(dict, base),
+                JargoyleMode::Drift => {
+                    if let Some(ref mut r) = rng {
+                        drift_replacement(dict, base, &mut **r)?
+                    } else {
+                        literal_replacement(dict, base)
+                    }
+                }
+            };
+
+            if let Some(replacement_base) = replacement_base {
+                let adjusted = apply_case(base, replacement_base);
+                let suffix_fragment = harmonize_suffix(base, replacement_base, suffix);
+                result.push_str(&adjusted);
+                result.push_str(&suffix_fragment);
+            } else {
+                result.push_str(matched.as_str());
+            }
+        } else {
+            result.push_str(matched.as_str());
+        }
+
+        cursor = matched.end();
+    }
+
+    result.push_str(&text[cursor..]);
+    Ok(result)
+}
+
+/// Jargoyle pipeline operation for the Gaggle system.
+#[derive(Debug, Clone)]
+pub struct JargoyleOp {
+    pub lexemes: String,
+    pub mode: JargoyleMode,
+    pub rate: f64,
+}
+
+impl JargoyleOp {
+    pub fn new(lexemes: &str, mode: JargoyleMode, rate: f64) -> Self {
+        Self {
+            lexemes: lexemes.to_string(),
+            mode,
+            rate,
         }
     }
+}
 
-    max_replacements = max_replacements.min(population);
-    if max_replacements == 0 {
-        return Ok(text.to_string());
+impl GlitchOp for JargoyleOp {
+    fn apply(
+        &self,
+        buffer: &mut TextBuffer,
+        rng: &mut dyn GlitchRng,
+    ) -> Result<(), GlitchOpError> {
+        // For the pipeline, we operate on the full text
+        let text = buffer.to_string();
+        let transformed = transform_text(&text, &self.lexemes, self.mode, self.rate, Some(rng))?;
+
+        // Replace the buffer content
+        *buffer = TextBuffer::from_owned(transformed);
+        Ok(())
+    }
+}
+
+/// Python-exposed function for Jargoyle word drift.
+#[pyfunction(signature = (text, lexemes, mode, rate, seed=None))]
+pub(crate) fn jargoyle_drift(
+    text: &str,
+    lexemes: &str,
+    mode: &str,
+    rate: f64,
+    seed: Option<u64>,
+) -> PyResult<String> {
+    let parsed_mode = JargoyleMode::parse(mode).map_err(PyValueError::new_err)?;
+
+    // Validate lexemes
+    if !LEXEME_DICTIONARIES.contains_key(lexemes) {
+        return Err(PyValueError::new_err(format!(
+            "Unknown lexemes dictionary '{}'. Available: {:?}",
+            lexemes, VALID_LEXEMES
+        )));
     }
 
-    let mut selected = rng
-        .sample_indices(population, max_replacements)
-        .map_err(rng_error)?
-        .into_iter()
-        .map(|candidate_index| {
-            let token_index = candidates[candidate_index].token_index;
-            (token_index, candidate_index)
-        })
-        .collect::<Vec<_>>();
+    match parsed_mode {
+        JargoyleMode::Literal => {
+            transform_text(text, lexemes, parsed_mode, rate, None).map_err(|e| e.into_pyerr())
+        }
+        JargoyleMode::Drift => {
+            let seed_value = seed.unwrap_or(0);
+            let mut rng = DeterministicRng::new(seed_value);
+            transform_text(text, lexemes, parsed_mode, rate, Some(&mut rng))
+                .map_err(|e| e.into_pyerr())
+        }
+    }
+}
 
-    selected.sort_by_key(|(token_index, _)| *token_index);
+/// List available lexeme dictionaries.
+#[pyfunction]
+pub(crate) fn list_lexeme_dictionaries() -> Vec<String> {
+    LEXEME_DICTIONARIES.keys().cloned().collect()
+}
 
-    for (_, candidate_index) in selected {
-        let candidate = &candidates[candidate_index];
-        let choice_index = rng
-            .rand_index(candidate.synonyms.len())
-            .map_err(rng_error)?;
-        let replacement = &candidate.synonyms[choice_index];
-        tokens[candidate.token_index] =
-            format!("{}{}{}", candidate.prefix, replacement, candidate.suffix);
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_colors_literal_mode() {
+        let result = transform_text("red balloon", "colors", JargoyleMode::Literal, 1.0, None)
+            .expect("transform should succeed");
+        assert_eq!(result, "blue balloon");
     }
 
-    Ok(tokens.concat())
+    #[test]
+    fn test_colors_case_preservation() {
+        let result = transform_text("RED balloon", "colors", JargoyleMode::Literal, 1.0, None)
+            .expect("transform should succeed");
+        assert_eq!(result, "BLUE balloon");
+
+        let result = transform_text("Red balloon", "colors", JargoyleMode::Literal, 1.0, None)
+            .expect("transform should succeed");
+        assert_eq!(result, "Blue balloon");
+    }
+
+    #[test]
+    fn test_colors_suffix_handling() {
+        let result = transform_text("reddish hue", "colors", JargoyleMode::Literal, 1.0, None)
+            .expect("transform should succeed");
+        assert_eq!(result, "blueish hue");
+    }
+
+    #[test]
+    fn test_synonyms_literal_mode() {
+        let result = transform_text("fast car", "synonyms", JargoyleMode::Literal, 1.0, None)
+            .expect("transform should succeed");
+        assert_eq!(result, "rapid car");
+    }
+
+    #[test]
+    fn test_drift_mode_deterministic() {
+        let mut rng1 = DeterministicRng::new(42);
+        let mut rng2 = DeterministicRng::new(42);
+
+        let result1 = transform_text(
+            "red green blue",
+            "colors",
+            JargoyleMode::Drift,
+            1.0,
+            Some(&mut rng1),
+        )
+        .expect("transform should succeed");
+        let result2 = transform_text(
+            "red green blue",
+            "colors",
+            JargoyleMode::Drift,
+            1.0,
+            Some(&mut rng2),
+        )
+        .expect("transform should succeed");
+
+        assert_eq!(result1, result2);
+    }
+
+    #[test]
+    fn test_unknown_dictionary_unchanged() {
+        let result =
+            transform_text("hello world", "nonexistent", JargoyleMode::Literal, 1.0, None)
+                .expect("transform should succeed");
+        assert_eq!(result, "hello world");
+    }
+
+    #[test]
+    fn test_rate_filtering() {
+        let mut rng = DeterministicRng::new(123);
+        // With rate=0.5 on a 4-word text, we expect ~2 replacements
+        let result = transform_text(
+            "red green blue yellow",
+            "colors",
+            JargoyleMode::Drift,
+            0.5,
+            Some(&mut rng),
+        )
+        .expect("transform should succeed");
+        // The result should have some but not all colors changed
+        assert_ne!(result, "red green blue yellow");
+    }
 }

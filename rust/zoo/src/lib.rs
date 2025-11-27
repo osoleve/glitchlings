@@ -8,7 +8,6 @@ mod pedant;
 mod pipeline;
 mod resources;
 mod rng;
-mod spectroll;
 mod text_buffer;
 mod typogre;
 mod zeedub;
@@ -22,6 +21,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use ekkokin::{EkkokinOp, HomophoneWeighting};
+use jargoyle::{JargoyleMode, JargoyleOp};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
@@ -32,7 +32,6 @@ use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
 pub use rng::{DeterministicRng, RngError};
-use spectroll::SpectrollMode;
 pub use text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment, TextSpan};
 
 fn resolve_seed(seed: Option<u64>) -> u64 {
@@ -219,8 +218,10 @@ enum PyGlitchOperation {
         rate: f64,
         characters: Vec<String>,
     },
-    Spectroll {
-        mode: SpectrollMode,
+    Jargoyle {
+        lexemes: String,
+        mode: JargoyleMode,
+        rate: f64,
     },
     QuotePairs,
     Hokey {
@@ -345,11 +346,18 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                 let characters = extract_optional_field(dict, "characters")?.unwrap_or_default();
                 Ok(PyGlitchOperation::ZeroWidth { rate, characters })
             }
-            "spectroll" => {
+            "jargoyle" => {
+                let lexemes = extract_optional_field(dict, "lexemes")?
+                    .unwrap_or_else(|| "synonyms".to_string());
                 let mode =
-                    extract_optional_field(dict, "mode")?.unwrap_or_else(|| "literal".to_string());
-                let parsed_mode = SpectrollMode::parse(&mode).map_err(PyValueError::new_err)?;
-                Ok(PyGlitchOperation::Spectroll { mode: parsed_mode })
+                    extract_optional_field(dict, "mode")?.unwrap_or_else(|| "drift".to_string());
+                let parsed_mode = JargoyleMode::parse(&mode).map_err(PyValueError::new_err)?;
+                let rate = extract_required_field(dict, "jargoyle operation", "rate")?;
+                Ok(PyGlitchOperation::Jargoyle {
+                    lexemes,
+                    mode: parsed_mode,
+                    rate,
+                })
             }
             "ekkokin" => {
                 let rate = extract_required_field(dict, "ekkokin operation", "rate")?;
@@ -452,9 +460,11 @@ impl PyGlitchOperation {
             PyGlitchOperation::ZeroWidth { rate, characters } => {
                 GlitchOperation::ZeroWidth(glitch_ops::ZeroWidthOp { rate, characters })
             }
-            PyGlitchOperation::Spectroll { mode } => {
-                GlitchOperation::Spectroll(spectroll::SpectrollOp::new(mode))
-            }
+            PyGlitchOperation::Jargoyle {
+                lexemes,
+                mode,
+                rate,
+            } => GlitchOperation::Jargoyle(JargoyleOp::new(&lexemes, mode, rate)),
             PyGlitchOperation::Ekkokin { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
                     PyValueError::new_err(format!("unsupported weighting: {weighting}"))
@@ -635,13 +645,13 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
-    m.add_function(wrap_pyfunction!(jargoyle::substitute_random_synonyms, m)?)?;
+    m.add_function(wrap_pyfunction!(jargoyle::jargoyle_drift, m)?)?;
+    m.add_function(wrap_pyfunction!(jargoyle::list_lexeme_dictionaries, m)?)?;
     m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     m.add_function(wrap_pyfunction!(hokey::hokey, m)?)?;
-    m.add_function(wrap_pyfunction!(spectroll::swap_colors, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::jensen_shannon_divergence, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::normalized_edit_distance, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::subsequence_retention, m)?)?;

@@ -5,18 +5,21 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
-from .lexicon import Lexicon
 from .zoo.core import Gaggle, Glitchling
 from .zoo.ekkokin import Ekkokin
 from .zoo.hokey import Hokey
-from .zoo.jargoyle import Jargoyle, PartOfSpeechInput
+from .zoo.jargoyle import (
+    DEFAULT_LEXEMES,
+    DEFAULT_MODE,
+    Jargoyle,
+    JargoyleMode,
+)
 from .zoo.mim1c import Mim1c
 from .zoo.pedant import Pedant
 from .zoo.pedant.stones import PedantStone
 from .zoo.redactyl import FULL_BLOCK, Redactyl
 from .zoo.rushmore import Rushmore, RushmoreMode
 from .zoo.scannequin import Scannequin
-from .zoo.spectroll import Spectroll
 from .zoo.typogre import Typogre
 from .zoo.zeedub import Zeedub
 
@@ -186,10 +189,46 @@ class Auggie(Gaggle):
             )
         )
 
-    def recolor(self, *, mode: str = "literal", seed: int | None = None) -> "Auggie":
-        """Add :class:`Spectroll` to remap colour terms."""
+    def recolor(self, *, mode: JargoyleMode = "literal", seed: int | None = None) -> "Auggie":
+        """Add :class:`Jargoyle` with ``lexemes="colors"`` to remap colour terms.
 
-        return self._enqueue(Spectroll(mode=mode, seed=seed))
+        Args:
+            mode: "literal" for deterministic first-entry swaps,
+                  "drift" for random selection from palette.
+            seed: Seed for deterministic randomness.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self._enqueue(Jargoyle(lexemes="colors", mode=mode, rate=1.0, seed=seed))
+
+    def drift(
+        self,
+        *,
+        lexemes: str = DEFAULT_LEXEMES,
+        mode: JargoyleMode = DEFAULT_MODE,
+        rate: float | None = None,
+        seed: int | None = None,
+    ) -> "Auggie":
+        """Add :class:`Jargoyle` for dictionary-based word drift.
+
+        Swaps words with alternatives from the specified lexeme dictionary.
+
+        Args:
+            lexemes: Dictionary to use. One of:
+                "colors" (color term swapping),
+                "synonyms" (general synonyms),
+                "corporate" (business jargon),
+                "academic" (scholarly terms).
+            mode: "literal" for deterministic first-entry swaps,
+                  "drift" for random selection.
+            rate: Probability of transforming each matching word.
+            seed: Seed for deterministic randomness.
+
+        Returns:
+            Self for method chaining.
+        """
+        return self._enqueue(Jargoyle(lexemes=lexemes, mode=mode, rate=rate, seed=seed))
 
     def ocr(
         self,
@@ -216,18 +255,27 @@ class Auggie(Gaggle):
         self,
         *,
         rate: float | None = None,
-        part_of_speech: PartOfSpeechInput = "n",
         seed: int | None = None,
-        lexicon: Lexicon | None = None,
+        lexemes: str = "synonyms",
+        mode: JargoyleMode = "drift",
     ) -> "Auggie":
-        """Add :class:`Jargoyle` for synonym substitutions."""
+        """Add :class:`Jargoyle` for synonym substitutions.
 
+        Args:
+            rate: Probability of transforming each matching word.
+            seed: Seed for deterministic randomness.
+            lexemes: Dictionary to use (default "synonyms").
+            mode: "literal" or "drift" (default "drift").
+
+        Returns:
+            Self for method chaining.
+        """
         return self._enqueue(
             Jargoyle(
                 rate=rate,
-                part_of_speech=part_of_speech,
                 seed=seed,
-                lexicon=lexicon,
+                lexemes=lexemes,
+                mode=mode,
             )
         )
 

@@ -13,7 +13,6 @@ from glitchlings.zoo.validation import (
     normalise_homophone_group,
     normalise_mim1c_banned,
     normalise_mim1c_classes,
-    normalize_parts_of_speech,
     normalize_rushmore_mode_item,
     normalize_rushmore_modes,
     normalize_zero_width_palette,
@@ -101,43 +100,6 @@ class TestMim1cValidation:
     def test_normalise_banned_invalid_type(self) -> None:
         with pytest.raises(TypeError, match="iterable of strings"):
             normalise_mim1c_banned(123)
-
-
-class TestJargoyleValidation:
-    """Tests for parts of speech validation."""
-
-    def test_normalize_pos_single_noun(self) -> None:
-        assert normalize_parts_of_speech("n") == ("n",)
-
-    def test_normalize_pos_any(self) -> None:
-        assert normalize_parts_of_speech("any") == ("n", "v", "a", "r")
-
-    def test_normalize_pos_any_uppercase(self) -> None:
-        # Cast to Any since we're intentionally testing case-insensitive "any"
-        pos: Any = "ANY"
-        assert normalize_parts_of_speech(pos) == ("n", "v", "a", "r")
-
-    def test_normalize_pos_list(self) -> None:
-        assert normalize_parts_of_speech(["n", "v"]) == ("n", "v")
-
-    def test_normalize_pos_deduplicates(self) -> None:
-        assert normalize_parts_of_speech(["n", "n", "v"]) == ("n", "v")
-
-    def test_normalize_pos_invalid_single(self) -> None:
-        # Cast to Any since we're intentionally testing invalid input
-        invalid: Any = "x"
-        with pytest.raises(ValueError, match="must be one of"):
-            normalize_parts_of_speech(invalid)
-
-    def test_normalize_pos_invalid_in_list(self) -> None:
-        # Cast to Any since we're intentionally testing invalid input
-        invalid: Any = ["n", "x"]
-        with pytest.raises(ValueError, match="entries must be one of"):
-            normalize_parts_of_speech(invalid)
-
-    def test_normalize_pos_empty_list(self) -> None:
-        with pytest.raises(ValueError, match="may not be empty"):
-            normalize_parts_of_speech([])
 
 
 class TestEkkokinValidation:
