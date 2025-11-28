@@ -139,9 +139,9 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 glitchlings --report json --sample
 ```
 
-## Attack Configurations
+## Configuration Files
 
-Attack configurations live in plain YAML files so you can version-control experiments without touching code:
+Configurations live in plain YAML files so you can version-control experiments without touching code:
 
 ```bash
 # Load a roster from a YAML attack configuration.
