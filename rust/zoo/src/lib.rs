@@ -25,7 +25,7 @@ use jargoyle::{JargoyleMode, JargoyleOp};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
-    SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
+    ShiftSlipConfig, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
 use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
@@ -208,6 +208,7 @@ enum PyGlitchOperation {
     Typo {
         rate: f64,
         layout: Arc<Layout>,
+        shift_slip: Option<ShiftSlipConfig>,
     },
     Mimic {
         rate: f64,
@@ -328,7 +329,24 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     extract_required_field_with_field_suffix(dict, "typo operation", "layout")?;
                 let layout_dict = layout_obj.downcast::<PyDict>()?;
                 let layout = cached_layout_vec(layout_dict)?;
-                Ok(PyGlitchOperation::Typo { rate, layout })
+                let shift_slip_rate =
+                    extract_optional_field(dict, "shift_slip_rate")?.unwrap_or(0.0);
+                let shift_slip_exit_rate = extract_optional_field(dict, "shift_slip_exit_rate")?;
+                let shift_map = dict
+                    .get_item("shift_map")?
+                    .map(|value| -> PyResult<Arc<HashMap<String, String>>> {
+                        let mapping = value.downcast::<PyDict>()?;
+                        typogre::extract_shift_map(mapping)
+                    })
+                    .transpose()?;
+                let shift_slip =
+                    typogre::build_shift_slip_config(shift_slip_rate, shift_slip_exit_rate, shift_map)?;
+
+                Ok(PyGlitchOperation::Typo {
+                    rate,
+                    layout,
+                    shift_slip,
+                })
             }
             "mimic" => {
                 let rate =
@@ -444,12 +462,17 @@ impl PyGlitchOperation {
             PyGlitchOperation::Ocr { rate } => {
                 GlitchOperation::Ocr(glitch_ops::OcrArtifactsOp { rate })
             }
-            PyGlitchOperation::Typo { rate, layout } => {
+            PyGlitchOperation::Typo {
+                rate,
+                layout,
+                shift_slip,
+            } => {
                 let layout_map: HashMap<String, Vec<String>> =
                     layout.as_ref().iter().cloned().collect();
                 GlitchOperation::Typo(glitch_ops::TypoOp {
                     rate,
                     layout: layout_map,
+                    shift_slip,
                 })
             }
             PyGlitchOperation::Mimic {
@@ -650,6 +673,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
     m.add_function(wrap_pyfunction!(typogre::fatfinger, m)?)?;
+    m.add_function(wrap_pyfunction!(typogre::slip_modifier, m)?)?;
     m.add_function(wrap_pyfunction!(zeedub::inject_zero_widths, m)?)?;
     m.add_function(wrap_pyfunction!(hokey::hokey, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::jensen_shannon_divergence, m)?)?;
