@@ -59,18 +59,13 @@ def encode_batch(
     # Try batch encoding if available
     batch_encode = getattr(tokenizer, "encode_batch", None)
     if callable(batch_encode):
-        try:
-            encoded = batch_encode(texts)
-        except (TypeError, AttributeError, NotImplementedError):
-            # Fall back to per-item encoding if batch fails
-            pass
-        else:
-            token_batches: list[list[str]] = []
-            id_batches: list[list[int]] = []
-            for tokens, ids in encoded:
-                token_batches.append(list(tokens))
-                id_batches.append(list(ids))
-            return token_batches, id_batches
+        encoded = batch_encode(texts)
+        token_batches: list[list[str]] = []
+        id_batches: list[list[int]] = []
+        for tokens, ids in encoded:
+            token_batches.append(list(tokens))
+            id_batches.append(list(ids))
+        return token_batches, id_batches
 
     # Fallback: encode each text individually
     token_batches_fallback: list[list[str]] = []

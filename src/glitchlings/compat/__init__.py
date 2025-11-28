@@ -43,10 +43,11 @@ from .loaders import (
 )
 
 # Re-export types for anyone who needs the sentinel
-from .types import MISSING, _MissingSentinel
+from .types import MISSING, Dataset, _MissingSentinel
 
 __all__ = [
     # Types
+    "Dataset",
     "MISSING",
     "_MissingSentinel",
     # Core class

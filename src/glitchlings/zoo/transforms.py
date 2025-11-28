@@ -30,14 +30,14 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import TypeVar
+from typing import TypeVar, cast
 
 # ---------------------------------------------------------------------------
 # Text Tokenization
 # ---------------------------------------------------------------------------
 
 _WORD_SPLIT_PATTERN = re.compile(r"(\s+)")
-_TOKEN_EDGES_PATTERN = re.compile(r"^(\W*)(.*?)(\W*)$")
+_TOKEN_EDGES_PATTERN = re.compile(r"^(\W*)(.*?)(\W*)$", re.DOTALL)
 
 
 def split_preserving_whitespace(text: str) -> list[str]:
@@ -75,10 +75,9 @@ def split_token_edges(token: str) -> tuple[str, str, str]:
         >>> split_token_edges('"Hello!"')
         ('"', 'Hello', '!"')
     """
-    match = _TOKEN_EDGES_PATTERN.match(token)
-    if match is None:
-        return "", token, ""
-    return match.group(1), match.group(2), match.group(3)
+    match = cast(re.Match[str], _TOKEN_EDGES_PATTERN.match(token))
+    prefix, core, suffix = match.groups()
+    return prefix, core, suffix
 
 
 def compute_core_length(token: str) -> int:

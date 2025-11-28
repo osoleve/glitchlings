@@ -12,6 +12,8 @@ Pure guarantees:
 
 from __future__ import annotations
 
+from typing import Any, Protocol
+
 
 class _MissingSentinel:
     """Sentinel value indicating no cached import attempt has been made."""
@@ -22,11 +24,18 @@ class _MissingSentinel:
         return "<MISSING>"
 
 
+class Dataset(Protocol):
+    """Protocol mirroring the subset of Hugging Face datasets API we use."""
+
+    def with_transform(self, function: Any) -> "Dataset": ...
+
+
 MISSING: _MissingSentinel = _MissingSentinel()
 """Singleton sentinel for uninitialized optional dependency cache."""
 
 
 __all__ = [
+    "Dataset",
     "MISSING",
     "_MissingSentinel",
 ]

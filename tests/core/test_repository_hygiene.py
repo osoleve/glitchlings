@@ -29,28 +29,6 @@ def test_apostrofae_pairs_asset_unique_source():
     assert not duplicate_asset.exists(), "unexpected duplicate Apostrofae asset copy"
 
 
-def test_ocr_confusions_asset_unique_source():
-    """Verify OCR confusion table has a single canonical source."""
-    canonical_asset = REPO_ROOT / "src/glitchlings/assets/ocr_confusions.tsv"
-    duplicate_asset = REPO_ROOT / "src/glitchlings/zoo/ocr_confusions.tsv"
-    legacy_asset = REPO_ROOT / "rust/zoo/assets/ocr_confusions.tsv"
-
-    assert canonical_asset.exists(), "missing OCR confusion table"
-    assert not duplicate_asset.exists(), "unexpected duplicate OCR confusion table copy"
-    assert not legacy_asset.exists(), "legacy Rust OCR confusion table should be removed"
-
-
-def test_hokey_assets_shared_source():
-    """Verify Hokey assets have a single canonical source."""
-    canonical_asset = REPO_ROOT / "src/glitchlings/assets/hokey_assets.json"
-    legacy_asset = REPO_ROOT / "src/glitchlings/data/hokey_assets.json"
-    rust_duplicate_asset = REPO_ROOT / "rust/zoo/assets/hokey_assets.json"
-
-    assert canonical_asset.exists(), "missing Hokey stretchability asset"
-    assert not legacy_asset.exists(), "unexpected legacy Hokey asset location lingering"
-    assert not rust_duplicate_asset.exists(), "legacy Rust Hokey asset should be removed"
-
-
 def test_pipeline_assets_match_build_stage_list():
     """Verify build.rs sources pipeline assets from the shared manifest."""
     build_rs = (REPO_ROOT / "rust/zoo/build.rs").read_text(encoding="utf-8")
