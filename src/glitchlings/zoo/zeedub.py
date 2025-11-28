@@ -65,18 +65,15 @@ class Zeedub(Glitchling):
             characters=tuple(characters) if characters is not None else None,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload | None:
-        rate_value = self.kwargs.get("rate")
-        rate = DEFAULT_ZEEDUB_RATE if rate_value is None else float(rate_value)
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        rate = float(self.kwargs.get("rate", DEFAULT_ZEEDUB_RATE))
 
         raw_characters = self.kwargs.get("characters")
-        if raw_characters is None:
-            palette = tuple(ZEEDUB_DEFAULT_ZERO_WIDTHS)
-        else:
-            palette = tuple(str(char) for char in raw_characters if char)
-
-        if not palette:
-            return None
+        palette = (
+            tuple(ZEEDUB_DEFAULT_ZERO_WIDTHS)
+            if raw_characters is None
+            else tuple(str(char) for char in raw_characters if char)
+        )
 
         return cast(
             PipelineOperationPayload,

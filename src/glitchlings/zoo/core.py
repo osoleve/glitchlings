@@ -40,14 +40,6 @@ _DatasetsDataset = get_datasets_dataset()
 _is_transcript = is_transcript
 
 
-def _plan_glitchlings_with_rust(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int,
-) -> list[tuple[int, int]]:
-    """Obtain the orchestration plan from the compiled Rust module."""
-    return plan_glitchlings_rust(list(specs), int(master_seed))
-
-
 def plan_glitchling_specs(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int | None,
@@ -64,7 +56,7 @@ def plan_glitchling_specs(
 
     normalized_specs = [spec.as_mapping() for spec in normalize_plan_specs(specs)]
     master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
+    return plan_glitchlings_rust(list(normalized_specs), master_seed_int)
 
 
 def plan_glitchlings(
@@ -83,7 +75,7 @@ def plan_glitchlings(
 
     normalized_specs = [spec.as_mapping() for spec in normalize_plan_entries(entries)]
     master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
+    return plan_glitchlings_rust(list(normalized_specs), master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only

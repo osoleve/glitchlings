@@ -65,16 +65,15 @@ class Redactyl(Glitchling):
             unweighted=unweighted,
         )
 
-    def pipeline_operation(self) -> PipelineOperationPayload | None:
-        replacement_char_value = self.kwargs.get("replacement_char")
-        rate_value = self.kwargs.get("rate")
-        merge_value = self.kwargs.get("merge_adjacent")
+    def pipeline_operation(self) -> PipelineOperationPayload:
+        replacement_char_value = self.kwargs.get("replacement_char", DEFAULT_REDACTYL_CHAR)
+        rate_value = self.kwargs.get("rate", DEFAULT_REDACTYL_RATE)
+        merge_value = self.kwargs.get("merge_adjacent", False)
 
-        if replacement_char_value is None or rate_value is None or merge_value is None:
-            return None
-
-        replacement_char = str(replacement_char_value)
-        rate = float(rate_value)
+        replacement_char = str(
+            DEFAULT_REDACTYL_CHAR if replacement_char_value is None else replacement_char_value
+        )
+        rate = float(DEFAULT_REDACTYL_RATE if rate_value is None else rate_value)
         merge_adjacent = bool(merge_value)
         unweighted = bool(self.kwargs.get("unweighted", False))
 
