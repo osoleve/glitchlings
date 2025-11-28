@@ -20,7 +20,7 @@ from typing import IO, TYPE_CHECKING, Any, Callable, Mapping, Protocol, cast
 
 from glitchlings.constants import DEFAULT_ATTACK_SEED, DEFAULT_CONFIG_PATH
 
-from ..compat import jsonschema
+from ..compat.loaders import jsonschema
 from .schema import (
     normalize_mapping,
     validate_attack_config_schema,

@@ -16,7 +16,6 @@ Impure modules (may have side effects at import time):
 - internal/rust.py - Low-level Rust FFI loader
 - internal/rust_ffi.py - Centralized Rust operation wrappers (preferred for FFI)
 - compat/loaders.py - Optional dependency loader with lazy import machinery
-- config.py - Configuration singleton
 - Any module that imports from internal/rust.py or internal/rust_ffi.py
 """
 
@@ -195,7 +194,6 @@ IMPURE_MODULES = {
     "glitchlings.internal.rust_ffi",
     "glitchlings.internal",
     "glitchlings._zoo_rust",
-    "glitchlings.config",
     "glitchlings.compat.loaders",
     "glitchlings.conf.loaders",
     # Attack impure modules
@@ -287,7 +285,6 @@ class TestImportConventions:
         impure_locations = [
             SRC_DIR / "internal" / "rust.py",
             SRC_DIR / "compat" / "loaders.py",
-            SRC_DIR / "config.py",
         ]
         for path in impure_locations:
             if path.exists():

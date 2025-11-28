@@ -170,7 +170,6 @@ Pure modules must follow strict import rules:
 
 2. **Pure modules** must NOT import:
    - `glitchlings.internal.rust`
-   - `glitchlings.config`
    - `glitchlings.compat`
    - Any module that triggers side effects at import time
 

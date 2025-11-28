@@ -169,44 +169,6 @@ ignore_missing_imports = true
 enable_error_code = ["ignore-without-code"]
 warn_redundant_casts = true
 warn_unused_ignores = true
-
-[[tool.mypy.overrides]]
-module = [
-    "glitchlings.util.adapters",
-    "glitchlings.dlc._shared",
-    "glitchlings.dlc.gutenberg",
-    "glitchlings.dlc.huggingface",
-    "glitchlings.dlc.prime",
-]
-strict = true
-disallow_any_generics = true
-warn_return_any = true
-no_implicit_reexport = true
-disallow_untyped_decorators = true
-
-[[tool.mypy.overrides]]
-module = [
-    "glitchlings.conf",
-    "glitchlings.conf.*",
-    "glitchlings.compat",
-    "glitchlings.config",
-    "glitchlings.attack_config",
-    "glitchlings.runtime_config",
-]
-strict = true
-disallow_any_generics = true
-
-[[tool.mypy.overrides]]
-module = [
-    "glitchlings.main",
-    "glitchlings.__main__",
-    "glitchlings.__init__",
-    "glitchlings.assets",
-    "glitchlings.internal",
-    "glitchlings.internal.*",
-    "glitchlings.zoo",
-    "glitchlings.zoo.*",
-]
 strict = true
 
 [tool.coverage.run]

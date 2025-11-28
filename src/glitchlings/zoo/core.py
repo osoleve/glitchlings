@@ -9,8 +9,8 @@ from typing import TYPE_CHECKING, Any, Callable, Protocol, cast
 
 from glitchlings.internal.rust_ffi import plan_glitchlings_rust
 
-from ..compat import Dataset as DatasetProtocol
-from ..compat import get_datasets_dataset, require_datasets
+from ..compat.loaders import get_datasets_dataset, require_datasets
+from ..compat.types import Dataset as DatasetProtocol
 from ..util.transcripts import (
     Transcript,
     TranscriptTarget,
@@ -23,7 +23,6 @@ from .core_planning import (
     build_execution_plan,
     build_pipeline_descriptor,
     normalize_plan_entries,
-    normalize_plan_specs,
 )
 from .core_planning import (
     PlanEntry as _PlanEntry,
@@ -36,27 +35,7 @@ from .corrupt_dispatch import (
 
 _DatasetsDataset = get_datasets_dataset()
 
-
 _is_transcript = is_transcript
-
-
-def plan_glitchling_specs(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int | None,
-) -> list[tuple[int, int]]:
-    """Resolve orchestration order and seeds from glitchling specifications.
-
-    Notes
-    -----
-    The Rust extension is required for orchestration.
-    """
-    if master_seed is None:
-        message = "Gaggle orchestration requires a master seed"
-        raise ValueError(message)
-
-    normalized_specs = [spec.as_mapping() for spec in normalize_plan_specs(specs)]
-    master_seed_int = int(master_seed)
-    return plan_glitchlings_rust(list(normalized_specs), master_seed_int)
 
 
 def plan_glitchlings(
@@ -555,7 +534,6 @@ __all__ = [
     "Gaggle",
     # Planning functions
     "plan_glitchlings",
-    "plan_glitchling_specs",
     "PipelineOperationPayload",
     "PipelineDescriptor",
 ]

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Any, Callable, Protocol, cast
 
-from ..compat import require_datasets, require_jellyfish, require_verifiers
+from ..compat.loaders import require_datasets, require_jellyfish, require_verifiers
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling, Mim1c, Typogre  # noqa: F401
 from ._shared import resolve_columns as _resolve_columns_shared

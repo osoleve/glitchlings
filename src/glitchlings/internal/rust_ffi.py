@@ -83,15 +83,9 @@ def plan_glitchlings_rust(
 
     Returns:
         List of (index, derived_seed) tuples defining execution order.
-
-    Raises:
-        RuntimeError: If Rust orchestration fails.
     """
     plan_fn = get_rust_operation("plan_glitchlings")
-    try:
-        plan = plan_fn(specs, int(master_seed))
-    except (TypeError, ValueError, RuntimeError, AttributeError) as error:
-        raise RuntimeError("Rust orchestration planning failed") from error
+    plan = plan_fn(specs, int(master_seed))
     return [(int(index), int(seed)) for index, seed in plan]
 
 
@@ -109,15 +103,9 @@ def compose_glitchlings_rust(
 
     Returns:
         Transformed text.
-
-    Raises:
-        RuntimeError: If Rust pipeline execution fails.
     """
     compose_fn = get_rust_operation("compose_glitchlings")
-    try:
-        return cast(str, compose_fn(text, descriptors, int(master_seed)))
-    except (TypeError, ValueError, AttributeError) as error:
-        raise RuntimeError("Rust pipeline execution failed") from error
+    return cast(str, compose_fn(text, descriptors, int(master_seed)))
 
 
 # ---------------------------------------------------------------------------
