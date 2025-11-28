@@ -13,31 +13,38 @@ gaggle = Gaggle([Typogre(rate=0.02), Mim1c(rate=0.01)], seed=404)
 
 corrupted = gaggle.corrupt_dataset(
     dataset,
-    columns=["text"],  # inferred when omitted
-    description="ag_news with typographic noise",
+    columns=["text"],
 )
+```
+
+Prefer the wrapper when you want a standalone view:
+
+```python
+from glitchlings.dlc.huggingface import GlitchedDataset
+
+corrupted = GlitchedDataset(dataset, "typogre", column="text", seed=404)
 ```
 
 Notes:
 
-- When `columns` is omitted, Glitchlings infers targets (`prompt`, `question`, or all string columns).
-- The returned dataset is a shallow copy containing both clean and corrupted columns—persist it with `push_to_hub(...)` or `save_to_disk(...)`.
+- Explicit columns are required for dataset corruption; pass one or more names to target.
+- The returned dataset is a lazy view; persist it with `push_to_hub(...)` or `save_to_disk(...)`.
 - Keep the gaggle seed stable to reproduce corruption across machines.
 
 ## PyTorch DataLoader
 
-Import the DLC to patch `torch.utils.data.DataLoader.glitch(...)`:
+Wrap a `DataLoader` with the DLC helper:
 
 ```python
-import glitchlings.dlc.pytorch  # registers .glitch
 from torch.utils.data import DataLoader
+from glitchlings.dlc.pytorch import GlitchedDataLoader
 from glitchlings import Typogre
 
 loader = DataLoader(dataset, batch_size=32)
-noisy_loader = loader.glitch(Typogre(rate=0.02), columns=["text"])
+noisy_loader = GlitchedDataLoader(loader, Typogre(rate=0.02), columns=["text"])
 ```
 
-Column inference mirrors the dataset helper when `columns` is omitted.
+When `columns` is omitted, `GlitchedDataLoader` infers textual fields from the first batch.
 
 ## Prime environments
 

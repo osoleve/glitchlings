@@ -49,10 +49,9 @@ Run the shared quality gates before opening a pull request:
 
 ```bash
 ruff check .
-black --check .
-isort --check-only .
-python -m mypy --config-file pyproject.toml
-pytest --maxfail=1 --disable-warnings -q
+python -m mypy --config-file pyproject.toml src
+uv build
+pytest
 ```
 
 ## Additional tips
@@ -60,7 +59,7 @@ pytest --maxfail=1 --disable-warnings -q
 - Rebuild the Rust extension after editing files under `rust/zoo/`:
 
   ```bash
-  maturin develop -m rust/zoo/Cargo.toml
+  uv build -Uq
   ```
 
 - Regenerate the CLI reference page, Monster Manual (both repo root and docs site copies), and glitchling gallery together with:
@@ -72,7 +71,7 @@ pytest --maxfail=1 --disable-warnings -q
 
 ## Functional Purity Architecture
 
-The codebase follows a layered architecture that separates **pure** (deterministic, side-effect-free) code from **impure** (stateful, side-effectful) code. This separation makes the code more testable, predictable, and easier for AI coding agents to work with.
+The codebase follows a layered architecture that separates **pure** (deterministic, side-effect-free) code from **impure** (stateful, side-effectful) code, and requires all defensive coding to occur at **module boundaries** instead of all throughout. This pattern improves maintainability, testability, and clarity, especially when working with AI coding agents that tend to add defensive checks everywhere.
 
 ### What is Pure Code?
 
@@ -100,10 +99,13 @@ The zoo subpackage organizes code by purity:
 |--------|------|---------|
 | `zoo/validation.py` | Pure | Boundary validation, rate clamping, parameter normalization |
 | `zoo/transforms.py` | Pure | Text tokenization, keyboard processing, string diffs, word splitting |
-| `zoo/rng.py` | Pure boundary | Seed resolution, hierarchical derivation |
+| `zoo/rng.py` | Pure | Seed resolution, hierarchical derivation |
 | `compat/types.py` | Pure | Type definitions for optional dependency loading |
 | `conf/types.py` | Pure | Configuration dataclasses (RuntimeConfig, AttackConfig) |
 | `constants.py` | Pure | Centralized default values and constants |
+| `attack/compose.py` | Pure | Result assembly helpers |
+| `attack/encode.py` | Pure | Tokenization helpers |
+| `attack/metrics_dispatch.py` | Pure | Metric dispatch logic |
 | `internal/rust.py` | Impure | Low-level Rust FFI loader and primitives |
 | `internal/rust_ffi.py` | Impure | Centralized Rust operation wrappers (preferred) |
 | `compat/loaders.py` | Impure | Optional dependency lazy loading machinery |
@@ -127,19 +129,20 @@ Core transformation functions **inside** these boundaries should:
 ### Example: Correct Pattern
 
 ```python
-# In validation.py (boundary layer - validate thoroughly)
-def normalize_rate(value: float | None, default: float) -> float:
-    """Validate and normalize a rate parameter."""
-    effective = default if value is None else value
-    if math.isnan(effective):
+# In validation.py (boundary layer)
+def validate_rate(rate: float | None) -> float:
+    if rate is None:
+        raise ValueError("rate cannot be None")
+    if not isinstance(rate, (int, float)):
+        raise TypeError("rate must be numeric")
+    if math.isnan(rate):
         return 0.0
-    return max(0.0, effective)
+    return max(0.0, min(1.0, float(rate)))
 
 # In typogre.py (uses boundary layer, trusts result)
 def fatfinger(text: str, rate: float, ...) -> str:
     # rate is already validated - just use it
-    clamped_rate = max(0.0, rate)  # Simple floor, not full validation
-    return _fatfinger_rust(text, clamped_rate, ...)
+    return _fatfinger_rust(text, rate, ...)
 ```
 
 ### Example: Anti-Pattern

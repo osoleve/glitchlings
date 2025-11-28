@@ -13,6 +13,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
 7. [Glitchling reference](#glitchling-reference)
    - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
+   - [Hokey](glitchlings/hokey.md)
    - [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Rushmore](glitchlings/rushmore.md)
@@ -55,11 +56,12 @@ pip install -U 'glitchlings[all]'
 
 #### Dataset/Loader Monkeypatching DLC
 
-Add a `.glitch(...)` method to popular dataset loaders for seamless, reproducible corruption:
+Wrap popular dataset loaders for seamless, reproducible corruption:
 
 - `hf` for Hugging Face Datasets
 - `torch` for PyTorch DataLoader
 - `lightning` for Lightning DataModule
+- `gutenberg` for Project Gutenberg (Gutendex) corruption helpers
 
 See [Dataset workflows](#dataset-workflows) for details.
 
@@ -99,16 +101,16 @@ All glitchlings are deterministic: pass a `seed` during construction (or on the 
 
 Glitchlings slot neatly into existing pipelines:
 
-- **Direct invocation** – Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to reproduce every run.
-- **Dataset corruption** – After ``import glitchlings.dlc.huggingface`` registers the extension, call ``Dataset.glitch(...)`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb a Hugging Face `datasets.Dataset` and return a corrupted copy for training or evaluation.
-- **PyTorch data loaders** – Import ``glitchlings.dlc.pytorch`` to patch ``torch.utils.data.DataLoader.glitch(...)``. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
+- **Direct invocation** - Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to reproduce every run.
+- **Dataset corruption** - Use ``glitchlings.dlc.huggingface.GlitchedDataset`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb Hugging Face `datasets.Dataset` columns. Pass the target column names explicitly.
+- **PyTorch data loaders** - Use ``glitchlings.dlc.pytorch.GlitchedDataLoader`` to wrap ``torch.utils.data.DataLoader`` batches. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
 
 ## Guide map
 
 - [Attack helper](attack.md) – single-call corruption plus metrics, with transcript-aware batching and tokenizer selection.
-- [Dataset workflows](datasets.md) – how to glitch Hugging Face datasets and PyTorch data loaders with column inference.
-- [Integrations and DLC](integrations.md) – Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
-- [Determinism guide](determinism.md) – seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
+- [Dataset workflows](datasets.md) - how to glitch Hugging Face datasets and PyTorch data loaders with the provided wrappers and column selection.
+- [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
+- [Determinism guide](determinism.md) - seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
 
 ### Command line interface
 
@@ -137,7 +139,7 @@ The `Gaggle` class coordinates multiple glitchlings with deterministic sequencin
 - **Seed derivation** - pass `seed=` to `Gaggle(...)` and it will derive per-glitchling seeds via `derive_seed`, ensuring cross-run stability without repeated outputs.
 - **Attack scopes & order** – glitchlings declare a scope (`document`, `sentence`, `word`, `character`) and attack order (`early`, `late`, etc.). By default the gaggle sorts by scope, then by order so character-level edits (Typogre, Pedant with Curlite, Mim1c, Scannequin) happen after word-level operations (Rushmore and its duplicate/swap modes, Redactyl, Jargoyle). Override this via `Gaggle([...], attack_order=[...])` when you need bespoke choreography.
 - **Dynamic configuration** – use `gaggle.set_param("Typogre", "rate", 0.05)` to tweak nested glitchling parameters without rebuilding the ensemble.
-- **Dataset utilities** - after importing ``glitchlings.dlc.huggingface``, call ``dataset.glitch(...)`` (or `gaggle.corrupt_dataset(dataset, columns=[...])`) to clone and perturb Hugging Face datasets while leaving the original untouched. Column inference automatically targets `text`, `prompt`, or similar string columns when none are provided.
+- **Dataset utilities** - wrap datasets with ``glitchlings.dlc.huggingface.GlitchedDataset`` or call `gaggle.corrupt_dataset(dataset, columns=[...])` to clone and perturb Hugging Face datasets while leaving the original untouched. Pass the columns explicitly.
 - **Summoning from shorthand** - `glitchlings.summon` lets you build a gaggle from names or partially-configured objects (`summon(["typogre", Mim1c(rate=0.01)], seed=404)`).
 
 Deep integration tests for the orchestration stack live in `tests/test_glitchling_core.py`, and the CLI argument matrix in `tests/test_parameter_effects.py`.
@@ -152,7 +154,8 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 
 - [Auggie](glitchlings/auggie.md) - behaviour-driven assistant that assembles gaggles with helper methods.
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
-- [Pedant – Curlite (Apostrofae)](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
+- [Hokey](glitchlings/hokey.md) - expressive lengthening driven by linguistic cues.
+- [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.

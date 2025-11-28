@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
-from enum import Enum
 from typing import Any, Callable, Protocol, cast
 
 from ..compat import require_datasets, require_jellyfish, require_verifiers
 from ..util.adapters import coerce_gaggle
-from ..zoo import Gaggle, Glitchling, Mim1c, Typogre
+from ..zoo import Gaggle, Glitchling, Typogre, Mim1c
 from ._shared import resolve_columns as _resolve_columns_shared
 
 
@@ -44,32 +43,6 @@ def _resolve_environment(env: str | VerifierEnvironment) -> VerifierEnvironment:
 def _resolve_columns(dataset: Any, columns: Sequence[str] | None) -> list[str]:
     """Identify which dataset columns should be corrupted."""
     return _resolve_columns_shared(dataset, columns)
-
-
-class Difficulty(Enum):
-    """Difficulty levels for tutorial environments."""
-
-    Easy = 0.25
-    Normal = 1.0
-    Hard = 1.75
-    Extreme = 3
-    Impossible = 9
-
-
-def tutorial_level(
-    env: VerifierEnvironment | str,
-    seed: int = 151,
-    difficulty: Difficulty = Difficulty.Normal,
-) -> VerifierEnvironment:
-    """Create a low-corruption environment using tuned defaults."""
-    tuned_mim1c = Mim1c(rate=0.01 * difficulty.value)
-    tuned_typogre = Typogre(rate=0.025 * difficulty.value)
-
-    return load_environment(
-        env,
-        glitchlings=[tuned_mim1c, tuned_typogre],
-        seed=seed,
-    )
 
 
 def load_environment(

@@ -70,7 +70,7 @@ from glitchlings import Auggie
 dataset = load_dataset("ag_news")
 auggie = Auggie(seed=151).typo(rate=0.02).ocr(rate=0.01)
 
-corrupted = auggie.corrupt_dataset(dataset, columns=["text"], description="ag_news + OCR noise")
+corrupted = auggie.corrupt_dataset(dataset, columns=["text"])
 ```
 
 Need finer control? Build the initial roster manually and hand it to Auggie:
@@ -82,4 +82,10 @@ automaton = Auggie([Mim1c(rate=0.03), Zeedub(rate=0.01)], seed=2024)
 ```
 
 Auggie will copy the provided glitchlings into its blueprint and expose the same
-helper methods for subsequent adjustments.
+helper methods for subsequent adjustments. Additional helpers to discover:
+
+- `.curly_quotes()` for Curlite smart quotes
+- `.recolor()` and `.drift()` for Jargoyle-powered palette and lexeme swaps
+- `.ocr()` for Scannequin-style OCR noise
+- `.zero_width()` for Zeedub injections
+- `.synonym()` as a shorthand for Jargoyle configurations

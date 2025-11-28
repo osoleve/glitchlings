@@ -4,19 +4,39 @@ Optional extras patch popular libraries to make corruption frictionless.
 
 ## Hugging Face Datasets (`hf` extra)
 
-- Import `glitchlings.dlc.huggingface` to register `Dataset.glitch(...)`.
-- Column inference targets common text fields when `columns` is omitted.
+- Use `glitchlings.dlc.huggingface.GlitchedDataset` to wrap a dataset and corrupt
+  one or more explicit text columns.
 - Reuse gaggle seeds to reproduce corrupted datasets across machines.
+
+```python
+from glitchlings.dlc.huggingface import GlitchedDataset
+
+corrupted = GlitchedDataset(dataset, "typogre", column="text", seed=404)
+```
 
 ## PyTorch (`torch` extra)
 
-- Import `glitchlings.dlc.pytorch` to register `DataLoader.glitch(...)`.
-- Accepts glitchling names, instances, or gaggles; supports column inference similar to datasets.
+- Use `glitchlings.dlc.pytorch.GlitchedDataLoader` to wrap a `DataLoader`.
+- Accepts glitchling names, instances, or gaggles; auto-inferring text columns from batches when
+  `columns` is omitted.
+
+```python
+from glitchlings.dlc.pytorch import GlitchedDataLoader
+
+glitched = GlitchedDataLoader(loader, ["typogre", "mim1c"], seed=404)
+```
 
 ## Lightning (`lightning` extra)
 
-- Import `glitchlings.dlc.pytorch_lightning` to patch `LightningDataModule.glitch(...)`.
+- Use `glitchlings.dlc.pytorch_lightning.GlitchedLightningDataModule` to wrap a
+  `LightningDataModule`. Specify the text column(s) to corrupt.
 - Designed for evaluation corruption with minimal boilerplate.
+
+```python
+from glitchlings.dlc.pytorch_lightning import GlitchedLightningDataModule
+
+glitched = GlitchedLightningDataModule(datamodule, "typogre", column="text", seed=404)
+```
 
 ## Prime Intellect (`prime` extra)
 

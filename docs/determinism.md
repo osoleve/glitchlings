@@ -7,7 +7,7 @@ Glitchlings are deterministic by design. Use the knobs below to keep runs reprod
 - **Glitchlings** – every glitchling owns a private `random.Random`. Pass `seed=` on construction (or call `reset_rng`) to stabilise behaviour.
 - **Gaggle** – pass `seed=` to derive per-glitchling seeds via `Gaggle.derive_seed`. Changing the roster order or names changes the derived seeds.
 - **Attack helper** - pass `seed=` to `Attack(...)` when providing a sequence; Attack will build a seeded `Gaggle` using `DEFAULT_ATTACK_SEED` when none is given. Supplying an existing `Gaggle` or `Glitchling` clones it before applying the seed so the caller's instance is never mutated.
-- **Dataset corruption** – the enclosing gaggle seed controls dataset corruption; reuse the same seed to reproduce `Dataset.glitch(...)` or `Gaggle.corrupt_dataset(...)` output.
+- **Dataset corruption** - the enclosing gaggle seed controls dataset corruption; reuse the same seed to reproduce `GlitchedDataset(...)` wraps or `Gaggle.corrupt_dataset(..., columns=...)` output.
 - **Rust pipeline** – seeds are forwarded into the compiled pipeline; keep Rust and Python in lockstep by using the same master seed across runs.
 
 ## Best practices
