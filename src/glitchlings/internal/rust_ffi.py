@@ -40,6 +40,7 @@ __all__ = [
     "compose_glitchlings_rust",
     # Character-level operations
     "fatfinger_rust",
+    "slip_modifier_rust",
     "mim1c_rust",
     "ocr_artifacts_rust",
     "inject_zero_widths_rust",
@@ -118,6 +119,10 @@ def fatfinger_rust(
     rate: float,
     layout: Mapping[str, Sequence[str]],
     seed: int,
+    *,
+    shift_slip_rate: float | None = None,
+    shift_slip_exit_rate: float | None = None,
+    shift_map: Mapping[str, str] | None = None,
 ) -> str:
     """Introduce keyboard typos via Rust.
 
@@ -126,12 +131,41 @@ def fatfinger_rust(
         rate: Probability of corrupting each character.
         layout: Keyboard neighbor mapping.
         seed: Deterministic seed.
+        shift_slip_rate: Probability of entering a shifted burst before fat-fingering.
+        shift_slip_exit_rate: Probability of releasing shift during a burst.
+        shift_map: Mapping of unshifted -> shifted keys for the active layout.
 
     Returns:
         Text with simulated typing errors.
     """
     fn = get_rust_operation("fatfinger")
-    return cast(str, fn(text, rate, layout, seed))
+    return cast(
+        str,
+        fn(text, rate, layout, seed, shift_slip_rate, shift_slip_exit_rate, shift_map),
+    )
+
+
+def slip_modifier_rust(
+    text: str,
+    enter_rate: float,
+    exit_rate: float,
+    shift_map: Mapping[str, str],
+    seed: int | None,
+) -> str:
+    """Apply a modifier slippage burst using Rust.
+
+    Args:
+        text: Input text.
+        enter_rate: Probability of starting a shift burst.
+        exit_rate: Probability of ending a burst once started.
+        shift_map: Mapping of unshifted -> shifted characters.
+        seed: Deterministic seed.
+
+    Returns:
+        Text with modifier slippage applied.
+    """
+    fn = get_rust_operation("slip_modifier")
+    return cast(str, fn(text, enter_rate, exit_rate, shift_map, seed))
 
 
 def mim1c_rust(

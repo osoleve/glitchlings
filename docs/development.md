@@ -142,7 +142,7 @@ def validate_rate(rate: float | None) -> float:
 # In typogre.py (uses boundary layer, trusts result)
 def fatfinger(text: str, rate: float, ...) -> str:
     # rate is already validated - just use it
-    return _fatfinger_rust(text, rate, ...)
+    return _fatfinger_rust(text, rate, layout, seed, shift_slip_rate=slip_rate, shift_map=shift_map)
 ```
 
 ### Example: Anti-Pattern
