@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, Protocol, TypeAlias, cast
 
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
@@ -18,9 +18,68 @@ from ._shared import corrupt_text_value
 #: Default Gutendex API instance URL (public instance hosted at gutendex.com).
 DEFAULT_GUTENDEX_URL = "https://gutendex.com"
 
-if TYPE_CHECKING:  # pragma: no cover
-    from gutenberg import GutenbergAPI
-    from gutenberg.models import Book, Person
+
+class PersonProtocol(Protocol):
+    """Minimal interface for py-gutenberg Person objects."""
+
+    name: str
+
+
+class BookProtocol(Protocol):
+    """Minimal interface for py-gutenberg Book objects."""
+
+    id: int
+    title: str
+    authors: list[PersonProtocol]
+    translators: list[PersonProtocol]
+    subjects: list[str]
+    bookshelves: list[str]
+    languages: list[str]
+    copyright: bool
+    media_type: str
+    formats: dict[str, str]
+    download_count: int
+
+    def get_text(self) -> str: ...
+
+
+class GutenbergAPIProtocol(Protocol):
+    """Subset of the py-gutenberg API we rely on."""
+
+    instance_url: str
+
+    def get_all_books(self) -> Iterable[BookProtocol]: ...
+
+    def get_public_domain_books(self) -> Iterable[BookProtocol]: ...
+
+    def get_copyrighted_books(self) -> Iterable[BookProtocol]: ...
+
+    def get_books_by_author(self, author: str) -> Iterable[BookProtocol]: ...
+
+    def get_books_by_ids(self, ids: list[int]) -> Iterable[BookProtocol]: ...
+
+    def get_books_by_language(self, languages: list[str]) -> Iterable[BookProtocol]: ...
+
+    def get_books_by_search(self, query: str) -> Iterable[BookProtocol]: ...
+
+    def get_books_by_mime_type(self, mime_type: str) -> Iterable[BookProtocol]: ...
+
+    def get_books_ascending(self) -> Iterable[BookProtocol]: ...
+
+    def get_oldest(self) -> Iterable[BookProtocol]: ...
+
+    def get_latest(self, topic: str = "recent") -> Iterable[BookProtocol]: ...
+
+    def get_book(self, book_id: int) -> BookProtocol: ...
+
+    def get_book_metadata(self, book_id: int) -> BookProtocol: ...
+
+    def get_book_text(self, book_id: int) -> BookProtocol: ...
+
+
+Person: TypeAlias = PersonProtocol
+Book: TypeAlias = BookProtocol
+GutenbergAPI: TypeAlias = GutenbergAPIProtocol
 
 
 @dataclass
@@ -170,7 +229,7 @@ class GlitchenbergAPI:
         """Apply glitchlings to a Book object."""
         return GlitchedBook.from_book(book, self._gaggle)
 
-    def _corrupt_books(self, books: list[Book]) -> list[GlitchedBook]:
+    def _corrupt_books(self, books: Iterable[Book]) -> list[GlitchedBook]:
         """Apply glitchlings to a list of Book objects."""
         return [self._corrupt_book(book) for book in books]
 
@@ -334,7 +393,8 @@ def _get_gutenberg_api(instance_url: str) -> GutenbergAPI:
             "Install it with: pip install py-gutenberg"
         ) from exc
 
-    return GutenbergAPI(instance_url=instance_url)
+    api = GutenbergAPI(instance_url=instance_url)
+    return cast(GutenbergAPIProtocol, api)
 
 
 __all__ = ["DEFAULT_GUTENDEX_URL", "GlitchenbergAPI", "GlitchedBook"]
