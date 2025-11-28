@@ -54,6 +54,16 @@ attack = Attack([Typogre()], transcript_target="assistant")
 gaggle = Gaggle([Typogre()], transcript_target="all")
 ```
 
+## Plain string batches
+
+`Attack.run` accepts simple `list[str]` batches in addition to transcripts. Each entry is corrupted independently, tokenised, and scored, with metrics returned per element:
+
+```python
+attack = Attack(["Typogre(rate=0.02)"])
+batched = attack.run(["left", "right"])
+print(batched.metrics["normalized_edit_distance"])  # -> [0.0, 0.21]
+```
+
 ## Example
 
 ```python
@@ -69,6 +79,42 @@ result = attack.run("Glitchlings keep your evaluations honest.")
 print(result.metrics["normalized_edit_distance"])
 print(result.input_tokens)
 print(result.output_tokens)
+```
+
+## Quick summaries
+
+`AttackResult.summary()` renders a compact, human-readable view of token drift and metrics without manual iteration:
+
+```python
+summary = result.summary(max_rows=6)
+print(summary)
+```
+
+It highlights token count deltas, metric values, and a small token-by-token comparison (truncated to keep the output scannable).
+
+## Comparing tokenizers
+
+Use `Attack.compare` to benchmark multiple tokenizers against the same corruption in one call. It returns a `MultiAttackResult` with keyed `AttackResult` objects and a combined summary:
+
+```python
+comparison = attack.compare(
+    SAMPLE_TEXT,
+    tokenizers=["cl100k_base", "gpt2"],
+)
+
+print(comparison.summary())
+json_ready = comparison.to_report()
+```
+
+When `include_self=True` (default), the Attack's configured tokenizer is included alongside the provided list.
+
+## CLI reports
+
+Prefer to stay in the terminal? The `glitchlings` CLI exposes the same report via `--report` (alias `--attack`):
+
+```bash
+glitchlings --report json --sample
+glitchlings --report yaml "Corrupt me"
 ```
 
 ## Choosing a tokenizer

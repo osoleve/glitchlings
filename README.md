@@ -134,6 +134,9 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
+
+# Emit a structured Attack report with tokens, token IDs, and metrics.
+glitchlings --report json --sample
 ```
 
 ## Attack Configurations
@@ -160,7 +163,7 @@ glitchlings:
 
 ## Attack on Token
 
-Looking to compare before/after corruption with metrics and stable seeds? Reach for the [`Attack` helper](docs/attack.md), which bundles tokenization, metrics, and transcript batching into a single utility.
+Looking to compare before/after corruption with metrics and stable seeds? Reach for the [`Attack` helper](docs/attack.md), which bundles tokenization, metrics, and transcript batching into a single utility. It accepts plain `list[str]` batches, renders quick `summary()` reports, and can compare multiple tokenizers via `Attack.compare(...)` when you need a metrics matrix.
 
 ## Development
 

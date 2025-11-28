@@ -23,7 +23,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -214,8 +214,8 @@ def build_single_result(
 
 
 def build_batch_result(
-    original: "Transcript",
-    corrupted: "Transcript",
+    original: "Transcript | Sequence[str]",
+    corrupted: "Transcript | Sequence[str]",
     input_tokens: list[list[str]],
     input_token_ids: list[list[int]],
     output_tokens: list[list[str]],
@@ -223,14 +223,14 @@ def build_batch_result(
     tokenizer_info: str,
     metrics: dict[str, float | list[float]],
 ) -> dict[str, object]:
-    """Assemble AttackResult field dictionary for transcript (batch) input.
+    """Assemble AttackResult field dictionary for batched input.
 
     This is a pure function that takes all pre-computed components and
     returns a dictionary suitable for constructing an AttackResult.
 
     Args:
-        original: Original transcript.
-        corrupted: Corrupted transcript.
+        original: Original transcript or list of strings.
+        corrupted: Corrupted transcript or list of strings.
         input_tokens: Batched tokenized inputs.
         input_token_ids: Batched token IDs for inputs.
         output_tokens: Batched tokenized outputs.
@@ -254,16 +254,16 @@ def build_batch_result(
 
 
 def build_empty_result(
-    original: "Transcript",
-    corrupted: "Transcript",
+    original: "Transcript | Sequence[str]",
+    corrupted: "Transcript | Sequence[str]",
     tokenizer_info: str,
     metric_names: list[str],
 ) -> dict[str, object]:
-    """Assemble AttackResult field dictionary for empty transcript input.
+    """Assemble AttackResult field dictionary for empty batch input.
 
     Args:
-        original: Original empty transcript.
-        corrupted: Corrupted empty transcript.
+        original: Original empty transcript or list.
+        corrupted: Corrupted empty transcript or list.
         tokenizer_info: Description of the tokenizer used.
         metric_names: Names of metrics to include as empty lists.
 

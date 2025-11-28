@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 
 import pytest
+import yaml
 
 from glitchlings import SAMPLE_TEXT, Typogre, summon
 from glitchlings.conf import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
@@ -235,3 +237,55 @@ def test_run_cli_rejects_mixed_config_and_glitchling(tmp_path, capsys):
 
     captured = capsys.readouterr()
     assert "Cannot combine --config with --glitchling" in captured.err
+
+
+def test_run_cli_report_outputs_json(monkeypatch, capsys):
+    class DummyStdin:
+        def isatty(self):
+            return True
+
+        def read(self):
+            raise AssertionError("stdin should not be read when running with --sample")
+
+    monkeypatch.setattr("sys.stdin", DummyStdin())
+
+    exit_code = invoke_cli(["--report", "json", "--sample"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert payload["tokenizer"]
+    assert payload["metrics"]
+    assert payload["token_counts"]["input"]["total"] >= 0
+    assert payload["token_counts"]["output"]["total"] >= 0
+
+
+def test_run_cli_report_outputs_yaml(monkeypatch, capsys):
+    class DummyStdin:
+        def isatty(self):
+            return True
+
+        def read(self):
+            raise AssertionError("stdin should not be read when running with --sample")
+
+    monkeypatch.setattr("sys.stdin", DummyStdin())
+
+    exit_code = invoke_cli(["--report", "yaml", "--sample"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = yaml.safe_load(captured.out)
+    assert "metrics" in payload
+    assert "summary" in payload
+    assert payload["token_counts"]["input"]["per_sample"]
+
+
+def test_run_cli_rejects_report_with_diff(capsys):
+    parser = build_parser()
+    args = parser.parse_args(["--diff", "--report", "json", "payload"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "--report/--attack" in captured.err

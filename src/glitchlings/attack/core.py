@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import Any, TypeGuard, cast
 
 from ..conf import DEFAULT_ATTACK_SEED
 from ..util.adapters import coerce_gaggle
@@ -24,16 +24,175 @@ from .metrics import (
 from .tokenization import Tokenizer, resolve_tokenizer
 
 
+def _is_string_batch(value: Any) -> TypeGuard[Sequence[str]]:
+    if isinstance(value, (str, bytes)):
+        return False
+    if not isinstance(value, Sequence):
+        return False
+    return all(isinstance(item, str) for item in value)
+
+
 @dataclass
 class AttackResult:
-    original: str | Transcript
-    corrupted: str | Transcript
+    original: str | Transcript | Sequence[str]
+    corrupted: str | Transcript | Sequence[str]
     input_tokens: list[str] | list[list[str]]
     output_tokens: list[str] | list[list[str]]
     input_token_ids: list[int] | list[list[int]]
     output_token_ids: list[int] | list[list[int]]
     tokenizer_info: str
     metrics: dict[str, float | list[float]]
+
+    def _tokens_are_batched(self) -> bool:
+        tokens = self.input_tokens
+        if tokens and isinstance(tokens[0], list):
+            return True
+        return isinstance(self.original, list) or isinstance(self.corrupted, list)
+
+    def _token_batches(self) -> tuple[list[list[str]], list[list[str]]]:
+        if self._tokens_are_batched():
+            return (
+                cast(list[list[str]], self.input_tokens),
+                cast(list[list[str]], self.output_tokens),
+            )
+
+        return (
+            [cast(list[str], self.input_tokens)],
+            [cast(list[str], self.output_tokens)],
+        )
+
+    def _token_counts(self) -> tuple[list[int], list[int]]:
+        inputs, outputs = self._token_batches()
+        return [len(tokens) for tokens in inputs], [len(tokens) for tokens in outputs]
+
+    @staticmethod
+    def _format_metric_value(value: float | list[float]) -> str:
+        if isinstance(value, list):
+            if not value:
+                return "[]"
+            if len(value) <= 4:
+                rendered = ", ".join(f"{entry:.3f}" for entry in value)
+                return f"[{rendered}]"
+            total = sum(value)
+            minimum = min(value)
+            maximum = max(value)
+            mean = total / len(value)
+            return f"avg={mean:.3f} min={minimum:.3f} max={maximum:.3f}"
+
+        return f"{value:.3f}"
+
+    @staticmethod
+    def _format_token(token: str, *, max_length: int) -> str:
+        clean = token.replace("\n", "\\n")
+        if len(clean) > max_length:
+            return clean[: max_length - 3] + "..."
+        return clean
+
+    def to_report(self) -> dict[str, object]:
+        input_counts, output_counts = self._token_counts()
+        return {
+            "tokenizer": self.tokenizer_info,
+            "original": self.original,
+            "corrupted": self.corrupted,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "input_token_ids": self.input_token_ids,
+            "output_token_ids": self.output_token_ids,
+            "token_counts": {
+                "input": {"per_sample": input_counts, "total": sum(input_counts)},
+                "output": {"per_sample": output_counts, "total": sum(output_counts)},
+            },
+            "metrics": self.metrics,
+        }
+
+    def summary(self, *, max_rows: int = 8, max_token_length: int = 24) -> str:
+        input_batches, output_batches = self._token_batches()
+        input_counts, output_counts = self._token_counts()
+        is_batch = self._tokens_are_batched()
+
+        lines: list[str] = [f"Tokenizer: {self.tokenizer_info}"]
+        if is_batch:
+            lines.append(f"Samples: {len(input_batches)}")
+
+        lines.append("Token counts:")
+        for index, (input_count, output_count) in enumerate(
+            zip(input_counts, output_counts), start=1
+        ):
+            prefix = f"#{index} " if is_batch else ""
+            delta = output_count - input_count
+            lines.append(f"  {prefix}{input_count} -> {output_count} ({delta:+d})")
+            if index >= max_rows and len(input_batches) > max_rows:
+                remaining = len(input_batches) - max_rows
+                lines.append(f"  ... {remaining} more samples")
+                break
+
+        lines.append("Metrics:")
+        for name, value in self.metrics.items():
+            lines.append(f"  {name}: {self._format_metric_value(value)}")
+
+        if input_batches:
+            focus_index = 0
+            if is_batch and len(input_batches) > 1:
+                lines.append("Token drift (first sample):")
+            else:
+                lines.append("Token drift:")
+            input_tokens = input_batches[focus_index]
+            output_tokens = output_batches[focus_index]
+            rows = max(len(input_tokens), len(output_tokens))
+            display_rows = min(rows, max_rows)
+            for idx in range(display_rows):
+                left = (
+                    self._format_token(input_tokens[idx], max_length=max_token_length)
+                    if idx < len(input_tokens)
+                    else ""
+                )
+                right = (
+                    self._format_token(output_tokens[idx], max_length=max_token_length)
+                    if idx < len(output_tokens)
+                    else ""
+                )
+                if idx >= len(input_tokens):
+                    marker = "+"
+                elif idx >= len(output_tokens):
+                    marker = "-"
+                elif input_tokens[idx] == output_tokens[idx]:
+                    marker = "="
+                else:
+                    marker = "!"
+                lines.append(f"  {idx + 1:>3}{marker} {left} -> {right}")
+            if rows > display_rows:
+                lines.append(f"  ... {rows - display_rows} more tokens")
+        else:
+            lines.append("Token drift: (empty input)")
+
+        return "\n".join(lines)
+
+
+@dataclass
+class MultiAttackResult:
+    results: dict[str, AttackResult]
+    order: list[str]
+
+    @property
+    def primary(self) -> AttackResult:
+        return self.results[self.order[0]]
+
+    def to_report(self) -> dict[str, object]:
+        return {
+            "tokenizers": list(self.order),
+            "results": {name: self.results[name].to_report() for name in self.order},
+        }
+
+    def summary(self, *, max_rows: int = 6, max_token_length: int = 24) -> str:
+        lines: list[str] = []
+        for index, name in enumerate(self.order, start=1):
+            lines.append(f"{index}. {name}")
+            nested = self.results[name].summary(
+                max_rows=max_rows,
+                max_token_length=max_token_length,
+            )
+            lines.extend(f"   {line}" for line in nested.splitlines())
+        return "\n".join(lines)
 
 
 class Attack:
@@ -125,56 +284,93 @@ class Attack:
 
         return glitchlings
 
-    def run(self, text: str | Transcript) -> AttackResult:
+    def run(self, text: str | Transcript | Sequence[str]) -> AttackResult:
         """Apply corruptions and calculate metrics.
 
-        Supports both single strings and chat transcripts. For transcripts,
-        metrics are computed per-turn and returned as lists.
+        Supports single strings, batches of strings, and chat transcripts. For
+        batched inputs (transcripts or lists of strings) metrics are computed
+        per entry and returned as lists.
 
         Args:
-            text: Input text or transcript to corrupt.
+            text: Input text, transcript, or batch of plain strings to corrupt.
 
         Returns:
             AttackResult containing original, corrupted, tokens, and metrics.
         """
-        # Impure: apply corruptions
-        result = self.glitchlings.corrupt(text)
+        if _is_string_batch(text):
+            original_batch = list(text)
+            corrupted_batch: list[str] = []
+            for entry in original_batch:
+                corrupted = self.glitchlings.corrupt(entry)
+                if not isinstance(corrupted, str):
+                    raise TypeError("Attack expected string output when given a batch of strings.")
+                corrupted_batch.append(corrupted)
 
-        # Validate type consistency
-        input_is_transcript = is_transcript(text)
-        output_is_transcript = is_transcript(result)
-        if input_is_transcript != output_is_transcript:
-            raise ValueError("Attack expected output type to mirror input type.")
+            return self._compose_result(
+                original_container=original_batch,
+                corrupted_container=corrupted_batch,
+                original_contents=original_batch,
+                corrupted_contents=corrupted_batch,
+                is_batch=True,
+            )
 
-        # Extract contents for tokenization
-        if input_is_transcript:
-            original_transcript = cast(Transcript, text)
-            corrupted_transcript = cast(Transcript, result)
+        if is_transcript(text):
+            original_transcript = text
+            corrupted_transcript = self.glitchlings.corrupt(original_transcript)
+            if not is_transcript(corrupted_transcript):
+                raise ValueError("Attack expected output type to mirror input type.")
+
             original_contents = extract_transcript_contents(original_transcript)
             corrupted_contents = extract_transcript_contents(corrupted_transcript)
-        else:
-            assert isinstance(text, str)
-            assert isinstance(result, str)
-            original_str = text
-            corrupted_str = result
-            original_contents = [text]
-            corrupted_contents = [result]
 
+            return self._compose_result(
+                original_container=original_transcript,
+                corrupted_container=corrupted_transcript,
+                original_contents=original_contents,
+                corrupted_contents=corrupted_contents,
+                is_batch=True,
+            )
+
+        if not isinstance(text, str):
+            message = (
+                "Attack.run expected string, transcript, or list of strings, "
+                f"got {type(text).__name__}"
+            )
+            raise TypeError(message)
+
+        corrupted = self.glitchlings.corrupt(text)
+        if not isinstance(corrupted, str):
+            raise TypeError("Attack expected output type to mirror input type.")
+
+        return self._compose_result(
+            original_container=text,
+            corrupted_container=corrupted,
+            original_contents=[text],
+            corrupted_contents=[corrupted],
+            is_batch=False,
+        )
+
+    def _compose_result(
+        self,
+        *,
+        original_container: str | Transcript | Sequence[str],
+        corrupted_container: str | Transcript | Sequence[str],
+        original_contents: list[str],
+        corrupted_contents: list[str],
+        is_batch: bool,
+    ) -> AttackResult:
         if len(original_contents) != len(corrupted_contents):
-            raise ValueError("Transcript inputs and outputs must contain the same number of turns.")
+            raise ValueError("Inputs and outputs must contain the same number of entries.")
 
-        # Handle empty transcripts using pure helper
         if not original_contents:
-            # Empty transcript case - must be transcript type
             fields = build_empty_result(
-                cast(Transcript, text),
-                cast(Transcript, result),
+                original_container,
+                corrupted_container,
                 self.tokenizer_info,
                 list(self.metrics.keys()),
             )
             return AttackResult(**fields)  # type: ignore[arg-type]
 
-        # Impure: tokenize contents
         batched_input_tokens, batched_input_token_ids = encode_batch(
             self.tokenizer, original_contents
         )
@@ -182,26 +378,23 @@ class Attack:
             self.tokenizer, corrupted_contents
         )
 
-        # Prepare metric inputs (single vs batch)
         metric_inputs: list[str] | list[list[str]]
         metric_outputs: list[str] | list[list[str]]
-        if input_is_transcript:
+        if is_batch:
             metric_inputs = batched_input_tokens
             metric_outputs = batched_output_tokens
         else:
             metric_inputs = batched_input_tokens[0]
             metric_outputs = batched_output_tokens[0]
 
-        # Impure: compute metrics
         computed_metrics: dict[str, float | list[float]] = {}
         for name, metric_fn in self.metrics.items():
             computed_metrics[name] = metric_fn(metric_inputs, metric_outputs)
 
-        # Pure: compose result using helpers
-        if not input_is_transcript:
+        if not is_batch:
             fields = build_single_result(
-                original=original_str,
-                corrupted=corrupted_str,
+                original=cast(str, original_container),
+                corrupted=cast(str, corrupted_container),
                 input_tokens=batched_input_tokens[0],
                 input_token_ids=batched_input_token_ids[0],
                 output_tokens=batched_output_tokens[0],
@@ -212,8 +405,8 @@ class Attack:
             return AttackResult(**fields)  # type: ignore[arg-type]
 
         fields = build_batch_result(
-            original=original_transcript,
-            corrupted=corrupted_transcript,
+            original=original_container,
+            corrupted=corrupted_container,
             input_tokens=batched_input_tokens,
             input_token_ids=batched_input_token_ids,
             output_tokens=batched_output_tokens,
@@ -222,3 +415,51 @@ class Attack:
             metrics=computed_metrics,
         )
         return AttackResult(**fields)  # type: ignore[arg-type]
+
+    def compare(
+        self,
+        text: str | Transcript | Sequence[str],
+        *,
+        tokenizers: Sequence[str | Tokenizer],
+        include_self: bool = True,
+    ) -> MultiAttackResult:
+        """Run the attack across multiple tokenizers for side-by-side comparison."""
+        if not tokenizers and not include_self:
+            raise ValueError("At least one tokenizer must be provided for comparison.")
+
+        results: dict[str, AttackResult] = {}
+        order: list[str] = []
+        seen: set[str] = set()
+
+        def record(result: AttackResult) -> None:
+            if result.tokenizer_info in seen:
+                return
+            seen.add(result.tokenizer_info)
+            order.append(result.tokenizer_info)
+            results[result.tokenizer_info] = result
+
+        runner_seed = self.glitchlings.seed
+        transcript_target = getattr(self.glitchlings, "transcript_target", None)
+
+        if include_self:
+            baseline = Attack(
+                self.glitchlings,
+                tokenizer=self.tokenizer,
+                metrics=self.metrics,
+                seed=runner_seed,
+                transcript_target=transcript_target,
+            ).run(text)
+            record(baseline)
+
+        for spec in tokenizers:
+            resolved_tokenizer = resolve_tokenizer(spec)
+            comparator = Attack(
+                self.glitchlings,
+                tokenizer=resolved_tokenizer,
+                metrics=self.metrics,
+                seed=runner_seed,
+                transcript_target=transcript_target,
+            )
+            record(comparator.run(text))
+
+        return MultiAttackResult(results=results, order=order)
