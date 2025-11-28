@@ -27,8 +27,9 @@ from typing import NamedTuple
 
 import pytest
 
-# Get the src directory for import path resolution
-SRC_DIR = Path(__file__).parent.parent / "src" / "glitchlings"
+# Resolve repository paths relative to the repo root
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC_DIR = REPO_ROOT / "src" / "glitchlings"
 ZOO_DIR = SRC_DIR / "zoo"
 ATTACK_DIR = SRC_DIR / "attack"
 
