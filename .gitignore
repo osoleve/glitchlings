@@ -24,6 +24,7 @@ RELEASE.md
 PLAN.md
 mypyerrors.txt
 rufferrors.txt
+.beads/
 
 # Coverage reports
 .coverage
