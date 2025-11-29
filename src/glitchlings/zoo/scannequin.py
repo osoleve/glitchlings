@@ -1,5 +1,5 @@
 import random
-from typing import cast
+from typing import Any, cast
 
 from glitchlings.constants import DEFAULT_SCANNEQUIN_RATE
 from glitchlings.internal.rust_ffi import ocr_artifacts_rust, resolve_seed
@@ -37,6 +37,7 @@ class Scannequin(Glitchling):
         *,
         rate: float | None = None,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_SCANNEQUIN_RATE if rate is None else rate
         super().__init__(
@@ -46,6 +47,7 @@ class Scannequin(Glitchling):
             order=AttackOrder.LATE,
             seed=seed,
             rate=effective_rate,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

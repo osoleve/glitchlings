@@ -24,7 +24,6 @@ RELEASE.md
 PLAN.md
 mypyerrors.txt
 rufferrors.txt
-.beads/
 
 # Coverage reports
 .coverage
@@ -33,3 +32,6 @@ htmlcov/
 
 # Local caches
 .cache/
+.beads/vc.db-shm
+.beads/vc.db-wal
+.beads/beads.db

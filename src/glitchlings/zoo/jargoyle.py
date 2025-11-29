@@ -22,7 +22,7 @@ from __future__ import annotations
 import os
 from importlib import resources
 from pathlib import Path
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
 from glitchlings.internal.rust_ffi import (
@@ -175,6 +175,7 @@ class Jargoyle(Glitchling):
         mode: JargoyleMode = DEFAULT_MODE,
         rate: float | None = None,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         """Initialize Jargoyle with the specified dictionary and mode.
 
@@ -202,6 +203,7 @@ class Jargoyle(Glitchling):
             lexemes=normalized_lexemes,
             mode=normalized_mode,
             rate=effective_rate,
+            **kwargs,
             # Pass seed explicitly to kwargs so corruption_function receives it
             # (seed is stored separately in base class but needed by jargoyle_drift)
         )

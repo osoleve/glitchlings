@@ -1,4 +1,5 @@
 """Centralized mock infrastructure for optional dependencies."""
+
 from __future__ import annotations
 
 import importlib
@@ -22,6 +23,7 @@ __all__ = [
     "_VerifierEnvironment",
     "_load_environment",
 ]
+
 
 @contextmanager
 def mock_module(module_name: str, stub_module: types.ModuleType):
@@ -63,8 +65,7 @@ def torch_stub() -> Iterable[type[Any]]:
     from glitchlings.compat.loaders import reset_optional_dependencies
 
     preserved = {
-        name: sys.modules.get(name)
-        for name in ("torch", "torch.utils", "torch.utils.data")
+        name: sys.modules.get(name) for name in ("torch", "torch.utils", "torch.utils.data")
     }
     for name in preserved:
         sys.modules.pop(name, None)

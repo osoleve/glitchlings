@@ -381,6 +381,7 @@ class Rushmore(Glitchling):
         unweighted: bool = False,
         delete_unweighted: bool | None = None,
         duplicate_unweighted: bool | None = None,
+        **kwargs: Any,
     ) -> None:
         normalized_modes = _normalize_modes(modes)
         super().__init__(
@@ -397,6 +398,7 @@ class Rushmore(Glitchling):
             unweighted=unweighted,
             delete_unweighted=delete_unweighted,
             duplicate_unweighted=duplicate_unweighted,
+            **kwargs,
         )
 
 

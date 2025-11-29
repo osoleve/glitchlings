@@ -95,12 +95,7 @@ def _render_sample(
         return f"### {rate_label} corruption\n\n{message}\n"
 
     escaped = corrupted.replace("```", "`\u200b``")
-    return (
-        f"### {rate_label} corruption\n\n"
-        "```text\n"
-        f"{escaped}\n"
-        "```\n"
-    )
+    return f"### {rate_label} corruption\n\n```text\n{escaped}\n```\n"
 
 
 def build_gallery_content(
@@ -129,8 +124,7 @@ def build_gallery_content(
     )
 
     glitchlings: Iterable[GlitchlingType] = (
-        builtin_glitchlings[name]
-        for name in sorted(builtin_glitchlings)
+        builtin_glitchlings[name] for name in sorted(builtin_glitchlings)
     )
 
     sections: list[str] = [header]

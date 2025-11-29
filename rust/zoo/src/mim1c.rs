@@ -339,7 +339,7 @@ mod tests {
 
     #[test]
     fn replaces_expected_characters() {
-        let mut buffer = TextBuffer::from_owned("hello".to_string());
+        let mut buffer = TextBuffer::from_owned("hello".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         let op = Mim1cOp::new(1.0, ClassSelection::Default, Vec::new());
         op.apply(&mut buffer, &mut rng)
@@ -356,7 +356,7 @@ mod tests {
         assert!(options.iter().any(|entry| entry.glyph != 'o'));
 
         let original = "oooo";
-        let mut buffer = TextBuffer::from_owned(original.to_string());
+        let mut buffer = TextBuffer::from_owned(original.to_string(), &[], &[]);
         let mut rng = ScriptedRng::new(vec![2, 0]);
         let op = Mim1cOp::new(0.3, ClassSelection::All, Vec::new());
         op.apply(&mut buffer, &mut rng)
@@ -416,17 +416,20 @@ mod tests {
             .iter()
             .filter(|e| e.alias == "LATIN" || e.alias == "GREEK")
             .collect();
-        
+
         // Should include Ɇ (582), Ε (917), Ｅ (65317) in sorted order
-        assert!(!filtered.is_empty(), "Expected some LATIN/GREEK entries for E");
-        
+        assert!(
+            !filtered.is_empty(),
+            "Expected some LATIN/GREEK entries for E"
+        );
+
         // Verify sorted order
         for i in 1..filtered.len() {
             assert!(
-                filtered[i].glyph >= filtered[i-1].glyph,
+                filtered[i].glyph >= filtered[i - 1].glyph,
                 "Entries not sorted: {} comes after {}",
                 filtered[i].glyph as u32,
-                filtered[i-1].glyph as u32
+                filtered[i - 1].glyph as u32
             );
         }
     }

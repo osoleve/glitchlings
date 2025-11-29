@@ -12,7 +12,7 @@ use crate::resources::{
     split_affixes,
 };
 use crate::rng::{DeterministicRng, RngError};
-use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
+use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
 
 /// Errors produced while applying a [`GlitchOp`].
 #[derive(Debug)]
@@ -156,7 +156,11 @@ fn weighted_sample_without_replacement(
         let u = rng.random()?;
         // Use log form for numerical stability: log(key) = log(u) / w
         // Higher log(key) means higher key
-        let log_key = if u > 0.0 { u.ln() / w } else { f64::NEG_INFINITY };
+        let log_key = if u > 0.0 {
+            u.ln() / w
+        } else {
+            f64::NEG_INFINITY
+        };
         keyed_items.push((index, log_key));
     }
 
@@ -200,6 +204,9 @@ impl GlitchOp for ReduplicateWordsOp {
         let mut candidates: Vec<ReduplicateCandidate> = Vec::new();
         for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
+                if !segment.is_mutable() {
+                    continue;
+                }
                 if matches!(segment.kind(), SegmentKind::Separator) {
                     continue;
                 }
@@ -282,6 +289,9 @@ impl GlitchOp for DeleteRandomWordsOp {
         let mut candidates: Vec<DeleteCandidate> = Vec::new();
         for idx in 1..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
+                if !segment.is_mutable() {
+                    continue;
+                }
                 let text = segment.text();
                 if text.is_empty() || is_whitespace_only(text) {
                     continue;
@@ -401,11 +411,23 @@ impl GlitchOp for DeleteRandomWordsOp {
                         needs_separator = true;
                     }
                 }
+                SegmentKind::Immutable => {
+                    let text = segment.text();
+                    if text.is_empty() {
+                        continue;
+                    }
+                    result.push_str(text);
+                    needs_separator = text
+                        .chars()
+                        .last()
+                        .map(|ch| !ch.is_whitespace())
+                        .unwrap_or(false);
+                }
             }
         }
 
         let final_text = result.trim().to_string();
-        *buffer = TextBuffer::from_owned(final_text);
+        *buffer = buffer.rebuild_with_patterns(final_text);
         buffer.reindex_if_needed();
         Ok(())
     }
@@ -440,6 +462,11 @@ impl GlitchOp for SwapAdjacentWordsOp {
                 Some(segment) => segment,
                 None => break,
             };
+
+            if !left_segment.is_mutable() || !right_segment.is_mutable() {
+                index += 2;
+                continue;
+            }
 
             let left_original = left_segment.text().to_string();
             let right_original = right_segment.text().to_string();
@@ -549,6 +576,9 @@ impl GlitchOp for RedactWordsOp {
         let mut candidates: Vec<RedactCandidate> = Vec::new();
         for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
+                if !segment.is_mutable() {
+                    continue;
+                }
                 let text = segment.text();
                 let Some((core_start, core_end)) = affix_bounds(text) else {
                     continue;
@@ -653,7 +683,7 @@ impl GlitchOp for RedactWordsOp {
 
         buffer.reindex_if_needed();
         // Timing instrumentation disabled
-        
+
         Ok(())
     }
 }
@@ -684,6 +714,9 @@ impl GlitchOp for OcrArtifactsOp {
             Vec::with_capacity(estimated_candidates);
 
         for (seg_idx, segment) in segments.iter().enumerate() {
+            if !segment.is_mutable() {
+                continue;
+            }
             let seg_text = segment.text();
             for mat in automaton.find_iter(seg_text) {
                 candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize()));
@@ -814,6 +847,9 @@ impl GlitchOp for ZeroWidthOp {
         let mut positions: Vec<(usize, usize)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
+            if !segment.is_mutable() {
+                continue;
+            }
             let text = segment.text();
             let chars: Vec<char> = text.chars().collect();
 
@@ -955,11 +991,7 @@ impl ShiftSlipConfig {
         ch.to_uppercase().collect()
     }
 
-    pub fn apply(
-        &self,
-        text: &str,
-        rng: &mut dyn GlitchRng,
-    ) -> Result<String, GlitchOpError> {
+    pub fn apply(&self, text: &str, rng: &mut dyn GlitchRng) -> Result<String, GlitchOpError> {
         let enter_rate = self.enter_rate.max(0.0);
         if enter_rate <= 0.0 || text.is_empty() {
             return Ok(text.to_string());
@@ -1150,15 +1182,28 @@ impl TypoOp {
 impl GlitchOp for TypoOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
         if let Some(config) = &self.shift_slip {
-            let original = buffer.to_string();
-            let slipped = config.apply(&original, rng)?;
-            if slipped != original {
-                *buffer = TextBuffer::from_owned(slipped);
+            let mut replacements: Vec<(usize, String)> = Vec::new();
+            for (index, segment) in buffer.segments().iter().enumerate() {
+                if !segment.is_mutable() {
+                    continue;
+                }
+                let slipped = config.apply(segment.text(), rng)?;
+                if slipped != segment.text() {
+                    replacements.push((index, slipped));
+                }
+            }
+            if !replacements.is_empty() {
+                buffer.replace_segments_bulk(replacements);
                 buffer.reindex_if_needed();
             }
         }
 
-        let total_chars = buffer.char_len();
+        let total_chars = buffer
+            .segments()
+            .iter()
+            .filter(|segment| segment.is_mutable())
+            .map(|segment| segment.text().chars().count())
+            .sum::<usize>();
         if total_chars == 0 {
             return Ok(());
         }
@@ -1188,7 +1233,7 @@ impl GlitchOp for TypoOp {
             .segments()
             .iter()
             .enumerate()
-            .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Word))
+            .filter(|(_, seg)| seg.is_mutable() && matches!(seg.kind(), SegmentKind::Word))
             .map(|(i, _)| i)
             .collect();
 
@@ -1196,7 +1241,7 @@ impl GlitchOp for TypoOp {
             .segments()
             .iter()
             .enumerate()
-            .filter(|(_, seg)| matches!(seg.kind(), SegmentKind::Separator))
+            .filter(|(_, seg)| seg.is_mutable() && matches!(seg.kind(), SegmentKind::Separator))
             .map(|(i, _)| i)
             .collect();
 
@@ -1359,7 +1404,7 @@ impl GlitchOp for TypoOp {
             }
         }
 
-        *buffer = TextBuffer::from_owned(result);
+        *buffer = buffer.rebuild_with_patterns(result);
         buffer.reindex_if_needed();
         Ok(())
     }
@@ -1506,6 +1551,13 @@ impl GlitchOp for QuotePairsOp {
         for replacement in replacements {
             if replacement.start < byte_to_segment.len() {
                 let (seg_idx, _) = byte_to_segment[replacement.start];
+                if !segments
+                    .get(seg_idx)
+                    .map(TextSegment::is_mutable)
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
                 // Calculate byte offset within segment
                 let mut segment_byte_start = 0;
                 for segment in segments.iter().take(seg_idx) {
@@ -1610,7 +1662,7 @@ mod tests {
 
     #[test]
     fn reduplication_inserts_duplicate_with_space() {
-        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
         let op = ReduplicateWordsOp {
             rate: 1.0,
@@ -1623,7 +1675,7 @@ mod tests {
 
     #[test]
     fn swap_adjacent_words_swaps_cores() {
-        let mut buffer = TextBuffer::from_owned("Alpha, beta! Gamma delta".to_string());
+        let mut buffer = TextBuffer::from_owned("Alpha, beta! Gamma delta".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(7);
         let op = SwapAdjacentWordsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng)
@@ -1637,7 +1689,7 @@ mod tests {
     #[test]
     fn swap_adjacent_words_respects_zero_rate() {
         let original = "Do not move these words";
-        let mut buffer = TextBuffer::from_owned(original.to_string());
+        let mut buffer = TextBuffer::from_owned(original.to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         let op = SwapAdjacentWordsOp { rate: 0.0 };
         op.apply(&mut buffer, &mut rng)
@@ -1647,7 +1699,7 @@ mod tests {
 
     #[test]
     fn delete_random_words_cleans_up_spacing() {
-        let mut buffer = TextBuffer::from_owned("One two three four five".to_string());
+        let mut buffer = TextBuffer::from_owned("One two three four five".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
         let op = DeleteRandomWordsOp {
             rate: 0.75,
@@ -1662,7 +1714,7 @@ mod tests {
 
     #[test]
     fn redact_words_respects_sample_and_merge() {
-        let mut buffer = TextBuffer::from_owned("Keep secrets safe".to_string());
+        let mut buffer = TextBuffer::from_owned("Keep secrets safe".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1677,7 +1729,7 @@ mod tests {
 
     #[test]
     fn redact_words_without_candidates_errors() {
-        let mut buffer = TextBuffer::from_owned("   ".to_string());
+        let mut buffer = TextBuffer::from_owned("   ".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1695,7 +1747,7 @@ mod tests {
     #[test]
     #[ignore] // TODO: Update seed/expectations after deferred reindexing optimization
     fn ocr_artifacts_replaces_expected_regions() {
-        let mut buffer = TextBuffer::from_owned("Hello rn world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello rn world".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
         let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr works");
@@ -1706,7 +1758,7 @@ mod tests {
 
     #[test]
     fn reduplication_is_deterministic_for_seed() {
-        let mut buffer = TextBuffer::from_owned("The quick brown fox".to_string());
+        let mut buffer = TextBuffer::from_owned("The quick brown fox".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(123);
         let op = ReduplicateWordsOp {
             rate: 0.5,
@@ -1725,8 +1777,11 @@ mod tests {
 
     #[test]
     fn delete_removes_words_for_seed() {
-        let mut buffer =
-            TextBuffer::from_owned("The quick brown fox jumps over the lazy dog.".to_string());
+        let mut buffer = TextBuffer::from_owned(
+            "The quick brown fox jumps over the lazy dog.".to_string(),
+            &[],
+            &[],
+        );
         let mut rng = DeterministicRng::new(123);
         let op = DeleteRandomWordsOp {
             rate: 0.5,
@@ -1740,7 +1795,7 @@ mod tests {
 
     #[test]
     fn redact_replaces_words_for_seed() {
-        let mut buffer = TextBuffer::from_owned("Hide these words please".to_string());
+        let mut buffer = TextBuffer::from_owned("Hide these words please".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1756,7 +1811,7 @@ mod tests {
 
     #[test]
     fn redact_merge_merges_adjacent_for_seed() {
-        let mut buffer = TextBuffer::from_owned("redact these words".to_string());
+        let mut buffer = TextBuffer::from_owned("redact these words".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(7);
         let op = RedactWordsOp {
             replacement_char: "█".to_string(),
@@ -1772,7 +1827,7 @@ mod tests {
 
     #[test]
     fn ocr_produces_consistent_results_for_seed() {
-        let mut buffer = TextBuffer::from_owned("The m rn".to_string());
+        let mut buffer = TextBuffer::from_owned("The m rn".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(1);
         let op = OcrArtifactsOp { rate: 1.0 };
         op.apply(&mut buffer, &mut rng).expect("ocr succeeds");
