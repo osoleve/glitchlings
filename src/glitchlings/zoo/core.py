@@ -108,6 +108,8 @@ class Glitchling:
         seed: int | None = None,
         pipeline_operation: Callable[["Glitchling"], Mapping[str, Any] | None] | None = None,
         transcript_target: TranscriptTarget = "last",
+        exclude_patterns: list[str] | None = None,
+        include_only_patterns: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a glitchling.
@@ -126,6 +128,10 @@ class Glitchling:
                 - ``"user"``: corrupt only user turns
                 - ``int``: corrupt a specific index (negative indexing supported)
                 - ``Sequence[int]``: corrupt specific indices
+            exclude_patterns: Regex patterns marking text that must not be
+                modified by pipeline-backed glitchlings.
+            include_only_patterns: Regex patterns restricting corruption to the
+                matched regions; text outside these matches is treated as immutable.
             **kwargs: Additional parameters forwarded to the corruption callable.
 
         """
@@ -142,7 +148,16 @@ class Glitchling:
         self.kwargs: dict[str, Any] = {}
         self._cached_rng_callable: CorruptionCallable | None = None
         self._cached_rng_expectation: bool | None = None
-        for kw, val in kwargs.items():
+        mask_kwargs = dict(kwargs)
+        if "exclude_patterns" not in mask_kwargs:
+            mask_kwargs["exclude_patterns"] = (
+                list(exclude_patterns) if exclude_patterns is not None else None
+            )
+        if "include_only_patterns" not in mask_kwargs:
+            mask_kwargs["include_only_patterns"] = (
+                list(include_only_patterns) if include_only_patterns is not None else None
+            )
+        for kw, val in mask_kwargs.items():
             self.set_param(kw, val)
 
     def set_param(self, key: str, value: Any) -> None:
@@ -240,7 +255,12 @@ class Glitchling:
         Returns:
             The corrupted text.
         """
-        return self.__corrupt(text, **self.kwargs)
+        call_kwargs = {
+            key: value
+            for key, value in self.kwargs.items()
+            if key not in {"exclude_patterns", "include_only_patterns"}
+        }
+        return self.__corrupt(text, **call_kwargs)
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply the corruption function to text or conversational transcripts.
@@ -336,6 +356,10 @@ class Glitchling:
             # If we can't introspect, play it safe and pass nothing extra
             return cls(**filtered_kwargs)
 
+        for key in ("exclude_patterns", "include_only_patterns"):
+            if key in filtered_kwargs and not (has_var_keyword or key in params):
+                filtered_kwargs.pop(key)
+
         # Only include seed if subclass accepts it
         if clone_seed is not None:
             if has_var_keyword or "seed" in params:
@@ -357,6 +381,8 @@ class Gaggle(Glitchling):
         glitchlings: list[Glitchling],
         seed: int = 151,
         transcript_target: TranscriptTarget = "last",
+        exclude_patterns: list[str] | None = None,
+        include_only_patterns: list[str] | None = None,
     ):
         """Initialize the gaggle and derive per-glitchling RNG seeds.
 
@@ -370,6 +396,8 @@ class Gaggle(Glitchling):
                 - ``"user"``: corrupt only user turns
                 - ``int``: corrupt a specific index (negative indexing supported)
                 - ``Sequence[int]``: corrupt specific indices
+            exclude_patterns: Regex patterns that should be treated as immutable for all members.
+            include_only_patterns: Regex patterns restricting corruption to the matched regions.
 
         """
         super().__init__(
@@ -378,10 +406,22 @@ class Gaggle(Glitchling):
             AttackWave.DOCUMENT,
             seed=seed,
             transcript_target=transcript_target,
+            exclude_patterns=exclude_patterns,
+            include_only_patterns=include_only_patterns,
         )
         self._clones_by_index: list[Glitchling] = []
         for idx, glitchling in enumerate(glitchlings):
             clone = glitchling.clone()
+            merged_exclude = self._merge_pattern_lists(
+                exclude_patterns, clone.kwargs.get("exclude_patterns")
+            )
+            merged_include = self._merge_pattern_lists(
+                include_only_patterns, clone.kwargs.get("include_only_patterns")
+            )
+            if merged_exclude is not None:
+                clone.set_param("exclude_patterns", merged_exclude)
+            if merged_include is not None:
+                clone.set_param("include_only_patterns", merged_include)
             setattr(clone, "_gaggle_index", idx)
             self._clones_by_index.append(clone)
 
@@ -396,7 +436,13 @@ class Gaggle(Glitchling):
         if clone_seed is None:
             clone_seed = 151  # Default seed for Gaggle
         cloned_members = [glitchling.clone() for glitchling in self._clones_by_index]
-        return Gaggle(cloned_members, seed=clone_seed, transcript_target=self.transcript_target)
+        return Gaggle(
+            cloned_members,
+            seed=clone_seed,
+            transcript_target=self.transcript_target,
+            exclude_patterns=self.kwargs.get("exclude_patterns"),
+            include_only_patterns=self.kwargs.get("include_only_patterns"),
+        )
 
     @staticmethod
     def derive_seed(master_seed: int, glitchling_name: str, index: int) -> int:
@@ -490,8 +536,16 @@ class Gaggle(Glitchling):
             derive_seed_fn=Gaggle.derive_seed,
         )
 
+        include_patterns, exclude_patterns = self._collect_masking_patterns()
+
         # Execute via the impure dispatch layer
-        return execute_plan(text, plan, master_seed)
+        return execute_plan(
+            text,
+            plan,
+            master_seed,
+            include_only_patterns=include_patterns,
+            exclude_patterns=exclude_patterns,
+        )
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially.
@@ -523,6 +577,42 @@ class Gaggle(Glitchling):
 
         # Step 3: Pure assembly - combine results
         return assemble_corruption_result(target, corrupted)
+
+    @staticmethod
+    def _merge_pattern_lists(
+        base: list[str] | None, extra: list[str] | None
+    ) -> list[str] | None:
+        if base is None and extra is None:
+            return None
+
+        merged: list[str] = []
+        for source in (base, extra):
+            if source is None:
+                continue
+            for pattern in source:
+                if pattern not in merged:
+                    merged.append(pattern)
+        return merged
+
+    def _collect_masking_patterns(self) -> tuple[list[str], list[str]]:
+        def _extend_unique(target: list[str], source: list[str] | None) -> None:
+            if not source:
+                return
+            for pattern in source:
+                if pattern not in target:
+                    target.append(pattern)
+
+        include_patterns: list[str] = []
+        exclude_patterns: list[str] = []
+
+        _extend_unique(include_patterns, self.kwargs.get("include_only_patterns"))
+        _extend_unique(exclude_patterns, self.kwargs.get("exclude_patterns"))
+
+        for clone in self._clones_by_index:
+            _extend_unique(include_patterns, clone.kwargs.get("include_only_patterns"))
+            _extend_unique(exclude_patterns, clone.kwargs.get("exclude_patterns"))
+
+        return include_patterns, exclude_patterns
 
 
 __all__ = [

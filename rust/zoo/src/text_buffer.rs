@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::ops::Range;
 
 use crate::resources::split_with_separators;
@@ -9,6 +10,8 @@ pub enum SegmentKind {
     Word,
     /// A run of whitespace characters separating words.
     Separator,
+    /// A region that must not be mutated by glitch operations.
+    Immutable,
 }
 
 /// A contiguous slice of text tracked by the [`TextBuffer`].
@@ -53,6 +56,11 @@ impl TextSegment {
     /// Returns the classification of the segment.
     pub fn kind(&self) -> SegmentKind {
         self.kind
+    }
+
+    /// Returns true when the segment is allowed to be mutated.
+    pub fn is_mutable(&self) -> bool {
+        !matches!(self.kind, SegmentKind::Immutable)
     }
 
     /// Returns the cached character count (Unicode scalar values).
@@ -130,6 +138,8 @@ pub struct TextBuffer {
     /// Tracks whether the buffer needs reindexing after mutations.
     /// When true, metadata (spans, indices) may be out of sync with segments.
     needs_reindex: bool,
+    include_only_patterns: Vec<String>,
+    exclude_patterns: Vec<String>,
 }
 
 impl std::fmt::Display for TextBuffer {
@@ -145,14 +155,18 @@ impl std::str::FromStr for TextBuffer {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::from_owned(s.to_string()))
+        Ok(Self::from_owned(s.to_string(), &[], &[]))
     }
 }
 
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
-    pub fn from_owned(text: String) -> Self {
-        let segments = tokenise(&text);
+    pub fn from_owned(
+        text: String,
+        include_only_patterns: &[Regex],
+        exclude_patterns: &[Regex],
+    ) -> Self {
+        let segments = tokenise(&text, include_only_patterns, exclude_patterns);
         let segment_count = segments.len();
 
         // Pre-allocate vectors to avoid reallocations during reindex
@@ -164,9 +178,24 @@ impl TextBuffer {
             total_chars: 0,
             total_bytes: 0,
             needs_reindex: false,
+            include_only_patterns: include_only_patterns
+                .iter()
+                .map(|pattern| pattern.as_str().to_string())
+                .collect(),
+            exclude_patterns: exclude_patterns
+                .iter()
+                .map(|pattern| pattern.as_str().to_string())
+                .collect(),
         };
         buffer.reindex();
         buffer
+    }
+
+    /// Rebuilds a buffer with the existing masking patterns preserved.
+    pub fn rebuild_with_patterns(&self, text: String) -> Self {
+        let include_patterns = compile_string_patterns(&self.include_only_patterns);
+        let exclude_patterns = compile_string_patterns(&self.exclude_patterns);
+        TextBuffer::from_owned(text, &include_patterns, &exclude_patterns)
     }
 
     /// Returns all tracked segments.
@@ -472,7 +501,7 @@ impl TextBuffer {
                     max: self.total_chars,
                 })?;
         text.replace_range(start_byte..end_byte, replacement);
-        *self = TextBuffer::from_owned(text);
+        *self = self.rebuild_with_patterns(text);
         Ok(())
     }
 
@@ -512,6 +541,13 @@ impl TextBuffer {
                     pending_separator = false;
 
                     // Add the word
+                    normalized.push(segment.clone());
+                }
+                SegmentKind::Immutable => {
+                    if pending_separator && !normalized.is_empty() {
+                        normalized.push(TextSegment::new(" ".to_string(), SegmentKind::Separator));
+                    }
+                    pending_separator = false;
                     normalized.push(segment.clone());
                 }
             }
@@ -717,6 +753,13 @@ impl TextBuffer {
     }
 }
 
+fn compile_string_patterns(patterns: &[String]) -> Vec<Regex> {
+    patterns
+        .iter()
+        .map(|pattern| Regex::new(pattern).expect("stored regex patterns must remain valid"))
+        .collect()
+}
+
 fn byte_index_for_char_offset(text: &str, offset: usize) -> usize {
     if offset == 0 {
         return 0;
@@ -729,12 +772,63 @@ fn byte_index_for_char_offset(text: &str, offset: usize) -> usize {
     text.len()
 }
 
-fn tokenise(text: &str) -> Vec<TextSegment> {
-    if text.is_empty() {
-        return Vec::new();
+fn merge_spans(mut spans: Vec<Range<usize>>) -> Vec<Range<usize>> {
+    if spans.is_empty() {
+        return spans;
     }
 
-    let mut segments: Vec<TextSegment> = Vec::new();
+    spans.sort_by_key(|range| range.start);
+    let mut merged: Vec<Range<usize>> = Vec::with_capacity(spans.len());
+
+    for span in spans {
+        if span.is_empty() {
+            continue;
+        }
+        if let Some(last) = merged.last_mut() {
+            if span.start <= last.end {
+                last.end = last.end.max(span.end);
+                continue;
+            }
+        }
+        merged.push(span);
+    }
+
+    merged
+}
+
+fn invert_spans(spans: &[Range<usize>], total: usize) -> Vec<Range<usize>> {
+    if spans.is_empty() {
+        return vec![0..total];
+    }
+
+    let mut inverted: Vec<Range<usize>> = Vec::new();
+    let mut cursor = 0usize;
+
+    for span in spans {
+        if cursor < span.start {
+            inverted.push(cursor..span.start);
+        }
+        cursor = cursor.max(span.end);
+    }
+
+    if cursor < total {
+        inverted.push(cursor..total);
+    }
+
+    inverted
+}
+
+fn collect_match_spans(patterns: &[Regex], text: &str) -> Vec<Range<usize>> {
+    let mut spans: Vec<Range<usize>> = Vec::new();
+    for regex in patterns {
+        for capture in regex.find_iter(text) {
+            spans.push(capture.start()..capture.end());
+        }
+    }
+    merge_spans(spans)
+}
+
+fn push_mutable_segments(text: &str, segments: &mut Vec<TextSegment>) {
     for token in split_with_separators(text) {
         if token.is_empty() {
             continue;
@@ -745,6 +839,43 @@ fn tokenise(text: &str) -> Vec<TextSegment> {
         } else {
             segments.push(TextSegment::new(token, SegmentKind::Word));
         }
+    }
+}
+
+fn tokenise(
+    text: &str,
+    include_only_patterns: &[Regex],
+    exclude_patterns: &[Regex],
+) -> Vec<TextSegment> {
+    if text.is_empty() {
+        return Vec::new();
+    }
+
+    let include_spans = collect_match_spans(include_only_patterns, text);
+    let mut immutable_spans = collect_match_spans(exclude_patterns, text);
+    if !include_spans.is_empty() {
+        immutable_spans.extend(invert_spans(&include_spans, text.len()));
+        immutable_spans = merge_spans(immutable_spans);
+    }
+
+    let mut segments: Vec<TextSegment> = Vec::new();
+    let mut cursor = 0usize;
+
+    for span in immutable_spans {
+        if cursor < span.start {
+            push_mutable_segments(&text[cursor..span.start], &mut segments);
+        }
+        if span.start < span.end {
+            segments.push(TextSegment::new(
+                text[span.start..span.end].to_string(),
+                SegmentKind::Immutable,
+            ));
+        }
+        cursor = span.end;
+    }
+
+    if cursor < text.len() {
+        push_mutable_segments(&text[cursor..], &mut segments);
     }
 
     if segments.is_empty() {
@@ -760,7 +891,7 @@ mod tests {
 
     #[test]
     fn tokenisation_tracks_words_and_separators() {
-        let buffer = TextBuffer::from_owned("Hello  world!\n".to_string());
+        let buffer = TextBuffer::from_owned("Hello  world!\n".to_string(), &[], &[]);
         let segments = buffer.segments();
         assert_eq!(segments.len(), 4);
         assert_eq!(segments[0].text(), "Hello");
@@ -778,7 +909,7 @@ mod tests {
 
     #[test]
     fn replacing_words_updates_segments_and_metadata() {
-        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string(), &[], &[]);
         buffer.replace_word(1, "galaxy").unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello galaxy");
@@ -789,7 +920,7 @@ mod tests {
 
     #[test]
     fn deleting_words_removes_segments() {
-        let mut buffer = TextBuffer::from_owned("Hello brave world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello brave world".to_string(), &[], &[]);
         buffer.delete_word(1).unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello  world");
@@ -802,7 +933,7 @@ mod tests {
 
     #[test]
     fn inserting_words_preserves_separator_control() {
-        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string(), &[], &[]);
         buffer.insert_word_after(0, "there", Some(", ")).unwrap();
         buffer.reindex_if_needed();
         assert_eq!(buffer.to_string(), "Hello, there world");
@@ -812,7 +943,7 @@ mod tests {
 
     #[test]
     fn bulk_replace_words_updates_multiple_entries() {
-        let mut buffer = TextBuffer::from_owned("alpha beta gamma delta".to_string());
+        let mut buffer = TextBuffer::from_owned("alpha beta gamma delta".to_string(), &[], &[]);
         buffer
             .replace_words_bulk(vec![(0, "delta".to_string()), (3, "alpha".to_string())])
             .expect("bulk replace succeeds");
@@ -825,7 +956,7 @@ mod tests {
 
     #[test]
     fn replace_char_range_handles_multisegment_updates() {
-        let mut buffer = TextBuffer::from_owned("Hello world".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello world".to_string(), &[], &[]);
         buffer
             .replace_char_range(6..11, "galaxy")
             .expect("char replacement succeeded");
@@ -836,7 +967,7 @@ mod tests {
 
     #[test]
     fn invalid_operations_return_errors() {
-        let mut buffer = TextBuffer::from_owned("Hello".to_string());
+        let mut buffer = TextBuffer::from_owned("Hello".to_string(), &[], &[]);
         let err = buffer.replace_word(1, "world").unwrap_err();
         assert!(matches!(err, TextBufferError::InvalidWordIndex { .. }));
 

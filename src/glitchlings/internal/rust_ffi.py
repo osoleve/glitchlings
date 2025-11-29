@@ -94,6 +94,9 @@ def compose_glitchlings_rust(
     text: str,
     descriptors: Sequence[PipelineDescriptor],
     master_seed: int,
+    *,
+    include_only_patterns: Sequence[str] | None = None,
+    exclude_patterns: Sequence[str] | None = None,
 ) -> str:
     """Execute a sequence of glitchlings through the Rust pipeline.
 
@@ -101,12 +104,29 @@ def compose_glitchlings_rust(
         text: Input text to transform.
         descriptors: Pipeline descriptors for each glitchling.
         master_seed: Master seed for determinism.
+        include_only_patterns: Regex patterns limiting mutations to matching spans.
+        exclude_patterns: Regex patterns that should not be modified.
 
     Returns:
         Transformed text.
     """
     compose_fn = get_rust_operation("compose_glitchlings")
-    return cast(str, compose_fn(text, descriptors, int(master_seed)))
+    include_patterns_list = (
+        list(include_only_patterns) if include_only_patterns is not None else None
+    )
+    exclude_patterns_list = (
+        list(exclude_patterns) if exclude_patterns is not None else None
+    )
+    return cast(
+        str,
+        compose_fn(
+            text,
+            descriptors,
+            int(master_seed),
+            include_patterns_list,
+            exclude_patterns_list,
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------

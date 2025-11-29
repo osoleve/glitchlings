@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Collection, Iterable
-from typing import Literal, cast
+from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
 from glitchlings.internal.rust_ffi import mim1c_rust, resolve_seed
@@ -97,6 +97,7 @@ class Mim1c(Glitchling):
         classes: list[str] | Literal["all"] | None = None,
         banned_characters: Collection[str] | None = None,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
         normalised_classes = _normalise_classes(classes)
@@ -110,6 +111,7 @@ class Mim1c(Glitchling):
             rate=effective_rate,
             classes=normalised_classes,
             banned_characters=normalised_banned,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

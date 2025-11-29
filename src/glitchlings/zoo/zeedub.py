@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, cast
 
 from glitchlings.constants import DEFAULT_ZEEDUB_RATE, ZEEDUB_DEFAULT_ZERO_WIDTHS
 from glitchlings.internal.rust_ffi import (
@@ -53,6 +53,7 @@ class Zeedub(Glitchling):
         rate: float | None = None,
         seed: int | None = None,
         characters: Sequence[str] | None = None,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_ZEEDUB_RATE if rate is None else rate
         super().__init__(
@@ -63,6 +64,7 @@ class Zeedub(Glitchling):
             seed=seed,
             rate=effective_rate,
             characters=tuple(characters) if characters is not None else None,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

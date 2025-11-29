@@ -152,7 +152,7 @@ impl HokeyOp {
         let mut tokens = Vec::new();
         let mut clause_index = 0usize;
         let mut at_clause_start = true; // First token is always at clause start
-        
+
         for mat in regex.find_iter(text) {
             let token_text = mat.as_str();
             // Check is_word by examining characters once
@@ -168,14 +168,14 @@ impl HokeyOp {
                 }
             }
             let is_word = has_alpha && !has_non_alnum;
-            
+
             // Pre-compute lowercase for word tokens (needed for sentiment lookups)
             let lowercase = if is_word {
                 Some(token_text.to_lowercase())
             } else {
                 None
             };
-            
+
             // Use Cow::Borrowed to avoid allocation - the token_text lives as long as input text
             tokens.push(TokenInfo {
                 text: Cow::Borrowed(token_text),
@@ -185,7 +185,7 @@ impl HokeyOp {
                 at_clause_start,
                 lowercase,
             });
-            
+
             // Check for clause punctuation to update state for next token
             let has_clause_punct = token_text.chars().any(|c| CLAUSE_PUNCT.contains(&c));
             if has_clause_punct {
@@ -202,7 +202,10 @@ impl HokeyOp {
     /// Build cached analysis data for a token. Called lazily only for candidates.
     fn build_cache(&self, token: &TokenInfo<'_>) -> TokenCache {
         // Use pre-computed lowercase if available
-        let lower = token.lowercase.clone().unwrap_or_else(|| token.text.to_lowercase());
+        let lower = token
+            .lowercase
+            .clone()
+            .unwrap_or_else(|| token.text.to_lowercase());
         let lower_chars: Vec<char> = lower.chars().collect();
         let alpha_idx: Vec<usize> = token
             .text
@@ -220,18 +223,18 @@ impl HokeyOp {
     fn excluded(&self, tokens: &[TokenInfo<'_>], index: usize) -> bool {
         let token = &tokens[index];
         let text: &str = &token.text;
-        
+
         // Check alpha count - most common exclusion reason, check first
         let alpha_count = text.chars().filter(|c| c.is_alphabetic()).count();
         if alpha_count < 2 {
             return true;
         }
-        
+
         // Check for digits
         if text.chars().any(|c| c.is_ascii_digit()) {
             return true;
         }
-        
+
         // Check for special characters (cheap byte-level check)
         if text.contains('#')
             || text.contains('@')
@@ -246,13 +249,13 @@ impl HokeyOp {
         {
             return true;
         }
-        
+
         // URL check - use text directly (case insensitive contains)
         let text_lower = text.to_lowercase();
         if text_lower.contains("http") || text_lower.contains("www") || text_lower.contains("//") {
             return true;
         }
-        
+
         // Title case check - use cached at_clause_start flag
         if text
             .chars()
@@ -269,7 +272,12 @@ impl HokeyOp {
         false
     }
 
-    fn compute_features(&self, tokens: &[TokenInfo<'_>], index: usize, cache: &TokenCache) -> StretchFeatures {
+    fn compute_features(
+        &self,
+        tokens: &[TokenInfo<'_>],
+        index: usize,
+        cache: &TokenCache,
+    ) -> StretchFeatures {
         let token = &tokens[index];
         let normalised = &cache.lowercase;
         let lexical = *lexical_prior().get(normalised.as_str()).unwrap_or(&0.12);
@@ -306,12 +314,12 @@ impl HokeyOp {
     fn sentiment(&self, tokens: &[TokenInfo<'_>], index: usize) -> (f64, f64) {
         let start = index.saturating_sub(2);
         let end = (index + 3).min(tokens.len());
-        
+
         // Count sentiment hits using pre-computed lowercase
         let mut pos_hits = 0usize;
         let mut neg_hits = 0usize;
         let mut word_count = 0usize;
-        
+
         for token in &tokens[start..end] {
             if token.is_word {
                 word_count += 1;
@@ -326,11 +334,11 @@ impl HokeyOp {
                 }
             }
         }
-        
+
         if word_count == 0 {
             return (0.5, 0.0);
         }
-        
+
         let total = word_count as f64;
         let balance = (pos_hits as f64 - neg_hits as f64) / total;
         let sentiment_score = 0.5 + 0.5 * balance.clamp(-1.0, 1.0);
@@ -343,9 +351,9 @@ impl HokeyOp {
         if chars.is_empty() || !chars.iter().any(|&c| is_vowel(c)) {
             return 0.0;
         }
-        
+
         let mut score: f64 = 0.25;
-        
+
         // Check sonorant codas using last char
         if let Some(&last) = chars.last() {
             if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
@@ -356,7 +364,7 @@ impl HokeyOp {
                 score += 0.18;
             }
         }
-        
+
         // Check two-char sibilant codas
         if chars.len() >= 2 {
             let len = chars.len();
@@ -365,12 +373,24 @@ impl HokeyOp {
                 score += 0.18;
             }
         }
-        
+
         // Check digraphs using windows (faster than string contains for each)
         let digraph_pairs: [(char, char); 15] = [
-            ('a', 'a'), ('a', 'e'), ('a', 'i'), ('a', 'y'), ('e', 'e'), 
-            ('e', 'i'), ('e', 'y'), ('i', 'e'), ('o', 'a'), ('o', 'e'),
-            ('o', 'i'), ('o', 'o'), ('o', 'u'), ('u', 'e'), ('u', 'i'),
+            ('a', 'a'),
+            ('a', 'e'),
+            ('a', 'i'),
+            ('a', 'y'),
+            ('e', 'e'),
+            ('e', 'i'),
+            ('e', 'y'),
+            ('i', 'e'),
+            ('o', 'a'),
+            ('o', 'e'),
+            ('o', 'i'),
+            ('o', 'o'),
+            ('o', 'u'),
+            ('u', 'e'),
+            ('u', 'i'),
         ];
         if chars.windows(2).any(|pair| {
             let p = (pair[0], pair[1]);
@@ -378,17 +398,23 @@ impl HokeyOp {
         }) {
             score += 0.22;
         }
-        
+
         // Check adjacent vowels
-        if chars.windows(2).any(|pair| is_vowel(pair[0]) && is_vowel(pair[1])) {
+        if chars
+            .windows(2)
+            .any(|pair| is_vowel(pair[0]) && is_vowel(pair[1]))
+        {
             score += 0.22;
         }
-        
+
         // Check ABA pattern
-        if chars.windows(3).any(|triple| triple[0] == triple[2] && triple[0] != triple[1]) {
+        if chars
+            .windows(3)
+            .any(|triple| triple[0] == triple[2] && triple[0] != triple[1])
+        {
             score += 0.08;
         }
-        
+
         score.clamp(0.0, 1.0)
     }
 
@@ -475,7 +501,7 @@ impl HokeyOp {
         if candidates.is_empty() || rate <= 0.0 {
             return Ok(Vec::new());
         }
-        
+
         // Group candidate indices by clause instead of cloning candidates
         let mut grouped: HashMap<usize, Vec<usize>> = HashMap::new();
         for (idx, candidate) in candidates.iter().enumerate() {
@@ -484,7 +510,7 @@ impl HokeyOp {
                 .or_default()
                 .push(idx);
         }
-        
+
         let mut selected_indices: Vec<usize> = Vec::new();
         let total_expected = (candidates.len() as f64 * rate).round() as usize;
         let mut grouped_keys: Vec<usize> = grouped.keys().copied().collect();
@@ -494,7 +520,10 @@ impl HokeyOp {
             let mut clause_candidate_indices = grouped.remove(&clause).unwrap();
             // Sort by score descending, then by position
             clause_candidate_indices.sort_by(|&a, &b| {
-                let score_order = candidates[b].score.partial_cmp(&candidates[a].score).unwrap_or(Ordering::Equal);
+                let score_order = candidates[b]
+                    .score
+                    .partial_cmp(&candidates[a].score)
+                    .unwrap_or(Ordering::Equal);
                 if score_order == Ordering::Equal {
                     tokens[candidates[a].token_index]
                         .start
@@ -506,7 +535,7 @@ impl HokeyOp {
             clause_candidate_indices.truncate(4);
             let clause_quota = ((clause_candidate_indices.len() as f64) * rate).round() as usize;
             let mut provisional: Vec<usize> = Vec::new();
-            
+
             for &cand_idx in &clause_candidate_indices {
                 let candidate = &candidates[cand_idx];
                 let probability = (rate * (0.35 + 0.65 * candidate.score)).clamp(0.0, 1.0);
@@ -517,7 +546,7 @@ impl HokeyOp {
                     break;
                 }
             }
-            
+
             if provisional.len() < clause_quota {
                 for &cand_idx in clause_candidate_indices.iter() {
                     if provisional.contains(&cand_idx) {
@@ -537,7 +566,10 @@ impl HokeyOp {
                 .filter(|idx| !selected_indices.contains(idx))
                 .collect();
             remaining.sort_by(|&a, &b| {
-                let score_order = candidates[b].score.partial_cmp(&candidates[a].score).unwrap_or(Ordering::Equal);
+                let score_order = candidates[b]
+                    .score
+                    .partial_cmp(&candidates[a].score)
+                    .unwrap_or(Ordering::Equal);
                 if score_order == Ordering::Equal {
                     tokens[candidates[a].token_index]
                         .start
@@ -546,7 +578,11 @@ impl HokeyOp {
                     score_order
                 }
             });
-            selected_indices.extend(remaining.into_iter().take(total_expected - selected_indices.len()));
+            selected_indices.extend(
+                remaining
+                    .into_iter()
+                    .take(total_expected - selected_indices.len()),
+            );
         }
 
         // Sort by token position
@@ -558,11 +594,11 @@ impl HokeyOp {
     fn find_stretch_site_with_cache(&self, cache: &TokenCache) -> Option<StretchSite> {
         let lower_chars = &cache.lowercase_chars;
         let alpha_indices = &cache.alpha_indices;
-        
+
         if lower_chars.is_empty() || alpha_indices.is_empty() {
             return None;
         }
-        
+
         let clusters = vowel_clusters(lower_chars, alpha_indices);
 
         // Check if there's a multi-vowel cluster (for coda site logic)
@@ -660,13 +696,13 @@ impl GlitchOp for HokeyOp {
             let token_idx = candidate.token_index;
             let token = &tokens[token_idx];
             let original = &token_strings[token_idx];
-            
+
             // Use pre-computed stretch site from candidate
             let site = match candidate.stretch_site {
                 Some(site) => site,
                 None => continue, // Skip if no stretch site was found during analysis
             };
-            
+
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);
             // Count alpha characters
             let alpha_len = token.text.chars().filter(|c| c.is_alphabetic()).count();
@@ -697,7 +733,7 @@ impl GlitchOp for HokeyOp {
         }
 
         let result: String = token_strings.iter().map(|s| s.as_ref()).collect();
-        *buffer = TextBuffer::from_owned(result);
+        *buffer = buffer.rebuild_with_patterns(result);
         buffer.reindex_if_needed();
         Ok(())
     }
@@ -1158,7 +1194,7 @@ mod tests {
             word_length_threshold: 10,
             base_p: 0.45,
         };
-        let mut buffer = TextBuffer::from_owned("wow so cool".to_string());
+        let mut buffer = TextBuffer::from_owned("wow so cool".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         let result = buffer.to_string();
@@ -1177,7 +1213,7 @@ mod tests {
             base_p: 0.45,
         };
         let original = "wow so cool";
-        let mut buffer = TextBuffer::from_owned(original.to_string());
+        let mut buffer = TextBuffer::from_owned(original.to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         assert_eq!(buffer.to_string(), original);
@@ -1186,7 +1222,7 @@ mod tests {
     #[test]
     fn hokey_handles_empty_input() {
         let op = default_op();
-        let mut buffer = TextBuffer::from_owned(String::new());
+        let mut buffer = TextBuffer::from_owned(String::new(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         assert_eq!(buffer.to_string(), "");
@@ -1203,11 +1239,11 @@ mod tests {
         };
         let text = "wow this is so cool and fun";
 
-        let mut buffer1 = TextBuffer::from_owned(text.to_string());
+        let mut buffer1 = TextBuffer::from_owned(text.to_string(), &[], &[]);
         let mut rng1 = DeterministicRng::new(123);
         op.apply(&mut buffer1, &mut rng1).expect("hokey succeeds");
 
-        let mut buffer2 = TextBuffer::from_owned(text.to_string());
+        let mut buffer2 = TextBuffer::from_owned(text.to_string(), &[], &[]);
         let mut rng2 = DeterministicRng::new(123);
         op.apply(&mut buffer2, &mut rng2).expect("hokey succeeds");
 
@@ -1224,7 +1260,7 @@ mod tests {
             base_p: 0.45,
         };
         let mut buffer =
-            TextBuffer::from_owned("supercalifragilisticexpialidocious".to_string());
+            TextBuffer::from_owned("supercalifragilisticexpialidocious".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         // Very long word should be unchanged (exceeds 2x threshold)
@@ -1234,7 +1270,7 @@ mod tests {
     #[test]
     fn hokey_handles_punctuation_only() {
         let op = default_op();
-        let mut buffer = TextBuffer::from_owned("!!! ???".to_string());
+        let mut buffer = TextBuffer::from_owned("!!! ???".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         assert_eq!(buffer.to_string(), "!!! ???");
@@ -1249,7 +1285,7 @@ mod tests {
             word_length_threshold: 10,
             base_p: 0.45,
         };
-        let mut buffer = TextBuffer::from_owned("café cool".to_string());
+        let mut buffer = TextBuffer::from_owned("café cool".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
         op.apply(&mut buffer, &mut rng).expect("hokey succeeds");
         let result = buffer.to_string();

@@ -1,5 +1,5 @@
 import random
-from typing import cast
+from typing import Any, cast
 
 from glitchlings.constants import DEFAULT_REDACTYL_CHAR, DEFAULT_REDACTYL_RATE
 from glitchlings.internal.rust_ffi import redact_words_rust, resolve_seed
@@ -52,6 +52,7 @@ class Redactyl(Glitchling):
         merge_adjacent: bool = False,
         seed: int = 151,
         unweighted: bool = False,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_REDACTYL_RATE if rate is None else rate
         super().__init__(
@@ -63,6 +64,7 @@ class Redactyl(Glitchling):
             rate=effective_rate,
             merge_adjacent=merge_adjacent,
             unweighted=unweighted,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

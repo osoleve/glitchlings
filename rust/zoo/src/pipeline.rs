@@ -5,6 +5,7 @@ use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchOperation};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 use pyo3::PyErr;
+use regex::Regex;
 
 /// Descriptor describing a glitchling to run as part of the pipeline.
 #[derive(Debug, Clone)]
@@ -33,13 +34,22 @@ impl PipelineError {
 pub struct Pipeline {
     _master_seed: i128,
     descriptors: Vec<GlitchDescriptor>,
+    include_only_patterns: Vec<Regex>,
+    exclude_patterns: Vec<Regex>,
 }
 
 impl Pipeline {
-    pub fn new(master_seed: i128, descriptors: Vec<GlitchDescriptor>) -> Self {
+    pub fn new(
+        master_seed: i128,
+        descriptors: Vec<GlitchDescriptor>,
+        include_only_patterns: Vec<Regex>,
+        exclude_patterns: Vec<Regex>,
+    ) -> Self {
         Self {
             _master_seed: master_seed,
             descriptors,
+            include_only_patterns,
+            exclude_patterns,
         }
     }
 
@@ -62,7 +72,11 @@ impl Pipeline {
     }
 
     pub fn run(&self, text: &str) -> Result<String, PipelineError> {
-        let mut buffer = TextBuffer::from_owned(text.to_string());
+        let mut buffer = TextBuffer::from_owned(
+            text.to_string(),
+            &self.include_only_patterns,
+            &self.exclude_patterns,
+        );
         self.apply(&mut buffer)?;
         Ok(buffer.to_string())
     }
@@ -200,7 +214,7 @@ mod tests {
                 }),
             },
         ];
-        let pipeline = Pipeline::new(master_seed, descriptors);
+        let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
         // Note: output changed after fixing reindex bug - now subsequent ops see duplicated words
         assert_eq!(output, "█████ Guard ███ the vault █████");
@@ -217,7 +231,7 @@ mod tests {
                 unweighted: false,
             }),
         }];
-        let pipeline = Pipeline::new(master_seed, descriptors);
+        let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let a = pipeline.run("Stay focused").expect("run a");
         let b = pipeline.run("Stay focused").expect("run b");
         assert_eq!(a, b);
@@ -260,7 +274,7 @@ mod tests {
                 operation: GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.25 }),
             },
         ];
-        let pipeline = Pipeline::new(master_seed, descriptors);
+        let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let output = pipeline
             .run("Guard the vault at midnight")
             .expect("pipeline run succeeds");
@@ -274,7 +288,7 @@ mod tests {
             seed: derive_seed(master_seed, "Rushmore-Swap", 0),
             operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 1.0 }),
         }];
-        let pipeline = Pipeline::new(master_seed, descriptors);
+        let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let output = pipeline
             .run("Echo this line please")
             .expect("pipeline succeeds");

@@ -61,10 +61,7 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
 /// Pre-built Aho-Corasick automaton for OCR pattern matching.
 /// This allows O(n + m) multi-pattern matching instead of O(n × patterns).
 pub static OCR_AUTOMATON: Lazy<AhoCorasick> = Lazy::new(|| {
-    let patterns: Vec<&str> = OCR_CONFUSION_TABLE
-        .iter()
-        .map(|(src, _)| *src)
-        .collect();
+    let patterns: Vec<&str> = OCR_CONFUSION_TABLE.iter().map(|(src, _)| *src).collect();
     AhoCorasick::new(&patterns).expect("OCR patterns should build a valid automaton")
 });
 

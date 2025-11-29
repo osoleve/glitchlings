@@ -17,17 +17,18 @@ use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
 use rand::Rng;
+use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use ekkokin::{EkkokinOp, HomophoneWeighting};
-use jargoyle::{JargoyleMode, JargoyleOp};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
     ShiftSlipConfig, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
+use jargoyle::{JargoyleMode, JargoyleOp};
 use mim1c::{ClassSelection as MimicClassSelection, Mim1cOp};
 use pedant::PedantOp;
 pub use pipeline::{derive_seed, GlitchDescriptor, Pipeline, PipelineError};
@@ -339,8 +340,11 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                         typogre::extract_shift_map(mapping)
                     })
                     .transpose()?;
-                let shift_slip =
-                    typogre::build_shift_slip_config(shift_slip_rate, shift_slip_exit_rate, shift_map)?;
+                let shift_slip = typogre::build_shift_slip_config(
+                    shift_slip_rate,
+                    shift_slip_exit_rate,
+                    shift_map,
+                )?;
 
                 Ok(PyGlitchOperation::Typo {
                     rate,
@@ -526,7 +530,7 @@ pub(crate) fn apply_operation<O>(
 where
     O: GlitchOp,
 {
-    let mut buffer = TextBuffer::from_owned(text.to_string());
+    let mut buffer = TextBuffer::from_owned(text.to_string(), &[], &[]);
     let mut rng = DeterministicRng::new(resolve_seed(seed));
     op.apply(&mut buffer, &mut rng)?;
     Ok(buffer.to_string())
@@ -633,12 +637,27 @@ fn plan_glitchlings(
         .collect())
 }
 
-#[pyfunction]
+#[pyfunction(signature = (text, descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
 fn compose_glitchlings(
     text: &str,
     descriptors: Vec<PyGlitchDescriptor>,
     master_seed: i128,
+    include_only_patterns: Option<Vec<String>>,
+    exclude_patterns: Option<Vec<String>>,
 ) -> PyResult<String> {
+    fn compile_patterns(patterns: Option<Vec<String>>) -> PyResult<Vec<Regex>> {
+        let mut compiled: Vec<Regex> = Vec::new();
+        if let Some(values) = patterns {
+            for pattern in values {
+                let regex = Regex::new(&pattern).map_err(|err| {
+                    PyValueError::new_err(format!("invalid regex '{pattern}': {err}"))
+                })?;
+                compiled.push(regex);
+            }
+        }
+        Ok(compiled)
+    }
+
     let operations = descriptors
         .into_iter()
         .map(|descriptor| {
@@ -653,7 +672,10 @@ fn compose_glitchlings(
         })
         .collect::<Result<Vec<_>, PyErr>>()?;
 
-    let pipeline = Pipeline::new(master_seed, operations);
+    let include_patterns = compile_patterns(include_only_patterns)?;
+    let exclude_patterns = compile_patterns(exclude_patterns)?;
+
+    let pipeline = Pipeline::new(master_seed, operations, include_patterns, exclude_patterns);
     pipeline.run(text).map_err(|error| error.into_pyerr())
 }
 

@@ -195,7 +195,9 @@ fn query_python(python: &OsStr, command: &str) -> Option<String> {
 }
 
 fn stage_asset(manifest_dir: &Path, out_dir: &Path, asset_name: &str) -> io::Result<()> {
-    let canonical_repo_asset = manifest_dir.join("../../src/glitchlings/assets").join(asset_name);
+    let canonical_repo_asset = manifest_dir
+        .join("../../src/glitchlings/assets")
+        .join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
@@ -227,7 +229,9 @@ fn stage_compressed_asset(
     asset_name: &str,
     output_name: &str,
 ) -> io::Result<()> {
-    let canonical_repo_asset = manifest_dir.join("../../src/glitchlings/assets").join(asset_name);
+    let canonical_repo_asset = manifest_dir
+        .join("../../src/glitchlings/assets")
+        .join(asset_name);
     if !canonical_repo_asset.exists() {
         return Err(io::Error::new(
             ErrorKind::NotFound,
