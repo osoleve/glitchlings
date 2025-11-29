@@ -32,7 +32,7 @@ jobs:
       - name: Ruff format
         run: ruff format --check src
       - name: Mypy
-        run: python -m mypy src
+        run: python -m mypy --install-types src
       - name: Pytest
         run: pytest
       - name: Upload coverage reports
