@@ -68,6 +68,7 @@ all = [
     "pytest>=8.0.0",
     "pytest-cov>=4.1.0",
     "ruff>=0.6.0",
+    "types-PyYAML>=6.0.0",
     "verifiers>=0.1.8",
     "tiktoken>=0.3.0",
     "tokenizers>=0.13.0",
@@ -92,6 +93,7 @@ dev = [
     "ruff>=0.6.0",
     "mypy>=1.8.0",
     "pre-commit>=3.8.0",
+    "types-PyYAML>=6.0.0",
 ]
 
 [build-system]
