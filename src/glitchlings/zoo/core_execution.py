@@ -20,7 +20,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from glitchlings.internal.rust_ffi import compose_glitchlings_rust
 
@@ -40,6 +40,7 @@ def execute_plan(
     *,
     include_only_patterns: list[str] | None = None,
     exclude_patterns: list[str] | None = None,
+    pipeline: Any | None = None,
 ) -> str:
     """Execute an orchestration plan against input text.
 
@@ -56,6 +57,13 @@ def execute_plan(
     """
     # Fast path: all glitchlings support pipeline
     if plan.all_pipeline and plan.step_count == 1:
+        if pipeline is not None:
+            return compose_with_pipeline(
+                pipeline,
+                text,
+                include_only_patterns=include_only_patterns,
+                exclude_patterns=exclude_patterns,
+            )
         descriptors = list(plan.steps[0].descriptors)
         return compose_glitchlings_rust(
             text,
@@ -93,6 +101,7 @@ def execute_descriptors(
     *,
     include_only_patterns: list[str] | None = None,
     exclude_patterns: list[str] | None = None,
+    pipeline: Any | None = None,
 ) -> str:
     """Execute a list of pipeline descriptors through Rust.
 
@@ -107,6 +116,14 @@ def execute_descriptors(
     Returns:
         Transformed text.
     """
+    if pipeline is not None:
+        return compose_with_pipeline(
+            pipeline,
+            text,
+            include_only_patterns=include_only_patterns,
+            exclude_patterns=exclude_patterns,
+        )
+
     return compose_glitchlings_rust(
         text,
         descriptors,
@@ -114,6 +131,21 @@ def execute_descriptors(
         include_only_patterns=include_only_patterns,
         exclude_patterns=exclude_patterns,
     )
+
+
+def compose_with_pipeline(
+    pipeline: Any,
+    text: str,
+    *,
+    include_only_patterns: list[str] | None = None,
+    exclude_patterns: list[str] | None = None,
+) -> str:
+    """Run a pre-built Rust pipeline while preserving masking kwargs."""
+    if include_only_patterns or exclude_patterns:
+        raise RuntimeError(
+            "Cached pipelines already embed masking patterns; overrides are not supported."
+        )
+    return cast(str, pipeline.run(text))
 
 
 __all__ = [

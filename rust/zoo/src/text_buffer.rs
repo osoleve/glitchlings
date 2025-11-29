@@ -1,5 +1,6 @@
 use regex::Regex;
 use std::ops::Range;
+use std::sync::Arc;
 
 use crate::resources::split_with_separators;
 
@@ -90,6 +91,29 @@ pub struct TextSpan {
     pub byte_range: Range<usize>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct MaskingRules {
+    include_only_patterns: Arc<Vec<Regex>>,
+    exclude_patterns: Arc<Vec<Regex>>,
+}
+
+impl MaskingRules {
+    fn new(include_only_patterns: &[Regex], exclude_patterns: &[Regex]) -> Self {
+        Self {
+            include_only_patterns: Arc::new(include_only_patterns.to_vec()),
+            exclude_patterns: Arc::new(exclude_patterns.to_vec()),
+        }
+    }
+
+    fn include_only(&self) -> &[Regex] {
+        &self.include_only_patterns
+    }
+
+    fn exclude(&self) -> &[Regex] {
+        &self.exclude_patterns
+    }
+}
+
 /// Errors emitted by [`TextBuffer`] mutation helpers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TextBufferError {
@@ -127,7 +151,7 @@ impl std::error::Error for TextBufferError {}
 /// each segment, and offers mutation helpers that keep the metadata in sync so
 /// glitchlings can operate deterministically without re-tokenising after each
 /// operation.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default)]
 pub struct TextBuffer {
     segments: Vec<TextSegment>,
     spans: Vec<TextSpan>,
@@ -138,8 +162,7 @@ pub struct TextBuffer {
     /// Tracks whether the buffer needs reindexing after mutations.
     /// When true, metadata (spans, indices) may be out of sync with segments.
     needs_reindex: bool,
-    include_only_patterns: Vec<String>,
-    exclude_patterns: Vec<String>,
+    masking: MaskingRules,
 }
 
 impl std::fmt::Display for TextBuffer {
@@ -166,7 +189,12 @@ impl TextBuffer {
         include_only_patterns: &[Regex],
         exclude_patterns: &[Regex],
     ) -> Self {
-        let segments = tokenise(&text, include_only_patterns, exclude_patterns);
+        let masking = MaskingRules::new(include_only_patterns, exclude_patterns);
+        Self::from_owned_with_rules(text, masking)
+    }
+
+    fn from_owned_with_rules(text: String, masking: MaskingRules) -> Self {
+        let segments = tokenise(&text, &masking);
         let segment_count = segments.len();
 
         // Pre-allocate vectors to avoid reallocations during reindex
@@ -178,14 +206,7 @@ impl TextBuffer {
             total_chars: 0,
             total_bytes: 0,
             needs_reindex: false,
-            include_only_patterns: include_only_patterns
-                .iter()
-                .map(|pattern| pattern.as_str().to_string())
-                .collect(),
-            exclude_patterns: exclude_patterns
-                .iter()
-                .map(|pattern| pattern.as_str().to_string())
-                .collect(),
+            masking,
         };
         buffer.reindex();
         buffer
@@ -193,9 +214,7 @@ impl TextBuffer {
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
-        let include_patterns = compile_string_patterns(&self.include_only_patterns);
-        let exclude_patterns = compile_string_patterns(&self.exclude_patterns);
-        TextBuffer::from_owned(text, &include_patterns, &exclude_patterns)
+        TextBuffer::from_owned_with_rules(text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
@@ -753,13 +772,6 @@ impl TextBuffer {
     }
 }
 
-fn compile_string_patterns(patterns: &[String]) -> Vec<Regex> {
-    patterns
-        .iter()
-        .map(|pattern| Regex::new(pattern).expect("stored regex patterns must remain valid"))
-        .collect()
-}
-
 fn byte_index_for_char_offset(text: &str, offset: usize) -> usize {
     if offset == 0 {
         return 0;
@@ -842,17 +854,13 @@ fn push_mutable_segments(text: &str, segments: &mut Vec<TextSegment>) {
     }
 }
 
-fn tokenise(
-    text: &str,
-    include_only_patterns: &[Regex],
-    exclude_patterns: &[Regex],
-) -> Vec<TextSegment> {
+fn tokenise(text: &str, masking: &MaskingRules) -> Vec<TextSegment> {
     if text.is_empty() {
         return Vec::new();
     }
 
-    let include_spans = collect_match_spans(include_only_patterns, text);
-    let mut immutable_spans = collect_match_spans(exclude_patterns, text);
+    let include_spans = collect_match_spans(masking.include_only(), text);
+    let mut immutable_spans = collect_match_spans(masking.exclude(), text);
     if !include_spans.is_empty() {
         immutable_spans.extend(invert_spans(&include_spans, text.len()));
         immutable_spans = merge_spans(immutable_spans);

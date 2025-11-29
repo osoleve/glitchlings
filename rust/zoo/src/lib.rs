@@ -17,7 +17,6 @@ use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
 use rand::Rng;
-use regex::Regex;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
@@ -143,6 +142,61 @@ fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Layout>> {
         .expect("layout vec cache poisoned during write");
     let entry = guard.entry(key).or_insert_with(|| arc.clone());
     Ok(entry.clone())
+}
+
+fn build_glitch_operations(
+    descriptors: Vec<PyGlitchDescriptor>,
+) -> PyResult<Vec<GlitchDescriptor>> {
+    descriptors
+        .into_iter()
+        .map(|descriptor| {
+            let operation = descriptor
+                .operation
+                .into_glitch_operation(descriptor.seed)?;
+            Ok(GlitchDescriptor {
+                name: descriptor.name,
+                seed: descriptor.seed,
+                operation,
+            })
+        })
+        .collect()
+}
+
+fn build_pipeline_from_py(
+    descriptors: Vec<PyGlitchDescriptor>,
+    master_seed: i128,
+    include_only_patterns: Option<Vec<String>>,
+    exclude_patterns: Option<Vec<String>>,
+) -> PyResult<Pipeline> {
+    let operations = build_glitch_operations(descriptors)?;
+    let include_patterns = include_only_patterns.unwrap_or_default();
+    let exclude_patterns = exclude_patterns.unwrap_or_default();
+    Pipeline::compile(master_seed, operations, include_patterns, exclude_patterns)
+        .map_err(|err| err.into_pyerr())
+}
+
+#[pymethods]
+impl Pipeline {
+    #[new]
+    #[pyo3(signature = (descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
+    fn py_new(
+        descriptors: Vec<PyGlitchDescriptor>,
+        master_seed: i128,
+        include_only_patterns: Option<Vec<String>>,
+        exclude_patterns: Option<Vec<String>>,
+    ) -> PyResult<Self> {
+        build_pipeline_from_py(
+            descriptors,
+            master_seed,
+            include_only_patterns,
+            exclude_patterns,
+        )
+    }
+
+    #[pyo3(name = "run")]
+    fn run_py(&self, text: &str) -> PyResult<String> {
+        Pipeline::run(self, text).map_err(|error| error.into_pyerr())
+    }
 }
 
 #[derive(Debug)]
@@ -645,37 +699,12 @@ fn compose_glitchlings(
     include_only_patterns: Option<Vec<String>>,
     exclude_patterns: Option<Vec<String>>,
 ) -> PyResult<String> {
-    fn compile_patterns(patterns: Option<Vec<String>>) -> PyResult<Vec<Regex>> {
-        let mut compiled: Vec<Regex> = Vec::new();
-        if let Some(values) = patterns {
-            for pattern in values {
-                let regex = Regex::new(&pattern).map_err(|err| {
-                    PyValueError::new_err(format!("invalid regex '{pattern}': {err}"))
-                })?;
-                compiled.push(regex);
-            }
-        }
-        Ok(compiled)
-    }
-
-    let operations = descriptors
-        .into_iter()
-        .map(|descriptor| {
-            let operation = descriptor
-                .operation
-                .into_glitch_operation(descriptor.seed)?;
-            Ok(GlitchDescriptor {
-                name: descriptor.name,
-                seed: descriptor.seed,
-                operation,
-            })
-        })
-        .collect::<Result<Vec<_>, PyErr>>()?;
-
-    let include_patterns = compile_patterns(include_only_patterns)?;
-    let exclude_patterns = compile_patterns(exclude_patterns)?;
-
-    let pipeline = Pipeline::new(master_seed, operations, include_patterns, exclude_patterns);
+    let pipeline = build_pipeline_from_py(
+        descriptors,
+        master_seed,
+        include_only_patterns,
+        exclude_patterns,
+    )?;
     pipeline.run(text).map_err(|error| error.into_pyerr())
 }
 
@@ -710,5 +739,6 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_subsequence_retention, m)?)?;
+    m.add("Pipeline", _py.get_type::<Pipeline>())?;
     Ok(())
 }

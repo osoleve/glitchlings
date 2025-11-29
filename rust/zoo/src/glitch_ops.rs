@@ -12,7 +12,7 @@ use crate::resources::{
     split_affixes,
 };
 use crate::rng::{DeterministicRng, RngError};
-use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError};
+use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
 
 /// Errors produced while applying a [`GlitchOp`].
 #[derive(Debug)]
@@ -576,6 +576,9 @@ impl GlitchOp for RedactWordsOp {
         let mut candidates: Vec<RedactCandidate> = Vec::new();
         for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
+                if !segment.is_mutable() {
+                    continue;
+                }
                 let text = segment.text();
                 let Some((core_start, core_end)) = affix_bounds(text) else {
                     continue;
@@ -711,6 +714,9 @@ impl GlitchOp for OcrArtifactsOp {
             Vec::with_capacity(estimated_candidates);
 
         for (seg_idx, segment) in segments.iter().enumerate() {
+            if !segment.is_mutable() {
+                continue;
+            }
             let seg_text = segment.text();
             for mat in automaton.find_iter(seg_text) {
                 candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize()));
@@ -841,6 +847,9 @@ impl GlitchOp for ZeroWidthOp {
         let mut positions: Vec<(usize, usize)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
+            if !segment.is_mutable() {
+                continue;
+            }
             let text = segment.text();
             let chars: Vec<char> = text.chars().collect();
 
@@ -1542,6 +1551,13 @@ impl GlitchOp for QuotePairsOp {
         for replacement in replacements {
             if replacement.start < byte_to_segment.len() {
                 let (seg_idx, _) = byte_to_segment[replacement.start];
+                if !segments
+                    .get(seg_idx)
+                    .map(TextSegment::is_mutable)
+                    .unwrap_or(false)
+                {
+                    continue;
+                }
                 // Calculate byte offset within segment
                 let mut segment_byte_start = 0;
                 for segment in segments.iter().take(seg_idx) {

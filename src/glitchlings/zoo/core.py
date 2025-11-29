@@ -7,7 +7,7 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, cast
 
-from glitchlings.internal.rust_ffi import plan_glitchlings_rust
+from glitchlings.internal.rust_ffi import build_pipeline_rust, plan_glitchlings_rust
 
 from ..compat.loaders import get_datasets_dataset, require_datasets
 from ..compat.types import Dataset as DatasetProtocol
@@ -148,6 +148,7 @@ class Glitchling:
         self.kwargs: dict[str, Any] = {}
         self._cached_rng_callable: CorruptionCallable | None = None
         self._cached_rng_expectation: bool | None = None
+        self._pipeline: object | None = None
         mask_kwargs = dict(kwargs)
         if "exclude_patterns" not in mask_kwargs:
             mask_kwargs["exclude_patterns"] = (
@@ -428,7 +429,12 @@ class Gaggle(Glitchling):
         self.glitchlings: dict[AttackWave, list[Glitchling]] = {level: [] for level in AttackWave}
         self.apply_order: list[Glitchling] = []
         self._plan: list[tuple[int, int]] = []
+        self._pipeline_descriptors_cache: list[PipelineDescriptor] | None = None
+        self._missing_pipeline_glitchlings: list[Glitchling] = []
+        self._cached_include_patterns: list[str] = []
+        self._cached_exclude_patterns: list[str] = []
         self.sort_glitchlings()
+        self._initialize_pipeline_cache()
 
     def clone(self, seed: int | None = None) -> "Gaggle":
         """Create a copy of this gaggle, cloning member glitchlings."""
@@ -496,6 +502,35 @@ class Gaggle(Glitchling):
 
         self.apply_order = apply_order
 
+    def _initialize_pipeline_cache(self) -> None:
+        self._cached_include_patterns, self._cached_exclude_patterns = (
+            self._collect_masking_patterns()
+        )
+        descriptors, missing = self._pipeline_descriptors()
+        self._pipeline_descriptors_cache = descriptors
+        self._missing_pipeline_glitchlings = missing
+        if missing:
+            self._pipeline = None
+            return
+
+        master_seed = self.seed
+        if master_seed is None:  # pragma: no cover - defensive, should be set by __init__
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
+
+        self._pipeline = build_pipeline_rust(
+            descriptors,
+            int(master_seed),
+            include_only_patterns=self._cached_include_patterns or None,
+            exclude_patterns=self._cached_exclude_patterns or None,
+        )
+
+    def _invalidate_pipeline_cache(self) -> None:
+        """Clear cached pipeline state so it will be rebuilt on next use."""
+        self._pipeline = None
+        self._pipeline_descriptors_cache = None
+        self._missing_pipeline_glitchlings = []
+
     def _pipeline_descriptors(self) -> tuple[list[PipelineDescriptor], list[Glitchling]]:
         """Collect pipeline descriptors and track glitchlings missing them."""
         descriptors: list[PipelineDescriptor] = []
@@ -529,6 +564,24 @@ class Gaggle(Glitchling):
             message = "Gaggle orchestration requires a master seed"
             raise RuntimeError(message)
 
+        include_patterns, exclude_patterns = self._collect_masking_patterns()
+        if (
+            include_patterns != self._cached_include_patterns
+            or exclude_patterns != self._cached_exclude_patterns
+        ):
+            self._cached_include_patterns = include_patterns
+            self._cached_exclude_patterns = exclude_patterns
+            self._pipeline = None
+            self._pipeline_descriptors_cache = None
+            self._missing_pipeline_glitchlings = []
+
+        if self._pipeline is None and not self._missing_pipeline_glitchlings:
+            self._initialize_pipeline_cache()
+
+        if self._pipeline is not None and not self._missing_pipeline_glitchlings:
+            pipeline = cast(Any, self._pipeline)
+            return cast(str, pipeline.run(text))
+
         # Build the pure execution plan
         plan = build_execution_plan(
             self.apply_order,
@@ -536,15 +589,13 @@ class Gaggle(Glitchling):
             derive_seed_fn=Gaggle.derive_seed,
         )
 
-        include_patterns, exclude_patterns = self._collect_masking_patterns()
-
         # Execute via the impure dispatch layer
         return execute_plan(
             text,
             plan,
             master_seed,
-            include_only_patterns=include_patterns,
-            exclude_patterns=exclude_patterns,
+            include_only_patterns=self._cached_include_patterns,
+            exclude_patterns=self._cached_exclude_patterns,
         )
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:

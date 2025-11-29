@@ -1,11 +1,13 @@
 use blake2::digest::consts::U8;
 use blake2::{Blake2s, Digest};
+use pyo3::exceptions::PyValueError;
+use pyo3::prelude::*;
+use pyo3::PyErr;
+use regex::Regex;
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchOperation};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
-use pyo3::PyErr;
-use regex::Regex;
 
 /// Descriptor describing a glitchling to run as part of the pipeline.
 #[derive(Debug, Clone)]
@@ -19,18 +21,23 @@ pub struct GlitchDescriptor {
 #[derive(Debug)]
 pub enum PipelineError {
     OperationFailure { name: String, source: GlitchOpError },
+    InvalidPattern { pattern: String, message: String },
 }
 
 impl PipelineError {
     pub fn into_pyerr(self) -> PyErr {
         match self {
             PipelineError::OperationFailure { source, .. } => source.into_pyerr(),
+            PipelineError::InvalidPattern { pattern, message } => {
+                PyValueError::new_err(format!("invalid regex '{pattern}': {message}"))
+            }
         }
     }
 }
 
 /// Deterministic glitchling pipeline mirroring the Python orchestrator contract.
 #[derive(Debug, Clone)]
+#[pyclass(module = "_zoo_rust")]
 pub struct Pipeline {
     _master_seed: i128,
     descriptors: Vec<GlitchDescriptor>,
@@ -51,6 +58,17 @@ impl Pipeline {
             include_only_patterns,
             exclude_patterns,
         }
+    }
+
+    pub fn compile(
+        master_seed: i128,
+        descriptors: Vec<GlitchDescriptor>,
+        include_only_patterns: Vec<String>,
+        exclude_patterns: Vec<String>,
+    ) -> Result<Self, PipelineError> {
+        let include = compile_patterns(include_only_patterns)?;
+        let exclude = compile_patterns(exclude_patterns)?;
+        Ok(Self::new(master_seed, descriptors, include, exclude))
     }
 
     pub fn descriptors(&self) -> &[GlitchDescriptor] {
@@ -80,6 +98,18 @@ impl Pipeline {
         self.apply(&mut buffer)?;
         Ok(buffer.to_string())
     }
+}
+
+fn compile_patterns(patterns: Vec<String>) -> Result<Vec<Regex>, PipelineError> {
+    let mut compiled: Vec<Regex> = Vec::with_capacity(patterns.len());
+    for pattern in patterns {
+        let regex = Regex::new(&pattern).map_err(|err| PipelineError::InvalidPattern {
+            pattern,
+            message: err.to_string(),
+        })?;
+        compiled.push(regex);
+    }
+    Ok(compiled)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
