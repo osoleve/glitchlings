@@ -13,7 +13,7 @@ from typing import Any, BinaryIO, Iterable, Iterator, Literal, TextIO, cast
 try:
     from importlib.resources.abc import Traversable  # Python 3.11+
 except ImportError:  # pragma: no cover - Python <3.11
-    from importlib_resources.abc import Traversable
+    from importlib_resources.abc import Traversable  # type: ignore[no-redef]
 
 AssetKind = Literal["copy", "compressed"]
 
@@ -64,7 +64,7 @@ def _asset(name: str) -> Traversable:
 def read_text(name: str, *, encoding: str = "utf-8") -> str:
     """Return the decoded contents of a bundled text asset."""
 
-    return cast(str, _asset(name).read_text(encoding=encoding))
+    return _asset(name).read_text(encoding=encoding)
 
 
 def open_text(name: str, *, encoding: str = "utf-8") -> TextIO:
