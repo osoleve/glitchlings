@@ -49,6 +49,7 @@ class Auggie(Gaggle):
             setattr(clone, "_gaggle_index", index)
             self._clones_by_index.append(clone)
         self.sort_glitchlings()
+        self._invalidate_pipeline_cache()
 
     def _enqueue(self, glitchling: Glitchling) -> "Auggie":
         self._blueprint.append(glitchling)

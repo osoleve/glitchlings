@@ -106,7 +106,7 @@ impl GlitchOp for PedantOp {
         };
 
         if transformed != original {
-            *buffer = TextBuffer::from_owned(transformed);
+            *buffer = buffer.rebuild_with_patterns(transformed);
         }
 
         Ok(())
@@ -207,7 +207,7 @@ fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String
         &[ReprArg::Str("curlite"), ReprArg::Str(text)],
     );
     let mut rng = DeterministicRng::new(seed);
-    let mut buffer = TextBuffer::from_owned(text.to_string());
+    let mut buffer = TextBuffer::from_owned(text.to_string(), &[], &[]);
     let op = QuotePairsOp;
     op.apply(&mut buffer, &mut rng)?;
     Ok(buffer.to_string())

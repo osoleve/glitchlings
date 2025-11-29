@@ -85,6 +85,7 @@ class Ekkokin(_GlitchlingBase):
         *,
         rate: float | None = None,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_EKKOKIN_RATE if rate is None else rate
         super().__init__(
@@ -95,6 +96,7 @@ class Ekkokin(_GlitchlingBase):
             seed=seed,
             pipeline_operation=_build_pipeline_descriptor,
             rate=effective_rate,
+            **kwargs,
         )
 
 

@@ -77,6 +77,7 @@ class Hokey(GlitchlingBase):
         word_length_threshold: int = 6,
         base_p: float = 0.45,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         self._master_seed: int | None = seed
 
@@ -94,6 +95,7 @@ class Hokey(GlitchlingBase):
             extension_max=extension_max,
             word_length_threshold=word_length_threshold,
             base_p=base_p,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

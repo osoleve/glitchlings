@@ -438,17 +438,13 @@ impl JargoyleOp {
 }
 
 impl GlitchOp for JargoyleOp {
-    fn apply(
-        &self,
-        buffer: &mut TextBuffer,
-        rng: &mut dyn GlitchRng,
-    ) -> Result<(), GlitchOpError> {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
         // For the pipeline, we operate on the full text
         let text = buffer.to_string();
         let transformed = transform_text(&text, &self.lexemes, self.mode, self.rate, Some(rng))?;
 
         // Replace the buffer content
-        *buffer = TextBuffer::from_owned(transformed);
+        *buffer = buffer.rebuild_with_patterns(transformed);
         Ok(())
     }
 }
@@ -475,10 +471,8 @@ pub(crate) fn jargoyle_drift(
     }
 
     match parsed_mode {
-        JargoyleMode::Literal => {
-            transform_text(text, &normalized_lexemes, parsed_mode, rate, None)
-                .map_err(|e| e.into_pyerr())
-        }
+        JargoyleMode::Literal => transform_text(text, &normalized_lexemes, parsed_mode, rate, None)
+            .map_err(|e| e.into_pyerr()),
         JargoyleMode::Drift => {
             let seed_value = seed.unwrap_or(0);
             let mut rng = DeterministicRng::new(seed_value);
@@ -557,9 +551,14 @@ mod tests {
 
     #[test]
     fn test_unknown_dictionary_unchanged() {
-        let result =
-            transform_text("hello world", "nonexistent", JargoyleMode::Literal, 1.0, None)
-                .expect("transform should succeed");
+        let result = transform_text(
+            "hello world",
+            "nonexistent",
+            JargoyleMode::Literal,
+            1.0,
+            None,
+        )
+        .expect("transform should succeed");
         assert_eq!(result, "hello world");
     }
 

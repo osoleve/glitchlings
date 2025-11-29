@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Mapping, Sequence
-from typing import cast
+from typing import Any, cast
 
 from glitchlings.constants import DEFAULT_TYPOGRE_KEYBOARD, DEFAULT_TYPOGRE_RATE
 from glitchlings.internal.rust_ffi import fatfinger_rust, resolve_seed
@@ -73,6 +73,7 @@ class Typogre(Glitchling):
         shift_slip_rate: float = 0.0,
         shift_slip_exit_rate: float | None = None,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_TYPOGRE_RATE if rate is None else rate
         super().__init__(
@@ -85,6 +86,7 @@ class Typogre(Glitchling):
             keyboard=keyboard,
             shift_slip_rate=max(0.0, shift_slip_rate),
             shift_slip_exit_rate=shift_slip_exit_rate,
+            **kwargs,
         )
 
     def pipeline_operation(self) -> PipelineOperationPayload:

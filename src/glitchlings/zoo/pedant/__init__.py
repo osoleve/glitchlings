@@ -67,6 +67,7 @@ class Pedant(Glitchling):
         *,
         stone: PedantStone | str = PedantStone.COEURITE,
         seed: int | None = None,
+        **kwargs: Any,
     ) -> None:
         super().__init__(
             name="Pedant",
@@ -76,6 +77,7 @@ class Pedant(Glitchling):
             seed=seed,
             pipeline_operation=_build_pipeline_descriptor,
             stone=_coerce_stone(stone),
+            **kwargs,
         )
         if seed is not None:
             self.set_param("seed", int(seed))

@@ -29,7 +29,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Mapping, Sequence, cast
 
-from .rust import get_rust_operation, resolve_seed
+from .rust import get_rust_operation, load_rust_module, resolve_seed
 
 # Re-export resolve_seed for backward compatibility
 __all__ = [
@@ -38,6 +38,8 @@ __all__ = [
     # Orchestration operations
     "plan_glitchlings_rust",
     "compose_glitchlings_rust",
+    "build_pipeline_rust",
+    "RustPipeline",
     # Character-level operations
     "fatfinger_rust",
     "slip_modifier_rust",
@@ -68,6 +70,38 @@ PipelineDescriptor = Mapping[str, Any]
 
 
 # ---------------------------------------------------------------------------
+# Pipeline wrapper
+# ---------------------------------------------------------------------------
+
+
+class RustPipeline:
+    """Thin wrapper around the compiled Rust Pipeline class."""
+
+    def __init__(
+        self,
+        descriptors: Sequence[PipelineDescriptor],
+        master_seed: int,
+        *,
+        include_only_patterns: Sequence[str] | None = None,
+        exclude_patterns: Sequence[str] | None = None,
+    ) -> None:
+        module = load_rust_module()
+        pipeline_cls = getattr(module, "Pipeline")
+        include_patterns_list = (
+            list(include_only_patterns) if include_only_patterns is not None else None
+        )
+        exclude_patterns_list = (
+            list(exclude_patterns) if exclude_patterns is not None else None
+        )
+        self._pipeline = pipeline_cls(
+            list(descriptors), int(master_seed), include_patterns_list, exclude_patterns_list
+        )
+
+    def run(self, text: str) -> str:
+        return cast(str, self._pipeline.run(text))
+
+
+# ---------------------------------------------------------------------------
 # Orchestration Operations
 # ---------------------------------------------------------------------------
 
@@ -94,6 +128,9 @@ def compose_glitchlings_rust(
     text: str,
     descriptors: Sequence[PipelineDescriptor],
     master_seed: int,
+    *,
+    include_only_patterns: Sequence[str] | None = None,
+    exclude_patterns: Sequence[str] | None = None,
 ) -> str:
     """Execute a sequence of glitchlings through the Rust pipeline.
 
@@ -101,12 +138,35 @@ def compose_glitchlings_rust(
         text: Input text to transform.
         descriptors: Pipeline descriptors for each glitchling.
         master_seed: Master seed for determinism.
+        include_only_patterns: Regex patterns limiting mutations to matching spans.
+        exclude_patterns: Regex patterns that should not be modified.
 
     Returns:
         Transformed text.
     """
-    compose_fn = get_rust_operation("compose_glitchlings")
-    return cast(str, compose_fn(text, descriptors, int(master_seed)))
+    pipeline = RustPipeline(
+        descriptors,
+        int(master_seed),
+        include_only_patterns=include_only_patterns,
+        exclude_patterns=exclude_patterns,
+    )
+    return pipeline.run(text)
+
+
+def build_pipeline_rust(
+    descriptors: Sequence[PipelineDescriptor],
+    master_seed: int,
+    *,
+    include_only_patterns: Sequence[str] | None = None,
+    exclude_patterns: Sequence[str] | None = None,
+) -> RustPipeline:
+    """Instantiate a Rust pipeline for reuse across calls."""
+    return RustPipeline(
+        descriptors,
+        master_seed,
+        include_only_patterns=include_only_patterns,
+        exclude_patterns=exclude_patterns,
+    )
 
 
 # ---------------------------------------------------------------------------
