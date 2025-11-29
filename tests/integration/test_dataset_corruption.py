@@ -81,17 +81,16 @@ def test_corrupt_dataset_requires_optional_dependency(monkeypatch: pytest.Monkey
     glitchlings = importlib.import_module("glitchlings")
     assert glitchlings is not None
 
-    from glitchlings import compat as glitchlings_compat
-    from glitchlings.compat import loaders as compat_loaders
+    import glitchlings.compat.loaders as compat
 
     def _deny_import(name: str, *args: object, **kwargs: object):
         if name == "datasets":
             raise ModuleNotFoundError("datasets is not installed")
         return importlib.import_module(name, package=None)
 
-    monkeypatch.setattr(compat_loaders, "import_module", _deny_import)
-    glitchlings_compat.reset_optional_dependencies()
-    assert glitchlings_compat.datasets.get() is None
+    monkeypatch.setattr(compat, "import_module", _deny_import)
+    compat.reset_optional_dependencies()
+    assert compat.datasets.get() is None
 
     from glitchlings.zoo.core import AttackWave, Glitchling
 

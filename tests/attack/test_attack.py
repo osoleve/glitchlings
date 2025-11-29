@@ -1,5 +1,5 @@
 import importlib.util
-from typing import Any, List, Tuple
+from typing import Any, List, Sequence, Tuple
 
 import pytest
 
@@ -250,3 +250,64 @@ def test_attack_accepts_mixed_specs_and_instances():
     names = [g.name.lower() for g in attack.glitchlings._clones_by_index]
     assert "mock" in names
     assert "typogre" in names
+
+
+def test_attack_accepts_plain_string_batches():
+    glitchling = MockGlitchling()
+    attack = Attack([glitchling])
+
+    payload = ["hello", "world"]
+    result = attack.run(payload)
+
+    assert result.original == payload
+    assert result.corrupted == ["hello!", "world!"]
+    assert isinstance(result.input_tokens, list)
+    assert all(isinstance(entry, list) for entry in result.input_tokens)
+    assert all(isinstance(entry, list) for entry in result.output_tokens)
+
+    for metric in result.metrics.values():
+        assert isinstance(metric, list)
+        assert len(metric) == len(payload)
+
+
+def test_attack_result_summary_includes_metrics():
+    glitchling = MockGlitchling()
+    attack = Attack([glitchling])
+
+    result = attack.run("ping")
+    summary = result.summary()
+
+    assert "Tokenizer:" in summary
+    assert "Token counts:" in summary
+    assert "Metrics:" in summary
+    assert "normalized_edit_distance" in summary
+
+
+def test_attack_compare_runs_multiple_tokenizers():
+    class LettersTokenizer:
+        name = "letters"
+
+        def encode(self, text: str):
+            tokens = list(text)
+            return tokens, list(range(len(tokens)))
+
+        def decode(self, tokens: Sequence[str]) -> str:
+            return "".join(tokens)
+
+    class WordsTokenizer:
+        name = "words"
+
+        def encode(self, text: str):
+            tokens = text.split()
+            return tokens, list(range(len(tokens)))
+
+        def decode(self, tokens: Sequence[str]) -> str:
+            return " ".join(tokens)
+
+    attack = Attack([MockGlitchling()], tokenizer=WordsTokenizer())
+    comparison = attack.compare("hello world", tokenizers=[LettersTokenizer()])
+
+    assert comparison.order[0] == "words"
+    assert set(comparison.results.keys()) == {"words", "letters"}
+    assert comparison.results["letters"].tokenizer_info == "letters"
+    assert "words" in comparison.summary()

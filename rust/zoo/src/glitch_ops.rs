@@ -926,6 +926,75 @@ impl GlitchOp for ZeroWidthOp {
 pub struct TypoOp {
     pub rate: f64,
     pub layout: HashMap<String, Vec<String>>,
+    pub shift_slip: Option<ShiftSlipConfig>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ShiftSlipConfig {
+    pub enter_rate: f64,
+    pub exit_rate: f64,
+    pub min_hold: usize,
+    pub shift_map: HashMap<String, String>,
+}
+
+impl ShiftSlipConfig {
+    pub fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
+        Self {
+            enter_rate: enter_rate.max(0.0),
+            exit_rate: exit_rate.max(0.0),
+            min_hold: 1,
+            shift_map,
+        }
+    }
+
+    fn shifted_for_char(&self, ch: char) -> String {
+        let key: String = ch.to_lowercase().collect();
+        if let Some(mapped) = self.shift_map.get(&key) {
+            return mapped.clone();
+        }
+        ch.to_uppercase().collect()
+    }
+
+    pub fn apply(
+        &self,
+        text: &str,
+        rng: &mut dyn GlitchRng,
+    ) -> Result<String, GlitchOpError> {
+        let enter_rate = self.enter_rate.max(0.0);
+        if enter_rate <= 0.0 || text.is_empty() {
+            return Ok(text.to_string());
+        }
+        let exit_rate = self.exit_rate.max(0.0);
+        let mut result = String::with_capacity(text.len());
+
+        let mut shift_held = enter_rate >= 1.0;
+        let mut activated = shift_held;
+        let mut guaranteed = if shift_held { self.min_hold } else { 0usize };
+
+        for ch in text.chars() {
+            if !activated && enter_rate > 0.0 && enter_rate < 1.0 {
+                let roll = rng.random()?;
+                if roll < enter_rate {
+                    shift_held = true;
+                    activated = true;
+                    guaranteed = self.min_hold;
+                }
+            }
+
+            if shift_held {
+                result.push_str(&self.shifted_for_char(ch));
+                if guaranteed > 0 {
+                    guaranteed -= 1;
+                } else if exit_rate >= 1.0 || (exit_rate > 0.0 && rng.random()? < exit_rate) {
+                    shift_held = false;
+                }
+            } else {
+                result.push(ch);
+            }
+        }
+
+        Ok(result)
+    }
 }
 
 impl TypoOp {
@@ -1080,6 +1149,15 @@ impl TypoOp {
 
 impl GlitchOp for TypoOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+        if let Some(config) = &self.shift_slip {
+            let original = buffer.to_string();
+            let slipped = config.apply(&original, rng)?;
+            if slipped != original {
+                *buffer = TextBuffer::from_owned(slipped);
+                buffer.reindex_if_needed();
+            }
+        }
+
         let total_chars = buffer.char_len();
         if total_chars == 0 {
             return Ok(());

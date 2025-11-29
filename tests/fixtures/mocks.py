@@ -60,7 +60,7 @@ def torch_stub() -> Iterable[type[Any]]:
     Yields:
         DummyDataLoader class that can be used in tests
     """
-    from glitchlings.compat import reset_optional_dependencies
+    from glitchlings.compat.loaders import reset_optional_dependencies
 
     preserved = {
         name: sys.modules.get(name)

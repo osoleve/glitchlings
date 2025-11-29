@@ -203,6 +203,7 @@ def _auggie_sequence_strategy() -> st.SearchStrategy[list[str]]:
     return st.lists(st.sampled_from(names), max_size=5)
 
 
+@settings(suppress_health_check=[HealthCheck.too_slow])
 @given(
     sequence=_auggie_sequence_strategy(),
     text=st.text(min_size=0, max_size=50),

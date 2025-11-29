@@ -28,3 +28,11 @@ print(neighbors["z"])  # -> list of adjacent characters
 
 Each mapping only contains lowercase keys; call `.lower()` on user input before
 looking up neighbours.
+
+### Modifier slippage shift maps
+
+Typogre’s `shift_slip_rate` relies on a parallel `SHIFT_MAPS` bundle that maps
+unshifted keys to their shifted counterparts (letters and symbols). All layouts
+listed above have a matching shift map. When you register a new keyboard layout,
+also provide a shift map (or pass one explicitly to Typogre) if you want
+modifier slippage to work for that layout.

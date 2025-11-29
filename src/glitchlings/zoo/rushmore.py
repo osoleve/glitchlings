@@ -351,7 +351,7 @@ def _rushmore_pipeline_descriptor(glitchling: Glitchling) -> dict[str, Any] | No
         unweighted=glitchling.kwargs.get("unweighted", False),
         delete_unweighted=glitchling.kwargs.get("delete_unweighted"),
         duplicate_unweighted=glitchling.kwargs.get("duplicate_unweighted"),
-        allow_defaults=False,
+        allow_defaults=True,
     )
     if config is None:
         return None

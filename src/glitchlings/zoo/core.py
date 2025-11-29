@@ -5,11 +5,12 @@ import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
 from hashlib import blake2s
-from typing import TYPE_CHECKING, Any, Callable, Protocol, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Protocol, cast
 
 from glitchlings.internal.rust_ffi import plan_glitchlings_rust
 
-from ..compat import get_datasets_dataset, require_datasets
+from ..compat.loaders import get_datasets_dataset, require_datasets
+from ..compat.types import Dataset as DatasetProtocol
 from ..util.transcripts import (
     Transcript,
     TranscriptTarget,
@@ -22,7 +23,9 @@ from .core_planning import (
     build_execution_plan,
     build_pipeline_descriptor,
     normalize_plan_entries,
-    normalize_plan_specs,
+)
+from .core_planning import (
+    PlanEntry as _PlanEntry,
 )
 from .corrupt_dispatch import (
     StringCorruptionTarget,
@@ -32,42 +35,11 @@ from .corrupt_dispatch import (
 
 _DatasetsDataset = get_datasets_dataset()
 
-
-# Re-export PlanEntry for backward compatibility with existing code
-PlanEntry = Union["Glitchling", Mapping[str, Any]]
-
 _is_transcript = is_transcript
 
 
-def _plan_glitchlings_with_rust(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int,
-) -> list[tuple[int, int]]:
-    """Obtain the orchestration plan from the compiled Rust module."""
-    return plan_glitchlings_rust(list(specs), int(master_seed))
-
-
-def plan_glitchling_specs(
-    specs: Sequence[Mapping[str, Any]],
-    master_seed: int | None,
-) -> list[tuple[int, int]]:
-    """Resolve orchestration order and seeds from glitchling specifications.
-
-    Notes
-    -----
-    The Rust extension is required for orchestration.
-    """
-    if master_seed is None:
-        message = "Gaggle orchestration requires a master seed"
-        raise ValueError(message)
-
-    normalized_specs = [spec.as_mapping() for spec in normalize_plan_specs(specs)]
-    master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
-
-
 def plan_glitchlings(
-    entries: Sequence[PlanEntry],
+    entries: Sequence[_PlanEntry],
     master_seed: int | None,
 ) -> list[tuple[int, int]]:
     """Normalize glitchling instances or specs and compute an orchestration plan.
@@ -82,7 +54,7 @@ def plan_glitchlings(
 
     normalized_specs = [spec.as_mapping() for spec in normalize_plan_entries(entries)]
     master_seed_int = int(master_seed)
-    return _plan_glitchlings_with_rust(normalized_specs, master_seed_int)
+    return plan_glitchlings_rust(list(normalized_specs), master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -90,11 +62,7 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 elif _DatasetsDataset is not None:
     Dataset = _DatasetsDataset
 else:
-
-    class Dataset(Protocol):  # type: ignore[no-redef]
-        """Typed stub mirroring the Hugging Face dataset interface used here."""
-
-        def with_transform(self, function: Any) -> "Dataset": ...
+    Dataset = DatasetProtocol
 
 
 class CorruptionCallable(Protocol):
@@ -500,39 +468,6 @@ class Gaggle(Glitchling):
 
         return descriptors, missing
 
-    def _build_execution_plan(
-        self,
-    ) -> list[tuple[list[PipelineDescriptor], Glitchling | None]]:
-        """Build an execution plan that batches consecutive pipeline-supported glitchlings.
-
-        Returns a list of tuples where each tuple contains:
-        - A list of pipeline descriptors (may be empty for single fallback items)
-        - A single glitchling to execute via fallback (None when using pipeline)
-
-        This enables partial pipeline execution when only some glitchlings lack
-        pipeline support, reducing tokenization overhead compared to full fallback.
-
-        Note:
-            This method is maintained for backwards compatibility. Internally it
-            now delegates to the pure build_execution_plan function.
-        """
-        plan = build_execution_plan(
-            self.apply_order,
-            master_seed=self.seed,
-            derive_seed_fn=Gaggle.derive_seed,
-        )
-        # Convert to legacy format for backwards compatibility
-        legacy_plan: list[tuple[list[PipelineDescriptor], Glitchling | None]] = []
-        for step in plan.steps:
-            if step.is_pipeline_step:
-                legacy_plan.append((list(step.descriptors), None))
-            else:
-                # Cast is safe: fallback_glitchling comes from
-                # self.apply_order which is list[Glitchling]
-                fallback = cast(Glitchling | None, step.fallback_glitchling)
-                legacy_plan.append(([], fallback))
-        return legacy_plan
-
     def _corrupt_text(self, text: str) -> str:
         """Apply each glitchling to string input sequentially.
 
@@ -599,9 +534,6 @@ __all__ = [
     "Gaggle",
     # Planning functions
     "plan_glitchlings",
-    "plan_glitchling_specs",
-    # Type aliases (re-exported from core_planning)
     "PipelineOperationPayload",
     "PipelineDescriptor",
-    "PlanEntry",
 ]

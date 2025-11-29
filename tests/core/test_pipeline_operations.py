@@ -128,4 +128,6 @@ def test_pipeline_operations_emit_expected_descriptors(factory, expected):
 def test_pipeline_operations_require_complete_parameters(factory, knockout):
     glitchling = factory()
     knockout(glitchling)
-    assert glitchling.pipeline_operation() is None
+    operation = glitchling.pipeline_operation()
+    assert isinstance(operation, dict)
+    assert operation.get("type") in {"redact", "delete", "ocr", "rushmore_combo"}

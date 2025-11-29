@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .core import Gaggle, Glitchling, plan_glitchling_specs, plan_glitchlings
+from .core import Gaggle, Glitchling, plan_glitchlings
 from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
@@ -40,7 +40,6 @@ __all__ = [
     "Glitchling",
     "Gaggle",
     "plan_glitchlings",
-    "plan_glitchling_specs",
     "summon",
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",

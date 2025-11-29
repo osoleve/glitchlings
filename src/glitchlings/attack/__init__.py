@@ -11,7 +11,7 @@ from .compose import (
     format_metrics_for_batch,
     format_metrics_for_single,
 )
-from .core import Attack, AttackResult
+from .core import Attack, AttackResult, MultiAttackResult
 from .encode import describe_tokenizer, encode_batch, encode_single
 from .metrics import (
     jensen_shannon_divergence,
@@ -25,6 +25,7 @@ __all__ = [
     # Core
     "Attack",
     "AttackResult",
+    "MultiAttackResult",
     "Tokenizer",
     # Metrics
     "jensen_shannon_divergence",

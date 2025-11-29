@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, cast
 
-from ..compat import get_pytorch_lightning_datamodule
+from ..compat.loaders import get_pytorch_lightning_datamodule
 from ..util.adapters import coerce_gaggle
 from ..zoo import Gaggle, Glitchling
 from ._shared import normalize_column_spec, wrap_dataloader

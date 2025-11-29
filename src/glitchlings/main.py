@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import difflib
+import json
 import sys
 from collections.abc import Sequence
 from pathlib import Path
 from typing import cast
 
+import yaml
+
 from . import SAMPLE_TEXT
+from .attack import Attack
 from .conf import DEFAULT_ATTACK_SEED, build_gaggle, load_attack_config
 from .zoo import (
     BUILTIN_GLITCHLINGS,
@@ -91,6 +95,18 @@ def build_parser(
         "--config",
         type=Path,
         help="Load glitchlings from a YAML configuration file.",
+    )
+    parser.add_argument(
+        "--report",
+        "--attack",
+        dest="report_format",
+        nargs="?",
+        const="json",
+        choices=["json", "yaml", "yml"],
+        help=(
+            "Output a structured Attack report (default: json). Use --attack as an alias. "
+            "Includes tokens, token IDs, metrics, and counts."
+        ),
     )
 
     return parser
@@ -226,6 +242,15 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         list_glitchlings()
         return 0
 
+    report_format = cast(str | None, getattr(args, "report_format", None))
+    if report_format and args.diff:
+        parser.error("--diff cannot be combined with --report/--attack output.")
+        raise AssertionError("parser.error should exit")
+
+    normalized_report_format = None
+    if report_format:
+        normalized_report_format = "yaml" if report_format == "yml" else report_format
+
     text = read_text(args, parser)
     gaggle = summon_glitchlings(
         args.glitchlings,
@@ -233,6 +258,19 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         args.seed,
         config_path=args.config,
     )
+
+    if normalized_report_format:
+        attack_seed = args.seed if args.seed is not None else getattr(gaggle, "seed", None)
+        attack = Attack(gaggle, seed=attack_seed)
+        result = attack.run(text)
+        payload = result.to_report()
+        payload["summary"] = result.summary()
+
+        if normalized_report_format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print(yaml.safe_dump(payload, sort_keys=False))
+        return 0
 
     corrupted = gaggle.corrupt(text)
     if not isinstance(corrupted, str):
