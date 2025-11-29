@@ -30,6 +30,7 @@ def test_typogre_clone_preserves_configuration_and_seed_behavior() -> None:
     assert clone_result_first == clone_result_second
     assert clone_result_first != original_result
 
+
 def test_glitchling_signature_introspection_is_cached() -> None:
     call_count = 0
     original_signature = inspect.signature
@@ -51,6 +52,7 @@ def test_glitchling_signature_introspection_is_cached() -> None:
 
     assert call_count == 1
 
+
 def test_glitchling_pipeline_operation_factory_survives_clone() -> None:
     def descriptor(glitchling: Glitchling) -> dict[str, object]:
         return {"type": "custom", "value": glitchling.kwargs.get("value")}
@@ -67,6 +69,7 @@ def test_glitchling_pipeline_operation_factory_survives_clone() -> None:
 
     clone = glitch.clone()
     assert clone.pipeline_operation() == {"type": "custom", "value": 7}
+
 
 def test_plan_glitchlings_requires_seed() -> None:
     with pytest.raises(ValueError, match="master seed"):

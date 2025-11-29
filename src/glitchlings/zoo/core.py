@@ -630,9 +630,7 @@ class Gaggle(Glitchling):
         return assemble_corruption_result(target, corrupted)
 
     @staticmethod
-    def _merge_pattern_lists(
-        base: list[str] | None, extra: list[str] | None
-    ) -> list[str] | None:
+    def _merge_pattern_lists(base: list[str] | None, extra: list[str] | None) -> list[str] | None:
         if base is None and extra is None:
             return None
 

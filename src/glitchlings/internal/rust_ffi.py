@@ -90,9 +90,7 @@ class RustPipeline:
         include_patterns_list = (
             list(include_only_patterns) if include_only_patterns is not None else None
         )
-        exclude_patterns_list = (
-            list(exclude_patterns) if exclude_patterns is not None else None
-        )
+        exclude_patterns_list = list(exclude_patterns) if exclude_patterns is not None else None
         self._pipeline = pipeline_cls(
             list(descriptors), int(master_seed), include_patterns_list, exclude_patterns_list
         )

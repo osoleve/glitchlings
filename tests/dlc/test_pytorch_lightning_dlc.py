@@ -109,9 +109,11 @@ def test_glitched_lightning_datamodule_accepts_multiple_columns() -> None:
 
 def test_glitched_lightning_datamodule_proxies_attribute_assignment() -> None:
     """Test GlitchedLightningDataModule proxies attribute assignment."""
-    datamodule = _SimpleDataModule([
-        {"text": "alpha", "notes": "one", "label": 0},
-    ])
+    datamodule = _SimpleDataModule(
+        [
+            {"text": "alpha", "notes": "one", "label": 0},
+        ]
+    )
 
     glitched = GlitchedLightningDataModule(datamodule, "typogre", column="text")
     glitched.flag = "updated"
@@ -121,9 +123,11 @@ def test_glitched_lightning_datamodule_proxies_attribute_assignment() -> None:
 
 def test_glitched_lightning_datamodule_missing_column_raises_error() -> None:
     """Test GlitchedLightningDataModule raises error for missing column."""
-    datamodule = _SimpleDataModule([
-        {"text": "alpha", "label": 0},
-    ])
+    datamodule = _SimpleDataModule(
+        [
+            {"text": "alpha", "label": 0},
+        ]
+    )
     glitched = GlitchedLightningDataModule(datamodule, "typogre", column="notes")
 
     loader = glitched.test_dataloader()

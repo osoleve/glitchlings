@@ -110,8 +110,8 @@ def test_hokey_handles_text_without_vowels():
     text = "hmm brr"
     output = hokey_module.extend_vowels(text, rate=1.0, seed=42)
     assert output != text
-    assert output.count('m') > text.count('m')
-    assert output.count('r') > text.count('r')
+    assert output.count("m") > text.count("m")
+    assert output.count("r") > text.count("r")
 
 
 def test_hokey_pipeline_descriptor_contains_new_parameters():
@@ -145,6 +145,7 @@ def test_hokey_class_initialization_tracks_parameters():
     assert glitch.order == core_module.AttackOrder.FIRST
     assert glitch.kwargs["base_p"] == 0.4
 
+
 def test_hokey_glitchling_callable_returns_str():
     """Hokey instances remain callable and return strings."""
     glitch = hokey_module.Hokey(rate=0.5, seed=123)
@@ -153,6 +154,7 @@ def test_hokey_glitchling_callable_returns_str():
 
     assert isinstance(result, str)
     assert len(result) >= len(text)
+
 
 def test_hokey_handles_utf8_characters_correctly():
     """UTF-8 characters should be counted properly when applying stretches."""

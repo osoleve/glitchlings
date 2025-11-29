@@ -1,4 +1,5 @@
 """Shared glitchling fixtures for all test modules."""
+
 from __future__ import annotations
 
 import pytest
@@ -20,10 +21,13 @@ def fresh_glitchling():
     Returns:
         A fresh clone of the requested glitchling
     """
+
     def _factory(glitchling_name: str):
         from glitchlings import zoo
+
         glitchling = getattr(zoo, glitchling_name.lower())
         return glitchling.clone()
+
     return _factory
 
 
@@ -34,4 +38,5 @@ def sample_text():
     This is the standard SAMPLE_TEXT used throughout the glitchlings library.
     """
     from glitchlings import SAMPLE_TEXT
+
     return SAMPLE_TEXT

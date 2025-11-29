@@ -12,9 +12,7 @@ try:  # pragma: no cover - optional dependency guard
     from hypothesis import HealthCheck, assume, given, settings
     from hypothesis import strategies as st
 except ModuleNotFoundError:  # pragma: no cover - triggered when hypothesis absent
-    pytest.skip(
-        "hypothesis is required for property-based tests", allow_module_level=True
-    )
+    pytest.skip("hypothesis is required for property-based tests", allow_module_level=True)
 
 from glitchlings.zoo.core import AttackOrder, AttackWave, Gaggle, Glitchling
 
@@ -42,9 +40,7 @@ def _build_corruption(name: str, amplitude: int):
 
 @st.composite
 def glitchling_specs(draw):
-    name = draw(
-        st.text(alphabet=string.ascii_letters + string.digits, min_size=1, max_size=8)
-    )
+    name = draw(st.text(alphabet=string.ascii_letters + string.digits, min_size=1, max_size=8))
     wave = draw(st.sampled_from(list(AttackWave)))
     order = draw(st.sampled_from(list(AttackOrder)))
     amplitude = draw(st.integers(min_value=0, max_value=4))
@@ -147,4 +143,3 @@ def test_rushmore_preserves_first_token_and_respects_cap(text: str, rate: float,
     allowed = min(candidate_count, math.floor(candidate_count * rate))
     removed = len(words) - len(result_words)
     assert removed <= allowed
-
