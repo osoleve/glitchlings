@@ -14,7 +14,6 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Auggie](glitchlings/auggie.md)
    - [Typogre](glitchlings/typogre.md)
    - [Hokey](glitchlings/hokey.md)
-   - [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md)
    - [Mim1c](glitchlings/mim1c.md)
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
@@ -52,7 +51,7 @@ pip install -U 'glitchlings[all]'
 
 #### RL Environment DLC
 
-- `prime` for Prime Intellect RL Hub utilities (see [Prime Intellect integration](#prime-intellect-integration))
+- `prime` for Prime Intellect RL Hub utilities (see [Integrations and DLC](integrations.md))
 
 #### Dataset/Loader Monkeypatching DLC
 
@@ -63,7 +62,7 @@ Wrap popular dataset loaders for seamless, reproducible corruption:
 - `lightning` for Lightning DataModule
 - `gutenberg` for Project Gutenberg (Gutendex) corruption helpers
 
-See [Dataset workflows](#dataset-workflows) for details.
+See [Dataset workflows](datasets.md) for details.
 
 ### Source install
 
