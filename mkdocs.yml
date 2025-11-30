@@ -7,12 +7,27 @@ docs_dir: docs
 use_directory_urls: true
 
 theme:
-  name: readthedocs
+  name: material
+  palette:
+    # Light mode: "Field Guide" (Paper/Sketchbook feel)
+    - scheme: default
+      primary: teal
+      accent: purple 
+      toggle:
+        icon: material/book-open-variant
+        name: Switch to Dark Mode
+    # Dark mode: "Terminal/Glitch" (Cyberpunk feel)
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/console
+        name: Switch to Light Mode
   features:
-    - content.code.copy
-    - navigation.sections
     - navigation.tabs
+    - navigation.sections
     - toc.integrate
+    - content.code.copy
 
 nav:
   - Overview: index.md
