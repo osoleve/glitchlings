@@ -7,40 +7,67 @@ docs_dir: docs
 use_directory_urls: true
 
 theme:
-  name: readthedocs
+  name: material
   features:
     - content.code.copy
+    - content.tabs.link
     - navigation.sections
     - navigation.tabs
+    - navigation.top
+    - navigation.expand
     - toc.integrate
+    - search.suggest
+    - search.highlight
+  palette:
+    - scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/glitch-visualizer.js
 
 nav:
-  - Overview: index.md
-  - Guides:
-      - CLI Reference: cli.md
-      - Attack Helper: attack.md
-      - Dataset Workflows: datasets.md
-      - Integrations & DLC: integrations.md
-      - Determinism: determinism.md
-  - Development: development.md
-  - Monster Manual: monster-manual.md
-  - Hokey Design Spec: hokey_design_spec.md
-  - Performance:
-      - Gallery Builder: glitchling-gallery.md
-  - Glitchling Reference:
-      - Typogre: glitchlings/typogre.md
-      - 'Pedant – Curlite (Apostrofae)': glitchlings/apostrofae.md
-      - Hokey: glitchlings/hokey.md
-      - Mim1c: glitchlings/mim1c.md
-      - Rushmore: glitchlings/rushmore.md
-      - Redactyl: glitchlings/redactyl.md
-      - Jargoyle: glitchlings/jargoyle.md
-      - Ekkokin: glitchlings/ekkokin.md
-      - Pedant: glitchlings/pedant.md
-      - Scannequin: glitchlings/scannequin.md
-      - Zeedub: glitchlings/zeedub.md
-  - Operations:
-      - Keyboard Layouts: keyboard-layouts.md
+  - '📖 Field Guide': index.md
+  - '🤓 Auggie': glitchlings/auggie.md
+  - '👾 Bestiary':
+      - 'Overview': monster-manual.md
+      - 'Visual Gallery': glitchling-gallery.md
+      - 'Specimens':
+          - '👂 Ekkokin': glitchlings/ekkokin.md
+          - '🦒 Hokey': glitchlings/hokey.md
+          - '📇 Jargoyle': glitchlings/jargoyle.md
+          - '🎭 Mim1c': glitchlings/mim1c.md
+          - '📝 Pedant': glitchlings/pedant.md
+          - '🕵️ Redactyl': glitchlings/redactyl.md
+          - '💨 Rushmore': glitchlings/rushmore.md
+          - '🔍 Scannequin': glitchlings/scannequin.md
+          - '⌨️ Typogre': glitchlings/typogre.md
+          - '⛓️‍💥 Zeedub': glitchlings/zeedub.md
+  - '🧪 Lab Notes':
+      - 'Attack Helper': attack.md
+      - 'Dataset Workflows': datasets.md
+      - 'Determinism Protocols': determinism.md
+      - 'Integrations & DLC': integrations.md
+      - 'Spec: Hokey Linguistics': hokey_design_spec.md
+  - '⚙️ Operations':
+      - 'CLI Reference': cli.md
+      - 'Keyboard Layouts': keyboard-layouts.md
+      - 'Development Guide': development.md
 
 plugins:
   - search
@@ -55,7 +82,14 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
   - codehilite
   - footnotes
+  - attr_list
+  - md_in_html
+  - tables
   - toc:
       permalink: "#"

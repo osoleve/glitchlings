@@ -1,0 +1,416 @@
+/* =============================================================
+   Glitchlings Field Guide - Custom Styles
+   Visual Identity: Retro CRT + Arcade Aesthetic
+   ============================================================= */
+
+/* Typography - Google Fonts imports */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+
+/* =============================================================
+   CSS Variables / Color Palette
+   ============================================================= */
+:root {
+  --md-primary-fg-color: #4a148c;        /* Deep Purple */
+  --md-primary-fg-color--light: #7c43bd;
+  --md-primary-fg-color--dark: #12005e;
+  --md-accent-fg-color: #00bcd4;         /* Cyan accent */
+  --md-accent-fg-color--transparent: rgba(0, 188, 212, 0.1);
+  
+  /* Glitch effect colors */
+  --glitch-color-1: #ff00ff;             /* Magenta */
+  --glitch-color-2: #00ffff;             /* Cyan */
+  --glitch-color-3: #ff0066;             /* Hot pink */
+  
+  /* CRT effect colors */
+  --crt-glow: rgba(0, 188, 212, 0.4);
+  --crt-scanline: rgba(0, 0, 0, 0.1);
+}
+
+/* =============================================================
+   Typography Setup
+   ============================================================= */
+
+/* Headers - Press Start 2P (pixel font) for main headings */
+.md-typeset h1,
+.md-header__title {
+  font-family: 'Press Start 2P', 'Roboto Mono', monospace !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 var(--md-accent-fg-color);
+}
+
+/* Secondary headers - Roboto Mono */
+.md-typeset h2,
+.md-typeset h3,
+.md-typeset h4,
+.md-typeset h5,
+.md-typeset h6 {
+  font-family: 'Roboto Mono', monospace !important;
+  font-weight: 600;
+}
+
+/* Body text - Inter */
+.md-typeset,
+.md-typeset p,
+.md-typeset li,
+.md-typeset td,
+.md-typeset th {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Code blocks - JetBrains Mono */
+.md-typeset code,
+.md-typeset pre code,
+.md-typeset kbd,
+.highlight code {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+/* Navigation - Roboto Mono for sidebar */
+.md-nav__link,
+.md-tabs__link {
+  font-family: 'Roboto Mono', monospace !important;
+}
+
+/* =============================================================
+   CRT / Static Distortion Effects
+   ============================================================= */
+
+/* Glitch animation keyframes */
+@keyframes glitch-skew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(-2deg); }
+  40% { transform: skew(2deg); }
+  60% { transform: skew(-1deg); }
+  80% { transform: skew(1deg); }
+  100% { transform: skew(0deg); }
+}
+
+@keyframes glitch-color {
+  0% {
+    text-shadow: 2px 2px 0 var(--glitch-color-1), -2px -2px 0 var(--glitch-color-2);
+  }
+  25% {
+    text-shadow: -2px 2px 0 var(--glitch-color-2), 2px -2px 0 var(--glitch-color-3);
+  }
+  50% {
+    text-shadow: 2px -2px 0 var(--glitch-color-3), -2px 2px 0 var(--glitch-color-1);
+  }
+  75% {
+    text-shadow: -2px -2px 0 var(--glitch-color-1), 2px 2px 0 var(--glitch-color-2);
+  }
+  100% {
+    text-shadow: 2px 2px 0 var(--glitch-color-1), -2px -2px 0 var(--glitch-color-2);
+  }
+}
+
+@keyframes glitch-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.95; }
+  52% { opacity: 0.9; }
+  54% { opacity: 1; }
+}
+
+@keyframes scanline {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
+@keyframes static-noise {
+  0%, 100% { background-position: 0 0; }
+  10% { background-position: -5% -5%; }
+  20% { background-position: 10% 5%; }
+  30% { background-position: -10% 10%; }
+  40% { background-position: 5% -10%; }
+  50% { background-position: -5% 15%; }
+  60% { background-position: 15% 5%; }
+  70% { background-position: -15% -5%; }
+  80% { background-position: 5% 10%; }
+  90% { background-position: -10% -10%; }
+}
+
+/* Site title glitch effect on hover */
+.md-header__title {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.md-header__title:hover {
+  animation: glitch-skew 0.5s ease-in-out, glitch-color 0.3s ease-in-out infinite;
+}
+
+/* CRT glow effect for header */
+.md-header {
+  box-shadow: 0 0 20px var(--crt-glow);
+}
+
+/* Sidebar navigation glitch effects */
+.md-nav__link {
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.md-nav__link:hover {
+  animation: glitch-flicker 0.15s ease-in-out;
+  text-shadow: 
+    1px 0 var(--glitch-color-1),
+    -1px 0 var(--glitch-color-2);
+  color: var(--md-accent-fg-color) !important;
+}
+
+/* Active nav item styling */
+.md-nav__link--active {
+  color: var(--md-accent-fg-color) !important;
+  text-shadow: 0 0 10px var(--crt-glow);
+}
+
+/* Scanline overlay for content area (subtle) */
+.md-content {
+  position: relative;
+}
+
+.md-content::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    var(--crt-scanline) 2px,
+    var(--crt-scanline) 4px
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 1000;
+}
+
+/* Enable scanlines on hover (optional - can be distracting) */
+.md-content:hover::before {
+  opacity: 0.03;
+}
+
+/* =============================================================
+   Navigation & Tabs Enhancement
+   ============================================================= */
+
+/* Tab styling with glow */
+.md-tabs__link {
+  transition: all 0.3s ease;
+}
+
+.md-tabs__link:hover {
+  text-shadow: 0 0 8px var(--md-accent-fg-color);
+}
+
+.md-tabs__link--active {
+  border-bottom: 2px solid var(--md-accent-fg-color);
+  text-shadow: 0 0 10px var(--crt-glow);
+}
+
+/* =============================================================
+   Admonition Styling (for Monster Manual)
+   ============================================================= */
+
+/* Quote admonition for creature cards */
+.md-typeset .admonition.quote,
+.md-typeset details.quote {
+  border-left-color: var(--md-accent-fg-color);
+  background: linear-gradient(135deg, 
+    rgba(74, 20, 140, 0.05) 0%,
+    rgba(0, 188, 212, 0.05) 100%
+  );
+}
+
+.md-typeset .admonition.quote > .admonition-title,
+.md-typeset details.quote > summary {
+  background-color: rgba(0, 188, 212, 0.1);
+  border-bottom: 1px solid var(--md-accent-fg-color);
+}
+
+/* Creature stat block tables */
+.md-typeset .admonition table {
+  border: 1px solid var(--md-primary-fg-color--light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.md-typeset .admonition table th {
+  background: var(--md-primary-fg-color);
+  color: white;
+  font-family: 'Roboto Mono', monospace;
+}
+
+/* =============================================================
+   Code Block Enhancements
+   ============================================================= */
+
+/* Terminal-style code blocks */
+.md-typeset pre {
+  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+  border: 1px solid var(--md-primary-fg-color--light);
+  border-radius: 8px;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.md-typeset pre code {
+  color: #e0e0e0;
+}
+
+/* Inline code styling */
+.md-typeset code:not(pre code) {
+  background: rgba(74, 20, 140, 0.1);
+  border: 1px solid rgba(74, 20, 140, 0.2);
+  border-radius: 4px;
+  color: var(--md-primary-fg-color);
+  padding: 0.1em 0.4em;
+}
+
+/* =============================================================
+   Gallery / Visualizer Styles
+   ============================================================= */
+
+/* Before/After slider container */
+.glitch-visualizer {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 2rem auto;
+  border: 2px solid var(--md-primary-fg-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a2e;
+}
+
+.glitch-visualizer__header {
+  background: var(--md-primary-fg-color);
+  color: white;
+  padding: 0.5rem 1rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.glitch-visualizer__controls {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  flex-wrap: wrap;
+}
+
+.glitch-visualizer__controls label {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--md-accent-fg-color);
+}
+
+.glitch-visualizer__controls select,
+.glitch-visualizer__controls input[type="range"] {
+  background: #16213e;
+  border: 1px solid var(--md-accent-fg-color);
+  color: white;
+  padding: 0.3rem 0.5rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.glitch-visualizer__output {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--md-primary-fg-color--light);
+}
+
+.glitch-visualizer__panel {
+  background: #1a1a2e;
+  padding: 1rem;
+}
+
+.glitch-visualizer__panel-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  color: var(--md-accent-fg-color);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.glitch-visualizer__text {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #e0e0e0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Diff highlighting */
+.glitch-diff-add {
+  background: rgba(0, 188, 212, 0.3);
+  color: var(--md-accent-fg-color);
+  border-radius: 2px;
+}
+
+.glitch-diff-remove {
+  background: rgba(255, 0, 102, 0.3);
+  color: var(--glitch-color-3);
+  text-decoration: line-through;
+  border-radius: 2px;
+}
+
+/* =============================================================
+   Responsive Adjustments
+   ============================================================= */
+
+@media screen and (max-width: 768px) {
+  .md-typeset h1,
+  .md-header__title {
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+  
+  .glitch-visualizer__output {
+    grid-template-columns: 1fr;
+  }
+  
+  .glitch-visualizer__controls {
+    flex-direction: column;
+  }
+}
+
+/* =============================================================
+   Dark Mode Enhancements
+   ============================================================= */
+
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color: #0d1117;
+  --md-default-fg-color: #e6edf3;
+}
+
+[data-md-color-scheme="slate"] .md-typeset pre {
+  background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+}
+
+/* =============================================================
+   Print Styles
+   ============================================================= */
+
+@media print {
+  .md-header__title:hover,
+  .md-nav__link:hover {
+    animation: none !important;
+    text-shadow: none !important;
+  }
+  
+  .md-content::before {
+    display: none;
+  }
+}
