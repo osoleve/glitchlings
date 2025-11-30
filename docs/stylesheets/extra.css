@@ -1,177 +1,342 @@
 /* =============================================================
    Glitchlings Field Guide - Custom Styles
-   Visual Identity: Retro CRT + Arcade Aesthetic
+   Visual Identity: Old-School Vector Graphics Display
+   Inspired by: Asteroids, Battlezone, Oscilloscopes, Vectrex
    ============================================================= */
 
-/* Typography - Google Fonts imports */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Roboto+Mono:wght@400;500;600;700&display=swap');
+/* Typography - Monospace fonts for that authentic terminal feel */
+@import url('https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Fira+Code:wght@400;500;600&display=swap');
 
 /* =============================================================
-   CSS Variables / Color Palette
+   CSS Variables / Color Palette - Vector Phosphor Colors
    ============================================================= */
 :root {
-  --md-primary-fg-color: #4a148c;        /* Deep Purple */
-  --md-primary-fg-color--light: #7c43bd;
-  --md-primary-fg-color--dark: #12005e;
-  --md-accent-fg-color: #00bcd4;         /* Cyan accent */
-  --md-accent-fg-color--transparent: rgba(0, 188, 212, 0.1);
+  /* Classic vector green phosphor (P1 phosphor) */
+  --vector-green: #33ff33;
+  --vector-green-dim: #1a8c1a;
+  --vector-green-bright: #66ff66;
+  --vector-green-glow: rgba(51, 255, 51, 0.6);
   
-  /* Glitch effect colors */
-  --glitch-color-1: #ff00ff;             /* Magenta */
-  --glitch-color-2: #00ffff;             /* Cyan */
-  --glitch-color-3: #ff0066;             /* Hot pink */
+  /* Alternative amber phosphor (P3 phosphor) */
+  --vector-amber: #ffaa00;
+  --vector-amber-dim: #996600;
+  --vector-amber-glow: rgba(255, 170, 0, 0.5);
   
-  /* CRT effect colors */
-  --crt-glow: rgba(0, 188, 212, 0.4);
-  --crt-scanline: rgba(0, 0, 0, 0.1);
+  /* Display background - deep CRT black */
+  --vector-black: #0a0a0a;
+  --vector-dark: #0f0f0f;
+  --vector-darker: #050505;
+  
+  /* Accent colors for highlights */
+  --vector-cyan: #00ffff;
+  --vector-magenta: #ff00ff;
+  --vector-red: #ff3333;
+  
+  /* Material theme overrides */
+  --md-primary-fg-color: var(--vector-green);
+  --md-primary-fg-color--light: var(--vector-green-bright);
+  --md-primary-fg-color--dark: var(--vector-green-dim);
+  --md-accent-fg-color: var(--vector-cyan);
+  --md-accent-fg-color--transparent: rgba(0, 255, 255, 0.1);
+  
+  /* Vector glow effects */
+  --vector-glow-sm: 0 0 2px var(--vector-green), 0 0 4px var(--vector-green-glow);
+  --vector-glow-md: 0 0 4px var(--vector-green), 0 0 8px var(--vector-green-glow), 0 0 12px var(--vector-green-glow);
+  --vector-glow-lg: 0 0 6px var(--vector-green), 0 0 12px var(--vector-green-glow), 0 0 20px var(--vector-green-glow);
+  
+  /* Scanline effect */
+  --scanline-color: rgba(0, 0, 0, 0.15);
 }
 
 /* =============================================================
-   Typography Setup
+   Global Background - Deep Vector Display Black
    ============================================================= */
-
-/* Headers - Press Start 2P (pixel font) for main headings */
-.md-typeset h1,
-.md-header__title {
-  font-family: 'Press Start 2P', 'Roboto Mono', monospace !important;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-shadow: 2px 2px 0 var(--md-accent-fg-color);
+[data-md-color-scheme="slate"],
+[data-md-color-scheme="default"] {
+  --md-default-bg-color: var(--vector-black);
+  --md-default-fg-color: var(--vector-green);
+  --md-typeset-color: var(--vector-green);
+  --md-typeset-a-color: var(--vector-cyan);
 }
 
-/* Secondary headers - Roboto Mono */
+/* Force dark background everywhere */
+body,
+.md-main,
+.md-content,
+.md-sidebar,
+.md-header,
+.md-tabs {
+  background-color: var(--vector-black) !important;
+}
+
+/* =============================================================
+   Typography Setup - All Monospace, All the Time
+   ============================================================= */
+
+/* Main headings - VT323 for that authentic vector terminal look */
+.md-typeset h1,
+.md-header__title {
+  font-family: 'VT323', 'Courier New', monospace !important;
+  text-transform: uppercase;
+  letter-spacing: 4px;
+  font-size: 2rem;
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-lg);
+}
+
+/* Secondary headers - Share Tech Mono */
 .md-typeset h2,
 .md-typeset h3,
 .md-typeset h4,
 .md-typeset h5,
 .md-typeset h6 {
-  font-family: 'Roboto Mono', monospace !important;
-  font-weight: 600;
+  font-family: 'Share Tech Mono', 'Courier New', monospace !important;
+  font-weight: 400;
+  color: var(--vector-green) !important;
+  text-shadow: var(--vector-glow-sm);
+  border-bottom: 1px solid var(--vector-green-dim);
+  padding-bottom: 0.3em;
 }
 
-/* Body text - Inter */
+/* Body text - Share Tech Mono for readability */
 .md-typeset,
 .md-typeset p,
 .md-typeset li,
 .md-typeset td,
 .md-typeset th {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-family: 'Share Tech Mono', 'Courier New', monospace !important;
+  color: var(--vector-green) !important;
+  line-height: 1.7;
 }
 
-/* Code blocks - JetBrains Mono */
+/* Links glow cyan */
+.md-typeset a {
+  color: var(--vector-cyan) !important;
+  text-shadow: 0 0 4px rgba(0, 255, 255, 0.5);
+  text-decoration: none;
+  border-bottom: 1px dotted var(--vector-cyan);
+}
+
+.md-typeset a:hover {
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-md);
+  border-bottom-style: solid;
+}
+
+/* Code blocks - Fira Code */
 .md-typeset code,
 .md-typeset pre code,
 .md-typeset kbd,
 .highlight code {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+  font-family: 'Fira Code', 'Courier New', monospace !important;
+  color: var(--vector-amber) !important;
 }
 
-/* Navigation - Roboto Mono for sidebar */
+/* Navigation - VT323 for sidebar */
 .md-nav__link,
 .md-tabs__link {
-  font-family: 'Roboto Mono', monospace !important;
+  font-family: 'VT323', 'Courier New', monospace !important;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
 }
 
 /* =============================================================
-   CRT / Static Distortion Effects
+   Vector Beam Animation Effects
    ============================================================= */
 
-/* Glitch animation keyframes */
-@keyframes glitch-skew {
-  0% { transform: skew(0deg); }
-  20% { transform: skew(-2deg); }
-  40% { transform: skew(2deg); }
-  60% { transform: skew(-1deg); }
-  80% { transform: skew(1deg); }
-  100% { transform: skew(0deg); }
+@keyframes vector-flicker {
+  0%, 100% { opacity: 1; }
+  92% { opacity: 1; }
+  93% { opacity: 0.8; }
+  94% { opacity: 1; }
+  96% { opacity: 0.9; }
+  97% { opacity: 1; }
 }
 
-@keyframes glitch-color {
-  0% {
-    text-shadow: 2px 2px 0 var(--glitch-color-1), -2px -2px 0 var(--glitch-color-2);
+@keyframes vector-pulse {
+  0%, 100% { 
+    text-shadow: var(--vector-glow-sm);
+    filter: brightness(1);
   }
-  25% {
-    text-shadow: -2px 2px 0 var(--glitch-color-2), 2px -2px 0 var(--glitch-color-3);
+  50% { 
+    text-shadow: var(--vector-glow-lg);
+    filter: brightness(1.2);
+  }
+}
+
+@keyframes beam-trace {
+  0% { 
+    clip-path: inset(0 100% 0 0);
+    opacity: 0;
   }
   50% {
-    text-shadow: 2px -2px 0 var(--glitch-color-3), -2px 2px 0 var(--glitch-color-1);
-  }
-  75% {
-    text-shadow: -2px -2px 0 var(--glitch-color-1), 2px 2px 0 var(--glitch-color-2);
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
   }
   100% {
-    text-shadow: 2px 2px 0 var(--glitch-color-1), -2px -2px 0 var(--glitch-color-2);
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
   }
 }
 
-@keyframes glitch-flicker {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.95; }
-  52% { opacity: 0.9; }
-  54% { opacity: 1; }
+@keyframes scanline-scroll {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
 }
 
-@keyframes scanline {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100%; }
+@keyframes phosphor-decay {
+  0% { 
+    opacity: 1;
+    filter: brightness(1.3);
+  }
+  100% { 
+    opacity: 0.85;
+    filter: brightness(1);
+  }
 }
 
-@keyframes static-noise {
-  0%, 100% { background-position: 0 0; }
-  10% { background-position: -5% -5%; }
-  20% { background-position: 10% 5%; }
-  30% { background-position: -10% 10%; }
-  40% { background-position: 5% -10%; }
-  50% { background-position: -5% 15%; }
-  60% { background-position: 15% 5%; }
-  70% { background-position: -15% -5%; }
-  80% { background-position: 5% 10%; }
-  90% { background-position: -10% -10%; }
-}
+/* =============================================================
+   Header - Vector Display Terminal Bar
+   ============================================================= */
 
-/* Site title glitch effect on hover */
-.md-header__title {
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.md-header__title:hover {
-  animation: glitch-skew 0.5s ease-in-out, glitch-color 0.3s ease-in-out infinite;
-}
-
-/* CRT glow effect for header */
 .md-header {
-  box-shadow: 0 0 20px var(--crt-glow);
+  background: linear-gradient(180deg, var(--vector-dark) 0%, var(--vector-black) 100%) !important;
+  border-bottom: 2px solid var(--vector-green);
+  box-shadow: 
+    0 2px 0 var(--vector-green-dim),
+    0 0 20px var(--vector-green-glow),
+    inset 0 -1px 0 var(--vector-green-dim);
 }
 
-/* Sidebar navigation glitch effects */
-.md-nav__link {
-  position: relative;
+.md-header__title {
+  animation: vector-pulse 4s ease-in-out infinite;
+}
+
+.md-header__button {
+  color: var(--vector-green) !important;
+}
+
+.md-header__button:hover {
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-md);
+}
+
+/* Search box styling */
+.md-search__input {
+  background-color: var(--vector-darker) !important;
+  color: var(--vector-green) !important;
+  border: 1px solid var(--vector-green-dim) !important;
+  font-family: 'Share Tech Mono', monospace !important;
+}
+
+.md-search__input::placeholder {
+  color: var(--vector-green-dim) !important;
+}
+
+.md-search__input:focus {
+  border-color: var(--vector-green) !important;
+  box-shadow: var(--vector-glow-sm);
+}
+
+/* =============================================================
+   Navigation Tabs - Vector Button Style
+   ============================================================= */
+
+.md-tabs {
+  background: var(--vector-black) !important;
+  border-bottom: 1px solid var(--vector-green-dim);
+}
+
+.md-tabs__link {
+  color: var(--vector-green-dim) !important;
   transition: all 0.2s ease;
+  position: relative;
+}
+
+.md-tabs__link:hover {
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-md);
+}
+
+.md-tabs__link--active {
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-lg);
+}
+
+.md-tabs__link--active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--vector-green);
+  box-shadow: var(--vector-glow-sm);
+}
+
+/* =============================================================
+   Sidebar Navigation - Vector Menu
+   ============================================================= */
+
+.md-sidebar {
+  background: var(--vector-black) !important;
+}
+
+.md-nav__link {
+  color: var(--vector-green-dim) !important;
+  transition: all 0.15s ease;
+  padding: 0.4rem 0.6rem;
+  border-left: 2px solid transparent;
 }
 
 .md-nav__link:hover {
-  animation: glitch-flicker 0.15s ease-in-out;
-  text-shadow: 
-    1px 0 var(--glitch-color-1),
-    -1px 0 var(--glitch-color-2);
-  color: var(--md-accent-fg-color) !important;
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-sm);
+  border-left-color: var(--vector-green);
+  background: rgba(51, 255, 51, 0.05);
 }
 
-/* Active nav item styling */
 .md-nav__link--active {
-  color: var(--md-accent-fg-color) !important;
-  text-shadow: 0 0 10px var(--crt-glow);
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-md);
+  border-left: 2px solid var(--vector-green);
+  background: rgba(51, 255, 51, 0.1);
 }
 
-/* Scanline overlay for content area (subtle) */
+/* Navigation section headers */
+.md-nav__title {
+  font-family: 'VT323', monospace !important;
+  color: var(--vector-cyan) !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 1rem;
+}
+
+/* Expand/collapse icons */
+.md-nav__icon {
+  color: var(--vector-green) !important;
+}
+
+/* =============================================================
+   Main Content Area - Vector Display Screen
+   ============================================================= */
+
 .md-content {
+  background: var(--vector-black) !important;
   position: relative;
 }
 
+/* Subtle CRT curvature effect on content */
+.md-content__inner {
+  background: 
+    radial-gradient(ellipse at center, transparent 0%, rgba(0, 0, 0, 0.3) 100%);
+  padding: 2rem;
+}
+
+/* Scanline overlay */
 .md-content::before {
   content: '';
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
@@ -179,191 +344,389 @@
   pointer-events: none;
   background: repeating-linear-gradient(
     0deg,
-    transparent,
+    transparent 0px,
     transparent 2px,
-    var(--crt-scanline) 2px,
-    var(--crt-scanline) 4px
+    var(--scanline-color) 2px,
+    var(--scanline-color) 4px
   );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-  z-index: 1000;
+  z-index: 9999;
+  opacity: 0.4;
 }
 
-/* Enable scanlines on hover (optional - can be distracting) */
-.md-content:hover::before {
-  opacity: 0.03;
+/* Vignette effect */
+.md-content::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 50%,
+    rgba(0, 0, 0, 0.5) 100%
+  );
+  z-index: 9998;
 }
 
 /* =============================================================
-   Navigation & Tabs Enhancement
+   Admonitions - Vector Alert Boxes
    ============================================================= */
 
-/* Tab styling with glow */
-.md-tabs__link {
-  transition: all 0.3s ease;
+.md-typeset .admonition,
+.md-typeset details {
+  background: var(--vector-darker) !important;
+  border: 1px solid var(--vector-green-dim);
+  border-left: 3px solid var(--vector-green);
+  box-shadow: 
+    0 0 10px rgba(51, 255, 51, 0.1),
+    inset 0 0 20px rgba(0, 0, 0, 0.5);
+  font-family: 'Share Tech Mono', monospace !important;
 }
 
-.md-tabs__link:hover {
-  text-shadow: 0 0 8px var(--md-accent-fg-color);
+.md-typeset .admonition > .admonition-title,
+.md-typeset details > summary {
+  background: linear-gradient(90deg, rgba(51, 255, 51, 0.15) 0%, transparent 100%) !important;
+  border-bottom: 1px solid var(--vector-green-dim);
+  font-family: 'VT323', monospace !important;
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--vector-green-bright) !important;
 }
 
-.md-tabs__link--active {
-  border-bottom: 2px solid var(--md-accent-fg-color);
-  text-shadow: 0 0 10px var(--crt-glow);
+/* Warning admonitions - amber phosphor */
+.md-typeset .admonition.warning,
+.md-typeset details.warning {
+  border-left-color: var(--vector-amber);
+}
+
+.md-typeset .admonition.warning > .admonition-title,
+.md-typeset details.warning > summary {
+  background: linear-gradient(90deg, rgba(255, 170, 0, 0.15) 0%, transparent 100%) !important;
+  color: var(--vector-amber) !important;
+}
+
+/* Danger admonitions - red alert */
+.md-typeset .admonition.danger,
+.md-typeset details.danger {
+  border-left-color: var(--vector-red);
+}
+
+.md-typeset .admonition.danger > .admonition-title,
+.md-typeset details.danger > summary {
+  background: linear-gradient(90deg, rgba(255, 51, 51, 0.15) 0%, transparent 100%) !important;
+  color: var(--vector-red) !important;
+}
+
+/* Info/Note admonitions - cyan */
+.md-typeset .admonition.info,
+.md-typeset .admonition.note,
+.md-typeset details.info,
+.md-typeset details.note {
+  border-left-color: var(--vector-cyan);
+}
+
+.md-typeset .admonition.info > .admonition-title,
+.md-typeset .admonition.note > .admonition-title,
+.md-typeset details.info > summary,
+.md-typeset details.note > summary {
+  background: linear-gradient(90deg, rgba(0, 255, 255, 0.15) 0%, transparent 100%) !important;
+  color: var(--vector-cyan) !important;
 }
 
 /* =============================================================
-   Admonition Styling (for Monster Manual)
+   Code Blocks - Vector Terminal Output
    ============================================================= */
 
-/* Quote admonition for creature cards */
-.md-typeset .admonition.quote,
-.md-typeset details.quote {
-  border-left-color: var(--md-accent-fg-color);
-  background: linear-gradient(135deg, 
-    rgba(74, 20, 140, 0.05) 0%,
-    rgba(0, 188, 212, 0.05) 100%
-  );
-}
-
-.md-typeset .admonition.quote > .admonition-title,
-.md-typeset details.quote > summary {
-  background-color: rgba(0, 188, 212, 0.1);
-  border-bottom: 1px solid var(--md-accent-fg-color);
-}
-
-/* Creature stat block tables */
-.md-typeset .admonition table {
-  border: 1px solid var(--md-primary-fg-color--light);
-  border-radius: 4px;
+.md-typeset pre {
+  background: var(--vector-darker) !important;
+  border: 1px solid var(--vector-green-dim);
+  border-radius: 0;
+  box-shadow: 
+    inset 0 0 30px rgba(0, 0, 0, 0.8),
+    0 0 10px rgba(51, 255, 51, 0.1);
+  position: relative;
   overflow: hidden;
 }
 
-.md-typeset .admonition table th {
-  background: var(--md-primary-fg-color);
-  color: white;
-  font-family: 'Roboto Mono', monospace;
-}
-
-/* =============================================================
-   Code Block Enhancements
-   ============================================================= */
-
-/* Terminal-style code blocks */
-.md-typeset pre {
-  background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
-  border: 1px solid var(--md-primary-fg-color--light);
-  border-radius: 8px;
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+/* Terminal header decoration */
+.md-typeset pre::before {
+  content: '__._._ ༼ つ ◕_◕ ༽つ _.._.__';
+  display: block;
+  font-family: 'VT323', monospace;
+  font-size: 0.8rem;
+  color: var(--vector-green-dim);
+  padding: 0.3rem 0.8rem;
+  border-bottom: 1px solid var(--vector-green-dim);
+  background: rgba(51, 255, 51, 0.05);
+  letter-spacing: 2px;
 }
 
 .md-typeset pre code {
-  color: #e0e0e0;
+  color: var(--vector-amber) !important;
+  text-shadow: 0 0 2px var(--vector-amber-glow);
+  display: block;
+  padding: 1rem !important;
 }
 
 /* Inline code styling */
 .md-typeset code:not(pre code) {
-  background: rgba(74, 20, 140, 0.1);
-  border: 1px solid rgba(74, 20, 140, 0.2);
-  border-radius: 4px;
-  color: var(--md-primary-fg-color);
+  background: rgba(51, 255, 51, 0.1) !important;
+  border: 1px solid var(--vector-green-dim);
+  border-radius: 0;
+  color: var(--vector-amber) !important;
   padding: 0.1em 0.4em;
+  font-family: 'Fira Code', monospace !important;
+  text-shadow: 0 0 2px var(--vector-amber-glow);
+}
+
+/* Syntax highlighting overrides */
+.highlight .k, .highlight .kn, .highlight .kd,
+.highlight .kc, .highlight .kr, .highlight .kt { 
+  color: var(--vector-cyan) !important; 
+}
+.highlight .s, .highlight .s1, .highlight .s2,
+.highlight .sa, .highlight .sb, .highlight .sc { 
+  color: var(--vector-amber) !important; 
+}
+.highlight .c, .highlight .c1, .highlight .cm,
+.highlight .cp, .highlight .cs { 
+  color: var(--vector-green-dim) !important; 
+}
+.highlight .n, .highlight .na, .highlight .nb,
+.highlight .nc, .highlight .nd, .highlight .ne,
+.highlight .nf, .highlight .ni, .highlight .nl,
+.highlight .nn, .highlight .no, .highlight .nt,
+.highlight .nv { 
+  color: var(--vector-green) !important; 
+}
+.highlight .m, .highlight .mi, .highlight .mf,
+.highlight .mh, .highlight .mo { 
+  color: var(--vector-magenta) !important; 
+}
+.highlight .o, .highlight .ow, .highlight .p { 
+  color: var(--vector-green-bright) !important; 
 }
 
 /* =============================================================
-   Gallery / Visualizer Styles
+   Tables - Vector Data Grid
    ============================================================= */
 
-/* Before/After slider container */
+.md-typeset table {
+  border: 1px solid var(--vector-green-dim);
+  background: var(--vector-darker);
+  box-shadow: 0 0 10px rgba(51, 255, 51, 0.1);
+}
+
+.md-typeset table th {
+  background: linear-gradient(180deg, rgba(51, 255, 51, 0.2) 0%, rgba(51, 255, 51, 0.1) 100%);
+  color: var(--vector-green-bright) !important;
+  font-family: 'VT323', monospace !important;
+  font-size: 1.1rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--vector-green);
+  text-shadow: var(--vector-glow-sm);
+}
+
+.md-typeset table td {
+  border-color: var(--vector-green-dim);
+  color: var(--vector-green) !important;
+}
+
+.md-typeset table tr:hover td {
+  background: rgba(51, 255, 51, 0.05);
+}
+
+/* =============================================================
+   Gallery / Visualizer Styles - Vector Scope Display
+   ============================================================= */
+
 .glitch-visualizer {
   position: relative;
   width: 100%;
   max-width: 800px;
   margin: 2rem auto;
-  border: 2px solid var(--md-primary-fg-color);
-  border-radius: 8px;
-  overflow: hidden;
-  background: #1a1a2e;
+  border: 2px solid var(--vector-green);
+  background: var(--vector-darker);
+  box-shadow: 
+    0 0 20px var(--vector-green-glow),
+    inset 0 0 50px rgba(0, 0, 0, 0.8);
 }
 
 .glitch-visualizer__header {
-  background: var(--md-primary-fg-color);
-  color: white;
+  background: linear-gradient(90deg, rgba(51, 255, 51, 0.2) 0%, transparent 100%);
+  color: var(--vector-green-bright);
   padding: 0.5rem 1rem;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.7rem;
+  font-family: 'VT323', monospace;
+  font-size: 1rem;
+  letter-spacing: 3px;
+  text-transform: uppercase;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-bottom: 1px solid var(--vector-green-dim);
+  text-shadow: var(--vector-glow-sm);
 }
 
 .glitch-visualizer__controls {
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.5);
   flex-wrap: wrap;
+  border-bottom: 1px solid var(--vector-green-dim);
 }
 
 .glitch-visualizer__controls label {
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Share Tech Mono', monospace;
   font-size: 0.85rem;
-  color: var(--md-accent-fg-color);
+  color: var(--vector-cyan);
+  text-shadow: 0 0 4px rgba(0, 255, 255, 0.3);
 }
 
 .glitch-visualizer__controls select,
 .glitch-visualizer__controls input[type="range"] {
-  background: #16213e;
-  border: 1px solid var(--md-accent-fg-color);
-  color: white;
+  background: var(--vector-black);
+  border: 1px solid var(--vector-green-dim);
+  color: var(--vector-green);
   padding: 0.3rem 0.5rem;
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Fira Code', monospace;
+}
+
+.glitch-visualizer__controls select:focus,
+.glitch-visualizer__controls input:focus {
+  border-color: var(--vector-green);
+  box-shadow: var(--vector-glow-sm);
+  outline: none;
 }
 
 .glitch-visualizer__output {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1px;
-  background: var(--md-primary-fg-color--light);
+  background: var(--vector-green-dim);
 }
 
 .glitch-visualizer__panel {
-  background: #1a1a2e;
+  background: var(--vector-darker);
   padding: 1rem;
 }
 
 .glitch-visualizer__panel-label {
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.6rem;
-  color: var(--md-accent-fg-color);
+  font-family: 'VT323', monospace;
+  font-size: 0.9rem;
+  color: var(--vector-cyan);
   margin-bottom: 0.5rem;
   text-transform: uppercase;
+  letter-spacing: 2px;
+  text-shadow: 0 0 4px rgba(0, 255, 255, 0.4);
 }
 
 .glitch-visualizer__text {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #e0e0e0;
+  color: var(--vector-green);
   white-space: pre-wrap;
   word-break: break-word;
+  text-shadow: var(--vector-glow-sm);
 }
 
-/* Diff highlighting */
+/* Diff highlighting - vector style */
 .glitch-diff-add {
-  background: rgba(0, 188, 212, 0.3);
-  color: var(--md-accent-fg-color);
-  border-radius: 2px;
+  background: rgba(0, 255, 255, 0.2);
+  color: var(--vector-cyan);
+  text-shadow: 0 0 4px rgba(0, 255, 255, 0.5);
 }
 
 .glitch-diff-remove {
-  background: rgba(255, 0, 102, 0.3);
-  color: var(--glitch-color-3);
+  background: rgba(255, 51, 51, 0.2);
+  color: var(--vector-red);
   text-decoration: line-through;
-  border-radius: 2px;
+}
+
+/* =============================================================
+   Lists - Vector Bullet Points
+   ============================================================= */
+
+.md-typeset ul li::marker,
+.md-typeset ol li::marker {
+  color: var(--vector-green-bright);
+}
+
+.md-typeset ul li {
+  padding-left: 0.5em;
+}
+
+/* Custom bullet style */
+.md-typeset ul > li::before {
+  color: var(--vector-green);
+  text-shadow: var(--vector-glow-sm);
+}
+
+/* =============================================================
+   Blockquotes - Vector Terminal Quote
+   ============================================================= */
+
+.md-typeset blockquote {
+  border-left: 3px solid var(--vector-cyan);
+  background: rgba(0, 255, 255, 0.05);
+  padding: 1rem;
+  margin: 1rem 0;
+  color: var(--vector-green) !important;
+  font-style: normal;
+}
+
+.md-typeset blockquote p {
+  color: var(--vector-green) !important;
+}
+
+/* =============================================================
+   Horizontal Rules - Vector Scan Line
+   ============================================================= */
+
+.md-typeset hr {
+  border: none;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%,
+    var(--vector-green-dim) 10%,
+    var(--vector-green) 50%,
+    var(--vector-green-dim) 90%,
+    transparent 100%
+  );
+  box-shadow: 0 0 10px var(--vector-green-glow);
+  margin: 2rem 0;
+}
+
+/* =============================================================
+   Footer - Vector Display Status Bar
+   ============================================================= */
+
+.md-footer {
+  background: var(--vector-black) !important;
+  border-top: 1px solid var(--vector-green-dim);
+}
+
+.md-footer__inner {
+  color: var(--vector-green-dim);
+}
+
+.md-footer__link {
+  color: var(--vector-green) !important;
+}
+
+.md-footer__link:hover {
+  color: var(--vector-green-bright) !important;
+  text-shadow: var(--vector-glow-sm);
+}
+
+.md-copyright {
+  color: var(--vector-green-dim) !important;
+  font-family: 'Share Tech Mono', monospace;
 }
 
 /* =============================================================
@@ -373,8 +736,8 @@
 @media screen and (max-width: 768px) {
   .md-typeset h1,
   .md-header__title {
-    font-size: 0.9rem;
-    letter-spacing: 1px;
+    font-size: 1.2rem;
+    letter-spacing: 2px;
   }
   
   .glitch-visualizer__output {
@@ -384,33 +747,192 @@
   .glitch-visualizer__controls {
     flex-direction: column;
   }
+  
+  /* Reduce scanline intensity on mobile for performance */
+  .md-content::before {
+    opacity: 0.2;
+  }
 }
 
 /* =============================================================
-   Dark Mode Enhancements
+   Scrollbar Styling - Vector Green
    ============================================================= */
 
-[data-md-color-scheme="slate"] {
-  --md-default-bg-color: #0d1117;
-  --md-default-fg-color: #e6edf3;
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-[data-md-color-scheme="slate"] .md-typeset pre {
-  background: linear-gradient(180deg, #0d1117 0%, #161b22 100%);
+::-webkit-scrollbar-track {
+  background: var(--vector-black);
+  border-left: 1px solid var(--vector-green-dim);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--vector-green-dim);
+  border: 1px solid var(--vector-green);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--vector-green);
+  box-shadow: var(--vector-glow-sm);
 }
 
 /* =============================================================
-   Print Styles
+   Selection Styling
+   ============================================================= */
+
+::selection {
+  background: var(--vector-green);
+  color: var(--vector-black);
+}
+
+::-moz-selection {
+  background: var(--vector-green);
+  color: var(--vector-black);
+}
+
+/* =============================================================
+   TOC (Table of Contents) Styling
+   ============================================================= */
+
+.md-nav--secondary .md-nav__link {
+  color: var(--vector-green-dim) !important;
+  font-size: 0.9rem;
+}
+
+.md-nav--secondary .md-nav__link:hover {
+  color: var(--vector-green-bright) !important;
+}
+
+.md-nav--secondary .md-nav__link--active {
+  color: var(--vector-cyan) !important;
+}
+
+/* =============================================================
+   Print Styles - Disable Effects
    ============================================================= */
 
 @media print {
-  .md-header__title:hover,
-  .md-nav__link:hover {
-    animation: none !important;
+  * {
     text-shadow: none !important;
+    box-shadow: none !important;
+    animation: none !important;
   }
   
-  .md-content::before {
-    display: none;
+  .md-content::before,
+  .md-content::after {
+    display: none !important;
   }
+  
+  body,
+  .md-typeset,
+  .md-typeset p,
+  .md-typeset h1,
+  .md-typeset h2,
+  .md-typeset h3,
+  .md-typeset h4,
+  .md-typeset h5,
+  .md-typeset h6 {
+    color: black !important;
+    background: white !important;
+  }
+}
+
+/* =============================================================
+   Mermaid Diagram Styling
+   ============================================================= */
+
+.mermaid {
+  background: var(--vector-darker) !important;
+  padding: 1rem;
+  border: 1px solid var(--vector-green-dim);
+}
+
+/* =============================================================
+   Copy Button Styling
+   ============================================================= */
+
+.md-clipboard {
+  color: var(--vector-green-dim) !important;
+}
+
+.md-clipboard:hover {
+  color: var(--vector-green-bright) !important;
+}
+
+/* =============================================================
+   Search Results Styling
+   ============================================================= */
+
+.md-search__scrollwrap {
+  background: var(--vector-black) !important;
+  border: 1px solid var(--vector-green-dim);
+}
+
+.md-search-result__link {
+  background: var(--vector-darker) !important;
+}
+
+.md-search-result__link:hover {
+  background: rgba(51, 255, 51, 0.1) !important;
+}
+
+.md-search-result__title {
+  color: var(--vector-green-bright) !important;
+}
+
+.md-search-result__teaser {
+  color: var(--vector-green-dim) !important;
+}
+
+mark {
+  background: rgba(0, 255, 255, 0.3) !important;
+  color: var(--vector-cyan) !important;
+}
+
+/* =============================================================
+   Special Effects - Boot Sequence Animation (Optional)
+   ============================================================= */
+
+@keyframes boot-flicker {
+  0% { opacity: 0; }
+  10% { opacity: 1; }
+  11% { opacity: 0; }
+  12% { opacity: 1; }
+  40% { opacity: 1; }
+  41% { opacity: 0.8; }
+  42% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Apply boot effect on page load (first 2 seconds) */
+.md-content__inner {
+  animation: boot-flicker 2s ease-out;
+}
+
+/* =============================================================
+   Vector Grid Background (Subtle)
+   ============================================================= */
+
+.md-main {
+  background: 
+    linear-gradient(var(--vector-green-dim) 1px, transparent 1px),
+    linear-gradient(90deg, var(--vector-green-dim) 1px, transparent 1px),
+    var(--vector-black) !important;
+  background-size: 50px 50px, 50px 50px;
+  background-position: -1px -1px;
+  opacity: 1;
+}
+
+.md-main::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(ellipse at center, transparent 0%, var(--vector-black) 70%);
+  pointer-events: none;
+  z-index: -1;
 }

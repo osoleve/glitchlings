@@ -20,21 +20,12 @@ theme:
     - search.suggest
     - search.highlight
   palette:
-    - scheme: default
-      primary: deep purple
-      accent: cyan
-      toggle:
-        icon: material/brightness-7
-        name: Switch to dark mode
     - scheme: slate
-      primary: deep purple
+      primary: black
       accent: cyan
-      toggle:
-        icon: material/brightness-4
-        name: Switch to light mode
   font:
-    text: Inter
-    code: JetBrains Mono
+    text: Share Tech Mono
+    code: Fira Code
 
 extra_css:
   - stylesheets/extra.css
