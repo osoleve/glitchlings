@@ -107,6 +107,7 @@ Glitchlings slot neatly into existing pipelines:
 ## Guide map
 
 - [Attack helper](attack.md) – single-call corruption plus metrics, with transcript-aware batching and tokenizer selection.
+- [Configuration files](configuration.md) - YAML attack configurations for version-controlled experiments.
 - [Dataset workflows](datasets.md) - how to glitch Hugging Face datasets and PyTorch data loaders with the provided wrappers and column selection.
 - [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
 - [Determinism guide](determinism.md) - seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
@@ -180,7 +181,8 @@ If the Python pipeline regression guard fails on slower hardware, raise the safe
 
 - [Monster Manual](monster-manual.md) - complete bestiary with flavour text.
 - Repository README (`README.md` in the repository root) - project overview and ASCII ambience.
-- [Development setup](development.md) - local environment, testing, and Rust acceleration guide.
+- [Development setup](development.md) - local environment, testing, pattern masking, and Rust acceleration guide.
+- [Configuration files](configuration.md) - YAML attack configuration schema and examples.
 - [Glitchling gallery](glitchling-gallery.md) - side-by-side outputs for each glitchling at multiple rates.
 - [Keyboard layout reference](keyboard-layouts.md) - available adjacency maps for Typogre and related features.
 - [Attack helper reference](attack.md) - single-call corruption + metrics.

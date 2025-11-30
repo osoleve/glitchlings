@@ -118,29 +118,15 @@ One mornⅳ𝖓g, ꝡhen Gr𝒆gor Samsꜷ wꚙkꬲ frꝏm trꝏubƚed dreꜷmʂ
 
 ## Pedant
 
-### 1% corruption
+Pedant uses the Orthogonite stone (Correctopus form) for visible demonstration. Since Pedant doesn't use a `rate` parameter, all examples show the same transformation.
+
+### Default (Orthogonite)
 
 ```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
+ONE MORNING, WHEN GREGOR SAMSA WOKE FROM TROUBLED DREAMS, HE FOUND HIMSELF TRANSFORMED IN HIS BED INTO A HORRIBLE VERMIN. HE LAY ON HIS ARMOUR-LIKE BACK, AND IF HE LIFTED HIS HEAD A LITTLE HE COULD SEE HIS BROWN BELLY, SLIGHTLY DOMED AND DIVIDED BY ARCHES INTO STIFF SECTIONS. THE BEDDING WAS HARDLY ABLE TO COVER IT AND SEEMED READY TO SLIDE OFF ANY MOMENT. HIS MANY LEGS, PITIFULLY THIN COMPARED WITH THE SIZE OF THE REST OF HIM, WAVED ABOUT HELPLESSLY AS HE LOOKED.
 ```
 
-### 5% corruption
-
-```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
-```
-
-### 10% corruption
-
-```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
-```
-
-### 25% corruption
-
-```text
-One morning, when Gregor Samsa woke from troubled dreams, he found himself transformed in his bed into a horrible vermin. He lay on his armour-like back, and if he lifted his head a little he could see his brown belly, slightly domed and divided by arches into stiff sections. The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked.
-```
+Other stones produce different transformations—Coeurite adds ligatures (æ, œ), Curlite converts quotes to typographic pairs, Metricite converts miles to kilometres, etc. See the [Pedant reference](glitchlings/pedant.md) for the full list of evolution stones.
 
 ## Redactyl
 

@@ -39,7 +39,7 @@ Scannequin — scope: Character, order: late
 
 ```text
 usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG]
+                   [--list] [-c CONFIG] [--report [{json,yaml,yml}]]
                    [text ...]
 
 Summon glitchlings to corrupt text. Provide input text as an argument, via
@@ -66,4 +66,8 @@ options:
   --list                List available glitchlings and exit.
   -c CONFIG, --config CONFIG
                         Load glitchlings from a YAML configuration file.
+  --report [{json,yaml,yml}], --attack [{json,yaml,yml}]
+                        Output a structured Attack report (default: json). Use
+                        --attack as an alias. Includes tokens, token IDs,
+                        metrics, and counts.
 ```

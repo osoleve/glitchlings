@@ -69,6 +69,68 @@ pytest
   # or, once installed: glitchlings-refresh-docs
   ```
 
+## Pattern masking
+
+All glitchlings support two base-class parameters for controlling which regions of text are corrupted:
+
+### `exclude_patterns`
+
+A list of regex patterns marking text that must **not** be modified. Matched regions are treated as immutable and passed through unchanged.
+
+```python
+from glitchlings import Typogre
+
+# Preserve HTML tags while corrupting surrounding text
+typo = Typogre(rate=0.1, exclude_patterns=[r"<[^>]+>"])
+typo("<h1>Welcome</h1> to the show!")
+# -> "<h1>Welcoem</h1> to teh shwo!"
+
+# Protect code blocks in Markdown
+from glitchlings import Gaggle, Mim1c, Rushmore
+
+gaggle = Gaggle(
+    [Mim1c(rate=0.02), Rushmore(rate=0.01)],
+    seed=404,
+    exclude_patterns=[r"```[\s\S]*?```", r"`[^`]+`"],
+)
+```
+
+### `include_only_patterns`
+
+A list of regex patterns restricting corruption to **only** matched regions. Text outside these matches is treated as immutable.
+
+```python
+from glitchlings import Typogre
+
+# Only corrupt text inside backticks
+typo = Typogre(rate=0.5, include_only_patterns=[r"`[^`]+`"])
+typo("Run `echo hello` to test")
+# -> "Run `ecoh helo` to test"
+```
+
+### Gaggle-level patterns
+
+When patterns are set on a `Gaggle`, they apply to all member glitchlings and merge with any patterns set on individual glitchlings:
+
+```python
+from glitchlings import Gaggle, Typogre, Mim1c
+
+# Protect system tags for the entire roster
+gaggle = Gaggle(
+    [Typogre(rate=0.02), Mim1c(rate=0.01)],
+    seed=404,
+    exclude_patterns=[r"<system>.*?</system>"],
+)
+```
+
+### CLI usage
+
+Pass patterns directly in the glitchling specification:
+
+```bash
+glitchlings -g "Typogre(rate=0.1, exclude_patterns=['<[^>]+>'])" "<b>Bold</b> text"
+```
+
 ## Functional Purity Architecture
 
 The codebase follows a layered architecture that separates **pure** (deterministic, side-effect-free) code from **impure** (stateful, side-effectful) code, and requires all defensive coding to occur at **module boundaries** instead of all throughout. This pattern improves maintainability, testability, and clarity, especially when working with AI coding agents that tend to add defensive checks everywhere.

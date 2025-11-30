@@ -55,6 +55,7 @@ nav:
       - 'Spec: Hokey Linguistics': hokey_design_spec.md
   - '⚙️ Operations':
       - 'CLI Reference': cli.md
+      - 'Configuration Files': configuration.md
       - 'Keyboard Layouts': keyboard-layouts.md
       - 'Development Guide': development.md
 
