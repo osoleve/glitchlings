@@ -9,13 +9,14 @@ use_directory_urls: true
 theme:
   name: material
   features:
-    - content.code.copy
+    - navigation.tabs
     - content.tabs.link
     - navigation.sections
     - navigation.tabs
     - navigation.top
     - navigation.expand
     - toc.integrate
+    - content.code.copy
     - search.suggest
     - search.highlight
   palette:
