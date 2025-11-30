@@ -158,7 +158,6 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Auggie](glitchlings/auggie.md) - behaviour-driven assistant that assembles gaggles with helper methods.
 - [Typogre](glitchlings/typogre.md) - keyboard-adjacent typos and doubled characters for fat-finger chaos.
 - [Hokey](glitchlings/hokey.md) - expressive lengthening driven by linguistic cues.
-- [Pedant - Curlite (Apostrofae)](glitchlings/apostrofae.md) - deterministic smart-quote swaps pulled from a shared fancy-quote lookup.
 - [Mim1c](glitchlings/mim1c.md) - homoglyph swaps that sneak confusable Unicode into your text.
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
