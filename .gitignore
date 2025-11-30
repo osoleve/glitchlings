@@ -35,3 +35,5 @@ htmlcov/
 .beads/vc.db-shm
 .beads/vc.db-wal
 .beads/beads.db
+
+site/
