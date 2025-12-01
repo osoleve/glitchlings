@@ -279,16 +279,16 @@ SCAN_PRESET_OPTIONS = ("10", "100", "1000", "10000")
 
 # Tooltips/help text for glitchlings
 GLITCHLING_DESCRIPTIONS = {
-    "Ekkokin": "Duplicates random characters for a stuttering effect",
-    "Hokey": "Inserts folksy phonetic spellings and exclamations",
-    "Jargoyle": "Replaces words with lexeme-based synonyms",
-    "Mim1c": "Substitutes characters with visually similar homoglyphs",
-    "Pedant": "Enforces strict grammatical transformations",
-    "Redactyl": "Redacts words with replacement characters",
-    "Rushmore": "Deletes, duplicates, or swaps adjacent tokens",
-    "Scannequin": "Introduces OCR-style confusion errors",
-    "Typogre": "Simulates keyboard typos with adjacent key substitutions",
-    "Zeedub": "Inserts zero-width Unicode characters",
+    "Ekkokin": "Homophones",
+    "Hokey": "Emphatic lengthening",
+    "Jargoyle": "Thesaurus abuse",
+    "Mim1c": "Confusables",
+    "Pedant": "",
+    "Redactyl": "Redaction",
+    "Rushmore": "Hasty editing errors",
+    "Scannequin": "OCR errors",
+    "Typogre": "Keyboard-aware typos",
+    "Zeedub": "Invisible characters",
 }
 
 # Available keyboard layouts from the repo

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import difflib
 import tkinter as tk
 from tkinter import font as tkfont
 from tkinter import scrolledtext, ttk
-from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Tuple, cast
 
 from glitchlings import SAMPLE_TEXT
 from glitchlings.attack.tokenization import resolve_tokenizer
@@ -12,6 +14,9 @@ from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS, SCAN_PRESET_
 from .glitchling_panel import GlitchlingPanel
 from .tokenizer_panel import TokenizerPanel
 from .utils import create_tooltip
+
+if TYPE_CHECKING:
+    from ..session import SessionConfig
 
 
 class VectorFrame(tk.Frame):
@@ -139,9 +144,15 @@ class MainFrame(ttk.Frame):
 
         self.input_tab = ttk.Frame(self.content_tabs)
         self.token_diff_tab = ttk.Frame(self.content_tabs)
+        self.dataset_tab = ttk.Frame(self.content_tabs)
+        self.sweep_tab = ttk.Frame(self.content_tabs)
+        self.charts_tab = ttk.Frame(self.content_tabs)
 
         self.content_tabs.add(self.input_tab, text="Input")
         self.content_tabs.add(self.token_diff_tab, text="Token Diff")
+        self.content_tabs.add(self.dataset_tab, text="Datasets")
+        self.content_tabs.add(self.sweep_tab, text="Sweep")
+        self.content_tabs.add(self.charts_tab, text="Charts")
 
         # Input section with vector styling
         input_frame = self._create_vector_labelframe(self.input_tab, "INPUT")
@@ -300,6 +311,36 @@ class MainFrame(ttk.Frame):
         self.token_diff_text.tag_configure("added", foreground=COLORS["cyan"])
         self.token_diff_text.tag_configure("removed", foreground=COLORS["red"], overstrike=True)
         self.token_diff_text.tag_configure("unchanged", foreground=COLORS["green_dim"])
+
+        # Dataset tab
+        from .dataset_panel import DatasetPanel
+
+        self.dataset_panel = DatasetPanel(
+            self.dataset_tab,
+            on_dataset_loaded=self._on_dataset_loaded,
+        )
+        self.dataset_panel.pack(fill=tk.BOTH, expand=True)
+
+        # Grid Sweep tab
+        from .grid_sweep_panel import GridSweepPanel
+
+        self.sweep_panel = GridSweepPanel(
+            self.sweep_tab,
+            service=self.controller.service if self.controller else None,
+            get_input_text=self.get_input,
+            get_tokenizers=self.get_enabled_tokenizers,
+        )
+        self.sweep_panel.pack(fill=tk.BOTH, expand=True)
+
+        # Charts tab
+        from .charts_panel import ChartsPanel
+
+        self.charts_panel = ChartsPanel(
+            self.charts_tab,
+            get_scan_results=self._get_scan_results,
+            get_sweep_results=lambda: self.sweep_panel.get_results(),
+        )
+        self.charts_panel.pack(fill=tk.BOTH, expand=True)
 
         # Metrics section
         metrics_container = ttk.Frame(right_pane)
@@ -896,6 +937,38 @@ class MainFrame(ttk.Frame):
     def set_auto_update(self, enabled: bool) -> None:
         self.auto_update_var.set(enabled)
 
+    def apply_session(self, config: "SessionConfig") -> None:
+        """Apply a loaded session configuration to the UI."""
+        # Update seed and settings
+        self.seed_var.set(config.seed)
+        self.auto_update_var.set(config.auto_update)
+        self.scan_mode_var.set(config.scan_mode)
+        self.scan_count_var.set(str(config.scan_count))
+        self.diff_mode_var.set(config.diff_mode)
+        self.diff_tokenizer_var.set(config.diff_tokenizer)
+
+        # Update tokenizers
+        self.tokenizer_panel.set_tokenizers(config.tokenizers)
+
+        # Update glitchlings - enable matching ones with their parameters
+        for name, var in self.glitchling_panel.enabled.items():
+            var.set(False)  # Reset all
+
+        for glitch_name, params in config.glitchlings:
+            if glitch_name in self.glitchling_panel.enabled:
+                self.glitchling_panel.enabled[glitch_name].set(True)
+                # Set parameters
+                if glitch_name in self.glitchling_panel.param_widgets:
+                    for param_name, value in params.items():
+                        if param_name in self.glitchling_panel.param_widgets[glitch_name]:
+                            self.glitchling_panel.param_widgets[glitch_name][param_name].set(value)
+
+        # Update transform button state
+        self.update_transform_button(config.scan_mode)
+
+        # Trigger settings sync
+        self._on_settings_change()
+
     def apply_preferences(self, preferences: Preferences) -> None:
         """Apply new preference values and update UI accordingly."""
         self.preferences = preferences
@@ -940,6 +1013,20 @@ class MainFrame(ttk.Frame):
 
     def get_enabled_tokenizers(self) -> List[str]:
         return self.tokenizer_panel.get_enabled_tokenizers()
+
+    def _get_scan_results(self) -> Dict[str, Any]:
+        """Get scan results for charts panel."""
+        if self.controller and self.controller.model:
+            result: Dict[str, Any] = self.controller.model.scan_results
+            return result
+        return {}
+
+    def _on_dataset_loaded(self, samples: List[str]) -> None:
+        """Handle dataset loaded callback."""
+        if samples:
+            # Set the first sample as input text
+            self.set_input(samples[0])
+            self.set_status(f"Dataset loaded: {len(samples)} samples", "cyan")
 
     def _update_output_preview(self, text: str) -> None:
         """Refresh the inline output preview box."""

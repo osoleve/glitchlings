@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import filedialog, messagebox
 from typing import Callable, Literal
 
@@ -18,13 +19,17 @@ if __name__ == "__main__" and __package__ is None:
     __package__ = "src.gui"
 
 from .controller import Controller
+from .export import ExportData
 from .model import SessionState
 from .preferences import Preferences, load_preferences, save_preferences
 from .service import GlitchlingService
+from .session import SessionConfig
 from .theme import APP_TITLE, APP_VERSION, COLORS, MENU_STYLES, apply_theme_styles
 from .views.about import show_about_dialog
+from .views.export_dialog import ExportDialog
 from .views.main_window import MainFrame
 from .views.preferences_dialog import PreferencesDialog
+from .views.session_dialog import LoadSessionDialog, SaveSessionDialog
 
 DEFAULT_WINDOW_SIZE = (1440, 920)
 MIN_WINDOW_SIZE = (1150, 780)
@@ -99,8 +104,19 @@ class App(tk.Tk):
         file_menu = self._build_menu(menubar)
         menubar.add_cascade(label="▒ FILE", menu=file_menu)
         file_menu.add_command(label="New Session", command=self._new_session, accelerator="Ctrl+N")
-        file_menu.add_command(label="Open...", command=self._open_file, accelerator="Ctrl+O")
-        file_menu.add_command(label="Save...", command=self._save_file, accelerator="Ctrl+S")
+        file_menu.add_separator()
+        file_menu.add_command(
+            label="Load Session...", command=self._load_session, accelerator="Ctrl+O"
+        )
+        file_menu.add_command(
+            label="Save Session...", command=self._save_session, accelerator="Ctrl+S"
+        )
+        file_menu.add_separator()
+        file_menu.add_command(label="Import Text...", command=self._open_file)
+        file_menu.add_command(label="Export Text...", command=self._save_file)
+        file_menu.add_command(
+            label="Export Report...", command=self._export_report, accelerator="Ctrl+E"
+        )
         file_menu.add_separator()
         file_menu.add_command(
             label="Preferences...",
@@ -136,8 +152,9 @@ class App(tk.Tk):
             "<Control-r>": lambda _event: self.controller.randomize_seed(),
             "<Control-l>": lambda _event: self.main_frame.clear_all(),
             "<Control-n>": lambda _event: self._new_session(),
-            "<Control-o>": lambda _event: self._open_file(),
-            "<Control-s>": lambda _event: self._save_file(),
+            "<Control-o>": lambda _event: self._load_session(),
+            "<Control-s>": lambda _event: self._save_session(),
+            "<Control-e>": lambda _event: self._export_report(),
             "<Control-comma>": lambda _event: self._open_preferences(),
         }
 
@@ -146,6 +163,81 @@ class App(tk.Tk):
 
     def _new_session(self) -> None:
         self.main_frame.clear_all()
+
+    def _build_session_config(self) -> SessionConfig:
+        """Build a SessionConfig from current state."""
+        glitchlings = [
+            (cls.__name__, params)
+            for cls, params in self.model.enabled_glitchlings
+        ]
+        return SessionConfig(
+            glitchlings=glitchlings,
+            tokenizers=list(self.model.enabled_tokenizers),
+            seed=self.model.seed,
+            auto_update=self.model.auto_update,
+            scan_mode=self.model.scan_mode,
+            scan_count=self.model.scan_count,
+            diff_mode=self.model.diff_mode,
+            diff_tokenizer=self.model.diff_tokenizer,
+            input_text=self.main_frame.get_input(),
+        )
+
+    def _save_session(self) -> None:
+        """Open save session dialog."""
+        config = self._build_session_config()
+        SaveSessionDialog(self, config, self._on_session_saved)
+
+    def _on_session_saved(self, path: "Path") -> None:
+        """Called after session is saved."""
+        self.main_frame.set_status(f"Session saved: {path.name}", "green")
+
+    def _load_session(self) -> None:
+        """Load a session from file."""
+        from .session import resolve_glitchlings
+
+        config = LoadSessionDialog.load(self)
+        if config is None:
+            return
+
+        # Apply loaded configuration
+        self.main_frame.apply_session(config)
+        self.model.seed = config.seed
+        self.model.auto_update = config.auto_update
+        self.model.scan_mode = config.scan_mode
+        self.model.scan_count = config.scan_count
+        self.model.diff_mode = config.diff_mode
+        self.model.diff_tokenizer = config.diff_tokenizer
+        self.model.enabled_glitchlings = resolve_glitchlings(config)
+        self.model.enabled_tokenizers = list(config.tokenizers)
+
+        if config.input_text:
+            self.main_frame.set_input(config.input_text)
+
+        self.main_frame.set_status(f"Session loaded: {config.name or 'unnamed'}", "cyan")
+
+    def _export_report(self) -> None:
+        """Open export dialog."""
+        config = self._build_session_config()
+
+        export_data = ExportData(
+            config=config,
+            input_text=self.main_frame.get_input(),
+            output_text=self.main_frame.get_output(),
+            metrics=self._get_current_metrics(),
+            scan_results=self.model.scan_results,
+        )
+
+        ExportDialog(self, export_data)
+
+    def _get_current_metrics(self) -> dict[str, dict[str, object]]:
+        """Get current metrics from service if available."""
+        if not self.model.output_text:
+            return {}
+        return self.service.calculate_metrics(
+            self.model.input_text,
+            self.model.output_text,
+            list(self.model.enabled_tokenizers),
+        )
 
     def _open_file(self) -> None:
         file_path = filedialog.askopenfilename(
