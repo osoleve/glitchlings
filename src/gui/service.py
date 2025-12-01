@@ -237,10 +237,21 @@ class GlitchlingService:
 
         completion_callback(results, names)
 
-    def format_scan_metrics(self, results: Dict[str, ScanResult]) -> List[Tuple[str, List[str]]]:
-        """Format scan results for display."""
+    def format_scan_metrics(
+        self, results: Dict[str, ScanResult], metrics: Sequence[str] | None = None
+    ) -> List[Tuple[str, List[str]]]:
+        """Format scan or batch results for display."""
         formatted_rows: List[Tuple[str, List[str]]] = []
         tokenizers = list(results.keys())
+        metric_order = list(metrics) if metrics else ["token_delta", "jsd", "ned", "sr"]
+        display_names = {
+            "token_delta": "Token Delta",
+            "jsd": "Jensen-Shannon Divergence",
+            "ned": "Normalized Edit Distance",
+            "sr": "Subsequence Retention",
+            "token_count_out": "Token Count (out)",
+            "char_count_out": "Character Count (out)",
+        }
 
         def fmt_stats(values: Sequence[float | int]) -> str:
             if not values:
@@ -252,17 +263,133 @@ class GlitchlingService:
                 return f"{mean:.3f} +/- {std:.3f}"
             return f"{mean:.3f}"
 
-        formatted_rows.append(
-            ("Token Delta", [fmt_stats(results[tok].token_delta) for tok in tokenizers])
-        )
-        formatted_rows.append(
-            ("Jensen-Shannon Divergence", [fmt_stats(results[tok].jsd) for tok in tokenizers])
-        )
-        formatted_rows.append(
-            ("Normalized Edit Distance", [fmt_stats(results[tok].ned) for tok in tokenizers])
-        )
-        formatted_rows.append(
-            ("Subsequence Retention", [fmt_stats(results[tok].sr) for tok in tokenizers])
-        )
+        for metric_name in metric_order:
+            formatted_rows.append(
+                (
+                    display_names.get(metric_name, metric_name),
+                    [fmt_stats(getattr(results[tok], metric_name, [])) for tok in tokenizers],
+                )
+            )
 
         return formatted_rows
+
+    def process_dataset(
+        self,
+        samples: List[str],
+        glitchlings_config: List[Tuple[type[Any], Dict[str, Any]]],
+        base_seed: int,
+        tokenizers: List[str],
+        progress_callback: Callable[[int, int], None],
+        completion_callback: Callable[[Dict[str, ScanResult], List[str], int, int], None],
+        check_cancel: Callable[[], bool],
+    ) -> None:
+        """Run glitchlings across a dataset in a background thread."""
+        thread = threading.Thread(
+            target=self._dataset_worker,
+            args=(
+                samples,
+                glitchlings_config,
+                base_seed,
+                tokenizers,
+                progress_callback,
+                completion_callback,
+                check_cancel,
+            ),
+            daemon=True,
+        )
+        thread.start()
+
+    def _dataset_worker(
+        self,
+        samples: List[str],
+        enabled: List[Tuple[type[Any], Dict[str, Any]]],
+        base_seed: int,
+        tokenizers: List[str],
+        progress_callback: Callable[[int, int], None],
+        completion_callback: Callable[[Dict[str, ScanResult], List[str], int, int], None],
+        check_cancel: Callable[[], bool],
+    ) -> None:
+        """Worker thread that processes each dataset sample."""
+        if not tokenizers:
+            tokenizers = [DEFAULT_TOKENIZER]
+
+        total_samples = len(samples)
+        if total_samples == 0:
+            completion_callback({}, [], 0, 0)
+            return
+
+        resolved_toks: Dict[str, Any] = {}
+        for tok_name in tokenizers:
+            try:
+                resolved_toks[tok_name] = resolve_tokenizer(tok_name)
+            except Exception:
+                resolved_toks[tok_name] = None
+
+        results: Dict[str, ScanResult] = {tok: ScanResult() for tok in tokenizers}
+        names = [cls.__name__ for cls, _ in enabled]
+
+        processed = 0
+        progress_stride = max(1, total_samples // 100)
+
+        for idx, sample in enumerate(samples):
+            if check_cancel():
+                break
+
+            seed = base_seed + idx
+
+            try:
+                glitchlings = []
+                for cls, params in enabled:
+                    glitchlings.append(cls(seed=seed, **params))
+
+                if glitchlings:
+                    gaggle = Gaggle(glitchlings, seed=seed)
+                    output_text = str(gaggle.corrupt(sample))
+                else:
+                    output_text = sample
+            except Exception:
+                output_text = sample
+
+            for tok_name in tokenizers:
+                tok = resolved_toks.get(tok_name)
+                if not tok:
+                    continue
+
+                try:
+                    input_tokens, input_ids = tok.encode(sample)
+                    output_tokens, output_ids = tok.encode(output_text)
+                except Exception:
+                    continue
+
+                res = results[tok_name]
+                res.token_count_out.append(len(output_ids))
+                res.token_delta.append(len(output_ids) - len(input_ids))
+                res.char_count_out.append(len(output_text))
+
+                if input_tokens and output_tokens:
+                    try:
+                        jsd_val = jensen_shannon_divergence(input_tokens, output_tokens)
+                        if isinstance(jsd_val, (int, float)):
+                            res.jsd.append(float(jsd_val))
+                    except Exception:
+                        pass
+
+                    try:
+                        ned_val = normalized_edit_distance(input_tokens, output_tokens)
+                        if isinstance(ned_val, (int, float)):
+                            res.ned.append(float(ned_val))
+                    except Exception:
+                        pass
+
+                    try:
+                        sr_val = subsequence_retention(input_tokens, output_tokens)
+                        if isinstance(sr_val, (int, float)):
+                            res.sr.append(float(sr_val))
+                    except Exception:
+                        pass
+
+            processed += 1
+            if (idx + 1) % progress_stride == 0 or idx == total_samples - 1:
+                progress_callback(processed, total_samples)
+
+        completion_callback(results, names, total_samples, processed)

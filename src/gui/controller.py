@@ -181,3 +181,96 @@ class Controller:
 
         if self.view:
             self.view.after(0, update_ui)
+
+    def process_dataset(self, samples: List[str]) -> None:
+        """Run glitchlings across all loaded dataset samples."""
+        if self.model.dataset_running:
+            self.model.dataset_running = False
+            if self.view:
+                self.view.set_status("Canceling dataset run...", "amber")
+            return
+
+        if not samples:
+            if self.view:
+                self.view.set_status("No dataset loaded", "amber")
+                self.view.set_dataset_running(False, total=0)
+            return
+
+        if self.view:
+            self.model.enabled_glitchlings = self.view.get_enabled_glitchlings()
+            self.model.enabled_tokenizers = self.view.get_enabled_tokenizers()
+
+        if not self.model.enabled_glitchlings:
+            if self.view:
+                self.view.set_status("No glitchlings enabled", "amber")
+                self.view.set_dataset_running(False, total=len(samples))
+            return
+
+        self.model.dataset_running = True
+        self.model.dataset_total = len(samples)
+        self.model.dataset_processed = 0
+        self.model.dataset_results = {}
+
+        if self.view:
+            self.view.set_dataset_running(True, total=len(samples))
+            gnames = ", ".join(cls.__name__ for cls, _ in self.model.enabled_glitchlings)
+            self.view.set_status(f"Processing dataset with {gnames}...", "magenta")
+
+        self.service.process_dataset(
+            samples,
+            self.model.enabled_glitchlings,
+            self.model.seed,
+            self.model.enabled_tokenizers,
+            self._on_dataset_progress,
+            self._on_dataset_complete,
+            lambda: not self.model.dataset_running,
+        )
+
+    def _on_dataset_progress(self, current: int, total: int) -> None:
+        """Handle dataset batch progress callbacks."""
+        self.model.dataset_processed = current
+
+        if self.view:
+            view = self.view
+
+            def update_status() -> None:
+                view.update_dataset_progress(current, total)
+                view.set_status(f"Processing dataset {current}/{total}", "magenta")
+
+            view.after(0, update_status)
+
+    def _on_dataset_complete(
+        self,
+        results: Dict[str, ScanResult],
+        names: List[str],
+        total_samples: int,
+        processed_samples: int,
+    ) -> None:
+        """Handle dataset batch completion callbacks."""
+        self.model.dataset_running = False
+        self.model.dataset_results = results
+        self.model.dataset_total = total_samples
+        self.model.dataset_processed = processed_samples
+
+        tokenizers = list(results.keys())
+        formatted_metrics = self.service.format_scan_metrics(
+            results,
+            metrics=["token_delta", "jsd", "ned", "sr", "token_count_out", "char_count_out"],
+        )
+
+        def update_ui() -> None:
+            if self.view:
+                self.view.set_dataset_running(False, total=total_samples)
+                self.view.display_dataset_results(tokenizers, formatted_metrics, processed_samples)
+                status_prefix = (
+                    "Dataset processed"
+                    if processed_samples == total_samples
+                    else "Dataset cancelled"
+                )
+                detail = f"{processed_samples}/{total_samples} samples"
+                gnames = ", ".join(names) if names else "No glitchlings"
+                self.view.set_status(f"{status_prefix}: {detail} with {gnames}", "cyan")
+                self.view.refresh_charts()
+
+        if self.view:
+            self.view.after(0, update_ui)

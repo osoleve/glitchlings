@@ -9,7 +9,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
-from typing import Callable, List, Literal
+from typing import Callable, List, Literal, Tuple
 
 from ..theme import COLORS, FONTS
 from .utils import create_tooltip
@@ -23,15 +23,18 @@ class DatasetPanel(ttk.Frame):
         parent: ttk.Frame,
         on_dataset_loaded: Callable[[List[str]], None] | None = None,
         on_sample_selected: Callable[[str, int, int], None] | None = None,
+        on_process_dataset: Callable[[List[str]], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.on_dataset_loaded = on_dataset_loaded
         self.on_sample_selected = on_sample_selected
+        self.on_process_dataset = on_process_dataset
 
         # Dataset state
         self.samples: List[str] = []
         self.current_index = 0
         self.loading = False
+        self.processing = False
 
         # Variables
         self.source_var = tk.StringVar(value="local")
@@ -40,6 +43,8 @@ class DatasetPanel(ttk.Frame):
         self.sample_size_var = tk.StringVar(value="100")
         self.text_field_var = tk.StringVar(value="text")
         self.sample_index_var = tk.StringVar(value="1")
+        self.batch_status_var = tk.StringVar(value="Batch metrics idle")
+        self.batch_progress_var = tk.DoubleVar(value=0.0)
 
         self._create_widgets()
 
@@ -291,6 +296,85 @@ class DatasetPanel(ttk.Frame):
         )
         self.preview_text.pack(fill=tk.BOTH, expand=True)
         self._clear_preview()
+
+        # Batch processing controls
+        batch_header = tk.Frame(content, bg=COLORS["dark"])
+        batch_header.pack(fill=tk.X, padx=8, pady=(0, 0))
+
+        tk.Label(
+            batch_header,
+            text="� BATCH METRICS",
+            font=FONTS["tiny"],
+            fg=COLORS["cyan_dim"],
+            bg=COLORS["dark"],
+            padx=4,
+        ).pack(side=tk.LEFT)
+
+        self.batch_status = tk.Label(
+            batch_header,
+            textvariable=self.batch_status_var,
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["dark"],
+            padx=6,
+        )
+        self.batch_status.pack(side=tk.RIGHT)
+
+        batch_controls = tk.Frame(content, bg=COLORS["black"])
+        batch_controls.pack(fill=tk.X, padx=8, pady=(2, 6))
+
+        self.batch_btn = tk.Button(
+            batch_controls,
+            text="? PROCESS DATASET",
+            font=FONTS["tiny"],
+            fg=COLORS["black"],
+            bg=COLORS["green"],
+            activeforeground=COLORS["black"],
+            activebackground=COLORS["green_bright"],
+            bd=0,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self._on_batch_clicked,
+        )
+        self.batch_btn.pack(side=tk.LEFT)
+
+        progress_frame = tk.Frame(batch_controls, bg=COLORS["black"])
+        progress_frame.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(10, 0))
+
+        self.batch_progress = ttk.Progressbar(
+            progress_frame,
+            variable=self.batch_progress_var,
+            maximum=1,
+            mode="determinate",
+        )
+        self.batch_progress.pack(fill=tk.X, expand=True)
+
+        # Batch results table
+        results_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
+        results_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+        results_inner = tk.Frame(results_container, bg=COLORS["darker"])
+        results_inner.pack(fill=tk.BOTH, expand=True)
+
+        self.batch_results_tree = ttk.Treeview(
+            results_inner,
+            columns=("metric",),
+            show="headings",
+            height=6,
+        )
+        self.batch_results_tree.heading("metric", text="Metric")
+        self.batch_results_tree.column("metric", width=200, anchor="w")
+
+        results_scroll = ttk.Scrollbar(
+            results_inner,
+            orient=tk.VERTICAL,
+            command=self.batch_results_tree.yview,
+        )
+        self.batch_results_tree.configure(yscrollcommand=results_scroll.set)
+
+        self.batch_results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        results_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.reset_batch_results()
 
     def _create_local_options(self) -> tk.Frame:
         """Create options for local file loading."""
@@ -585,6 +669,7 @@ class DatasetPanel(ttk.Frame):
         self.samples = samples
         self.current_index = 0
         self.status_label.config(text=f"{len(samples)} samples loaded", fg=COLORS["green"])
+        self.reset_batch_results()
 
         self._update_navigation_state()
         if samples:
@@ -593,6 +678,112 @@ class DatasetPanel(ttk.Frame):
         # Notify callback
         if self.on_dataset_loaded:
             self.on_dataset_loaded(samples)
+
+    def set_batch_running(self, running: bool, total: int = 0) -> None:
+        """Toggle batch processing state."""
+        self.processing = running
+        self.batch_progress.configure(maximum=max(1, total or 1))
+        self.batch_progress_var.set(0)
+
+        if running:
+            self.batch_btn.config(text="� CANCEL", bg=COLORS["red"])
+            self.load_btn.config(state=tk.DISABLED)
+            self._toggle_nav_controls(enabled=False)
+            self._set_batch_status("Processing dataset...", COLORS["amber"])
+        else:
+            self.batch_btn.config(text="? PROCESS DATASET", bg=COLORS["green"])
+            self.load_btn.config(state=tk.NORMAL)
+            self._toggle_nav_controls(enabled=bool(self.samples))
+            if self.samples:
+                self._set_batch_status("Batch metrics idle", COLORS["green_dim"])
+            else:
+                self._set_batch_status("Load a dataset to run batch metrics", COLORS["green_dim"])
+
+    def update_batch_progress(self, current: int, total: int) -> None:
+        """Update progress indicator for batch processing."""
+        self.batch_progress.configure(maximum=max(1, total or 1))
+        self.batch_progress_var.set(current)
+        color = COLORS["cyan"] if current == total else COLORS["amber"]
+        self._set_batch_status(f"{current}/{total} samples processed", color)
+
+    def display_batch_results(
+        self, tokenizers: List[str], rows: List[Tuple[str, List[str]]], processed: int
+    ) -> None:
+        """Render aggregated batch metrics."""
+        active_columns = self._configure_results_table(tokenizers)
+
+        for item in self.batch_results_tree.get_children():
+            self.batch_results_tree.delete(item)
+
+        if not rows:
+            self._set_batch_status("No metrics produced", COLORS["amber"])
+            return
+
+        expected_cols = len(active_columns) if active_columns else 1
+        for metric_name, values in rows:
+            row_values = list(values)[:expected_cols]
+            if len(row_values) < expected_cols:
+                row_values.extend(["-"] * (expected_cols - len(row_values)))
+            self.batch_results_tree.insert("", "end", values=(metric_name, *row_values))
+
+        self.batch_progress_var.set(processed)
+        self.batch_progress.configure(maximum=max(1, len(self.samples)))
+        self._set_batch_status(f"Aggregated {processed} samples", COLORS["cyan"])
+
+    def reset_batch_results(self) -> None:
+        """Clear batch status and results."""
+        self.processing = False
+        self.batch_progress_var.set(0)
+        self.batch_progress.configure(maximum=1)
+        self._configure_results_table([])
+        for item in self.batch_results_tree.get_children():
+            self.batch_results_tree.delete(item)
+        self.batch_btn.config(text="? PROCESS DATASET", bg=COLORS["green"])
+        self._set_batch_status("Batch metrics idle", COLORS["green_dim"])
+
+    def _configure_results_table(self, tokenizers: List[str]) -> List[str]:
+        """Configure the batch results tree columns."""
+        columns = ["metric", *(tokenizers if tokenizers else ["value"])]
+        self.batch_results_tree["columns"] = columns
+
+        for col in columns:
+            heading = "Metric" if col == "metric" else col.replace("_", " ").title()
+            width = 200 if col == "metric" else 120
+            anchor: Literal[
+                "nw",
+                "n",
+                "ne",
+                "w",
+                "center",
+                "e",
+                "sw",
+                "s",
+                "se",
+            ] = "w" if col == "metric" else "center"
+            self.batch_results_tree.heading(col, text=heading)
+            self.batch_results_tree.column(col, width=width, anchor=anchor)
+
+        # Return data columns (excluding metric)
+        return columns[1:]
+
+    def _set_batch_status(self, text: str, color: str) -> None:
+        """Update batch status label."""
+        self.batch_status_var.set(text)
+        self.batch_status.config(fg=color)
+
+    def _on_batch_clicked(self) -> None:
+        """Handle batch process button."""
+        if not self.samples:
+            self._set_batch_status("Load a dataset first", COLORS["amber"])
+            return
+
+        if self.processing:
+            self._set_batch_status("Canceling batch...", COLORS["amber"])
+        else:
+            self._set_batch_status("Starting batch run...", COLORS["cyan"])
+
+        if self.on_process_dataset:
+            self.on_process_dataset(list(self.samples))
 
     def get_samples(self) -> List[str]:
         """Return currently loaded samples."""

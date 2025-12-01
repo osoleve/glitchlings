@@ -10,6 +10,7 @@ from glitchlings import SAMPLE_TEXT
 from glitchlings.attack.tokenization import resolve_tokenizer
 
 from ..preferences import Preferences
+from ..model import ScanResult
 from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS, SCAN_PRESET_OPTIONS
 from .glitchling_panel import GlitchlingPanel
 from .tokenizer_panel import TokenizerPanel
@@ -319,6 +320,7 @@ class MainFrame(ttk.Frame):
             self.dataset_tab,
             on_dataset_loaded=self._on_dataset_loaded,
             on_sample_selected=self._on_sample_selected,
+            on_process_dataset=self._start_dataset_processing,
         )
         self.dataset_panel.pack(fill=tk.BOTH, expand=True)
 
@@ -341,6 +343,7 @@ class MainFrame(ttk.Frame):
             self.charts_tab,
             get_scan_results=self._get_scan_results,
             get_sweep_results=lambda: self.sweep_panel.get_results(),
+            get_dataset_results=self._get_dataset_results,
         )
         self.charts_panel.pack(fill=tk.BOTH, expand=True)
 
@@ -1016,12 +1019,41 @@ class MainFrame(ttk.Frame):
     def get_enabled_tokenizers(self) -> List[str]:
         return self.tokenizer_panel.get_enabled_tokenizers()
 
-    def _get_scan_results(self) -> Dict[str, Any]:
+    def _get_scan_results(self) -> Dict[str, ScanResult]:
         """Get scan results for charts panel."""
         if self.controller and self.controller.model:
-            result: Dict[str, Any] = self.controller.model.scan_results
-            return result
+            return cast(Dict[str, ScanResult], self.controller.model.scan_results)
         return {}
+
+    def _get_dataset_results(self) -> Dict[str, ScanResult]:
+        """Get dataset batch results for charts panel."""
+        if self.controller and self.controller.model:
+            return cast(Dict[str, ScanResult], self.controller.model.dataset_results)
+        return {}
+
+    def set_dataset_running(self, running: bool, total: int = 0) -> None:
+        """Update dataset batch UI state."""
+        if hasattr(self, "dataset_panel"):
+            self.dataset_panel.set_batch_running(running, total=total)
+
+    def update_dataset_progress(self, current: int, total: int) -> None:
+        """Proxy dataset progress updates to the panel."""
+        if hasattr(self, "dataset_panel"):
+            self.dataset_panel.update_batch_progress(current, total)
+
+    def display_dataset_results(
+        self, tokenizers: List[str], formatted_rows: List[Tuple[str, List[str]]], processed: int
+    ) -> None:
+        """Render aggregated dataset metrics in the dataset tab."""
+        if hasattr(self, "dataset_panel"):
+            self.dataset_panel.display_batch_results(tokenizers, formatted_rows, processed)
+
+    def _start_dataset_processing(self, samples: List[str] | None = None) -> None:
+        """Trigger dataset batch processing via the controller."""
+        if not self.controller or not hasattr(self, "dataset_panel"):
+            return
+        batch_samples = samples if samples is not None else self.dataset_panel.get_samples()
+        self.controller.process_dataset(batch_samples)
 
     def _on_sweep_results_changed(self) -> None:
         """Refresh charts when sweep results change."""
@@ -1038,6 +1070,13 @@ class MainFrame(ttk.Frame):
         if not samples:
             self.set_status("Dataset loaded but empty", "amber")
             return
+
+        if self.controller:
+            self.controller.model.dataset_results = {}
+            self.controller.model.dataset_total = 0
+            self.controller.model.dataset_processed = 0
+
+        self.refresh_charts()
         self.set_status(f"Dataset loaded: {len(samples)} samples", "cyan")
 
     def _on_sample_selected(self, sample: str, index: int, total: int) -> None:

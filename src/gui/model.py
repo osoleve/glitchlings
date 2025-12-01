@@ -32,6 +32,12 @@ class SessionState:
     scan_results: Dict[str, ScanResult] = field(default_factory=dict)
     scan_running: bool = False
 
+    # Dataset batch processing
+    dataset_results: Dict[str, ScanResult] = field(default_factory=dict)
+    dataset_running: bool = False
+    dataset_total: int = 0
+    dataset_processed: int = 0
+
     # UI State
     status_message: str = "Ready"
     status_color: str = "green"

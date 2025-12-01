@@ -34,10 +34,12 @@ class ChartsPanel(ttk.Frame):
         parent: ttk.Frame,
         get_scan_results: Callable[[], Dict[str, ScanResult]],
         get_sweep_results: Callable[[], List[SweepPoint]] | None = None,
+        get_dataset_results: Callable[[], Dict[str, ScanResult]] | None = None,
     ) -> None:
         super().__init__(parent)
         self.get_scan_results = get_scan_results
         self.get_sweep_results = get_sweep_results
+        self.get_dataset_results = get_dataset_results
 
         # Variables
         self.source_var = tk.StringVar(value="scan")
@@ -230,12 +232,15 @@ class ChartsPanel(ttk.Frame):
         """Update the chart display."""
         scan_results = self.get_scan_results()
         sweep_results = self.get_sweep_results() if self.get_sweep_results else []
+        dataset_results = self.get_dataset_results() if self.get_dataset_results else {}
 
         sources: List[str] = []
         if scan_results:
             sources.append("scan")
         if sweep_results:
             sources.append("sweep")
+        if dataset_results:
+            sources.append("dataset")
 
         self.source_combo["values"] = sources
         if not self.source_var.get() or self.source_var.get() not in sources:
@@ -248,7 +253,9 @@ class ChartsPanel(ttk.Frame):
         source = self.source_var.get()
 
         # Update tokenizer dropdown based on source
-        tokenizers = self._get_tokenizers_for_source(source, scan_results, sweep_results)
+        tokenizers = self._get_tokenizers_for_source(
+            source, scan_results, sweep_results, dataset_results
+        )
         self.tokenizer_combo["values"] = tokenizers
         if not self.tokenizer_var.get() or self.tokenizer_var.get() not in tokenizers:
             self.tokenizer_var.set(tokenizers[0] if tokenizers else "")
@@ -259,14 +266,18 @@ class ChartsPanel(ttk.Frame):
             return
 
         # Metric options depend on source
-        metrics = self._get_metrics_for_source(source, tok_name, scan_results, sweep_results)
+        metrics = self._get_metrics_for_source(
+            source, tok_name, scan_results, sweep_results, dataset_results
+        )
         self.metric_combo["values"] = metrics
         if not self.metric_var.get() or self.metric_var.get() not in metrics:
             self.metric_var.set(metrics[0] if metrics else "")
 
         metric = self.metric_var.get()
         chart_type = self.chart_type_var.get()
-        data = self._build_chart_data(source, tok_name, metric, scan_results, sweep_results)
+        data = self._build_chart_data(
+            source, tok_name, metric, scan_results, sweep_results, dataset_results
+        )
 
         if data is None:
             self._show_no_data()
@@ -297,12 +308,15 @@ class ChartsPanel(ttk.Frame):
         source: str,
         scan_results: Dict[str, ScanResult],
         sweep_results: List[SweepPoint],
+        dataset_results: Dict[str, ScanResult],
     ) -> List[str]:
         if source == "sweep":
             tokenizer_set: set[str] = set()
             for point in sweep_results:
                 tokenizer_set.update(point.metrics.keys())
             return sorted(tokenizer_set)
+        if source == "dataset":
+            return list(dataset_results.keys())
         return list(scan_results.keys())
 
     def _get_metrics_for_source(
@@ -311,6 +325,7 @@ class ChartsPanel(ttk.Frame):
         tokenizer: str,
         scan_results: Dict[str, ScanResult],
         sweep_results: List[SweepPoint],
+        dataset_results: Dict[str, ScanResult],
     ) -> List[str]:
         if source == "sweep":
             metric_set = set()
@@ -326,8 +341,9 @@ class ChartsPanel(ttk.Frame):
 
         metrics = ["jsd", "ned", "sr", "token_delta", "token_count_out", "char_count_out"]
         available = []
+        results = dataset_results if source == "dataset" else scan_results
         for name in metrics:
-            if any(getattr(result, name, []) for result in scan_results.values()):
+            if any(getattr(result, name, []) for result in results.values()):
                 available.append(name)
         return available or metrics
 
@@ -347,6 +363,7 @@ class ChartsPanel(ttk.Frame):
         metric: str,
         scan_results: Dict[str, ScanResult],
         sweep_results: List[SweepPoint],
+        dataset_results: Dict[str, ScanResult],
     ) -> ChartData | None:
         if source == "sweep":
             trend_values: List[float] = []
@@ -375,7 +392,7 @@ class ChartsPanel(ttk.Frame):
                 "sweep",
             )
 
-        result = scan_results.get(tokenizer)
+        result = (dataset_results if source == "dataset" else scan_results).get(tokenizer)
         if result is None:
             return None
 
@@ -384,7 +401,8 @@ class ChartsPanel(ttk.Frame):
         if not values:
             return None
 
-        return ChartData(values, values, None, "seed", "scan")
+        x_label = "sample" if source == "dataset" else "seed"
+        return ChartData(values, values, None, x_label, source)
 
     def _show_no_data(self) -> None:
         """Display no data message."""
