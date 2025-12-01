@@ -333,9 +333,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Filter to numeric parameters only
         numeric_params = [
-            name
-            for name, info in params.items()
-            if info.get("type") in ("float", "int")
+            name for name, info in params.items() if info.get("type") in ("float", "int")
         ]
 
         self.param_combo["values"] = numeric_params
@@ -484,9 +482,7 @@ class GridSweepPanel(ttk.Frame):
     ) -> None:
         """Update progress bar."""
         self.progress_var.set(percent)
-        self.progress_label.config(
-            text=f"Point {point}/{total_points} · Seed {seed}/{total_seeds}"
-        )
+        self.progress_label.config(text=f"Point {point}/{total_points} · Seed {seed}/{total_seeds}")
 
     def _schedule_progress_update(
         self, progress: float, point: int, total_points: int, seed: int, total_seeds: int

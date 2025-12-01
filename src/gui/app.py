@@ -166,10 +166,7 @@ class App(tk.Tk):
 
     def _build_session_config(self) -> SessionConfig:
         """Build a SessionConfig from current state."""
-        glitchlings = [
-            (cls.__name__, params)
-            for cls, params in self.model.enabled_glitchlings
-        ]
+        glitchlings = [(cls.__name__, params) for cls, params in self.model.enabled_glitchlings]
         return SessionConfig(
             glitchlings=glitchlings,
             tokenizers=list(self.model.enabled_tokenizers),
@@ -342,7 +339,6 @@ class App(tk.Tk):
 
     def _show_about(self) -> None:
         show_about_dialog(self)
-
 
 
 if __name__ == "__main__":
