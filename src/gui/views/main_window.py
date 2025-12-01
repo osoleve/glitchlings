@@ -1,11 +1,13 @@
 import difflib
 import tkinter as tk
+from tkinter import font as tkfont
 from tkinter import scrolledtext, ttk
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Tuple, cast
 
 from glitchlings import SAMPLE_TEXT
 from glitchlings.attack.tokenization import resolve_tokenizer
 
+from ..preferences import Preferences
 from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS, SCAN_PRESET_OPTIONS
 from .glitchling_panel import GlitchlingPanel
 from .tokenizer_panel import TokenizerPanel
@@ -20,9 +22,19 @@ class VectorFrame(tk.Frame):
 class MainFrame(ttk.Frame):
     """Main content frame with all UI components."""
 
-    def __init__(self, parent: tk.Tk, controller: Any) -> None:
+    def __init__(
+        self,
+        parent: tk.Tk,
+        controller: Any,
+        preferences: Preferences,
+        on_preferences_change: Callable[[Preferences], None] | None = None,
+        copy_output_callback: Callable[[], None] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.controller = controller
+        self.preferences = preferences
+        self.on_preferences_change = on_preferences_change
+        self.copy_output_callback = copy_output_callback
         self.pack(fill=tk.BOTH, expand=True)
 
         self.seed_var = tk.IntVar(value=151)
@@ -46,8 +58,27 @@ class MainFrame(ttk.Frame):
         self.status_indicator: tk.Label
         self.scan_count_combo: ttk.Combobox
         self.transform_btn: tk.Button
+        self.output_preview_text: scrolledtext.ScrolledText
+        self.main_pane: ttk.PanedWindow
+        self.sidebar_frame: ttk.Frame
+        self.sidebar_toggle_btn: tk.Button
+        self.content_tabs: ttk.Notebook
+        self.input_tab: ttk.Frame
+        self.token_diff_tab: ttk.Frame
+        self.sidebar_collapsed = False
+        self._sidebar_last_width = 320
+        self.content_font = tkfont.Font(
+            family=self.preferences.font_family,
+            size=self.preferences.font_size,
+        )
 
         self._create_widgets()
+
+        if self.preferences.last_tab == "diff":
+            self.content_tabs.select(self.token_diff_tab)
+
+        if self.preferences.sidebar_collapsed:
+            self.after(10, self._toggle_sidebar)
 
         # Register self with controller
         if self.controller:
@@ -60,35 +91,60 @@ class MainFrame(ttk.Frame):
         self._create_top_bar()
 
         # Main content with paned windows
-        main_pane = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        main_pane.pack(fill=tk.BOTH, expand=True, padx=5, pady=(5, 2))
+        self.main_pane = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        self.main_pane.pack(fill=tk.BOTH, expand=True, padx=5, pady=(5, 2))
 
-        # Left panel (Glitchlings + Tokenizers)
-        left_pane = ttk.PanedWindow(main_pane, orient=tk.VERTICAL)
-        main_pane.add(left_pane, weight=1)
+        # Left sidebar (collapsible) with Glitchlings + Tokenizers
+        self.sidebar_frame = ttk.Frame(self.main_pane)
+        self.main_pane.add(self.sidebar_frame, weight=1)
 
-        # Glitchlings panel
+        sidebar_header = tk.Frame(self.sidebar_frame, bg=COLORS["dark"])
+        sidebar_header.pack(fill=tk.X, padx=4, pady=(0, 4))
+
+        tk.Label(
+            sidebar_header,
+            text="PANEL STACK",
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["dark"],
+        ).pack(side=tk.LEFT, padx=(6, 0))
+
+        left_pane = ttk.PanedWindow(self.sidebar_frame, orient=tk.VERTICAL)
+        left_pane.pack(fill=tk.BOTH, expand=True)
+
         self.glitchling_panel = GlitchlingPanel(left_pane, self._on_settings_change)
         left_pane.add(self.glitchling_panel, weight=2)
 
-        # Tokenizers panel
-        self.tokenizer_panel = TokenizerPanel(left_pane, self._on_settings_change)
+        self.tokenizer_panel = TokenizerPanel(
+            left_pane,
+            self._on_tokenizers_change,
+            initial_tokenizers=self.preferences.default_tokenizers,
+        )
         left_pane.add(self.tokenizer_panel, weight=1)
 
         # Right panel
-        right_frame = ttk.Frame(main_pane)
-        main_pane.add(right_frame, weight=3)
+        right_frame = ttk.Frame(self.main_pane)
+        self.main_pane.add(right_frame, weight=3)
 
-        # Right panel is split into upper (Input) and lower (Token Diff/Metrics)
+        # Right panel is split into upper tabs (Input/Token Diff) and lower metrics
         right_pane = ttk.PanedWindow(right_frame, orient=tk.VERTICAL)
         right_pane.pack(fill=tk.BOTH, expand=True)
 
-        # Upper section: Input
-        upper_frame = ttk.Frame(right_pane)
-        right_pane.add(upper_frame, weight=1)
+        tabs_frame = ttk.Frame(right_pane)
+        right_pane.add(tabs_frame, weight=3)
+
+        self.content_tabs = ttk.Notebook(tabs_frame)
+        self.content_tabs.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 3))
+        self.content_tabs.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+        self.input_tab = ttk.Frame(self.content_tabs)
+        self.token_diff_tab = ttk.Frame(self.content_tabs)
+
+        self.content_tabs.add(self.input_tab, text="Input")
+        self.content_tabs.add(self.token_diff_tab, text="Token Diff")
 
         # Input section with vector styling
-        input_frame = self._create_vector_labelframe(upper_frame, "INPUT")
+        input_frame = self._create_vector_labelframe(self.input_tab, "INPUT")
         input_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 3))
 
         # Add clear button to input
@@ -112,12 +168,8 @@ class MainFrame(ttk.Frame):
         self.input_text.insert("1.0", SAMPLE_TEXT)
         self.input_text.bind("<KeyRelease>", lambda e: self._on_input_change())
 
-        # Lower section: Token Diff and Metrics
-        lower_frame = ttk.Frame(right_pane)
-        right_pane.add(lower_frame, weight=2)
-
-        # Token Diff section
-        token_frame = self._create_vector_labelframe(lower_frame, "TOKEN DIFF")
+        # Token Diff tab
+        token_frame = self._create_vector_labelframe(self.token_diff_tab, "TOKEN DIFF")
         token_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 3))
 
         # Token diff header with controls - put in content frame
@@ -202,7 +254,25 @@ class MainFrame(ttk.Frame):
         self.diff_tokenizer_combo.pack(side=tk.LEFT)
         self.diff_tokenizer_combo.bind("<<ComboboxSelected>>", lambda e: self._update_token_diff())
 
+        initial_tokenizers = self.tokenizer_panel.get_all_tokenizers()
+        if initial_tokenizers:
+            self.diff_tokenizer_combo["values"] = initial_tokenizers
+            if self.diff_tokenizer_var.get() not in initial_tokenizers:
+                self.diff_tokenizer_var.set(initial_tokenizers[0])
+
         self.token_diff_text = self._create_vector_text(token_content, height=5, state=tk.DISABLED)
+
+        # Output preview with copy
+        preview_frame = self._create_vector_labelframe(
+            token_content,
+            "OUTPUT PREVIEW",
+            with_copy=True,
+            copy_command=self._copy_output_preview,
+        )
+        preview_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
+        self.output_preview_text = self._create_vector_text(
+            preview_frame, height=5, state=tk.DISABLED
+        )
 
         # Configure tags for diff highlighting - vector colors
         self.token_diff_text.tag_configure("added", foreground=COLORS["cyan"])
@@ -210,8 +280,11 @@ class MainFrame(ttk.Frame):
         self.token_diff_text.tag_configure("unchanged", foreground=COLORS["green_dim"])
 
         # Metrics section
-        metrics_frame = self._create_vector_labelframe(lower_frame, "METRICS")
-        metrics_frame.pack(fill=tk.BOTH, expand=True, pady=(3, 0))
+        metrics_container = ttk.Frame(right_pane)
+        right_pane.add(metrics_container, weight=2)
+
+        metrics_frame = self._create_vector_labelframe(metrics_container, "METRICS")
+        metrics_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 0))
 
         # Get content frame for metrics
         if hasattr(metrics_frame, "content"):
@@ -310,8 +383,13 @@ class MainFrame(ttk.Frame):
         )
         version_label.pack(side=tk.RIGHT)
 
+
     def _create_vector_labelframe(
-        self, parent: ttk.Frame | tk.Frame, title: str, with_copy: bool = False
+        self,
+        parent: ttk.Frame | tk.Frame,
+        title: str,
+        with_copy: bool = False,
+        copy_command: Callable[[], None] | None = None,
     ) -> VectorFrame:
         """Create a vector-styled labelframe with optional copy button."""
         outer = VectorFrame(parent, bg=COLORS["border"], padx=1, pady=1)
@@ -327,7 +405,7 @@ class MainFrame(ttk.Frame):
         # Left decoration
         tk.Label(
             title_bar,
-            text="▒",
+            text="░",
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
@@ -346,11 +424,27 @@ class MainFrame(ttk.Frame):
         # Right decoration
         tk.Label(
             title_bar,
-            text="▒",
+            text="░",
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
         ).pack(side=tk.LEFT, pady=4)
+
+        if with_copy and copy_command:
+            copy_btn = tk.Button(
+                title_bar,
+                text="Copy",
+                font=FONTS["tiny"],
+                fg=COLORS["green"],
+                bg=COLORS["dark"],
+                activeforeground=COLORS["green_bright"],
+                activebackground=COLORS["highlight"],
+                bd=0,
+                relief=tk.FLAT,
+                cursor="hand2",
+                command=copy_command,
+            )
+            copy_btn.pack(side=tk.RIGHT, padx=6)
 
         # Store title bar reference for adding buttons later
         outer.title_bar = title_bar
@@ -369,15 +463,14 @@ class MainFrame(ttk.Frame):
         height: int = 6,
         state: str = tk.NORMAL,
         color: str | None = None,
+        font: tkfont.Font | None = None,
     ) -> scrolledtext.ScrolledText:
         """Create a vector-styled text widget."""
-        # Get the content frame if this is a vector labelframe
         if hasattr(parent, "content"):
             parent = parent.content
 
         fg_color = color if color else COLORS["green"]
 
-        # Create a border frame
         border_frame = tk.Frame(parent, bg=COLORS["border"], padx=1, pady=1)
         border_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -385,7 +478,7 @@ class MainFrame(ttk.Frame):
             border_frame,
             wrap=tk.WORD,
             height=height,
-            font=FONTS["mono"],
+            font=font or self.content_font or FONTS["mono"],
             fg=fg_color,
             bg=COLORS["darker"],
             insertbackground=COLORS["green_bright"],
@@ -396,11 +489,10 @@ class MainFrame(ttk.Frame):
             pady=10,
             state=state,
             cursor="xterm" if state == tk.NORMAL else "arrow",
-            undo=True,  # Enable undo/redo
+            undo=True,
         )
         text.pack(fill=tk.BOTH, expand=True)
 
-        # Add right-click context menu for editable text
         if state == tk.NORMAL:
             self._add_text_context_menu(text)
 
@@ -472,6 +564,21 @@ class MainFrame(ttk.Frame):
             bg=COLORS["dark"],
         )
         title.pack(side=tk.LEFT)
+
+        self.sidebar_toggle_btn = tk.Button(
+            title_frame,
+            text="Hide Panels",
+            font=FONTS["tiny"],
+            fg=COLORS["green"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["highlight"],
+            bd=0,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self._toggle_sidebar,
+        )
+        self.sidebar_toggle_btn.pack(side=tk.LEFT, padx=(10, 0))
 
         # Controls on the right - grouped together
         controls_frame = tk.Frame(top_bar, bg=COLORS["dark"])
@@ -624,6 +731,32 @@ class MainFrame(ttk.Frame):
             else self.transform_btn.config(bg=COLORS["magenta"]),
         )
 
+    def _toggle_sidebar(self) -> None:
+        """Collapse or expand the glitchling/tokenizer sidebar."""
+        if self.sidebar_collapsed:
+            self.main_pane.insert(0, self.sidebar_frame, weight=1)
+            if self._sidebar_last_width:
+                try:
+                    cast(Any, self.main_pane).sashpos(0, self._sidebar_last_width)
+                except tk.TclError:
+                    pass
+            self.sidebar_toggle_btn.config(text="Hide Panels")
+            self.sidebar_collapsed = False
+            self._update_preferences(sidebar_collapsed=False)
+            return
+
+        self._sidebar_last_width = max(self.sidebar_frame.winfo_width(), 240)
+        self.main_pane.forget(self.sidebar_frame)
+        self.sidebar_toggle_btn.config(text="Show Panels")
+        self.sidebar_collapsed = True
+        self._update_preferences(sidebar_collapsed=True)
+
+    def _update_preferences(self, **kwargs: object) -> None:
+        """Persist updated preferences through the app callback."""
+        self.preferences = self.preferences.with_updates(**kwargs)
+        if self.on_preferences_change:
+            self.on_preferences_change(self.preferences)
+
     def _randomize_seed(self) -> None:
         """Randomize the seed value."""
         if self.controller:
@@ -633,6 +766,13 @@ class MainFrame(ttk.Frame):
         """Called when scan mode is toggled."""
         if self.controller:
             self.controller.toggle_scan_mode(self.scan_mode_var.get())
+
+    def _on_tokenizers_change(self) -> None:
+        """Handle updates from the tokenizer panel."""
+        self._on_settings_change()
+        self._update_preferences(
+            default_tokenizers=self.tokenizer_panel.get_all_tokenizers()
+        )
 
     def _on_settings_change(self) -> None:
         """Called when any setting changes."""
@@ -654,8 +794,42 @@ class MainFrame(ttk.Frame):
         if self.controller:
             self.controller.update_input_text(self.get_input())
 
+    def _on_tab_changed(self, _event: tk.Event) -> None:
+        """Track tab selection for persistence."""
+        try:
+            tabs = cast(Any, self.content_tabs)
+            idx = tabs.index(tabs.select())
+        except tk.TclError:
+            return
+
+        self._update_preferences(last_tab="diff" if idx == 1 else "input")
+
+    def _focus_results_tab(self) -> None:
+        """Move to the token diff tab when running a transform or scan."""
+        try:
+            tabs = cast(Any, self.content_tabs)
+            current_tab = tabs.select()
+        except tk.TclError:
+            return
+
+        if current_tab == str(self.input_tab):
+            tabs.select(self.token_diff_tab)
+
+    def _copy_output_preview(self) -> None:
+        """Copy output text, delegating to the app when available."""
+        if self.copy_output_callback:
+            self.copy_output_callback()
+            return
+
+        try:
+            self.clipboard_clear()
+            self.clipboard_append(self.get_output())
+        except tk.TclError:
+            pass
+
     def _transform_text(self) -> None:
         """Apply selected glitchlings to the input text."""
+        self._focus_results_tab()
         if self.controller:
             self.controller.transform_text()
 
@@ -682,6 +856,7 @@ class MainFrame(ttk.Frame):
     def set_output(self, text: str) -> None:
         """Set the output text."""
         self.current_output = text
+        self._update_output_preview(text)
         self._update_token_diff()
 
     def set_status(self, message: str, color: str = "green") -> None:
@@ -699,8 +874,36 @@ class MainFrame(ttk.Frame):
     def update_seed(self, seed: int) -> None:
         self.seed_var.set(seed)
 
+
     def set_auto_update(self, enabled: bool) -> None:
         self.auto_update_var.set(enabled)
+
+    def apply_preferences(self, preferences: Preferences) -> None:
+        """Apply new preference values and update UI accordingly."""
+        self.preferences = preferences
+        self.content_font.config(
+            family=preferences.font_family,
+            size=preferences.font_size,
+        )
+
+        self.tokenizer_panel.set_tokenizers(preferences.default_tokenizers)
+        tok_values = self.tokenizer_panel.get_all_tokenizers()
+        self._configure_metrics_table(tok_values)
+
+        if tok_values and self.diff_tokenizer_var.get() not in tok_values:
+            self.diff_tokenizer_var.set(tok_values[0])
+
+        self._update_output_preview(self.get_output())
+        self._update_token_diff()
+
+        tabs = cast(Any, self.content_tabs)
+        if preferences.last_tab == "diff":
+            tabs.select(self.token_diff_tab)
+        else:
+            tabs.select(self.input_tab)
+
+        if preferences.sidebar_collapsed != self.sidebar_collapsed:
+            self._toggle_sidebar()
 
     def update_transform_button(self, is_scan: bool) -> None:
         if is_scan:
@@ -719,6 +922,14 @@ class MainFrame(ttk.Frame):
 
     def get_enabled_tokenizers(self) -> List[str]:
         return self.tokenizer_panel.get_enabled_tokenizers()
+
+    def _update_output_preview(self, text: str) -> None:
+        """Refresh the inline output preview box."""
+        self.output_preview_text.config(state=tk.NORMAL)
+        self.output_preview_text.delete("1.0", tk.END)
+        if text:
+            self.output_preview_text.insert("1.0", text)
+        self.output_preview_text.config(state=tk.DISABLED)
 
     def _configure_metrics_table(self, tokenizers: List[str]) -> List[str]:
         """Set up columns and dropdown entries for the metrics table."""

@@ -10,12 +10,18 @@ from .utils import create_tooltip
 class TokenizerPanel(ttk.Frame):
     """Panel for managing tokenizers."""
 
-    def __init__(self, parent: ttk.PanedWindow, on_change_callback: Any) -> None:
+    def __init__(
+        self,
+        parent: ttk.PanedWindow,
+        on_change_callback: Any,
+        initial_tokenizers: List[str] | None = None,
+    ) -> None:
         super().__init__(parent)
         self.on_change = on_change_callback
         self.tokenizers: List[str] = []
         self.tokenizer_vars: dict[str, tk.BooleanVar] = {}
         self.tokenizer_frames: dict[str, tk.Frame] = {}
+        self.initial_tokenizers = initial_tokenizers
 
         self._create_widgets()
 
@@ -61,8 +67,8 @@ class TokenizerPanel(ttk.Frame):
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Default tokenizers (tiktoken + HuggingFace)
-        for tok in DEFAULT_TOKENIZERS:
+        defaults = self.initial_tokenizers or list(DEFAULT_TOKENIZERS)
+        for tok in defaults:
             self._add_tokenizer(tok)
 
         # Separator
@@ -184,6 +190,22 @@ class TokenizerPanel(ttk.Frame):
                 del self.tokenizer_frames[name]
             self.on_change()
 
+    def set_tokenizers(self, tokenizers: List[str]) -> None:
+        """Replace tokenizer list with a new set."""
+        for frame in list(self.tokenizer_frames.values()):
+            frame.destroy()
+        self.tokenizers = []
+        self.tokenizer_frames = {}
+        self.tokenizer_vars = {}
+
+        for tok in tokenizers:
+            self._add_tokenizer(tok)
+        self.on_change()
+
     def get_enabled_tokenizers(self) -> List[str]:
         """Return list of enabled tokenizer names."""
         return [name for name in self.tokenizers if self.tokenizer_vars[name].get()]
+
+    def get_all_tokenizers(self) -> List[str]:
+        """Return all configured tokenizer names (enabled or not)."""
+        return list(self.tokenizers)

@@ -19,10 +19,12 @@ if __name__ == "__main__" and __package__ is None:
 
 from .controller import Controller
 from .model import SessionState
+from .preferences import Preferences, load_preferences, save_preferences
 from .service import GlitchlingService
 from .theme import APP_TITLE, APP_VERSION, COLORS, MENU_STYLES, apply_theme_styles
 from .views.about import show_about_dialog
 from .views.main_window import MainFrame
+from .views.preferences_dialog import PreferencesDialog
 
 DEFAULT_WINDOW_SIZE = (1440, 920)
 MIN_WINDOW_SIZE = (1150, 780)
@@ -41,6 +43,9 @@ class App(tk.Tk):
         self.geometry(self._default_geometry)
         self.minsize(*MIN_WINDOW_SIZE)
 
+        self.preferences: Preferences = load_preferences()
+        self._prefs_dialog: PreferencesDialog | None = None
+
         # Initialize MVC components
         self.model = SessionState()
         self.service = GlitchlingService()
@@ -54,7 +59,13 @@ class App(tk.Tk):
 
         self._create_menu_bar()
 
-        self.main_frame = MainFrame(self, self.controller)
+        self.main_frame = MainFrame(
+            self,
+            self.controller,
+            self.preferences,
+            self._persist_preferences,
+            self._copy_output,
+        )
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
         self._bind_shortcuts()
@@ -91,6 +102,12 @@ class App(tk.Tk):
         file_menu.add_command(label="Open...", command=self._open_file, accelerator="Ctrl+O")
         file_menu.add_command(label="Save...", command=self._save_file, accelerator="Ctrl+S")
         file_menu.add_separator()
+        file_menu.add_command(
+            label="Preferences...",
+            command=self._open_preferences,
+            accelerator="Ctrl+,",
+        )
+        file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.quit, accelerator="Alt+F4")
 
         edit_menu = self._build_menu(menubar)
@@ -113,14 +130,15 @@ class App(tk.Tk):
 
     def _bind_shortcuts(self) -> None:
         shortcuts: dict[str, Callable[[tk.Event], None]] = {
-            "<F5>": lambda _event: self.controller.transform_text(),
+            "<F5>": lambda _event: self.main_frame._transform_text(),
             "<Escape>": lambda _event: self.main_frame.input_text.focus_set(),
-            "<Control-Return>": lambda _event: self.controller.transform_text(),
+            "<Control-Return>": lambda _event: self.main_frame._transform_text(),
             "<Control-r>": lambda _event: self.controller.randomize_seed(),
             "<Control-l>": lambda _event: self.main_frame.clear_all(),
             "<Control-n>": lambda _event: self._new_session(),
             "<Control-o>": lambda _event: self._open_file(),
             "<Control-s>": lambda _event: self._save_file(),
+            "<Control-comma>": lambda _event: self._open_preferences(),
         }
 
         for sequence, handler in shortcuts.items():
@@ -164,8 +182,29 @@ class App(tk.Tk):
         self.clipboard_append(self.main_frame.get_input())
 
     def _copy_output(self) -> None:
-        self.clipboard_clear()
-        self.clipboard_append(self.main_frame.get_output())
+        try:
+            text = self.main_frame.get_output()
+            if self.preferences.copy_metadata:
+                glitchlings = [
+                    cls.__name__ for cls, _params in self.model.enabled_glitchlings
+                ]
+                glitchling_str = ", ".join(glitchlings) if glitchlings else "None"
+                tokenizer_str = (
+                    ", ".join(self.model.enabled_tokenizers)
+                    if self.model.enabled_tokenizers
+                    else "None"
+                )
+                meta_lines = [
+                    f"Seed: {self.model.seed}",
+                    f"Glitchlings: {glitchling_str}",
+                    f"Tokenizers: {tokenizer_str}",
+                ]
+                text = f"{text}\n\n---\nMetadata:\n" + "\n".join(meta_lines)
+
+            self.clipboard_clear()
+            self.clipboard_append(text)
+        except tk.TclError:
+            pass
 
     def _paste_input(self) -> None:
         try:
@@ -178,7 +217,30 @@ class App(tk.Tk):
         self.state("normal")
         self.geometry(self._default_geometry)
         self.update_idletasks()
+        if self.main_frame.sidebar_collapsed:
+            self.main_frame._toggle_sidebar()
         self.main_frame.input_text.focus_set()
+
+    def _open_preferences(self) -> None:
+        if self._prefs_dialog and self._prefs_dialog.winfo_exists():
+            self._prefs_dialog.lift()
+            return
+
+        self._prefs_dialog = PreferencesDialog(
+            self, self.preferences, self._apply_preferences_from_dialog
+        )
+        self._prefs_dialog.bind("<Destroy>", lambda _e: self._clear_prefs_dialog())
+
+    def _clear_prefs_dialog(self) -> None:
+        self._prefs_dialog = None
+
+    def _persist_preferences(self, preferences: Preferences) -> None:
+        self.preferences = preferences
+        save_preferences(preferences)
+
+    def _apply_preferences_from_dialog(self, preferences: Preferences) -> None:
+        self._persist_preferences(preferences)
+        self.main_frame.apply_preferences(preferences)
 
     def _show_about(self) -> None:
         show_about_dialog(self)
