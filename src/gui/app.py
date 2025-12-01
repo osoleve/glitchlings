@@ -1,7 +1,7 @@
 """Glitchlings GUI application.
 
 A vector terminal-styled interface for corrupting text with glitchlings.
-Features a retro CRT aesthetic with phosphor green displays and scanline effects.
+Features a modernized CRT aesthetic with mint-and-cyan glow and subtle scanline vibe.
 """
 
 from __future__ import annotations
@@ -53,39 +53,39 @@ from glitchlings.zoo.pedant.stones import PedantStone
 from glitchlings.zoo.rushmore import RushmoreMode
 
 # =============================================================
-# Vector Terminal Theme - Old School CRT Aesthetic
+# Vector Terminal Theme - Modernized CRT Aesthetic
 # =============================================================
 
-# Color palette - Classic vector phosphor colors
+# Color palette - refreshed neo-terminal colors with soft mint glow
 COLORS = {
-    # Primary vector green (P1 phosphor)
-    "green": "#4af626",  # Classic phosphor green
-    "green_dim": "#1f5a22",
-    "green_glow": "#8aff8a",
-    "green_bright": "#b3ffb3",
-    "green_dark": "#0a2a0a",
-    "green_muted": "#2d5a2d",
-    # Background - deep CRT black with subtle blue tint
-    "black": "#050505",
-    "dark": "#0a0f0a",
-    "darker": "#000000",
-    "panel": "#0f140f",
-    # Accent colors - CRT phosphor palette
-    "cyan": "#00f0ff",
-    "cyan_dim": "#005f66",
-    "cyan_bright": "#80f8ff",
-    "amber": "#ffb000",
-    "amber_dim": "#664600",
-    "amber_bright": "#ffcc00",
-    "red": "#ff3333",
-    "red_dim": "#661111",
-    "magenta": "#ff44ff",
-    "yellow": "#ffff44",
+    # Primary mint glow
+    "green": "#7ce7c5",
+    "green_dim": "#2f6b57",
+    "green_glow": "#a8ffd8",
+    "green_bright": "#d8ffe9",
+    "green_dark": "#0f2f2a",
+    "green_muted": "#3f7a66",
+    # Background - deep midnight blues to keep the terminal feel
+    "black": "#050a12",
+    "dark": "#0c1424",
+    "darker": "#08101d",
+    "panel": "#111b2e",
+    # Accent colors - cool cyan with warm amber and magenta pops
+    "cyan": "#65d9ff",
+    "cyan_dim": "#1d5f7a",
+    "cyan_bright": "#b4f0ff",
+    "amber": "#f6b97b",
+    "amber_dim": "#8f4f1f",
+    "amber_bright": "#ffd7a1",
+    "red": "#ff6b81",
+    "red_dim": "#7f1d30",
+    "magenta": "#ff5ec8",
+    "yellow": "#f4f28b",
     # UI chrome
-    "border": "#1a3a1a",
-    "border_bright": "#2ecc71",
-    "highlight": "#112211",
-    "disabled": "#333333",
+    "border": "#1a2f42",
+    "border_bright": "#35d2a3",
+    "highlight": "#14243a",
+    "disabled": "#2b3b50",
 }
 
 # Font configuration - using monospace fonts for authentic terminal feel
@@ -2233,12 +2233,15 @@ class MainFrame(ttk.Frame):
                 output = gaggle.corrupt(input_text)
                 if not isinstance(output, str):
                     output = str(output)
-                self._set_output(f"[Example from seed {last_seed}]\n{output}")
+                self._set_output(f"{output}")
             except Exception:
                 pass
 
         gnames = ", ".join(names)
-        self._set_status(f"Scan complete: {scan_count} seeds with {gnames}", "cyan")
+        self._set_status(
+            f"Scan complete: {scan_count} seeds with {gnames} | Example shown: seed {last_seed}",
+            "cyan",
+        )
 
     def _update_metrics_scan(self) -> None:
         """Update metrics table with scan results (averages ± std dev)."""
