@@ -438,7 +438,7 @@ class DatasetPanel(ttk.Frame):
             raise ValueError("No dataset name provided")
 
         try:
-            from glitchlings.dlc.huggingface import load_hf_dataset
+            from glitchlings.dlc.huggingface import load_hf_dataset  # type: ignore[attr-defined]
         except ImportError as e:
             raise ValueError(
                 "HuggingFace datasets not available. Install with: pip install datasets"
@@ -468,7 +468,7 @@ class DatasetPanel(ttk.Frame):
             raise ValueError("No book ID provided")
 
         try:
-            from glitchlings.dlc.gutenberg import GutenbergBook
+            from glitchlings.dlc.gutenberg import GutenbergBook  # type: ignore[attr-defined]
         except ImportError as e:
             raise ValueError("Gutenberg support not available") from e
 

@@ -51,6 +51,7 @@ class Controller:
             self.model.scan_results = {}
             if self.view:
                 self.view.update_transform_button(is_scan=False)
+                self.view.refresh_charts()
             self.transform_text()
 
     def transform_text(self) -> None:

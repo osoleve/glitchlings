@@ -329,6 +329,7 @@ class MainFrame(ttk.Frame):
             service=self.controller.service if self.controller else None,
             get_input_text=self.get_input,
             get_tokenizers=self.get_enabled_tokenizers,
+            on_results_changed=self._on_sweep_results_changed,
         )
         self.sweep_panel.pack(fill=tk.BOTH, expand=True)
 
@@ -1021,6 +1022,16 @@ class MainFrame(ttk.Frame):
             return result
         return {}
 
+    def _on_sweep_results_changed(self) -> None:
+        """Refresh charts when sweep results change."""
+        if hasattr(self, "charts_panel"):
+            self.charts_panel.refresh()
+
+    def refresh_charts(self) -> None:
+        """Public refresh entry for other components."""
+        if hasattr(self, "charts_panel"):
+            self.charts_panel.refresh()
+
     def _on_dataset_loaded(self, samples: List[str]) -> None:
         """Handle dataset loaded callback."""
         if samples:
@@ -1113,6 +1124,7 @@ class MainFrame(ttk.Frame):
             normalized_rows.append((metric_name, row_values))
 
         self._replace_metrics_rows(normalized_rows)
+        self.refresh_charts()
 
     def clear_all(self) -> None:
         """Clear all text and reset seed."""

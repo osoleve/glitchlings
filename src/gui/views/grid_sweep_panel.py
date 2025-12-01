@@ -24,6 +24,8 @@ class SweepPoint:
 
     param_value: float
     metrics: Dict[str, Dict[str, List[float]]] = field(default_factory=dict)
+    glitchling_name: str = ""
+    parameter_name: str = ""
 
 
 @dataclass
@@ -47,11 +49,13 @@ class GridSweepPanel(ttk.Frame):
         service: GlitchlingService | None,
         get_input_text: Callable[[], str],
         get_tokenizers: Callable[[], List[str]],
+        on_results_changed: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.service = service
         self.get_input_text = get_input_text
         self.get_tokenizers = get_tokenizers
+        self.on_results_changed = on_results_changed
 
         # State
         self.running = False
@@ -386,6 +390,7 @@ class GridSweepPanel(ttk.Frame):
         self.running = True
         self.run_btn.config(text="■ CANCEL", bg=COLORS["red"])
         self.results = []
+        self._notify_results_changed()
 
         # Clear results table
         for item in self.results_tree.get_children():
@@ -468,7 +473,12 @@ class GridSweepPanel(ttk.Frame):
                 self._schedule_progress_update(progress, i + 1, len(points), seed_offset + 1, seeds)
 
             # Store results for this point
-            sweep_point = SweepPoint(param_value=param_value, metrics=point_metrics)
+            sweep_point = SweepPoint(
+                param_value=param_value,
+                metrics=point_metrics,
+                glitchling_name=glitchling_cls.__name__,
+                parameter_name=param_name,
+            )
             self.results.append(sweep_point)
 
             # Update results table
@@ -492,6 +502,11 @@ class GridSweepPanel(ttk.Frame):
             0,
             lambda: self._update_progress(progress, point, total_points, seed, total_seeds),
         )
+
+    def _notify_results_changed(self) -> None:
+        """Notify listeners that sweep results have changed."""
+        if self.on_results_changed:
+            self.on_results_changed()
 
     def _add_result_row(self, point: SweepPoint) -> None:
         """Add a row to the results table."""
@@ -525,12 +540,14 @@ class GridSweepPanel(ttk.Frame):
                 sr_std,
             ),
         )
+        self._notify_results_changed()
 
     def _on_sweep_complete(self) -> None:
         """Handle sweep completion."""
         self.running = False
         self.run_btn.config(text="▶ RUN SWEEP", bg=COLORS["green"])
         self.progress_label.config(text=f"Complete · {len(self.results)} points")
+        self._notify_results_changed()
 
     def get_results(self) -> List[SweepPoint]:
         """Return current sweep results."""
