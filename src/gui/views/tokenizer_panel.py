@@ -1,8 +1,9 @@
+from functools import partial
 import tkinter as tk
 from tkinter import ttk
 from typing import Any, List
 
-from ..theme import COLORS, FONTS
+from ..theme import COLORS, DEFAULT_TOKENIZERS, FONTS
 from .utils import create_tooltip
 
 
@@ -61,8 +62,7 @@ class TokenizerPanel(ttk.Frame):
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # Default tokenizers (tiktoken + HuggingFace)
-        default_tokenizers = ["cl100k_base", "gpt2", "bert-base-uncased"]
-        for tok in default_tokenizers:
+        for tok in DEFAULT_TOKENIZERS:
             self._add_tokenizer(tok)
 
         # Separator
@@ -164,7 +164,7 @@ class TokenizerPanel(ttk.Frame):
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
-            command=lambda n=name: self._remove_tokenizer(n),  # type: ignore[misc]
+            command=partial(self._remove_tokenizer, name),
         )
         remove_btn.pack(side=tk.RIGHT, padx=2)
 

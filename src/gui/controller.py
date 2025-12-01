@@ -1,25 +1,28 @@
-from typing import Any, Dict, List, Tuple, Type
-import tkinter as tk
+import random
+from typing import TYPE_CHECKING, Dict, List
 
-from .model import SessionState, ScanResult
+from .model import ScanResult, SessionState
 from .service import GlitchlingService
+
+if TYPE_CHECKING:
+    from .views.main_window import MainFrame
 
 
 class Controller:
     def __init__(self, model: SessionState, service: GlitchlingService):
         self.model = model
         self.service = service
-        self.view = None  # Will be set after view creation
+        self.view: MainFrame | None = None  # Will be set after view creation
 
-    def set_view(self, view):
+    def set_view(self, view: "MainFrame") -> None:
         self.view = view
 
-    def update_input_text(self, text: str):
+    def update_input_text(self, text: str) -> None:
         self.model.input_text = text
         if self.model.auto_update and not self.model.scan_mode:
             self.transform_text()
 
-    def update_settings(self, seed: int, auto_update: bool, scan_mode: bool, scan_count: int):
+    def update_settings(self, seed: int, auto_update: bool, scan_mode: bool, scan_count: int) -> None:
         self.model.seed = seed
         self.model.auto_update = auto_update
         self.model.scan_mode = scan_mode
@@ -28,16 +31,14 @@ class Controller:
         if auto_update and not scan_mode:
             self.transform_text()
 
-    def randomize_seed(self):
-        import random
-
+    def randomize_seed(self) -> None:
         new_seed = random.randint(0, 999999)
         self.model.seed = new_seed
         if self.view:
             self.view.update_seed(new_seed)
         self.transform_text()
 
-    def toggle_scan_mode(self, enabled: bool):
+    def toggle_scan_mode(self, enabled: bool) -> None:
         self.model.scan_mode = enabled
         if enabled:
             self.model.auto_update = False
@@ -50,7 +51,7 @@ class Controller:
                 self.view.update_transform_button(is_scan=False)
             self.transform_text()
 
-    def transform_text(self):
+    def transform_text(self) -> None:
         """Main action: Transform or Scan."""
         if self.model.scan_mode:
             self.run_scan()
@@ -99,7 +100,7 @@ class Controller:
                 self.view.set_output(f"Error: {e}")
                 self.view.set_status(f"Error: {e}", "red")
 
-    def run_scan(self):
+    def run_scan(self) -> None:
         if self.model.scan_running:
             # Cancel
             self.model.scan_running = False
@@ -135,24 +136,28 @@ class Controller:
             lambda: not self.model.scan_running,
         )
 
-    def _on_scan_progress(self, current: int, total: int):
+    def _on_scan_progress(self, current: int, total: int) -> None:
         if self.view:
             # Schedule UI update on main thread
-            self.view.after(
-                0, lambda: self.view.set_status(f"Scanning {current}/{total} seeds...", "magenta")
-            )
+            view = self.view
 
-    def _on_scan_complete(self, results: Dict[str, ScanResult], names: List[str]):
+            def update_status() -> None:
+                view.set_status(f"Scanning {current}/{total} seeds...", "magenta")
+
+            view.after(0, update_status)
+
+    def _on_scan_complete(self, results: Dict[str, ScanResult], names: List[str]) -> None:
         self.model.scan_running = False
         self.model.scan_results = results
 
         # Format results for display
         formatted_metrics = self.service.format_scan_metrics(results)
+        tokenizers = list(results.keys())
 
-        def update_ui():
+        def update_ui() -> None:
             if self.view:
                 self.view.set_scan_running(False)
-                self.view.display_scan_results(formatted_metrics)
+                self.view.display_scan_results(tokenizers, formatted_metrics)
 
                 # Show example output (last seed)
                 last_seed = self.model.seed + self.model.scan_count - 1
@@ -165,10 +170,11 @@ class Controller:
                     pass
 
                 gnames = ", ".join(names)
-                self.view.set_status(
-                    f"Scan complete: {self.model.scan_count} seeds with {gnames} | Example shown: seed {last_seed}",
-                    "cyan",
+                status = (
+                    f"Scan complete: {self.model.scan_count} seeds with {gnames} "
+                    f"| Example shown: seed {last_seed}"
                 )
+                self.view.set_status(status, "cyan")
 
         if self.view:
             self.view.after(0, update_ui)

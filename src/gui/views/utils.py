@@ -1,4 +1,5 @@
 import tkinter as tk
+
 from ..theme import COLORS, FONTS
 
 
@@ -6,7 +7,7 @@ def create_tooltip(widget: tk.Widget, text: str) -> None:
     """Create a tooltip for a widget."""
     tooltip: tk.Toplevel | None = None
 
-    def show_tooltip(event: tk.Event) -> None:  # type: ignore[type-arg]
+    def show_tooltip(event: tk.Event) -> None:
         nonlocal tooltip
         if tooltip is not None:
             return
@@ -32,7 +33,7 @@ def create_tooltip(widget: tk.Widget, text: str) -> None:
         )
         label.pack()
 
-    def hide_tooltip(event: tk.Event) -> None:  # type: ignore[type-arg]
+    def hide_tooltip(event: tk.Event) -> None:
         nonlocal tooltip
         if tooltip is not None:
             tooltip.destroy()

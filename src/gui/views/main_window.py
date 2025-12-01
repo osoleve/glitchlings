@@ -1,15 +1,20 @@
 import difflib
 import tkinter as tk
 from tkinter import scrolledtext, ttk
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from glitchlings import SAMPLE_TEXT
 from glitchlings.attack.tokenization import resolve_tokenizer
 
-from ..theme import COLORS, FONTS, APP_VERSION
-from .utils import create_tooltip
+from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS, SCAN_PRESET_OPTIONS
 from .glitchling_panel import GlitchlingPanel
 from .tokenizer_panel import TokenizerPanel
+from .utils import create_tooltip
+
+
+class VectorFrame(tk.Frame):
+    content: tk.Frame
+    title_bar: tk.Frame
 
 
 class MainFrame(ttk.Frame):
@@ -89,7 +94,7 @@ class MainFrame(ttk.Frame):
         # Add clear button to input
         if hasattr(input_frame, "title_bar"):
             clear_btn = tk.Button(
-                input_frame.title_bar,  # type: ignore[attr-defined]
+                input_frame.title_bar,
                 text="Clear",
                 font=FONTS["tiny"],
                 fg=COLORS["red"],
@@ -117,7 +122,7 @@ class MainFrame(ttk.Frame):
 
         # Token diff header with controls - put in content frame
         if hasattr(token_frame, "content"):
-            token_content = token_frame.content  # type: ignore[attr-defined]
+            token_content = token_frame.content
         else:
             token_content = token_frame
 
@@ -190,7 +195,7 @@ class MainFrame(ttk.Frame):
         self.diff_tokenizer_combo = ttk.Combobox(
             token_header,
             textvariable=self.diff_tokenizer_var,
-            values=["cl100k_base", "gpt2", "bert-base-uncased"],
+            values=DEFAULT_TOKENIZERS,
             width=18,
             state="readonly",
         )
@@ -210,7 +215,7 @@ class MainFrame(ttk.Frame):
 
         # Get content frame for metrics
         if hasattr(metrics_frame, "content"):
-            metrics_content = metrics_frame.content  # type: ignore[attr-defined]
+            metrics_content = metrics_frame.content
         else:
             metrics_content = metrics_frame
 
@@ -222,7 +227,7 @@ class MainFrame(ttk.Frame):
         tree_inner.pack(fill=tk.BOTH, expand=True)
 
         # Create treeview for metrics table
-        columns = ("metric", "cl100k_base", "gpt2", "bert-base-uncased")
+        columns = ("metric", *DEFAULT_TOKENIZERS)
         self.metrics_tree = ttk.Treeview(tree_inner, columns=columns, show="headings", height=6)
 
         for col in columns:
@@ -307,9 +312,9 @@ class MainFrame(ttk.Frame):
 
     def _create_vector_labelframe(
         self, parent: ttk.Frame | tk.Frame, title: str, with_copy: bool = False
-    ) -> tk.Frame:
+    ) -> VectorFrame:
         """Create a vector-styled labelframe with optional copy button."""
-        outer = tk.Frame(parent, bg=COLORS["border"], padx=1, pady=1)
+        outer = VectorFrame(parent, bg=COLORS["border"], padx=1, pady=1)
 
         inner = tk.Frame(outer, bg=COLORS["black"])
         inner.pack(fill=tk.BOTH, expand=True)
@@ -348,19 +353,19 @@ class MainFrame(ttk.Frame):
         ).pack(side=tk.LEFT, pady=4)
 
         # Store title bar reference for adding buttons later
-        outer.title_bar = title_bar  # type: ignore[attr-defined]
+        outer.title_bar = title_bar
 
         # Content area with slight padding
         content = tk.Frame(inner, bg=COLORS["black"])
         content.pack(fill=tk.BOTH, expand=True)
 
         # Return outer frame for packing, but configure it to behave like content
-        outer.content = content  # type: ignore[attr-defined]
+        outer.content = content
         return outer
 
     def _create_vector_text(
         self,
-        parent: tk.Frame,
+        parent: tk.Frame | VectorFrame,
         height: int = 6,
         state: str = tk.NORMAL,
         color: str | None = None,
@@ -368,7 +373,7 @@ class MainFrame(ttk.Frame):
         """Create a vector-styled text widget."""
         # Get the content frame if this is a vector labelframe
         if hasattr(parent, "content"):
-            parent = parent.content  # type: ignore[attr-defined]
+            parent = parent.content
 
         fg_color = color if color else COLORS["green"]
 
@@ -445,7 +450,7 @@ class MainFrame(ttk.Frame):
             accelerator="Ctrl+Y",
         )
 
-        def show_menu(event: tk.Event) -> None:  # type: ignore[type-arg]
+        def show_menu(event: tk.Event) -> None:
             menu.tk_popup(event.x_root, event.y_root)
 
         text_widget.bind("<Button-3>", show_menu)
@@ -532,6 +537,7 @@ class MainFrame(ttk.Frame):
             selectcolor=COLORS["darker"],
             highlightthickness=0,
             cursor="hand2",
+            command=self._on_settings_change,
         )
         auto_check.pack(side=tk.LEFT, padx=(0, 8))
         create_tooltip(auto_check, "Auto-transform on changes")
@@ -570,11 +576,12 @@ class MainFrame(ttk.Frame):
         self.scan_count_combo = ttk.Combobox(
             scan_frame,
             textvariable=self.scan_count_var,
-            values=["10", "100", "1000", "10000"],
+            values=SCAN_PRESET_OPTIONS,
             width=6,
             state="readonly",
         )
         self.scan_count_combo.pack(side=tk.LEFT, padx=(4, 0))
+        self.scan_count_combo.bind("<<ComboboxSelected>>", lambda e: self._on_settings_change())
 
         tk.Label(
             scan_frame,
@@ -713,17 +720,10 @@ class MainFrame(ttk.Frame):
     def get_enabled_tokenizers(self) -> List[str]:
         return self.tokenizer_panel.get_enabled_tokenizers()
 
-    def update_metrics_display(self, metrics: Dict[str, Dict[str, Any]]) -> None:
-        """Update the metrics table."""
-        # Clear existing rows
-        for item in self.metrics_tree.get_children():
-            self.metrics_tree.delete(item)
-
-        tokenizers = list(metrics.keys())
-        if not tokenizers:
-            tokenizers = ["cl100k_base"]
-
-        columns = ["metric"] + tokenizers
+    def _configure_metrics_table(self, tokenizers: List[str]) -> List[str]:
+        """Set up columns and dropdown entries for the metrics table."""
+        tokenizers = tokenizers or [DEFAULT_TOKENIZERS[0]]
+        columns = ["metric", *tokenizers]
         self.metrics_tree["columns"] = columns
 
         for col in columns:
@@ -732,51 +732,71 @@ class MainFrame(ttk.Frame):
             self.metrics_tree.column(col, width=100, anchor="center")
         self.metrics_tree.column("metric", width=180, anchor="w")
 
-        # Update the tokenizer dropdown
         self.diff_tokenizer_combo["values"] = tokenizers
-        if self.diff_tokenizer_var.get() not in tokenizers and tokenizers:
+        if tokenizers and self.diff_tokenizer_var.get() not in tokenizers:
             self.diff_tokenizer_var.set(tokenizers[0])
 
-        if not metrics:
-            return
+        return tokenizers
 
-        # Token delta row
-        row: List[str] = ["Token Delta"]
-        for tok in tokenizers:
-            row.append(str(metrics[tok].get("token_delta", "-")))
-        self.metrics_tree.insert("", "end", values=tuple(row))
-
-        # Jensen-Shannon Divergence
-        row = ["Jensen-Shannon Divergence"]
-        for tok in tokenizers:
-            row.append(str(metrics[tok].get("jsd", "-")))
-        self.metrics_tree.insert("", "end", values=tuple(row))
-
-        # Normalized Edit Distance
-        row = ["Normalized Edit Distance"]
-        for tok in tokenizers:
-            row.append(str(metrics[tok].get("ned", "-")))
-        self.metrics_tree.insert("", "end", values=tuple(row))
-
-        # Subsequence Retention
-        row = ["Subsequence Retention"]
-        for tok in tokenizers:
-            row.append(str(metrics[tok].get("sr", "-")))
-        self.metrics_tree.insert("", "end", values=tuple(row))
-
-    def display_scan_results(self, formatted_rows: List[Tuple[str, List[str]]]) -> None:
-        """Update metrics table with scan results."""
-        # Clear existing rows
+    def _replace_metrics_rows(self, rows: Iterable[Tuple[str, List[str]]]) -> None:
+        """Replace metrics rows with supplied data."""
         for item in self.metrics_tree.get_children():
             self.metrics_tree.delete(item)
 
-        # Assuming columns are already set correctly from previous updates or we need to set them
-        # We need to know the tokenizers order.
-        # The formatted_rows contains (metric_name, [val1, val2, ...])
-        # We assume the order matches the current columns (excluding 'metric')
-
-        for metric_name, values in formatted_rows:
+        for metric_name, values in rows:
             self.metrics_tree.insert("", "end", values=(metric_name, *values))
+
+    def update_metrics_display(self, metrics: Dict[str, Dict[str, Any]]) -> None:
+        """Update the metrics table."""
+        tokenizers = self._configure_metrics_table(list(metrics.keys()))
+        if not metrics:
+            self._replace_metrics_rows([])
+            return
+
+        rows: List[Tuple[str, List[str]]] = []
+
+        rows.append(
+            (
+                "Token Delta",
+                [str(metrics[tok].get("token_delta", "-")) for tok in tokenizers],
+            )
+        )
+        rows.append(
+            (
+                "Jensen-Shannon Divergence",
+                [str(metrics[tok].get("jsd", "-")) for tok in tokenizers],
+            )
+        )
+        rows.append(
+            (
+                "Normalized Edit Distance",
+                [str(metrics[tok].get("ned", "-")) for tok in tokenizers],
+            )
+        )
+        rows.append(
+            ("Subsequence Retention", [str(metrics[tok].get("sr", "-")) for tok in tokenizers])
+        )
+
+        self._replace_metrics_rows(rows)
+
+    def display_scan_results(
+        self, tokenizers: List[str], formatted_rows: List[Tuple[str, List[str]]]
+    ) -> None:
+        """Update metrics table with scan results."""
+        active_tokenizers = self._configure_metrics_table(tokenizers)
+        if not formatted_rows:
+            self._replace_metrics_rows([])
+            return
+
+        expected_cols = len(active_tokenizers)
+        normalized_rows: List[Tuple[str, List[str]]] = []
+        for metric_name, values in formatted_rows:
+            row_values = list(values)[:expected_cols]
+            if len(row_values) < expected_cols:
+                row_values.extend(["-"] * (expected_cols - len(row_values)))
+            normalized_rows.append((metric_name, row_values))
+
+        self._replace_metrics_rows(normalized_rows)
 
     def clear_all(self) -> None:
         """Clear all text and reset seed."""
@@ -824,6 +844,11 @@ class MainFrame(ttk.Frame):
         try:
             tokenizer_name = self.diff_tokenizer_var.get()
             tok = resolve_tokenizer(tokenizer_name)
+
+            if tok is None:
+                self.token_diff_text.insert("1.0", f"Tokenizer '{tokenizer_name}' unavailable")
+                self.token_diff_text.config(state=tk.DISABLED)
+                return
 
             input_tokens, input_ids = tok.encode(input_text)
             output_tokens, output_ids = tok.encode(output_text)

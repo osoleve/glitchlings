@@ -6,21 +6,20 @@ Features a modernized CRT aesthetic with mint-and-cyan glow and subtle scanline 
 
 from __future__ import annotations
 
-import sys
 import os
+import sys
+import tkinter as tk
+from tkinter import filedialog, ttk
 
 # Allow running directly by adding project root to path and setting package
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
     __package__ = "src.gui"
 
-import tkinter as tk
-from tkinter import filedialog, ttk
-
-from .theme import COLORS, FONTS, APP_TITLE, APP_VERSION
+from .controller import Controller
 from .model import SessionState
 from .service import GlitchlingService
-from .controller import Controller
+from .theme import APP_TITLE, APP_VERSION, COLORS, FONTS
 from .views.main_window import MainFrame
 
 

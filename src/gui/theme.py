@@ -1,5 +1,5 @@
 from typing import Any, Dict
-import tkinter as tk
+
 from glitchlings.constants import (
     DEFAULT_EKKOKIN_RATE,
     DEFAULT_JARGOYLE_RATE,
@@ -67,7 +67,7 @@ COLORS = {
 }
 
 # Font configuration - using monospace fonts for authentic terminal feel
-FONTS = {
+FONTS: Dict[str, Any] = {
     "header": ("Consolas", 14, "bold"),
     "title": ("Consolas", 11, "bold"),
     "section": ("Consolas", 10, "bold"),
@@ -79,6 +79,10 @@ FONTS = {
     "metric": ("Consolas", 9),
     "glitch_name": ("Consolas", 11, "bold"),
 }
+
+# Shared GUI defaults
+DEFAULT_TOKENIZERS = ("cl100k_base", "gpt2", "bert-base-uncased")
+SCAN_PRESET_OPTIONS = ("10", "100", "1000", "10000")
 
 # Tooltips/help text for glitchlings
 GLITCHLING_DESCRIPTIONS = {

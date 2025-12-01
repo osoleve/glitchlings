@@ -1,6 +1,6 @@
 import statistics
 import threading
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Sequence, Tuple
 
 from glitchlings.attack import (
     jensen_shannon_divergence,
@@ -9,14 +9,17 @@ from glitchlings.attack import (
 )
 from glitchlings.attack.tokenization import resolve_tokenizer
 from glitchlings.zoo import Gaggle
+
 from .model import ScanResult
+
+DEFAULT_TOKENIZER = "cl100k_base"
 
 
 class GlitchlingService:
     """Service layer for Glitchlings business logic."""
 
     def transform_text(
-        self, input_text: str, glitchlings_config: List[Tuple[Type, Dict[str, Any]]], seed: int
+        self, input_text: str, glitchlings_config: List[Tuple[type[Any], Dict[str, Any]]], seed: int
     ) -> Tuple[str, List[str]]:
         """
         Transform text using the specified glitchlings.
@@ -28,26 +31,17 @@ class GlitchlingService:
         if not glitchlings_config:
             return input_text, []
 
-        try:
-            # Create glitchling instances
-            glitchlings = []
-            names = []
-            for cls, params in glitchlings_config:
-                instance = cls(seed=seed, **params)
-                glitchlings.append(instance)
-                names.append(cls.__name__)
+        glitchlings = []
+        names = []
+        for cls, params in glitchlings_config:
+            instance = cls(seed=seed, **params)
+            glitchlings.append(instance)
+            names.append(cls.__name__)
 
-            # Create gaggle and corrupt
-            gaggle = Gaggle(glitchlings, seed=seed)
-            output = gaggle.corrupt(input_text)
+        gaggle = Gaggle(glitchlings, seed=seed)
+        output = gaggle.corrupt(input_text)
 
-            # Handle both string and Transcript return types
-            output_str = str(output)
-
-            return output_str, names
-
-        except Exception as e:
-            raise e
+        return str(output), names
 
     def calculate_metrics(
         self, input_text: str, output_text: str, tokenizers: List[str]
@@ -59,7 +53,7 @@ class GlitchlingService:
         results = {}
 
         if not tokenizers:
-            tokenizers = ["cl100k_base"]
+            tokenizers = [DEFAULT_TOKENIZER]
 
         for tok_name in tokenizers:
             tok_results = {"token_delta": "-", "jsd": "-", "ned": "-", "sr": "-"}
@@ -112,7 +106,7 @@ class GlitchlingService:
     def run_scan(
         self,
         input_text: str,
-        glitchlings_config: List[Tuple[Type, Dict[str, Any]]],
+        glitchlings_config: List[Tuple[type[Any], Dict[str, Any]]],
         base_seed: int,
         scan_count: int,
         tokenizers: List[str],
@@ -140,7 +134,7 @@ class GlitchlingService:
     def _scan_worker(
         self,
         input_text: str,
-        enabled: List[Tuple[Type, Dict[str, Any]]],
+        enabled: List[Tuple[type[Any], Dict[str, Any]]],
         base_seed: int,
         scan_count: int,
         tokenizers: List[str],
@@ -150,7 +144,7 @@ class GlitchlingService:
     ) -> None:
         """Worker thread logic for scan mode."""
         if not tokenizers:
-            tokenizers = ["cl100k_base"]
+            tokenizers = [DEFAULT_TOKENIZER]
 
         # Resolve tokenizers once
         resolved_toks: Dict[str, Any] = {}
@@ -245,40 +239,30 @@ class GlitchlingService:
 
     def format_scan_metrics(self, results: Dict[str, ScanResult]) -> List[Tuple[str, List[str]]]:
         """Format scan results for display."""
-        formatted_rows = []
+        formatted_rows: List[Tuple[str, List[str]]] = []
         tokenizers = list(results.keys())
 
-        def fmt_stats(values: List[float]) -> str:
+        def fmt_stats(values: Sequence[float | int]) -> str:
             if not values:
                 return "-"
-            mean = statistics.mean(values)
-            if len(values) > 1:
-                std = statistics.stdev(values)
-                return f"{mean:.3f} ± {std:.3f}"
+            numbers = [float(value) for value in values]
+            mean = statistics.mean(numbers)
+            if len(numbers) > 1:
+                std = statistics.stdev(numbers)
+                return f"{mean:.3f} +/- {std:.3f}"
             return f"{mean:.3f}"
 
-        # Token delta row
-        row_delta = ["Token Delta μ±σ"]
-        for tok in tokenizers:
-            row_delta.append(fmt_stats(results[tok].token_delta))
-        formatted_rows.append(("Token Delta μ±σ", row_delta[1:]))
-
-        # JSD
-        row_jsd = ["Jensen-Shannon Div. μ±σ"]
-        for tok in tokenizers:
-            row_jsd.append(fmt_stats(results[tok].jsd))
-        formatted_rows.append(("Jensen-Shannon Div. μ±σ", row_jsd[1:]))
-
-        # NED
-        row_ned = ["Norm. Edit Distance μ±σ"]
-        for tok in tokenizers:
-            row_ned.append(fmt_stats(results[tok].ned))
-        formatted_rows.append(("Norm. Edit Distance μ±σ", row_ned[1:]))
-
-        # SR
-        row_sr = ["Subsequence Retention μ±σ"]
-        for tok in tokenizers:
-            row_sr.append(fmt_stats(results[tok].sr))
-        formatted_rows.append(("Subsequence Retention μ±σ", row_sr[1:]))
+        formatted_rows.append(
+            ("Token Delta", [fmt_stats(results[tok].token_delta) for tok in tokenizers])
+        )
+        formatted_rows.append(
+            ("Jensen-Shannon Divergence", [fmt_stats(results[tok].jsd) for tok in tokenizers])
+        )
+        formatted_rows.append(
+            ("Normalized Edit Distance", [fmt_stats(results[tok].ned) for tok in tokenizers])
+        )
+        formatted_rows.append(
+            ("Subsequence Retention", [fmt_stats(results[tok].sr) for tok in tokenizers])
+        )
 
         return formatted_rows

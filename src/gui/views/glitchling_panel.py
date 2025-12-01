@@ -1,8 +1,9 @@
+from functools import partial
 import tkinter as tk
 from tkinter import ttk
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Tuple
 
-from ..theme import COLORS, FONTS, AVAILABLE_GLITCHLINGS, GLITCHLING_DESCRIPTIONS, GLITCHLING_PARAMS
+from ..theme import AVAILABLE_GLITCHLINGS, COLORS, FONTS, GLITCHLING_DESCRIPTIONS, GLITCHLING_PARAMS
 from .utils import create_tooltip
 
 
@@ -92,16 +93,16 @@ class GlitchlingPanel(ttk.Frame):
         for cls in AVAILABLE_GLITCHLINGS:
             self._create_glitchling_entry(cls)
 
-    def _bind_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+    def _bind_mousewheel(self, event: tk.Event) -> None:
         self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
 
-    def _unbind_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+    def _unbind_mousewheel(self, event: tk.Event) -> None:
         self.canvas.unbind_all("<MouseWheel>")
 
-    def _on_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+    def _on_mousewheel(self, event: tk.Event) -> None:
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
 
-    def _create_glitchling_entry(self, cls: Type) -> None:
+    def _create_glitchling_entry(self, cls: type[Any]) -> None:
         name = cls.__name__
         self.expanded[name] = False
         self.enabled[name] = tk.BooleanVar(value=False)
@@ -131,19 +132,21 @@ class GlitchlingPanel(ttk.Frame):
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
-            command=lambda n=name: self._toggle_expand(n),  # type: ignore[misc]
+            command=partial(self._toggle_expand, name),
         )
         expand_btn.pack(side=tk.LEFT, padx=(4, 4))
         frame.expand_btn = expand_btn
 
         # Bind hover effects to expand button
-        expand_btn.bind("<Enter>", lambda e, b=expand_btn: b.config(fg=COLORS["cyan"]))
-        expand_btn.bind(
-            "<Leave>",
-            lambda e, b=expand_btn, n=name: b.config(
-                fg=COLORS["cyan"] if self.expanded.get(n) else COLORS["green_muted"]
-            ),
-        )
+        def on_expand_enter(event: tk.Event) -> None:
+            expand_btn.config(fg=COLORS["cyan"])
+
+        def on_expand_leave(event: tk.Event) -> None:
+            fg = COLORS["cyan"] if self.expanded.get(name) else COLORS["green_muted"]
+            expand_btn.config(fg=fg)
+
+        expand_btn.bind("<Enter>", on_expand_enter)
+        expand_btn.bind("<Leave>", on_expand_leave)
 
         # Enable checkbox - vector style with improved visuals
         check = tk.Checkbutton(
@@ -163,8 +166,14 @@ class GlitchlingPanel(ttk.Frame):
         check.pack(side=tk.LEFT, padx=2)
 
         # Bind hover effect to checkbox
-        check.bind("<Enter>", lambda e, c=check: c.config(fg=COLORS["green_bright"]))
-        check.bind("<Leave>", lambda e, c=check: c.config(fg=COLORS["green"]))
+        def on_check_enter(event: tk.Event) -> None:
+            check.config(fg=COLORS["green_bright"])
+
+        def on_check_leave(event: tk.Event) -> None:
+            check.config(fg=COLORS["green"])
+
+        check.bind("<Enter>", on_check_enter)
+        check.bind("<Leave>", on_check_leave)
 
         # Description label (tooltip-like) - truncate if too long
         desc = GLITCHLING_DESCRIPTIONS.get(name, "")
@@ -314,9 +323,9 @@ class GlitchlingPanel(ttk.Frame):
             frame.expand_btn.config(text="▸", fg=COLORS["green_muted"])
             frame.param_frame.pack_forget()
 
-    def get_enabled_glitchlings(self) -> List[Tuple[Type, Dict[str, Any]]]:
+    def get_enabled_glitchlings(self) -> List[Tuple[type[Any], Dict[str, Any]]]:
         """Return list of (class, params) for enabled glitchlings."""
-        result: List[Tuple[Type, Dict[str, Any]]] = []
+        result: List[Tuple[type[Any], Dict[str, Any]]] = []
         for cls in AVAILABLE_GLITCHLINGS:
             name = cls.__name__
             if self.enabled[name].get():
