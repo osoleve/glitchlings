@@ -261,6 +261,26 @@ class GridSweepPanel(ttk.Frame):
         )
         self.run_btn.pack(side=tk.RIGHT)
 
+        # Export button (initially disabled)
+        self.export_btn = tk.Button(
+            row3,
+            text="⬇ EXPORT",
+            font=FONTS["section"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green"],
+            activebackground=COLORS["highlight"],
+            disabledforeground=COLORS["border"],
+            bd=0,
+            relief=tk.FLAT,
+            padx=10,
+            pady=4,
+            cursor="hand2",
+            state=tk.DISABLED,
+            command=self._open_export_dialog,
+        )
+        self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
+
         # Progress bar
         self.progress_frame = tk.Frame(config_frame, bg=COLORS["black"])
         self.progress_frame.pack(fill=tk.X, pady=(8, 0))
@@ -560,7 +580,35 @@ class GridSweepPanel(ttk.Frame):
         self.running = False
         self.run_btn.config(text="▶ RUN SWEEP", bg=COLORS["green"])
         self.progress_label.config(text=f"Complete · {len(self.results)} points")
+        self._update_export_button()
         self._notify_results_changed()
+
+    def _update_export_button(self) -> None:
+        """Enable or disable the export button based on results availability."""
+        if self.results:
+            self.export_btn.config(
+                state=tk.NORMAL,
+                fg=COLORS["cyan"],
+                bg=COLORS["dark"],
+            )
+        else:
+            self.export_btn.config(
+                state=tk.DISABLED,
+                fg=COLORS["green_dim"],
+                bg=COLORS["dark"],
+            )
+
+    def _open_export_dialog(self) -> None:
+        """Open the sweep export dialog."""
+        if not self.results:
+            return
+
+        # Import here to avoid circular imports
+        from .sweep_export_dialog import SweepExportDialog
+
+        # Find the root window
+        root = self.winfo_toplevel()
+        SweepExportDialog(root, self.results)  # type: ignore[arg-type]
 
     def get_results(self) -> List[SweepPoint]:
         """Return current sweep results."""

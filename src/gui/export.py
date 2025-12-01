@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import statistics
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
@@ -286,5 +287,270 @@ def export_session(
         return export_to_csv(data, options)
     elif format == "markdown":
         return export_to_markdown(data, options)
+    else:
+        raise ValueError(f"Unknown export format: {format}")
+
+
+# ---------------------------------------------------------------------------
+# Sweep Export Functions
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SweepExportOptions:
+    """Options for sweep data exports."""
+
+    include_metadata: bool = True
+    include_raw_values: bool = False  # Include all per-seed values vs just aggregates
+
+
+@dataclass
+class SweepPoint:
+    """Results for a single sweep point (imported from grid_sweep_panel)."""
+
+    param_value: float
+    metrics: Dict[str, Dict[str, List[float]]] = field(default_factory=dict)
+    glitchling_name: str = ""
+    parameter_name: str = ""
+
+
+def export_sweep_to_json(
+    results: List[Any],
+    options: SweepExportOptions | None = None,
+) -> str:
+    """Export sweep results to JSON format.
+
+    Args:
+        results: List of SweepPoint objects
+        options: Export options
+
+    Returns:
+        JSON string
+    """
+    if options is None:
+        options = SweepExportOptions()
+
+    output: Dict[str, Any] = {
+        "exported_at": datetime.now().isoformat(),
+        "version": "1.0",
+        "type": "sweep_results",
+    }
+
+    if not results:
+        output["points"] = []
+        return json.dumps(output, indent=2)
+
+    # Extract metadata from first point
+    first = results[0]
+    if options.include_metadata:
+        output["metadata"] = {
+            "glitchling": getattr(first, "glitchling_name", ""),
+            "parameter": getattr(first, "parameter_name", ""),
+            "point_count": len(results),
+        }
+
+    points: List[Dict[str, Any]] = []
+    for point in results:
+        point_data: Dict[str, Any] = {
+            "param_value": getattr(point, "param_value", 0.0),
+        }
+
+        metrics_data: Dict[str, Any] = {}
+        point_metrics = getattr(point, "metrics", {})
+        for tok_name, tok_metrics in point_metrics.items():
+            tok_data: Dict[str, Any] = {}
+            for metric_name, values in tok_metrics.items():
+                if not values:
+                    tok_data[metric_name] = {"mean": None, "std": None}
+                    continue
+
+                mean_val = statistics.mean(values)
+                std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+                tok_data[metric_name] = {
+                    "mean": round(mean_val, 6),
+                    "std": round(std_val, 6),
+                }
+                if options.include_raw_values:
+                    tok_data[metric_name]["values"] = [round(v, 6) for v in values]
+
+            metrics_data[tok_name] = tok_data
+
+        point_data["metrics"] = metrics_data
+        points.append(point_data)
+
+    output["points"] = points
+    return json.dumps(output, indent=2)
+
+
+def export_sweep_to_csv(
+    results: List[Any],
+    options: SweepExportOptions | None = None,
+) -> str:
+    """Export sweep results to CSV format.
+
+    Args:
+        results: List of SweepPoint objects
+        options: Export options
+
+    Returns:
+        CSV string
+    """
+    if options is None:
+        options = SweepExportOptions()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if not results:
+        writer.writerow(["No sweep results to export"])
+        return output.getvalue()
+
+    # Metadata header comments
+    first = results[0]
+    if options.include_metadata:
+        output.write(f"# Exported: {datetime.now().isoformat()}\n")
+        output.write(f"# Glitchling: {getattr(first, 'glitchling_name', 'Unknown')}\n")
+        output.write(f"# Parameter: {getattr(first, 'parameter_name', 'Unknown')}\n")
+        output.write(f"# Points: {len(results)}\n")
+        output.write("#\n")
+
+    # Determine tokenizers from first point's metrics
+    first_metrics = getattr(first, "metrics", {})
+    tokenizers = list(first_metrics.keys()) if first_metrics else []
+
+    # Build header row
+    header = ["param_value"]
+    for tok in tokenizers:
+        for metric in ["jsd", "ned", "sr"]:
+            header.append(f"{tok}_{metric}_mean")
+            header.append(f"{tok}_{metric}_std")
+    writer.writerow(header)
+
+    # Data rows
+    for point in results:
+        row = [f"{getattr(point, 'param_value', 0.0):.4f}"]
+        point_metrics = getattr(point, "metrics", {})
+
+        for tok in tokenizers:
+            tok_metrics = point_metrics.get(tok, {})
+            for metric in ["jsd", "ned", "sr"]:
+                values = tok_metrics.get(metric, [])
+                if values:
+                    mean_val = statistics.mean(values)
+                    std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+                    row.append(f"{mean_val:.6f}")
+                    row.append(f"{std_val:.6f}")
+                else:
+                    row.append("-")
+                    row.append("-")
+
+        writer.writerow(row)
+
+    return output.getvalue()
+
+
+def export_sweep_to_markdown(
+    results: List[Any],
+    options: SweepExportOptions | None = None,
+) -> str:
+    """Export sweep results to Markdown table format.
+
+    Args:
+        results: List of SweepPoint objects
+        options: Export options
+
+    Returns:
+        Markdown string
+    """
+    if options is None:
+        options = SweepExportOptions()
+
+    lines: List[str] = []
+
+    lines.append("# Parameter Sweep Results")
+    lines.append("")
+    lines.append(f"*Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}*")
+    lines.append("")
+
+    if not results:
+        lines.append("*No sweep results to export.*")
+        return "\n".join(lines)
+
+    first = results[0]
+    if options.include_metadata:
+        lines.append("## Configuration")
+        lines.append("")
+        lines.append(f"- **Glitchling:** {getattr(first, 'glitchling_name', 'Unknown')}")
+        lines.append(f"- **Parameter:** {getattr(first, 'parameter_name', 'Unknown')}")
+        lines.append(f"- **Sweep Points:** {len(results)}")
+        lines.append("")
+
+    # Build table
+    first_metrics = getattr(first, "metrics", {})
+    tokenizers = list(first_metrics.keys()) if first_metrics else []
+
+    if not tokenizers:
+        lines.append("*No metrics available.*")
+        return "\n".join(lines)
+
+    lines.append("## Results")
+    lines.append("")
+
+    # Table header
+    header_parts = ["Parameter"]
+    for tok in tokenizers:
+        header_parts.append(f"{tok} JSD")
+        header_parts.append(f"{tok} NED")
+        header_parts.append(f"{tok} SR")
+
+    lines.append("| " + " | ".join(header_parts) + " |")
+    lines.append("|" + "|".join(["---"] * len(header_parts)) + "|")
+
+    # Table rows
+    for point in results:
+        row_parts = [f"{getattr(point, 'param_value', 0.0):.3f}"]
+        point_metrics = getattr(point, "metrics", {})
+
+        for tok in tokenizers:
+            tok_metrics = point_metrics.get(tok, {})
+            for metric in ["jsd", "ned", "sr"]:
+                values = tok_metrics.get(metric, [])
+                if values:
+                    mean_val = statistics.mean(values)
+                    std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+                    row_parts.append(f"{mean_val:.4f} ± {std_val:.4f}")
+                else:
+                    row_parts.append("-")
+
+        lines.append("| " + " | ".join(row_parts) + " |")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def export_sweep(
+    results: List[Any],
+    format: str,
+    options: SweepExportOptions | None = None,
+) -> str:
+    """Export sweep results in the specified format.
+
+    Args:
+        results: List of SweepPoint objects from grid sweep
+        format: One of 'json', 'csv', 'markdown'
+        options: Export options (defaults used if None)
+
+    Returns:
+        Formatted export string
+    """
+    if options is None:
+        options = SweepExportOptions()
+
+    if format == "json":
+        return export_sweep_to_json(results, options)
+    elif format == "csv":
+        return export_sweep_to_csv(results, options)
+    elif format == "markdown":
+        return export_sweep_to_markdown(results, options)
     else:
         raise ValueError(f"Unknown export format: {format}")
