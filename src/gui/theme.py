@@ -39,34 +39,34 @@ APP_TITLE = "GLITCHLINGS TERMINAL"
 
 # Color palette - refreshed neo-terminal colors with soft mint glow
 COLORS = {
-    # Primary mint glow
-    "green": "#7ce7c5",
+    # Primary mint glow - slightly more vibrant
+    "green": "#50fa7b",
     "green_dim": "#2f6b57",
-    "green_glow": "#a8ffd8",
+    "green_glow": "#8affc0",
     "green_bright": "#d8ffe9",
     "green_dark": "#0f2f2a",
     "green_muted": "#3f7a66",
-    # Background - deep midnight blues to keep the terminal feel
-    "black": "#050a12",
-    "dark": "#0c1424",
-    "darker": "#08101d",
-    "panel": "#111b2e",
-    # Accent colors - cool cyan with warm amber and magenta pops
-    "cyan": "#65d9ff",
+    # Background - deep midnight blues
+    "black": "#0b0f19",
+    "dark": "#131a2a",
+    "darker": "#080b12",
+    "panel": "#1a233a",
+    # Accent colors
+    "cyan": "#8be9fd",
     "cyan_dim": "#1d5f7a",
     "cyan_bright": "#b4f0ff",
-    "amber": "#f6b97b",
+    "amber": "#ffb86c",
     "amber_dim": "#8f4f1f",
     "amber_bright": "#ffd7a1",
-    "red": "#ff6b81",
+    "red": "#ff5555",
     "red_dim": "#7f1d30",
-    "magenta": "#ff5ec8",
-    "yellow": "#f4f28b",
+    "magenta": "#ff79c6",
+    "yellow": "#f1fa8c",
     # UI chrome
-    "border": "#1a2f42",
-    "border_bright": "#35d2a3",
-    "highlight": "#14243a",
-    "disabled": "#2b3b50",
+    "border": "#2d3f55",
+    "border_bright": "#50fa7b",
+    "highlight": "#2a3b55",
+    "disabled": "#3b4b60",
 }
 
 # Font configuration - using monospace fonts for authentic terminal feel

@@ -106,19 +106,20 @@ class TokenizerPanel(ttk.Frame):
             add_frame,
             text="+ ADD",
             font=FONTS["tiny"],
-            fg=COLORS["green"],
-            bg=COLORS["dark"],
+            fg=COLORS["green_bright"],
+            bg=COLORS["green_dim"],
             activeforeground=COLORS["black"],
             activebackground=COLORS["green"],
-            bd=1,
-            relief=tk.SOLID,
-            padx=8,
+            bd=0,
+            relief=tk.FLAT,
+            padx=10,
+            pady=2,
             cursor="hand2",
             command=self._add_new_tokenizer,
         )
-        add_btn.pack(side=tk.LEFT, padx=4)
-        add_btn.bind("<Enter>", lambda e: add_btn.config(bg=COLORS["highlight"]))
-        add_btn.bind("<Leave>", lambda e: add_btn.config(bg=COLORS["dark"]))
+        add_btn.pack(side=tk.LEFT, padx=6)
+        add_btn.bind("<Enter>", lambda e: add_btn.config(bg=COLORS["green"]))
+        add_btn.bind("<Leave>", lambda e: add_btn.config(bg=COLORS["green_dim"]))
 
     def _add_tokenizer(self, name: str) -> None:
         if name in self.tokenizers:

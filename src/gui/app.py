@@ -185,10 +185,16 @@ class App(tk.Tk):
         try:
             text = self.main_frame.get_output()
             if self.preferences.copy_metadata:
-                glitchlings = [
-                    cls.__name__ for cls, _params in self.model.enabled_glitchlings
-                ]
-                glitchling_str = ", ".join(glitchlings) if glitchlings else "None"
+                glitchling_lines = []
+                for cls, params in self.model.enabled_glitchlings:
+                    param_str = (
+                        ", ".join(f"{k}={v}" for k, v in sorted(params.items()))
+                        if params
+                        else "default"
+                    )
+                    glitchling_lines.append(f"{cls.__name__} ({param_str})")
+
+                glitchling_str = ", ".join(glitchling_lines) if glitchling_lines else "None"
                 tokenizer_str = (
                     ", ".join(self.model.enabled_tokenizers)
                     if self.model.enabled_tokenizers

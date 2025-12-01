@@ -197,8 +197,8 @@ class GlitchlingPanel(ttk.Frame):
 
         # Create parameter widgets
         if name in GLITCHLING_PARAMS:
-            for param_name, param_info in GLITCHLING_PARAMS[name].items():
-                self._create_param_widget(param_frame, name, param_name, param_info)
+            for i, (param_name, param_info) in enumerate(GLITCHLING_PARAMS[name].items()):
+                self._create_param_widget(param_frame, name, param_name, param_info, i)
 
     def _update_glitchling_style(self, name: str) -> None:
         """Update the visual style of a glitchling entry based on enabled state."""
@@ -228,30 +228,28 @@ class GlitchlingPanel(ttk.Frame):
         glitchling_name: str,
         param_name: str,
         param_info: Dict[str, Any],
+        row_idx: int,
     ) -> None:
-        row = tk.Frame(parent, bg=COLORS["dark"])
-        row.pack(fill=tk.X, padx=20, pady=2)
-
         # Format parameter name: snake_case to Title Case
         display_name = param_name.replace("_", " ").title()
 
         label = tk.Label(
-            row,
+            parent,
             text=display_name,
-            width=15,
             anchor="w",
             font=FONTS["small"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
+            bg=COLORS["black"],
         )
-        label.pack(side=tk.LEFT, padx=(6, 0))
+        label.grid(row=row_idx, column=0, sticky="w", padx=(26, 10), pady=2)
 
+        widget: Any = None
         param_type = param_info["type"]
 
         if param_type == "float":
             var = tk.DoubleVar(value=param_info["default"])
-            spinbox = ttk.Spinbox(
-                row,
+            widget = ttk.Spinbox(
+                parent,
                 from_=param_info.get("min", 0.0),
                 to=param_info.get("max", 1.0),
                 increment=0.01,
@@ -259,14 +257,13 @@ class GlitchlingPanel(ttk.Frame):
                 width=8,
                 command=self.on_change,
             )
-            spinbox.pack(side=tk.LEFT, padx=4)
-            spinbox.bind("<Return>", lambda e: self.on_change())
+            widget.bind("<Return>", lambda e: self.on_change())
             self.param_widgets[glitchling_name][param_name] = var
 
         elif param_type == "int":
             var_int = tk.IntVar(value=param_info["default"])
-            spinbox = ttk.Spinbox(
-                row,
+            widget = ttk.Spinbox(
+                parent,
                 from_=param_info.get("min", 0),
                 to=param_info.get("max", 100),
                 increment=1,
@@ -274,35 +271,34 @@ class GlitchlingPanel(ttk.Frame):
                 width=8,
                 command=self.on_change,
             )
-            spinbox.pack(side=tk.LEFT, padx=4)
-            spinbox.bind("<Return>", lambda e: self.on_change())
+            widget.bind("<Return>", lambda e: self.on_change())
             self.param_widgets[glitchling_name][param_name] = var_int
 
         elif param_type == "choice":
             var_str = tk.StringVar(value=param_info["default"])
-            combo = ttk.Combobox(
-                row,
+            widget = ttk.Combobox(
+                parent,
                 textvariable=var_str,
                 values=param_info["choices"],
                 width=14,
                 state="readonly",
             )
-            combo.pack(side=tk.LEFT, padx=4)
-            combo.bind("<<ComboboxSelected>>", lambda e: self.on_change())
+            widget.bind("<<ComboboxSelected>>", lambda e: self.on_change())
             self.param_widgets[glitchling_name][param_name] = var_str
 
         elif param_type == "bool":
             var_bool = tk.BooleanVar(value=param_info["default"])
-            check = ttk.Checkbutton(row, variable=var_bool, command=self.on_change)
-            check.pack(side=tk.LEFT, padx=4)
+            widget = ttk.Checkbutton(parent, variable=var_bool, command=self.on_change)
             self.param_widgets[glitchling_name][param_name] = var_bool
 
         elif param_type == "text":
             var_text = tk.StringVar(value=param_info["default"])
-            entry = ttk.Entry(row, textvariable=var_text, width=14)
-            entry.pack(side=tk.LEFT, padx=4)
-            entry.bind("<Return>", lambda e: self.on_change())
+            widget = ttk.Entry(parent, textvariable=var_text, width=14)
+            widget.bind("<Return>", lambda e: self.on_change())
             self.param_widgets[glitchling_name][param_name] = var_text
+
+        if widget:
+            widget.grid(row=row_idx, column=1, sticky="w", padx=4, pady=2)
 
     def _update_count(self) -> None:
         """Update the count of active glitchlings."""

@@ -181,8 +181,20 @@ class MainFrame(ttk.Frame):
         token_header = tk.Frame(token_content, bg=COLORS["black"])
         token_header.pack(fill=tk.X, padx=6, pady=(4, 2))
 
+        # View Mode Group
+        view_frame = tk.Frame(token_header, bg=COLORS["black"])
+        view_frame.pack(side=tk.LEFT)
+
+        tk.Label(
+            view_frame,
+            text="View:",
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["black"],
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
         id_radio = tk.Radiobutton(
-            token_header,
+            view_frame,
             text="ID",
             variable=self.diff_mode_var,
             value="id",
@@ -199,7 +211,7 @@ class MainFrame(ttk.Frame):
         id_radio.pack(side=tk.LEFT)
 
         label_radio = tk.Radiobutton(
-            token_header,
+            view_frame,
             text="Label",
             variable=self.diff_mode_var,
             value="label",
@@ -216,7 +228,7 @@ class MainFrame(ttk.Frame):
         label_radio.pack(side=tk.LEFT, padx=8)
 
         raw_radio = tk.Radiobutton(
-            token_header,
+            view_frame,
             text="Raw",
             variable=self.diff_mode_var,
             value="raw",
@@ -232,23 +244,33 @@ class MainFrame(ttk.Frame):
         )
         raw_radio.pack(side=tk.LEFT, padx=8)
 
-        # Spacer
-        tk.Frame(token_header, bg=COLORS["black"], width=20).pack(side=tk.LEFT)
+        # Spacer / Separator
+        tk.Label(
+            token_header,
+            text="│",
+            font=FONTS["tiny"],
+            fg=COLORS["border"],
+            bg=COLORS["black"],
+        ).pack(side=tk.LEFT, padx=12)
+
+        # Tokenizer Selection Group
+        tok_frame = tk.Frame(token_header, bg=COLORS["black"])
+        tok_frame.pack(side=tk.LEFT)
 
         tok_label = tk.Label(
-            token_header,
+            tok_frame,
             text="Tokenizer:",
-            font=FONTS["small"],
+            font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
         )
         tok_label.pack(side=tk.LEFT, padx=(0, 4))
 
         self.diff_tokenizer_combo = ttk.Combobox(
-            token_header,
+            tok_frame,
             textvariable=self.diff_tokenizer_var,
             values=DEFAULT_TOKENIZERS,
-            width=18,
+            width=22,
             state="readonly",
         )
         self.diff_tokenizer_combo.pack(side=tk.LEFT)
@@ -382,7 +404,6 @@ class MainFrame(ttk.Frame):
             padx=6,
         )
         version_label.pack(side=tk.RIGHT)
-
 
     def _create_vector_labelframe(
         self,
@@ -770,9 +791,7 @@ class MainFrame(ttk.Frame):
     def _on_tokenizers_change(self) -> None:
         """Handle updates from the tokenizer panel."""
         self._on_settings_change()
-        self._update_preferences(
-            default_tokenizers=self.tokenizer_panel.get_all_tokenizers()
-        )
+        self._update_preferences(default_tokenizers=self.tokenizer_panel.get_all_tokenizers())
 
     def _on_settings_change(self) -> None:
         """Called when any setting changes."""
@@ -873,7 +892,6 @@ class MainFrame(ttk.Frame):
 
     def update_seed(self, seed: int) -> None:
         self.seed_var.set(seed)
-
 
     def set_auto_update(self, enabled: bool) -> None:
         self.auto_update_var.set(enabled)
