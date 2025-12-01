@@ -6,6 +6,7 @@ Features a retro CRT aesthetic with phosphor green displays and scanline effects
 
 from __future__ import annotations
 
+import difflib
 import random as random_module
 import statistics
 import threading
@@ -2181,12 +2182,25 @@ class MainFrame(ttk.Frame):
         self.seed_var.set(151)
 
     def _update_token_diff(self) -> None:
-        """Update the token diff display using resolve_tokenizer."""
+        """Update the token diff display with inline diff highlighting."""
         input_text = self.get_input()
         output_text = self.get_output()
 
         self.token_diff_text.config(state=tk.NORMAL)
         self.token_diff_text.delete("1.0", tk.END)
+
+        # Configure diff tags for highlighting
+        self.token_diff_text.tag_configure(
+            "added", foreground=COLORS["green_bright"], background=COLORS["green_dark"]
+        )
+        self.token_diff_text.tag_configure(
+            "removed", foreground=COLORS["red"], background=COLORS["red_dim"]
+        )
+        self.token_diff_text.tag_configure(
+            "changed", foreground=COLORS["amber"], background=COLORS["amber_dim"]
+        )
+        self.token_diff_text.tag_configure("unchanged", foreground=COLORS["green_dim"])
+        self.token_diff_text.tag_configure("header", foreground=COLORS["cyan"])
 
         if not input_text or not output_text:
             self.token_diff_text.insert("1.0", "No text to compare")
@@ -2202,18 +2216,52 @@ class MainFrame(ttk.Frame):
 
             mode = self.diff_mode_var.get()
 
+            # Get token representations based on mode
             if mode == "id":
-                input_str = " ".join(str(t) for t in input_ids)
-                output_str = " ".join(str(t) for t in output_ids)
+                input_items = [str(t) for t in input_ids]
+                output_items = [str(t) for t in output_ids]
             else:
-                input_str = " ".join(f"[{t}]" for t in input_tokens)
-                output_str = " ".join(f"[{t}]" for t in output_tokens)
+                input_items = input_tokens
+                output_items = output_tokens
 
-            self.token_diff_text.insert(
-                "1.0",
-                f"Input ({len(input_tokens)} tokens):\n{input_str}\n\n"
-                f"Output ({len(output_tokens)} tokens):\n{output_str}",
-            )
+            # Insert header
+            delta = len(output_tokens) - len(input_tokens)
+            delta_str = f"+{delta}" if delta > 0 else str(delta)
+            header = f"Token Diff: {len(input_tokens)} → {len(output_tokens)} ({delta_str})\t"
+            self.token_diff_text.insert(tk.END, header, "header")
+
+            # Compute diff using SequenceMatcher
+            matcher = difflib.SequenceMatcher(None, input_items, output_items)
+
+            # Legend
+            self.token_diff_text.insert(tk.END, "[+added] ", "added")
+            self.token_diff_text.insert(tk.END, "[-removed] ", "removed")
+            self.token_diff_text.insert(tk.END, "\n\n")
+            # Process diff opcodes
+            for tag, i1, i2, j1, j2 in matcher.get_opcodes():
+                if tag == "equal":
+                    # Unchanged tokens - show dimmed
+                    for item in input_items[i1:i2]:
+                        display = f"[{item}] " if mode == "label" else f"{item} "
+                        self.token_diff_text.insert(tk.END, display, "unchanged")
+                elif tag == "replace":
+                    # Changed tokens - show old struck through, new highlighted
+                    for item in input_items[i1:i2]:
+                        display = f"[-{item}] " if mode == "label" else f"-{item} "
+                        self.token_diff_text.insert(tk.END, display, "removed")
+                    for item in output_items[j1:j2]:
+                        display = f"[+{item}] " if mode == "label" else f"+{item} "
+                        self.token_diff_text.insert(tk.END, display, "added")
+                elif tag == "delete":
+                    # Deleted tokens - show in red
+                    for item in input_items[i1:i2]:
+                        display = f"[-{item}] " if mode == "label" else f"-{item} "
+                        self.token_diff_text.insert(tk.END, display, "removed")
+                elif tag == "insert":
+                    # Inserted tokens - show in green
+                    for item in output_items[j1:j2]:
+                        display = f"[+{item}] " if mode == "label" else f"+{item} "
+                        self.token_diff_text.insert(tk.END, display, "added")
 
         except ValueError as e:
             self.token_diff_text.insert("1.0", f"Could not load tokenizer: {e}")
