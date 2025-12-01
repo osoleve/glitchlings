@@ -22,7 +22,9 @@ class Controller:
         if self.model.auto_update and not self.model.scan_mode:
             self.transform_text()
 
-    def update_settings(self, seed: int, auto_update: bool, scan_mode: bool, scan_count: int) -> None:
+    def update_settings(
+        self, seed: int, auto_update: bool, scan_mode: bool, scan_count: int
+    ) -> None:
         self.model.seed = seed
         self.model.auto_update = auto_update
         self.model.scan_mode = scan_mode

@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+from tkinter import ttk
 from typing import Any, Dict
 
 from glitchlings.constants import (
@@ -79,6 +82,196 @@ FONTS: Dict[str, Any] = {
     "metric": ("Consolas", 9),
     "glitch_name": ("Consolas", 11, "bold"),
 }
+
+MENU_STYLES = {
+    "bg": COLORS["dark"],
+    "fg": COLORS["green"],
+    "activebackground": COLORS["highlight"],
+    "activeforeground": COLORS["green_bright"],
+    "font": FONTS["body"],
+}
+
+STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
+    ".": {"background": COLORS["black"], "foreground": COLORS["green"]},
+    "TFrame": {"background": COLORS["black"], "bordercolor": COLORS["border"]},
+    "Panel.TFrame": {"background": COLORS["dark"], "bordercolor": COLORS["border"]},
+    "TLabel": {
+        "background": COLORS["black"],
+        "foreground": COLORS["green"],
+        "font": FONTS["body"],
+    },
+    "Header.TLabel": {
+        "background": COLORS["black"],
+        "foreground": COLORS["green_bright"],
+        "font": FONTS["title"],
+    },
+    "TLabelframe": {
+        "background": COLORS["black"],
+        "foreground": COLORS["green"],
+        "bordercolor": COLORS["border"],
+        "relief": "solid",
+        "borderwidth": 1,
+    },
+    "TLabelframe.Label": {
+        "background": COLORS["black"],
+        "foreground": COLORS["cyan"],
+        "font": FONTS["title"],
+        "padding": (4, 2),
+    },
+    "TButton": {
+        "background": COLORS["dark"],
+        "foreground": COLORS["green"],
+        "bordercolor": COLORS["border"],
+        "font": FONTS["body"],
+        "padding": (10, 5),
+        "focuscolor": COLORS["green_dim"],
+    },
+    "Primary.TButton": {
+        "background": COLORS["green_dark"],
+        "foreground": COLORS["green_bright"],
+        "bordercolor": COLORS["green_dim"],
+        "font": FONTS["body"],
+        "padding": (12, 6),
+    },
+    "TCheckbutton": {
+        "background": COLORS["black"],
+        "foreground": COLORS["green"],
+        "font": FONTS["body"],
+    },
+    "TRadiobutton": {
+        "background": COLORS["black"],
+        "foreground": COLORS["green"],
+        "font": FONTS["body"],
+    },
+    "TEntry": {
+        "fieldbackground": COLORS["darker"],
+        "foreground": COLORS["amber"],
+        "insertcolor": COLORS["green_bright"],
+        "bordercolor": COLORS["border"],
+        "font": FONTS["mono"],
+        "padding": (4, 2),
+    },
+    "TSpinbox": {
+        "fieldbackground": COLORS["darker"],
+        "foreground": COLORS["amber"],
+        "arrowcolor": COLORS["green"],
+        "bordercolor": COLORS["border"],
+        "font": FONTS["mono"],
+        "padding": (4, 2),
+    },
+    "TCombobox": {
+        "fieldbackground": COLORS["darker"],
+        "foreground": COLORS["amber"],
+        "arrowcolor": COLORS["green"],
+        "bordercolor": COLORS["border"],
+        "font": FONTS["mono"],
+        "padding": (4, 2),
+    },
+    "TScrollbar": {
+        "background": COLORS["dark"],
+        "troughcolor": COLORS["darker"],
+        "bordercolor": COLORS["border"],
+        "arrowcolor": COLORS["green"],
+        "gripcount": 0,
+    },
+    "TPanedwindow": {"background": COLORS["green_dim"]},
+    "Treeview": {
+        "background": COLORS["darker"],
+        "foreground": COLORS["green"],
+        "fieldbackground": COLORS["darker"],
+        "bordercolor": COLORS["border"],
+        "font": FONTS["metric"],
+        "rowheight": 24,
+    },
+    "Treeview.Heading": {
+        "background": COLORS["dark"],
+        "foreground": COLORS["cyan"],
+        "font": FONTS["body"],
+        "bordercolor": COLORS["border"],
+        "padding": (4, 3),
+    },
+    "TNotebook": {
+        "background": COLORS["black"],
+        "bordercolor": COLORS["border"],
+        "tabmargins": (2, 4, 2, 0),
+    },
+    "TNotebook.Tab": {
+        "background": COLORS["dark"],
+        "foreground": COLORS["green"],
+        "padding": (12, 5),
+        "focuscolor": COLORS["green_dim"],
+    },
+    "TSeparator": {"background": COLORS["border"]},
+    "TProgressbar": {
+        "background": COLORS["green"],
+        "troughcolor": COLORS["darker"],
+        "bordercolor": COLORS["border"],
+    },
+}
+
+STYLE_MAPS: Dict[str, Dict[str, Any]] = {
+    "TButton": {
+        "background": [("active", COLORS["highlight"]), ("pressed", COLORS["green_dark"])],
+        "foreground": [("active", COLORS["green_bright"]), ("pressed", COLORS["green_glow"])],
+        "bordercolor": [("active", COLORS["border_bright"])],
+    },
+    "Primary.TButton": {
+        "background": [("active", COLORS["green_dim"]), ("pressed", COLORS["green"])],
+        "foreground": [("active", COLORS["green_glow"]), ("pressed", COLORS["black"])],
+    },
+    "TCheckbutton": {
+        "background": [("active", COLORS["black"])],
+        "foreground": [("active", COLORS["green_bright"])],
+    },
+    "TRadiobutton": {
+        "background": [("active", COLORS["black"])],
+        "foreground": [("active", COLORS["green_bright"])],
+    },
+    "TEntry": {"bordercolor": [("focus", COLORS["border_bright"])]},
+    "TSpinbox": {
+        "bordercolor": [("focus", COLORS["border_bright"])],
+        "arrowcolor": [("active", COLORS["green_bright"])],
+    },
+    "TCombobox": {
+        "fieldbackground": [("readonly", COLORS["darker"]), ("focus", COLORS["dark"])],
+        "foreground": [("readonly", COLORS["amber"])],
+        "selectbackground": [("readonly", COLORS["green_dim"])],
+        "selectforeground": [("readonly", COLORS["black"])],
+        "bordercolor": [("focus", COLORS["border_bright"])],
+        "arrowcolor": [("active", COLORS["green_bright"])],
+    },
+    "TScrollbar": {
+        "background": [("active", COLORS["green_dim"]), ("pressed", COLORS["green_dark"])],
+        "arrowcolor": [("active", COLORS["green_bright"])],
+    },
+    "Treeview": {
+        "background": [("selected", COLORS["highlight"])],
+        "foreground": [("selected", COLORS["green_bright"])],
+    },
+    "Treeview.Heading": {
+        "background": [("active", COLORS["green_dim"])],
+        "foreground": [("active", COLORS["green_bright"])],
+    },
+    "TNotebook.Tab": {
+        "background": [("selected", COLORS["black"]), ("active", COLORS["green_dark"])],
+        "foreground": [("selected", COLORS["green_bright"]), ("active", COLORS["green_glow"])],
+    },
+}
+
+
+def apply_theme_styles(style: ttk.Style | None = None) -> ttk.Style:
+    """Configure and return the shared ttk style for the GUI."""
+    style = style or ttk.Style()
+    style.theme_use("clam")
+
+    for style_name, options in STYLE_CONFIGS.items():
+        style.configure(style_name, **options)
+
+    for style_name, options in STYLE_MAPS.items():
+        style.map(style_name, **options)
+
+    return style
+
 
 # Shared GUI defaults
 DEFAULT_TOKENIZERS = ("cl100k_base", "gpt2", "bert-base-uncased")

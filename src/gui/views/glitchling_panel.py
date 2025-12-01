@@ -1,5 +1,5 @@
-from functools import partial
 import tkinter as tk
+from functools import partial
 from tkinter import ttk
 from typing import Any, Dict, List, Tuple
 
