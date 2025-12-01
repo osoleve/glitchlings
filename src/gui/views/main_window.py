@@ -318,6 +318,7 @@ class MainFrame(ttk.Frame):
         self.dataset_panel = DatasetPanel(
             self.dataset_tab,
             on_dataset_loaded=self._on_dataset_loaded,
+            on_sample_selected=self._on_sample_selected,
         )
         self.dataset_panel.pack(fill=tk.BOTH, expand=True)
 
@@ -1034,10 +1035,16 @@ class MainFrame(ttk.Frame):
 
     def _on_dataset_loaded(self, samples: List[str]) -> None:
         """Handle dataset loaded callback."""
-        if samples:
-            # Set the first sample as input text
-            self.set_input(samples[0])
-            self.set_status(f"Dataset loaded: {len(samples)} samples", "cyan")
+        if not samples:
+            self.set_status("Dataset loaded but empty", "amber")
+            return
+        self.set_status(f"Dataset loaded: {len(samples)} samples", "cyan")
+
+    def _on_sample_selected(self, sample: str, index: int, total: int) -> None:
+        """Sync a dataset sample into the input panel."""
+        self.set_input(sample)
+        self._on_input_change()
+        self.set_status(f"Sample {index}/{total} loaded from dataset", "cyan")
 
     def _update_output_preview(self, text: str) -> None:
         """Refresh the inline output preview box."""

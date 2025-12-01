@@ -9,7 +9,7 @@ import threading
 import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext, ttk
-from typing import Callable, List
+from typing import Callable, List, Literal
 
 from ..theme import COLORS, FONTS
 from .utils import create_tooltip
@@ -22,12 +22,15 @@ class DatasetPanel(ttk.Frame):
         self,
         parent: ttk.Frame,
         on_dataset_loaded: Callable[[List[str]], None] | None = None,
+        on_sample_selected: Callable[[str, int, int], None] | None = None,
     ) -> None:
         super().__init__(parent)
         self.on_dataset_loaded = on_dataset_loaded
+        self.on_sample_selected = on_sample_selected
 
         # Dataset state
         self.samples: List[str] = []
+        self.current_index = 0
         self.loading = False
 
         # Variables
@@ -36,6 +39,7 @@ class DatasetPanel(ttk.Frame):
         self.split_var = tk.StringVar(value="train")
         self.sample_size_var = tk.StringVar(value="100")
         self.text_field_var = tk.StringVar(value="text")
+        self.sample_index_var = tk.StringVar(value="1")
 
         self._create_widgets()
 
@@ -173,17 +177,98 @@ class DatasetPanel(ttk.Frame):
             fg=COLORS["cyan_dim"],
             bg=COLORS["dark"],
             padx=4,
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, padx=(0, 6))
 
-        self.preview_count = tk.Label(
+        nav_label = tk.Label(
             preview_header,
-            text="",
+            text="Navigate samples",
             font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
-            padx=4,
         )
-        self.preview_count.pack(side=tk.RIGHT)
+        nav_label.pack(side=tk.LEFT)
+
+        nav_frame = tk.Frame(content, bg=COLORS["black"])
+        nav_frame.pack(fill=tk.X, padx=8, pady=(4, 0))
+
+        self.prev_btn = tk.Button(
+            nav_frame,
+            text="< Prev",
+            font=FONTS["tiny"],
+            fg=COLORS["green"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["highlight"],
+            bd=0,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=lambda: self._change_sample(-1),
+        )
+        self.prev_btn.pack(side=tk.LEFT)
+
+        tk.Label(
+            nav_frame,
+            text="Sample",
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["black"],
+        ).pack(side=tk.LEFT, padx=(12, 4))
+
+        self.index_spin = tk.Spinbox(
+            nav_frame,
+            from_=1,
+            to=1,
+            textvariable=self.sample_index_var,
+            width=6,
+            font=FONTS["mono"],
+            fg=COLORS["amber"],
+            bg=COLORS["darker"],
+            buttonbackground=COLORS["dark"],
+            relief=tk.SOLID,
+            bd=1,
+            command=self._jump_to_sample,
+        )
+        self.index_spin.pack(side=tk.LEFT)
+        self.index_spin.bind("<Return>", lambda _e: self._jump_to_sample())
+
+        self.total_label = tk.Label(
+            nav_frame,
+            text="/ 0",
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["black"],
+        )
+        self.total_label.pack(side=tk.LEFT, padx=(4, 12))
+
+        self.next_btn = tk.Button(
+            nav_frame,
+            text="Next >",
+            font=FONTS["tiny"],
+            fg=COLORS["green"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["highlight"],
+            bd=0,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=lambda: self._change_sample(1),
+        )
+        self.next_btn.pack(side=tk.LEFT)
+
+        self.use_btn = tk.Button(
+            nav_frame,
+            text="▶ Use Sample",
+            font=FONTS["tiny"],
+            fg=COLORS["black"],
+            bg=COLORS["green"],
+            activeforeground=COLORS["black"],
+            activebackground=COLORS["green_bright"],
+            bd=0,
+            relief=tk.FLAT,
+            cursor="hand2",
+            command=self._notify_sample_selected,
+        )
+        self.use_btn.pack(side=tk.RIGHT)
 
         # Preview text area
         preview_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
@@ -205,6 +290,7 @@ class DatasetPanel(ttk.Frame):
             state=tk.DISABLED,
         )
         self.preview_text.pack(fill=tk.BOTH, expand=True)
+        self._clear_preview()
 
     def _create_local_options(self) -> tk.Frame:
         """Create options for local file loading."""
@@ -382,10 +468,16 @@ class DatasetPanel(ttk.Frame):
             return
 
         source = self.source_var.get()
-        sample_size = int(self.sample_size_var.get())
+        try:
+            sample_size = int(self.sample_size_var.get())
+        except ValueError:
+            self.status_label.config(text="Invalid sample size", fg=COLORS["red"])
+            return
 
         self.loading = True
         self.load_btn.config(text="Loading...", bg=COLORS["amber"])
+        self.status_label.config(text="Loading dataset...", fg=COLORS["amber"])
+        self._toggle_nav_controls(enabled=False)
 
         # Run in thread to avoid blocking UI
         thread = threading.Thread(
@@ -487,23 +579,16 @@ class DatasetPanel(ttk.Frame):
         if error:
             messagebox.showerror("Load Failed", f"Could not load dataset:\n{error}")
             self.status_label.config(text="Load failed", fg=COLORS["red"])
+            self._update_navigation_state()
             return
 
         self.samples = samples
+        self.current_index = 0
         self.status_label.config(text=f"{len(samples)} samples loaded", fg=COLORS["green"])
-        self.preview_count.config(text=f"Showing 1-{min(5, len(samples))} of {len(samples)}")
 
-        # Update preview
-        self.preview_text.config(state=tk.NORMAL)
-        self.preview_text.delete("1.0", tk.END)
-
-        for i, sample in enumerate(samples[:5]):
-            if i > 0:
-                self.preview_text.insert(tk.END, "\n\n---\n\n")
-            preview = sample[:500] + "..." if len(sample) > 500 else sample
-            self.preview_text.insert(tk.END, f"[{i + 1}] {preview}")
-
-        self.preview_text.config(state=tk.DISABLED)
+        self._update_navigation_state()
+        if samples:
+            self._show_sample(self.current_index)
 
         # Notify callback
         if self.on_dataset_loaded:
@@ -512,3 +597,86 @@ class DatasetPanel(ttk.Frame):
     def get_samples(self) -> List[str]:
         """Return currently loaded samples."""
         return self.samples
+
+    def _clear_preview(self) -> None:
+        """Render an empty state when no samples are available."""
+        self.preview_text.config(state=tk.NORMAL)
+        self.preview_text.delete("1.0", tk.END)
+        self.preview_text.insert(
+            tk.END,
+            "No samples loaded.\n\nLoad a dataset to browse individual samples.\n"
+            "Use the navigation controls to move between them and send one to the input panel.",
+        )
+        self.preview_text.config(state=tk.DISABLED)
+        self.total_label.config(text="/ 0")
+        self.sample_index_var.set("1")
+        self._toggle_nav_controls(enabled=False)
+
+    def _toggle_nav_controls(self, *, enabled: bool) -> None:
+        """Enable or disable navigation controls."""
+        state: Literal["normal", "disabled"] = "normal" if enabled else "disabled"
+        for widget in (self.prev_btn, self.next_btn, self.index_spin, self.use_btn):
+            widget.config(state=state)
+
+    def _update_navigation_state(self) -> None:
+        """Refresh navigation widgets based on available samples."""
+        total = len(self.samples)
+        if total == 0:
+            self._clear_preview()
+            return
+
+        self._toggle_nav_controls(enabled=True)
+        self.index_spin.config(to=total)
+        self.total_label.config(text=f"/ {total}")
+
+        self.sample_index_var.set(str(self.current_index + 1))
+        self.prev_btn.config(state=tk.NORMAL if self.current_index > 0 else tk.DISABLED)
+        self.next_btn.config(
+            state=tk.NORMAL if self.current_index < total - 1 else tk.DISABLED
+        )
+
+    def _show_sample(self, index: int) -> None:
+        """Render a specific sample in the preview area."""
+        if not self.samples:
+            self._clear_preview()
+            return
+
+        clamped = max(0, min(index, len(self.samples) - 1))
+        self.current_index = clamped
+        sample = self.samples[clamped]
+
+        self.preview_text.config(state=tk.NORMAL)
+        self.preview_text.delete("1.0", tk.END)
+        self.preview_text.insert(tk.END, f"[{clamped + 1}] {sample}")
+        self.preview_text.config(state=tk.DISABLED)
+
+        self._update_navigation_state()
+        self._notify_sample_selected()
+
+    def _change_sample(self, delta: int) -> None:
+        """Move forward or backward by one sample."""
+        if not self.samples:
+            return
+        self._show_sample(self.current_index + delta)
+
+    def _jump_to_sample(self) -> None:
+        """Jump to a sample index entered in the spinbox."""
+        if not self.samples:
+            return
+
+        try:
+            target = int(self.sample_index_var.get()) - 1
+        except ValueError:
+            self.sample_index_var.set(str(self.current_index + 1))
+            return
+
+        self._show_sample(target)
+
+    def _notify_sample_selected(self) -> None:
+        """Inform listeners of the currently selected sample."""
+        if not self.samples:
+            return
+
+        if self.on_sample_selected:
+            sample = self.samples[self.current_index]
+            self.on_sample_selected(sample, self.current_index + 1, len(self.samples))
