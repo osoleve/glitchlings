@@ -31,10 +31,6 @@ class SessionConfig:
     seed: int = 151
     auto_update: bool = True
 
-    # Scan mode settings
-    scan_mode: bool = False
-    scan_count: int = 100
-
     # UI state
     diff_mode: str = "label"
     diff_tokenizer: str = "cl100k_base"
@@ -68,8 +64,6 @@ def dict_to_session(data: Dict[str, Any]) -> SessionConfig:
         tokenizers=data.get("tokenizers", []),
         seed=data.get("seed", 151),
         auto_update=data.get("auto_update", True),
-        scan_mode=data.get("scan_mode", False),
-        scan_count=data.get("scan_count", 100),
         diff_mode=data.get("diff_mode", "label"),
         diff_tokenizer=data.get("diff_tokenizer", "cl100k_base"),
         input_text=data.get("input_text", ""),

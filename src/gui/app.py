@@ -172,8 +172,6 @@ class App(tk.Tk):
             tokenizers=list(self.model.enabled_tokenizers),
             seed=self.model.seed,
             auto_update=self.model.auto_update,
-            scan_mode=self.model.scan_mode,
-            scan_count=self.model.scan_count,
             diff_mode=self.model.diff_mode,
             diff_tokenizer=self.model.diff_tokenizer,
             input_text=self.main_frame.get_input(),
@@ -200,8 +198,6 @@ class App(tk.Tk):
         self.main_frame.apply_session(config)
         self.model.seed = config.seed
         self.model.auto_update = config.auto_update
-        self.model.scan_mode = config.scan_mode
-        self.model.scan_count = config.scan_count
         self.model.diff_mode = config.diff_mode
         self.model.diff_tokenizer = config.diff_tokenizer
         self.model.enabled_glitchlings = resolve_glitchlings(config)
@@ -221,7 +217,7 @@ class App(tk.Tk):
             input_text=self.main_frame.get_input(),
             output_text=self.main_frame.get_output(),
             metrics=self._get_current_metrics(),
-            scan_results=self.model.scan_results,
+            scan_results={},
         )
 
         ExportDialog(self, export_data)

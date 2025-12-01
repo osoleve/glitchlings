@@ -295,7 +295,7 @@ class GridSweepPanel(ttk.Frame):
         table_inner.pack(fill=tk.BOTH, expand=True)
 
         # Create treeview for results
-        columns = ("param", "jsd_mean", "jsd_std", "ned_mean", "ned_std", "sr_mean", "sr_std")
+        columns = ("param", "jsd", "ned", "sr")
         self.results_tree = ttk.Treeview(
             table_inner,
             columns=columns,
@@ -306,12 +306,9 @@ class GridSweepPanel(ttk.Frame):
         # Configure columns
         col_config = [
             ("param", "Parameter", 80),
-            ("jsd_mean", "JSD Mean", 90),
-            ("jsd_std", "JSD Std", 80),
-            ("ned_mean", "NED Mean", 90),
-            ("ned_std", "NED Std", 80),
-            ("sr_mean", "SR Mean", 90),
-            ("sr_std", "SR Std", 80),
+            ("jsd", "JSD", 140),
+            ("ned", "NED", 140),
+            ("sr", "SR", 140),
         ]
 
         for col_id, heading, width in col_config:
@@ -516,28 +513,27 @@ class GridSweepPanel(ttk.Frame):
 
         first_tok = next(iter(point.metrics.values()))
 
-        def fmt(values: List[float]) -> tuple[str, str]:
+        def fmt(values: List[float]) -> str:
             if not values:
-                return "-", "-"
+                return "-"
             mean = statistics.mean(values)
-            std = statistics.stdev(values) if len(values) > 1 else 0
-            return f"{mean:.4f}", f"{std:.4f}"
+            if len(values) > 1:
+                std = statistics.stdev(values)
+                return f"{mean:.4f} ± {std:.4f}"
+            return f"{mean:.4f}"
 
-        jsd_mean, jsd_std = fmt(first_tok.get("jsd", []))
-        ned_mean, ned_std = fmt(first_tok.get("ned", []))
-        sr_mean, sr_std = fmt(first_tok.get("sr", []))
+        jsd = fmt(first_tok.get("jsd", []))
+        ned = fmt(first_tok.get("ned", []))
+        sr = fmt(first_tok.get("sr", []))
 
         self.results_tree.insert(
             "",
             "end",
             values=(
                 f"{point.param_value:.3f}",
-                jsd_mean,
-                jsd_std,
-                ned_mean,
-                ned_std,
-                sr_mean,
-                sr_std,
+                jsd,
+                ned,
+                sr,
             ),
         )
         self._notify_results_changed()

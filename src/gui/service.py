@@ -103,48 +103,29 @@ class GlitchlingService:
 
         return results
 
-    def run_scan(
+    def transform_text_multi_seed(
         self,
         input_text: str,
         glitchlings_config: List[Tuple[type[Any], Dict[str, Any]]],
         base_seed: int,
-        scan_count: int,
+        num_seeds: int,
         tokenizers: List[str],
-        progress_callback: Callable[[int, int], None],
-        completion_callback: Callable[[Dict[str, ScanResult], List[str]], None],
-        check_cancel: Callable[[], bool],
-    ) -> None:
-        """Run scan in a background thread."""
-        thread = threading.Thread(
-            target=self._scan_worker,
-            args=(
-                input_text,
-                glitchlings_config,
-                base_seed,
-                scan_count,
-                tokenizers,
-                progress_callback,
-                completion_callback,
-                check_cancel,
-            ),
-            daemon=True,
-        )
-        thread.start()
+    ) -> Tuple[str, List[str], Dict[str, Dict[str, str]]]:
+        """
+        Transform text with multiple seeds and aggregate metrics.
+        Returns (example_output, names, aggregated_metrics).
+        The metrics are formatted as "mean ± std".
+        """
+        if not input_text:
+            return "", [], {}
 
-    def _scan_worker(
-        self,
-        input_text: str,
-        enabled: List[Tuple[type[Any], Dict[str, Any]]],
-        base_seed: int,
-        scan_count: int,
-        tokenizers: List[str],
-        progress_callback: Callable[[int, int], None],
-        completion_callback: Callable[[Dict[str, ScanResult], List[str]], None],
-        check_cancel: Callable[[], bool],
-    ) -> None:
-        """Worker thread logic for scan mode."""
+        if not glitchlings_config:
+            return input_text, [], {}
+
         if not tokenizers:
             tokenizers = [DEFAULT_TOKENIZER]
+
+        names = [cls.__name__ for cls, _ in glitchlings_config]
 
         # Resolve tokenizers once
         resolved_toks: Dict[str, Any] = {}
@@ -156,86 +137,108 @@ class GlitchlingService:
 
         # Pre-encode input text
         input_tokens: Dict[str, List[str]] = {}
+        input_ids: Dict[str, List[int]] = {}
         for tok_name, tok in resolved_toks.items():
             if tok:
                 try:
-                    tokens, _ = tok.encode(input_text)
+                    tokens, ids = tok.encode(input_text)
                     input_tokens[tok_name] = tokens
+                    input_ids[tok_name] = ids
                 except Exception:
                     input_tokens[tok_name] = []
+                    input_ids[tok_name] = []
             else:
                 input_tokens[tok_name] = []
+                input_ids[tok_name] = []
 
-        # Initialize results storage
-        results: Dict[str, ScanResult] = {tok: ScanResult() for tok in tokenizers}
+        # Collect metrics across seeds
+        metrics_lists: Dict[str, Dict[str, List[float]]] = {
+            tok: {"token_delta": [], "jsd": [], "ned": [], "sr": []} for tok in tokenizers
+        }
 
-        names = [cls.__name__ for cls, _ in enabled]
-
-        for i in range(scan_count):
-            if check_cancel():
-                break
-
+        example_output = ""
+        for i in range(num_seeds):
             seed = base_seed + i
 
-            try:
-                # Create glitchling instances with this seed
-                glitchlings = []
-                for cls, params in enabled:
-                    instance = cls(seed=seed, **params)
-                    glitchlings.append(instance)
+            # Create glitchlings for this seed
+            glitchlings = []
+            for cls, params in glitchlings_config:
+                glitchlings.append(cls(seed=seed, **params))
 
-                # Create gaggle and corrupt
-                gaggle = Gaggle(glitchlings, seed=seed)
-                output = gaggle.corrupt(input_text)
-                output_str = str(output)
+            gaggle = Gaggle(glitchlings, seed=seed)
+            output = str(gaggle.corrupt(input_text))
 
-                # Calculate metrics for each tokenizer
-                for tok_name in tokenizers:
-                    tok = resolved_toks.get(tok_name)
-                    if not tok or not input_tokens.get(tok_name):
-                        continue
+            # Keep last output as example
+            if i == num_seeds - 1:
+                example_output = output
 
-                    try:
-                        out_tokens, out_ids = tok.encode(output_str)
-                        in_tokens = input_tokens[tok_name]
+            # Calculate metrics for each tokenizer
+            for tok_name in tokenizers:
+                tok = resolved_toks.get(tok_name)
+                if not tok or not input_tokens.get(tok_name):
+                    continue
 
-                        res = results[tok_name]
-                        res.token_count_out.append(len(out_ids))
-                        res.token_delta.append(len(out_ids) - len(in_tokens))
-                        res.char_count_out.append(len(output_str))
+                try:
+                    out_tokens, out_ids = tok.encode(output)
+                    in_tokens = input_tokens[tok_name]
+                    in_ids = input_ids[tok_name]
 
-                        # Calculate divergence metrics
-                        if in_tokens and out_tokens:
-                            try:
-                                jsd_val = jensen_shannon_divergence(in_tokens, out_tokens)
-                                if isinstance(jsd_val, (int, float)):
-                                    res.jsd.append(float(jsd_val))
-                            except Exception:
-                                pass
+                    # Token delta
+                    delta = len(out_ids) - len(in_ids)
+                    metrics_lists[tok_name]["token_delta"].append(float(delta))
 
-                            try:
-                                ned_val = normalized_edit_distance(in_tokens, out_tokens)
-                                if isinstance(ned_val, (int, float)):
-                                    res.ned.append(float(ned_val))
-                            except Exception:
-                                pass
+                    # Calculate divergence metrics
+                    if in_tokens and out_tokens:
+                        try:
+                            jsd_val = jensen_shannon_divergence(in_tokens, out_tokens)
+                            if isinstance(jsd_val, (int, float)):
+                                metrics_lists[tok_name]["jsd"].append(float(jsd_val))
+                        except Exception:
+                            pass
 
-                            try:
-                                sr_val = subsequence_retention(in_tokens, out_tokens)
-                                if isinstance(sr_val, (int, float)):
-                                    res.sr.append(float(sr_val))
-                            except Exception:
-                                pass
-                    except Exception:
-                        pass
-            except Exception:
-                pass
+                        try:
+                            ned_val = normalized_edit_distance(in_tokens, out_tokens)
+                            if isinstance(ned_val, (int, float)):
+                                metrics_lists[tok_name]["ned"].append(float(ned_val))
+                        except Exception:
+                            pass
 
-            # Update progress
-            if (i + 1) % max(1, scan_count // 100) == 0 or i == scan_count - 1:
-                progress_callback(i + 1, scan_count)
+                        try:
+                            sr_val = subsequence_retention(in_tokens, out_tokens)
+                            if isinstance(sr_val, (int, float)):
+                                metrics_lists[tok_name]["sr"].append(float(sr_val))
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
 
-        completion_callback(results, names)
+        # Aggregate metrics (mean ± std)
+        aggregated: Dict[str, Dict[str, str]] = {}
+        for tok_name in tokenizers:
+            tok_metrics: Dict[str, str] = {}
+            for metric_name in ["token_delta", "jsd", "ned", "sr"]:
+                values = metrics_lists[tok_name][metric_name]
+                if values:
+                    mean = statistics.mean(values)
+                    if len(values) > 1:
+                        std = statistics.stdev(values)
+                        if metric_name == "token_delta":
+                            # Format token delta with sign
+                            sign = "+" if mean > 0 else ""
+                            tok_metrics[metric_name] = f"{sign}{mean:.1f} ± {std:.1f}"
+                        else:
+                            tok_metrics[metric_name] = f"{mean:.4f} ± {std:.4f}"
+                    else:
+                        if metric_name == "token_delta":
+                            sign = "+" if mean > 0 else ""
+                            tok_metrics[metric_name] = f"{sign}{mean:.1f}"
+                        else:
+                            tok_metrics[metric_name] = f"{mean:.4f}"
+                else:
+                    tok_metrics[metric_name] = "-"
+            aggregated[tok_name] = tok_metrics
+
+        return example_output, names, aggregated
 
     def format_scan_metrics(
         self, results: Dict[str, ScanResult], metrics: Sequence[str] | None = None

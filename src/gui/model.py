@@ -26,11 +26,9 @@ class SessionState:
     enabled_glitchlings: List[Tuple[type, Dict[str, Any]]] = field(default_factory=list)
     enabled_tokenizers: List[str] = field(default_factory=list)
 
-    # Scan state
-    scan_mode: bool = False
-    scan_count: int = 100
-    scan_results: Dict[str, ScanResult] = field(default_factory=dict)
-    scan_running: bool = False
+    # Multi-seed aggregation (for main transform)
+    multi_seed_mode: bool = False
+    multi_seed_count: int = 10
 
     # Dataset batch processing
     dataset_results: Dict[str, ScanResult] = field(default_factory=dict)

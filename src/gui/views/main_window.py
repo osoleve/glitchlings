@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Tuple, ca
 from glitchlings import SAMPLE_TEXT
 from glitchlings.attack.tokenization import resolve_tokenizer
 
-from ..preferences import Preferences
 from ..model import ScanResult
-from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS, SCAN_PRESET_OPTIONS
+from ..preferences import Preferences
+from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS
 from .glitchling_panel import GlitchlingPanel
 from .tokenizer_panel import TokenizerPanel
 from .utils import create_tooltip
@@ -48,9 +48,9 @@ class MainFrame(ttk.Frame):
         self.diff_mode_var = tk.StringVar(value="label")
         self.diff_tokenizer_var = tk.StringVar(value="cl100k_base")
 
-        # Scan mode variables
-        self.scan_mode_var = tk.BooleanVar(value=False)
-        self.scan_count_var = tk.StringVar(value="100")
+        # Multi-seed aggregation (for main transform)
+        self.multi_seed_var = tk.BooleanVar(value=False)
+        self.multi_seed_count_var = tk.StringVar(value="10")
 
         self.current_output: str = ""
 
@@ -62,7 +62,7 @@ class MainFrame(ttk.Frame):
         self.metrics_tree: ttk.Treeview
         self.status_var: tk.StringVar
         self.status_indicator: tk.Label
-        self.scan_count_combo: ttk.Combobox
+        self.multi_seed_combo: ttk.Combobox
         self.transform_btn: tk.Button
         self.output_preview_text: scrolledtext.ScrolledText
         self.main_pane: ttk.PanedWindow
@@ -142,6 +142,9 @@ class MainFrame(ttk.Frame):
         self.content_tabs = ttk.Notebook(tabs_frame)
         self.content_tabs.pack(fill=tk.BOTH, expand=True, padx=2, pady=(0, 3))
         self.content_tabs.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+
+        # Store reference to right_pane for metrics visibility toggling
+        self._right_pane = right_pane
 
         self.input_tab = ttk.Frame(self.content_tabs)
         self.token_diff_tab = ttk.Frame(self.content_tabs)
@@ -347,11 +350,11 @@ class MainFrame(ttk.Frame):
         )
         self.charts_panel.pack(fill=tk.BOTH, expand=True)
 
-        # Metrics section
-        metrics_container = ttk.Frame(right_pane)
-        right_pane.add(metrics_container, weight=2)
+        # Metrics section (visible only on Input/Token Diff tabs)
+        self._metrics_container = ttk.Frame(right_pane)
+        right_pane.add(self._metrics_container, weight=2)
 
-        metrics_frame = self._create_vector_labelframe(metrics_container, "METRICS")
+        metrics_frame = self._create_vector_labelframe(self._metrics_container, "METRICS")
         metrics_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 0))
 
         # Get content frame for metrics
@@ -716,7 +719,7 @@ class MainFrame(ttk.Frame):
         auto_check.pack(side=tk.LEFT, padx=(0, 8))
         create_tooltip(auto_check, "Auto-transform on changes")
 
-        # Scan mode separator
+        # Multi-seed aggregation separator
         tk.Label(
             controls_frame,
             text="│",
@@ -725,41 +728,41 @@ class MainFrame(ttk.Frame):
             bg=COLORS["dark"],
         ).pack(side=tk.LEFT, padx=4)
 
-        # Scan mode controls
-        scan_frame = tk.Frame(controls_frame, bg=COLORS["dark"])
-        scan_frame.pack(side=tk.LEFT, padx=(0, 8))
+        # Multi-seed aggregation controls (for main transform)
+        multi_seed_frame = tk.Frame(controls_frame, bg=COLORS["dark"])
+        multi_seed_frame.pack(side=tk.LEFT, padx=(0, 8))
 
-        scan_check = tk.Checkbutton(
-            scan_frame,
-            text="Scan",
-            variable=self.scan_mode_var,
+        multi_seed_check = tk.Checkbutton(
+            multi_seed_frame,
+            text="Avg",
+            variable=self.multi_seed_var,
             font=FONTS["small"],
-            fg=COLORS["magenta"],
+            fg=COLORS["cyan"],
             bg=COLORS["dark"],
             activeforeground=COLORS["cyan_bright"],
             activebackground=COLORS["dark"],
             selectcolor=COLORS["darker"],
             highlightthickness=0,
             cursor="hand2",
-            command=self._on_scan_mode_toggle,
+            command=self._on_settings_change,
         )
-        scan_check.pack(side=tk.LEFT)
-        create_tooltip(scan_check, "Calculate average metrics over multiple seeds")
+        multi_seed_check.pack(side=tk.LEFT)
+        create_tooltip(multi_seed_check, "Show mean±std metrics averaged over multiple seeds")
 
-        # Scan count dropdown
-        self.scan_count_combo = ttk.Combobox(
-            scan_frame,
-            textvariable=self.scan_count_var,
-            values=SCAN_PRESET_OPTIONS,
-            width=6,
+        # Multi-seed count dropdown
+        self.multi_seed_combo = ttk.Combobox(
+            multi_seed_frame,
+            textvariable=self.multi_seed_count_var,
+            values=("5", "10", "25", "50"),
+            width=4,
             state="readonly",
         )
-        self.scan_count_combo.pack(side=tk.LEFT, padx=(4, 0))
-        self.scan_count_combo.bind("<<ComboboxSelected>>", lambda e: self._on_settings_change())
+        self.multi_seed_combo.pack(side=tk.LEFT, padx=(4, 0))
+        self.multi_seed_combo.bind("<<ComboboxSelected>>", lambda e: self._on_settings_change())
 
         tk.Label(
-            scan_frame,
-            text="seeds",
+            multi_seed_frame,
+            text="×",
             font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
@@ -787,15 +790,11 @@ class MainFrame(ttk.Frame):
         # Hover effects for transform button
         self.transform_btn.bind(
             "<Enter>",
-            lambda e: self.transform_btn.config(bg=COLORS["green_bright"])
-            if not self.scan_mode_var.get()
-            else self.transform_btn.config(bg=COLORS["cyan"]),
+            lambda e: self.transform_btn.config(bg=COLORS["green_bright"]),
         )
         self.transform_btn.bind(
             "<Leave>",
-            lambda e: self.transform_btn.config(bg=COLORS["green"])
-            if not self.scan_mode_var.get()
-            else self.transform_btn.config(bg=COLORS["magenta"]),
+            lambda e: self.transform_btn.config(bg=COLORS["green"]),
         )
 
     def _toggle_sidebar(self) -> None:
@@ -829,11 +828,6 @@ class MainFrame(ttk.Frame):
         if self.controller:
             self.controller.randomize_seed()
 
-    def _on_scan_mode_toggle(self) -> None:
-        """Called when scan mode is toggled."""
-        if self.controller:
-            self.controller.toggle_scan_mode(self.scan_mode_var.get())
-
     def _on_tokenizers_change(self) -> None:
         """Handle updates from the tokenizer panel."""
         self._on_settings_change()
@@ -843,15 +837,15 @@ class MainFrame(ttk.Frame):
         """Called when any setting changes."""
         if self.controller:
             try:
-                scan_count = int(self.scan_count_var.get())
+                multi_seed_count = int(self.multi_seed_count_var.get())
             except ValueError:
-                scan_count = 100
+                multi_seed_count = 10
 
             self.controller.update_settings(
                 self.seed_var.get(),
                 self.auto_update_var.get(),
-                self.scan_mode_var.get(),
-                scan_count,
+                self.multi_seed_var.get(),
+                multi_seed_count,
             )
 
     def _on_input_change(self) -> None:
@@ -860,7 +854,7 @@ class MainFrame(ttk.Frame):
             self.controller.update_input_text(self.get_input())
 
     def _on_tab_changed(self, _event: tk.Event) -> None:
-        """Track tab selection for persistence."""
+        """Track tab selection for persistence and toggle metrics visibility."""
         try:
             tabs = cast(Any, self.content_tabs)
             idx = tabs.index(tabs.select())
@@ -869,8 +863,27 @@ class MainFrame(ttk.Frame):
 
         self._update_preferences(last_tab="diff" if idx == 1 else "input")
 
+        # Show metrics only on Input (0) or Token Diff (1) tabs
+        self._update_metrics_visibility(idx in (0, 1))
+
+    def _update_metrics_visibility(self, visible: bool) -> None:
+        """Show or hide the metrics panel based on current tab."""
+        if not hasattr(self, "_metrics_container") or not hasattr(self, "_right_pane"):
+            return
+
+        try:
+            panes = list(self._right_pane.panes())
+            metrics_in_pane = str(self._metrics_container) in panes
+        except tk.TclError:
+            return
+
+        if visible and not metrics_in_pane:
+            self._right_pane.add(self._metrics_container, weight=2)
+        elif not visible and metrics_in_pane:
+            self._right_pane.forget(self._metrics_container)
+
     def _focus_results_tab(self) -> None:
-        """Move to the token diff tab when running a transform or scan."""
+        """Move to the token diff tab when running a transform."""
         try:
             tabs = cast(Any, self.content_tabs)
             current_tab = tabs.select()
@@ -947,8 +960,6 @@ class MainFrame(ttk.Frame):
         # Update seed and settings
         self.seed_var.set(config.seed)
         self.auto_update_var.set(config.auto_update)
-        self.scan_mode_var.set(config.scan_mode)
-        self.scan_count_var.set(str(config.scan_count))
         self.diff_mode_var.set(config.diff_mode)
         self.diff_tokenizer_var.set(config.diff_tokenizer)
 
@@ -967,9 +978,6 @@ class MainFrame(ttk.Frame):
                     for param_name, value in params.items():
                         if param_name in self.glitchling_panel.param_widgets[glitch_name]:
                             self.glitchling_panel.param_widgets[glitch_name][param_name].set(value)
-
-        # Update transform button state
-        self.update_transform_button(config.scan_mode)
 
         # Trigger settings sync
         self._on_settings_change()
@@ -1001,18 +1009,6 @@ class MainFrame(ttk.Frame):
         if preferences.sidebar_collapsed != self.sidebar_collapsed:
             self._toggle_sidebar()
 
-    def update_transform_button(self, is_scan: bool) -> None:
-        if is_scan:
-            self.transform_btn.config(text="▶ SCAN", bg=COLORS["magenta"])
-        else:
-            self.transform_btn.config(text="▶ TRANSFORM", bg=COLORS["green"])
-
-    def set_scan_running(self, running: bool) -> None:
-        if running:
-            self.transform_btn.config(text="■ CANCEL", bg=COLORS["red"])
-        else:
-            self.update_transform_button(self.scan_mode_var.get())
-
     def get_enabled_glitchlings(self) -> List[Tuple[Any, Dict[str, Any]]]:
         return self.glitchling_panel.get_enabled_glitchlings()
 
@@ -1020,9 +1016,7 @@ class MainFrame(ttk.Frame):
         return self.tokenizer_panel.get_enabled_tokenizers()
 
     def _get_scan_results(self) -> Dict[str, ScanResult]:
-        """Get scan results for charts panel."""
-        if self.controller and self.controller.model:
-            return cast(Dict[str, ScanResult], self.controller.model.scan_results)
+        """Get scan results for charts panel (deprecated - returns empty)."""
         return {}
 
     def _get_dataset_results(self) -> Dict[str, ScanResult]:
@@ -1151,26 +1145,6 @@ class MainFrame(ttk.Frame):
         )
 
         self._replace_metrics_rows(rows)
-
-    def display_scan_results(
-        self, tokenizers: List[str], formatted_rows: List[Tuple[str, List[str]]]
-    ) -> None:
-        """Update metrics table with scan results."""
-        active_tokenizers = self._configure_metrics_table(tokenizers)
-        if not formatted_rows:
-            self._replace_metrics_rows([])
-            return
-
-        expected_cols = len(active_tokenizers)
-        normalized_rows: List[Tuple[str, List[str]]] = []
-        for metric_name, values in formatted_rows:
-            row_values = list(values)[:expected_cols]
-            if len(row_values) < expected_cols:
-                row_values.extend(["-"] * (expected_cols - len(row_values)))
-            normalized_rows.append((metric_name, row_values))
-
-        self._replace_metrics_rows(normalized_rows)
-        self.refresh_charts()
 
     def clear_all(self) -> None:
         """Clear all text and reset seed."""
