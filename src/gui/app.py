@@ -90,8 +90,8 @@ COLORS = {
 
 # Font configuration - using monospace fonts for authentic terminal feel
 FONTS = {
-    "header": ("Consolas", 14, "bold"),
-    "title": ("Consolas", 11, "bold"),
+    "header": ("Consolas", 13, "bold"),
+    "title": ("Consolas", 10, "bold"),
     "section": ("Consolas", 10, "bold"),
     "body": ("Consolas", 10),
     "mono": ("Consolas", 10),
@@ -99,10 +99,11 @@ FONTS = {
     "tiny": ("Consolas", 8),
     "status": ("Consolas", 9),
     "metric": ("Consolas", 9),
+    "glitch_name": ("Consolas", 10, "bold"),
 }
 
 # Application info
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 APP_TITLE = "GLITCHLINGS TERMINAL"
 
 # Tooltips/help text for glitchlings
@@ -134,6 +135,47 @@ AVAILABLE_GLITCHLINGS = [
     Typogre,
     Zeedub,
 ]
+
+
+def _create_tooltip(widget: tk.Widget, text: str) -> None:
+    """Create a tooltip for a widget."""
+    tooltip: tk.Toplevel | None = None
+
+    def show_tooltip(event: tk.Event) -> None:  # type: ignore[type-arg]
+        nonlocal tooltip
+        if tooltip is not None:
+            return
+        x = widget.winfo_rootx() + 20
+        y = widget.winfo_rooty() + widget.winfo_height() + 5
+        tooltip = tk.Toplevel(widget)
+        tooltip.wm_overrideredirect(True)
+        tooltip.wm_geometry(f"+{x}+{y}")
+        tooltip.configure(bg=COLORS["dark"])
+
+        # Border frame
+        border = tk.Frame(tooltip, bg=COLORS["border"], padx=1, pady=1)
+        border.pack(fill=tk.BOTH, expand=True)
+
+        label = tk.Label(
+            border,
+            text=text,
+            font=FONTS["tiny"],
+            fg=COLORS["green"],
+            bg=COLORS["dark"],
+            padx=6,
+            pady=3,
+        )
+        label.pack()
+
+    def hide_tooltip(event: tk.Event) -> None:  # type: ignore[type-arg]
+        nonlocal tooltip
+        if tooltip is not None:
+            tooltip.destroy()
+            tooltip = None
+
+    widget.bind("<Enter>", show_tooltip, add="+")
+    widget.bind("<Leave>", hide_tooltip, add="+")
+
 
 # Parameter metadata for each glitchling (using defaults from constants.py)
 GLITCHLING_PARAMS: dict[str, dict[str, dict[str, Any]]] = {
@@ -213,13 +255,13 @@ class App(tk.Tk):
         self.title(f"༼ つ ◕_◕ ༽つ {APP_TITLE} v{APP_VERSION}")
 
         # Set initial geometry and center on screen
-        width, height = 1400, 900
+        width, height = 1440, 920
         screen_w = self.winfo_screenwidth()
         screen_h = self.winfo_screenheight()
         x = (screen_w - width) // 2
         y = (screen_h - height) // 2
         self.geometry(f"{width}x{height}+{x}+{y}")
-        self.minsize(1100, 750)
+        self.minsize(1150, 780)
 
         # Apply vector terminal theme
         self._apply_theme()
@@ -236,6 +278,9 @@ class App(tk.Tk):
         # Bind global shortcuts
         self.bind("<F5>", lambda e: self.main_frame._transform_text())
         self.bind("<Escape>", lambda e: self.main_frame.input_text.focus_set())
+        self.bind("<Control-Return>", lambda e: self.main_frame._transform_text())
+        self.bind("<Control-r>", lambda e: self.main_frame._randomize_seed())
+        self.bind("<Control-l>", lambda e: self.main_frame.clear_all())
 
     def _apply_theme(self) -> None:
         """Apply the vector terminal CRT aesthetic."""
@@ -859,21 +904,22 @@ class GlitchlingPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["dark"],
-            padx=10,
-            pady=6,
+            padx=8,
+            pady=5,
         )
-        header.pack(fill=tk.X)
+        header.pack(side=tk.LEFT)
 
-        # Count indicator
+        # Count indicator with better styling
         self.count_var = tk.StringVar(value="0 active")
         count_label = tk.Label(
             header_inner,
             textvariable=self.count_var,
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["green"],
             bg=COLORS["dark"],
+            padx=8,
         )
-        count_label.pack(side=tk.RIGHT, padx=8)
+        count_label.pack(side=tk.RIGHT, padx=6, pady=5)
 
         # Scrollable frame for glitchlings with border
         scroll_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -898,12 +944,19 @@ class GlitchlingPanel(ttk.Frame):
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # Bind mousewheel
-        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+        # Bind mousewheel only when hovering over canvas
+        self.canvas.bind("<Enter>", self._bind_mousewheel)
+        self.canvas.bind("<Leave>", self._unbind_mousewheel)
 
         # Create glitchling entries
         for cls in AVAILABLE_GLITCHLINGS:
             self._create_glitchling_entry(cls)
+
+    def _bind_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+        self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+
+    def _unbind_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
+        self.canvas.unbind_all("<MouseWheel>")
 
     def _on_mousewheel(self, event: tk.Event) -> None:  # type: ignore[type-arg]
         self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -924,31 +977,40 @@ class GlitchlingPanel(ttk.Frame):
         header_frame = tk.Frame(frame, bg=COLORS["black"])
         header_frame.pack(fill=tk.X, pady=1)
 
-        # Expand/collapse button - vector style
+        # Expand/collapse button - vector style with better visual feedback
         expand_btn = tk.Button(
             header_frame,
             text="▸",
             width=2,
             font=FONTS["small"],
             fg=COLORS["green_muted"],
-            bg=COLORS["panel"],
-            activeforeground=COLORS["green_bright"],
-            activebackground=COLORS["highlight"],
+            bg=COLORS["black"],
+            activeforeground=COLORS["cyan"],
+            activebackground=COLORS["black"],
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
             command=lambda n=name: self._toggle_expand(n),  # type: ignore[misc]
         )
-        expand_btn.pack(side=tk.LEFT, padx=(4, 6))
+        expand_btn.pack(side=tk.LEFT, padx=(4, 4))
         frame.expand_btn = expand_btn
 
-        # Enable checkbox - vector style
+        # Bind hover effects to expand button
+        expand_btn.bind("<Enter>", lambda e, b=expand_btn: b.config(fg=COLORS["cyan"]))
+        expand_btn.bind(
+            "<Leave>",
+            lambda e, b=expand_btn, n=name: b.config(
+                fg=COLORS["cyan"] if self.expanded.get(n) else COLORS["green_muted"]
+            ),
+        )
+
+        # Enable checkbox - vector style with improved visuals
         check = tk.Checkbutton(
             header_frame,
             text=name,
             variable=self.enabled[name],
             command=self.on_change,
-            font=FONTS["body"],
+            font=FONTS["glitch_name"],
             fg=COLORS["green"],
             bg=COLORS["black"],
             activeforeground=COLORS["green_bright"],
@@ -959,17 +1021,25 @@ class GlitchlingPanel(ttk.Frame):
         )
         check.pack(side=tk.LEFT, padx=2)
 
-        # Description label (tooltip-like)
+        # Bind hover effect to checkbox
+        check.bind("<Enter>", lambda e, c=check: c.config(fg=COLORS["green_bright"]))
+        check.bind("<Leave>", lambda e, c=check: c.config(fg=COLORS["green"]))
+
+        # Description label (tooltip-like) - truncate if too long
         desc = GLITCHLING_DESCRIPTIONS.get(name, "")
         if desc:
+            # Truncate long descriptions
+            display_desc = desc if len(desc) <= 45 else desc[:42] + "..."
             desc_label = tk.Label(
                 header_frame,
-                text=f"· {desc}",
+                text=f"· {display_desc}",
                 font=FONTS["tiny"],
                 fg=COLORS["green_dim"],
                 bg=COLORS["black"],
             )
-            desc_label.pack(side=tk.LEFT, padx=(8, 0))
+            desc_label.pack(side=tk.LEFT, padx=(6, 0))
+            # Show full description on hover via title attribute
+            _create_tooltip(desc_label, desc)
 
         # Parameter frame (initially hidden)
         param_frame = tk.Frame(frame, bg=COLORS["black"])
@@ -987,8 +1057,8 @@ class GlitchlingPanel(ttk.Frame):
         param_name: str,
         param_info: dict[str, Any],
     ) -> None:
-        row = tk.Frame(parent, bg=COLORS["panel"])
-        row.pack(fill=tk.X, padx=16, pady=3)
+        row = tk.Frame(parent, bg=COLORS["dark"])
+        row.pack(fill=tk.X, padx=20, pady=2)
 
         # Format parameter name: snake_case to Title Case
         display_name = param_name.replace("_", " ").title()
@@ -996,13 +1066,13 @@ class GlitchlingPanel(ttk.Frame):
         label = tk.Label(
             row,
             text=display_name,
-            width=16,
+            width=15,
             anchor="w",
             font=FONTS["small"],
-            fg=COLORS["green_muted"],
-            bg=COLORS["panel"],
+            fg=COLORS["cyan_dim"],
+            bg=COLORS["dark"],
         )
-        label.pack(side=tk.LEFT, padx=(4, 0))
+        label.pack(side=tk.LEFT, padx=(6, 0))
 
         param_type = param_info["type"]
 
@@ -1172,7 +1242,7 @@ class TokenizerPanel(ttk.Frame):
 
         self.new_tok_entry = tk.Entry(
             add_frame,
-            width=16,
+            width=18,
             font=FONTS["small"],
             fg=COLORS["amber"],
             bg=COLORS["darker"],
@@ -1182,6 +1252,7 @@ class TokenizerPanel(ttk.Frame):
         )
         self.new_tok_entry.pack(side=tk.LEFT, padx=2)
         self.new_tok_entry.bind("<Return>", lambda e: self._add_new_tokenizer())
+        _create_tooltip(self.new_tok_entry, "Enter tokenizer name (tiktoken or HuggingFace)")
 
         add_btn = tk.Button(
             add_frame,
@@ -1189,15 +1260,17 @@ class TokenizerPanel(ttk.Frame):
             font=FONTS["tiny"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
-            activeforeground=COLORS["green_bright"],
-            activebackground=COLORS["highlight"],
+            activeforeground=COLORS["black"],
+            activebackground=COLORS["green"],
             bd=1,
             relief=tk.SOLID,
-            padx=6,
+            padx=8,
             cursor="hand2",
             command=self._add_new_tokenizer,
         )
         add_btn.pack(side=tk.LEFT, padx=4)
+        add_btn.bind("<Enter>", lambda e: add_btn.config(bg=COLORS["highlight"]))
+        add_btn.bind("<Leave>", lambda e: add_btn.config(bg=COLORS["dark"]))
 
     def _add_tokenizer(self, name: str) -> None:
         if name in self.tokenizers:
@@ -1355,7 +1428,7 @@ class MainFrame(ttk.Frame):
                 bd=0,
                 relief=tk.FLAT,
                 cursor="hand2",
-                command=lambda: (self.input_text.delete("1.0", tk.END), self._on_settings_change()),
+                command=self._clear_input,
             )
             clear_btn.pack(side=tk.RIGHT, padx=6)
 
@@ -1512,7 +1585,7 @@ class MainFrame(ttk.Frame):
 
     def _create_status_bar(self) -> None:
         """Create a status bar at the bottom of the window."""
-        status_frame = tk.Frame(self, bg=COLORS["dark"], height=26)
+        status_frame = tk.Frame(self, bg=COLORS["dark"], height=28)
         status_frame.pack(fill=tk.X, side=tk.BOTTOM, padx=2, pady=(0, 2))
         status_frame.pack_propagate(False)
 
@@ -1520,14 +1593,14 @@ class MainFrame(ttk.Frame):
         self.status_indicator = tk.Label(
             status_frame,
             text="●",
-            font=FONTS["tiny"],
+            font=FONTS["small"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             padx=4,
         )
-        self.status_indicator.pack(side=tk.LEFT, padx=(6, 0))
+        self.status_indicator.pack(side=tk.LEFT, padx=(8, 0))
 
-        self.status_var = tk.StringVar(value="Ready")
+        self.status_var = tk.StringVar(value="Ready · Select glitchlings to begin")
         status_label = tk.Label(
             status_frame,
             textvariable=self.status_var,
@@ -1536,12 +1609,12 @@ class MainFrame(ttk.Frame):
             bg=COLORS["dark"],
             anchor="w",
         )
-        status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        status_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(2, 0))
 
-        # Right side - keyboard shortcut hint
+        # Right side - keyboard shortcut hints
         hint_label = tk.Label(
             status_frame,
-            text="F5: Transform | Ctrl+S: Save",
+            text="F5/Ctrl+↵: Transform │ Ctrl+R: Random Seed │ Ctrl+S: Save",
             font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
@@ -1565,7 +1638,7 @@ class MainFrame(ttk.Frame):
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
             bg=COLORS["dark"],
-            padx=8,
+            padx=6,
         )
         version_label.pack(side=tk.RIGHT)
 
@@ -1578,9 +1651,10 @@ class MainFrame(ttk.Frame):
         inner = tk.Frame(outer, bg=COLORS["black"])
         inner.pack(fill=tk.BOTH, expand=True)
 
-        # Title bar with gradient effect
-        title_bar = tk.Frame(inner, bg=COLORS["dark"])
+        # Title bar with clean styling
+        title_bar = tk.Frame(inner, bg=COLORS["dark"], height=26)
         title_bar.pack(fill=tk.X)
+        title_bar.pack_propagate(False)
 
         # Left decoration
         tk.Label(
@@ -1589,7 +1663,7 @@ class MainFrame(ttk.Frame):
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
-        ).pack(side=tk.LEFT, padx=(4, 0))
+        ).pack(side=tk.LEFT, padx=(6, 0), pady=4)
 
         title_label = tk.Label(
             title_bar,
@@ -1597,10 +1671,9 @@ class MainFrame(ttk.Frame):
             font=FONTS["title"],
             fg=COLORS["cyan"],
             bg=COLORS["dark"],
-            padx=6,
-            pady=4,
+            padx=4,
         )
-        title_label.pack(side=tk.LEFT)
+        title_label.pack(side=tk.LEFT, pady=4)
 
         # Right decoration
         tk.Label(
@@ -1609,12 +1682,12 @@ class MainFrame(ttk.Frame):
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, pady=4)
 
         # Store title bar reference for adding buttons later
         outer.title_bar = title_bar  # type: ignore[attr-defined]
 
-        # Content area
+        # Content area with slight padding
         content = tk.Frame(inner, bg=COLORS["black"])
         content.pack(fill=tk.BOTH, expand=True)
 
@@ -1638,7 +1711,7 @@ class MainFrame(ttk.Frame):
 
         # Create a border frame
         border_frame = tk.Frame(parent, bg=COLORS["border"], padx=1, pady=1)
-        border_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        border_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         text = scrolledtext.ScrolledText(
             border_frame,
@@ -1651,13 +1724,68 @@ class MainFrame(ttk.Frame):
             selectbackground=COLORS["highlight"],
             selectforeground=COLORS["green_bright"],
             relief=tk.FLAT,
-            padx=10,
-            pady=8,
+            padx=12,
+            pady=10,
             state=state,
-            cursor="xterm",
+            cursor="xterm" if state == tk.NORMAL else "arrow",
+            undo=True,  # Enable undo/redo
         )
         text.pack(fill=tk.BOTH, expand=True)
+
+        # Add right-click context menu for editable text
+        if state == tk.NORMAL:
+            self._add_text_context_menu(text)
+
         return text
+
+    def _add_text_context_menu(self, text_widget: scrolledtext.ScrolledText) -> None:
+        """Add a right-click context menu to a text widget."""
+        menu = tk.Menu(
+            text_widget,
+            tearoff=0,
+            bg=COLORS["dark"],
+            fg=COLORS["green"],
+            activebackground=COLORS["highlight"],
+            activeforeground=COLORS["green_bright"],
+            font=FONTS["small"],
+        )
+        menu.add_command(
+            label="Cut",
+            command=lambda: text_widget.event_generate("<<Cut>>"),
+            accelerator="Ctrl+X",
+        )
+        menu.add_command(
+            label="Copy",
+            command=lambda: text_widget.event_generate("<<Copy>>"),
+            accelerator="Ctrl+C",
+        )
+        menu.add_command(
+            label="Paste",
+            command=lambda: text_widget.event_generate("<<Paste>>"),
+            accelerator="Ctrl+V",
+        )
+        menu.add_separator()
+        menu.add_command(
+            label="Select All",
+            command=lambda: text_widget.tag_add(tk.SEL, "1.0", tk.END),
+            accelerator="Ctrl+A",
+        )
+        menu.add_separator()
+        menu.add_command(
+            label="Undo",
+            command=lambda: text_widget.event_generate("<<Undo>>"),
+            accelerator="Ctrl+Z",
+        )
+        menu.add_command(
+            label="Redo",
+            command=lambda: text_widget.event_generate("<<Redo>>"),
+            accelerator="Ctrl+Y",
+        )
+
+        def show_menu(event: tk.Event) -> None:  # type: ignore[type-arg]
+            menu.tk_popup(event.x_root, event.y_root)
+
+        text_widget.bind("<Button-3>", show_menu)
 
     def _create_top_bar(self) -> None:
         # Header bar with vector styling
@@ -1666,11 +1794,11 @@ class MainFrame(ttk.Frame):
 
         # Title on the left with decorative border
         title_frame = tk.Frame(top_bar, bg=COLORS["dark"])
-        title_frame.pack(side=tk.LEFT, padx=10, pady=5)
+        title_frame.pack(side=tk.LEFT, padx=8, pady=6)
 
         title = tk.Label(
             title_frame,
-            text="░▒▓ ༼ つ ◕_◕ ༽つ GLITCHLINGS ▓▒░",
+            text="༼ つ ◕_◕ ༽つ GLITCHLINGS",
             font=FONTS["header"],
             fg=COLORS["green_bright"],
             bg=COLORS["dark"],
@@ -1679,11 +1807,11 @@ class MainFrame(ttk.Frame):
 
         # Controls on the right - grouped together
         controls_frame = tk.Frame(top_bar, bg=COLORS["dark"])
-        controls_frame.pack(side=tk.RIGHT, padx=10, pady=5)
+        controls_frame.pack(side=tk.RIGHT, padx=8, pady=6)
 
-        # Seed control
+        # Seed control with border
         seed_frame = tk.Frame(controls_frame, bg=COLORS["dark"])
-        seed_frame.pack(side=tk.LEFT, padx=(0, 15))
+        seed_frame.pack(side=tk.LEFT, padx=(0, 12))
 
         seed_label = tk.Label(
             seed_frame,
@@ -1692,7 +1820,7 @@ class MainFrame(ttk.Frame):
             fg=COLORS["cyan"],
             bg=COLORS["dark"],
         )
-        seed_label.pack(side=tk.LEFT, padx=(0, 6))
+        seed_label.pack(side=tk.LEFT, padx=(0, 5))
 
         seed_spinbox = tk.Spinbox(
             seed_frame,
@@ -1711,15 +1839,11 @@ class MainFrame(ttk.Frame):
         seed_spinbox.pack(side=tk.LEFT)
         seed_spinbox.bind("<Return>", lambda e: self._on_settings_change())
 
-        # Randomize seed button
-        def randomize_seed() -> None:
-            self.seed_var.set(random_module.randint(0, 999999))
-            self._on_settings_change()
-
+        # Randomize seed button with tooltip
         rand_btn = tk.Button(
             seed_frame,
             text="🎲",
-            font=FONTS["small"],
+            font=FONTS["body"],
             fg=COLORS["amber"],
             bg=COLORS["dark"],
             activeforeground=COLORS["amber_bright"],
@@ -1727,11 +1851,12 @@ class MainFrame(ttk.Frame):
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
-            command=randomize_seed,
+            command=self._randomize_seed,
         )
         rand_btn.pack(side=tk.LEFT, padx=(4, 0))
+        _create_tooltip(rand_btn, "Randomize seed (Ctrl+R)")
 
-        # Auto-update checkbox
+        # Auto-update checkbox with tooltip
         auto_check = tk.Checkbutton(
             controls_frame,
             text="Auto",
@@ -1743,8 +1868,10 @@ class MainFrame(ttk.Frame):
             activebackground=COLORS["dark"],
             selectcolor=COLORS["darker"],
             highlightthickness=0,
+            cursor="hand2",
         )
-        auto_check.pack(side=tk.LEFT, padx=(0, 10))
+        auto_check.pack(side=tk.LEFT, padx=(0, 8))
+        _create_tooltip(auto_check, "Auto-transform on changes")
 
         # Scan mode separator
         tk.Label(
@@ -1753,11 +1880,11 @@ class MainFrame(ttk.Frame):
             font=FONTS["body"],
             fg=COLORS["border"],
             bg=COLORS["dark"],
-        ).pack(side=tk.LEFT, padx=5)
+        ).pack(side=tk.LEFT, padx=4)
 
         # Scan mode controls
         scan_frame = tk.Frame(controls_frame, bg=COLORS["dark"])
-        scan_frame.pack(side=tk.LEFT, padx=(0, 10))
+        scan_frame.pack(side=tk.LEFT, padx=(0, 8))
 
         scan_check = tk.Checkbutton(
             scan_frame,
@@ -1770,9 +1897,11 @@ class MainFrame(ttk.Frame):
             activebackground=COLORS["dark"],
             selectcolor=COLORS["darker"],
             highlightthickness=0,
+            cursor="hand2",
             command=self._on_scan_mode_toggle,
         )
         scan_check.pack(side=tk.LEFT)
+        _create_tooltip(scan_check, "Calculate average metrics over multiple seeds")
 
         # Scan count dropdown
         self.scan_count_combo = ttk.Combobox(
@@ -1792,7 +1921,7 @@ class MainFrame(ttk.Frame):
             bg=COLORS["dark"],
         ).pack(side=tk.LEFT, padx=(2, 0))
 
-        # Transform button - primary action with better styling
+        # Transform button - primary action with better styling and hover
         self.transform_btn = tk.Button(
             controls_frame,
             text="▶ TRANSFORM",
@@ -1803,12 +1932,32 @@ class MainFrame(ttk.Frame):
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
-            padx=16,
-            pady=5,
+            padx=14,
+            pady=4,
             cursor="hand2",
             command=self._transform_text,
         )
-        self.transform_btn.pack(side=tk.LEFT)
+        self.transform_btn.pack(side=tk.LEFT, padx=(4, 0))
+        _create_tooltip(self.transform_btn, "Transform text (F5 or Ctrl+Enter)")
+
+        # Hover effects for transform button
+        self.transform_btn.bind(
+            "<Enter>",
+            lambda e: self.transform_btn.config(bg=COLORS["green_bright"])
+            if not self.scan_mode_var.get()
+            else self.transform_btn.config(bg=COLORS["cyan"]),
+        )
+        self.transform_btn.bind(
+            "<Leave>",
+            lambda e: self.transform_btn.config(bg=COLORS["green"])
+            if not self.scan_mode_var.get()
+            else self.transform_btn.config(bg=COLORS["magenta"]),
+        )
+
+    def _randomize_seed(self) -> None:
+        """Randomize the seed value."""
+        self.seed_var.set(random_module.randint(0, 999999))
+        self._on_settings_change()
 
     def _on_scan_mode_toggle(self) -> None:
         """Called when scan mode is toggled."""
@@ -2180,6 +2329,11 @@ class MainFrame(ttk.Frame):
         self.input_text.delete("1.0", tk.END)
         self._set_output("")
         self.seed_var.set(151)
+
+    def _clear_input(self) -> None:
+        """Clear just the input text."""
+        self.input_text.delete("1.0", tk.END)
+        self._on_settings_change()
 
     def _update_token_diff(self) -> None:
         """Update the token diff display with inline diff highlighting."""
