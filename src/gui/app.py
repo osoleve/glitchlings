@@ -59,39 +59,39 @@ from glitchlings.zoo.rushmore import RushmoreMode
 # Color palette - Classic vector phosphor colors
 COLORS = {
     # Primary vector green (P1 phosphor)
-    "green": "#33ff33",
-    "green_dim": "#1a5a1a",
-    "green_glow": "#55ff55",
-    "green_bright": "#77ff77",
-    "green_dark": "#0d3f0d",
-    "green_muted": "#22aa22",
+    "green": "#4af626",  # Classic phosphor green
+    "green_dim": "#1f5a22",
+    "green_glow": "#8aff8a",
+    "green_bright": "#b3ffb3",
+    "green_dark": "#0a2a0a",
+    "green_muted": "#2d5a2d",
     # Background - deep CRT black with subtle blue tint
-    "black": "#0a0c0a",
-    "dark": "#141814",
-    "darker": "#060806",
-    "panel": "#0c100c",
+    "black": "#050505",
+    "dark": "#0a0f0a",
+    "darker": "#000000",
+    "panel": "#0f140f",
     # Accent colors - CRT phosphor palette
-    "cyan": "#00ffff",
-    "cyan_dim": "#007777",
-    "cyan_bright": "#44ffff",
-    "amber": "#ffcc44",
-    "amber_dim": "#775500",
-    "amber_bright": "#ffdd66",
-    "red": "#ff5555",
-    "red_dim": "#772222",
-    "magenta": "#ff66ff",
+    "cyan": "#00f0ff",
+    "cyan_dim": "#005f66",
+    "cyan_bright": "#80f8ff",
+    "amber": "#ffb000",
+    "amber_dim": "#664600",
+    "amber_bright": "#ffcc00",
+    "red": "#ff3333",
+    "red_dim": "#661111",
+    "magenta": "#ff44ff",
     "yellow": "#ffff44",
     # UI chrome
-    "border": "#2a4a2a",
-    "border_bright": "#44bb44",
-    "highlight": "#1a6a1a",
-    "disabled": "#444444",
+    "border": "#1a3a1a",
+    "border_bright": "#2ecc71",
+    "highlight": "#112211",
+    "disabled": "#333333",
 }
 
 # Font configuration - using monospace fonts for authentic terminal feel
 FONTS = {
-    "header": ("Consolas", 13, "bold"),
-    "title": ("Consolas", 10, "bold"),
+    "header": ("Consolas", 14, "bold"),
+    "title": ("Consolas", 11, "bold"),
     "section": ("Consolas", 10, "bold"),
     "body": ("Consolas", 10),
     "mono": ("Consolas", 10),
@@ -99,7 +99,7 @@ FONTS = {
     "tiny": ("Consolas", 8),
     "status": ("Consolas", 9),
     "metric": ("Consolas", 9),
-    "glitch_name": ("Consolas", 10, "bold"),
+    "glitch_name": ("Consolas", 11, "bold"),
 }
 
 # Application info
@@ -875,6 +875,7 @@ class GlitchlingFrame(tk.Frame):
         self.glitchling_name = name
         self.expand_btn: tk.Button | None = None
         self.param_frame: tk.Frame | None = None
+        self.header_frame: tk.Frame | None = None
 
 
 class GlitchlingPanel(ttk.Frame):
@@ -965,7 +966,7 @@ class GlitchlingPanel(ttk.Frame):
         name = cls.__name__
         self.expanded[name] = False
         self.enabled[name] = tk.BooleanVar(value=False)
-        self.enabled[name].trace_add("write", lambda *args: self._update_count())
+        self.enabled[name].trace_add("write", lambda *args: self._update_glitchling_style(name))
         self.param_widgets[name] = {}
 
         # Main frame for this glitchling with hover effect
@@ -976,6 +977,7 @@ class GlitchlingPanel(ttk.Frame):
         # Header row with expand button and checkbox
         header_frame = tk.Frame(frame, bg=COLORS["black"])
         header_frame.pack(fill=tk.X, pady=1)
+        frame.header_frame = header_frame
 
         # Expand/collapse button - vector style with better visual feedback
         expand_btn = tk.Button(
@@ -1049,6 +1051,28 @@ class GlitchlingPanel(ttk.Frame):
         if name in GLITCHLING_PARAMS:
             for param_name, param_info in GLITCHLING_PARAMS[name].items():
                 self._create_param_widget(param_frame, name, param_name, param_info)
+
+    def _update_glitchling_style(self, name: str) -> None:
+        """Update the visual style of a glitchling entry based on enabled state."""
+        self._update_count()
+        frame = self.frames.get(name)
+        if not frame or not frame.header_frame:
+            return
+
+        is_enabled = self.enabled[name].get()
+        bg_color = COLORS["dark"] if is_enabled else COLORS["black"]
+        fg_color = COLORS["green_bright"] if is_enabled else COLORS["green"]
+
+        frame.header_frame.config(bg=bg_color)
+
+        # Update children styles
+        for child in frame.header_frame.winfo_children():
+            if isinstance(child, tk.Button):  # Expand button
+                child.config(bg=bg_color, activebackground=bg_color)
+            elif isinstance(child, tk.Checkbutton):
+                child.config(bg=bg_color, activebackground=bg_color, fg=fg_color)
+            elif isinstance(child, tk.Label):
+                child.config(bg=bg_color)
 
     def _create_param_widget(
         self,
@@ -1159,7 +1183,11 @@ class GlitchlingPanel(ttk.Frame):
             if self.enabled[name].get():
                 params: dict[str, Any] = {}
                 for param_name, var in self.param_widgets[name].items():
-                    params[param_name] = var.get()
+                    val = var.get()
+                    # Special handling for Mim1c classes
+                    if name == "Mim1c" and param_name == "classes" and not val:
+                        val = None
+                    params[param_name] = val
                 result.append((cls, params))
         return result
 
@@ -1364,11 +1392,11 @@ class MainFrame(ttk.Frame):
         self.scan_running = False
         self.scan_cancel = False
         self.scan_results: dict[str, dict[str, list[float]]] = {}
+        self.current_output: str = ""
 
         self.glitchling_panel: GlitchlingPanel
         self.tokenizer_panel: TokenizerPanel
         self.input_text: scrolledtext.ScrolledText
-        self.output_text: scrolledtext.ScrolledText
         self.token_diff_text: scrolledtext.ScrolledText
         self.diff_tokenizer_combo: ttk.Combobox
         self.metrics_tree: ttk.Treeview
@@ -1403,13 +1431,13 @@ class MainFrame(ttk.Frame):
         right_frame = ttk.Frame(main_pane)
         main_pane.add(right_frame, weight=3)
 
-        # Right panel is split into upper (Input/Output) and lower (Token Diff/Metrics)
+        # Right panel is split into upper (Input) and lower (Token Diff/Metrics)
         right_pane = ttk.PanedWindow(right_frame, orient=tk.VERTICAL)
         right_pane.pack(fill=tk.BOTH, expand=True)
 
-        # Upper section: Input and Output
+        # Upper section: Input
         upper_frame = ttk.Frame(right_pane)
-        right_pane.add(upper_frame, weight=2)
+        right_pane.add(upper_frame, weight=1)
 
         # Input section with vector styling
         input_frame = self._create_vector_labelframe(upper_frame, "INPUT")
@@ -1432,34 +1460,9 @@ class MainFrame(ttk.Frame):
             )
             clear_btn.pack(side=tk.RIGHT, padx=6)
 
-        self.input_text = self._create_vector_text(input_frame, height=6)
+        self.input_text = self._create_vector_text(input_frame, height=12)
         self.input_text.insert("1.0", SAMPLE_TEXT)
         self.input_text.bind("<KeyRelease>", lambda e: self._on_settings_change())
-
-        # Output section with vector styling - amber for corrupted output
-        output_frame = self._create_vector_labelframe(upper_frame, "OUTPUT")
-        output_frame.pack(fill=tk.BOTH, expand=True, pady=(3, 0))
-
-        # Add copy button to output
-        if hasattr(output_frame, "title_bar"):
-            copy_btn = tk.Button(
-                output_frame.title_bar,  # type: ignore[attr-defined]
-                text="📋 Copy",
-                font=FONTS["tiny"],
-                fg=COLORS["cyan"],
-                bg=COLORS["dark"],
-                activeforeground=COLORS["cyan_bright"],
-                activebackground=COLORS["highlight"],
-                bd=0,
-                relief=tk.FLAT,
-                cursor="hand2",
-                command=self._copy_output_with_feedback,
-            )
-            copy_btn.pack(side=tk.RIGHT, padx=6)
-
-        self.output_text = self._create_vector_text(
-            output_frame, height=6, state=tk.DISABLED, color=COLORS["amber"]
-        )
 
         # Lower section: Token Diff and Metrics
         lower_frame = ttk.Frame(right_pane)
@@ -1511,6 +1514,23 @@ class MainFrame(ttk.Frame):
             cursor="hand2",
         )
         label_radio.pack(side=tk.LEFT, padx=8)
+
+        raw_radio = tk.Radiobutton(
+            token_header,
+            text="Raw",
+            variable=self.diff_mode_var,
+            value="raw",
+            command=self._update_token_diff,
+            font=FONTS["small"],
+            fg=COLORS["green"],
+            bg=COLORS["black"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["black"],
+            selectcolor=COLORS["darker"],
+            highlightthickness=0,
+            cursor="hand2",
+        )
+        raw_radio.pack(side=tk.LEFT, padx=8)
 
         # Spacer
         tk.Frame(token_header, bg=COLORS["black"], width=20).pack(side=tk.LEFT)
@@ -2305,14 +2325,12 @@ class MainFrame(ttk.Frame):
 
     def _set_output(self, text: str) -> None:
         """Set the output text."""
-        self.output_text.config(state=tk.NORMAL)
-        self.output_text.delete("1.0", tk.END)
-        self.output_text.insert("1.0", text)
-        self.output_text.config(state=tk.DISABLED)
+        self.current_output = text
+        self._update_token_diff()
 
     def get_output(self) -> str:
         """Get the current output text."""
-        return self.output_text.get("1.0", tk.END).strip()
+        return self.current_output
 
     def get_input(self) -> str:
         """Get the current input text."""
@@ -2345,13 +2363,13 @@ class MainFrame(ttk.Frame):
 
         # Configure diff tags for highlighting
         self.token_diff_text.tag_configure(
-            "added", foreground=COLORS["green_bright"], background=COLORS["green_dark"]
+            "added", foreground=COLORS["black"], background=COLORS["green"]
         )
         self.token_diff_text.tag_configure(
-            "removed", foreground=COLORS["red"], background=COLORS["red_dim"]
+            "removed", foreground=COLORS["black"], background=COLORS["red"]
         )
         self.token_diff_text.tag_configure(
-            "changed", foreground=COLORS["amber"], background=COLORS["amber_dim"]
+            "changed", foreground=COLORS["black"], background=COLORS["amber"]
         )
         self.token_diff_text.tag_configure("unchanged", foreground=COLORS["green_dim"])
         self.token_diff_text.tag_configure("header", foreground=COLORS["cyan"])
@@ -2361,14 +2379,19 @@ class MainFrame(ttk.Frame):
             self.token_diff_text.config(state=tk.DISABLED)
             return
 
+        mode = self.diff_mode_var.get()
+
+        if mode == "raw":
+            self.token_diff_text.insert("1.0", output_text)
+            self.token_diff_text.config(state=tk.DISABLED)
+            return
+
         try:
             tokenizer_name = self.diff_tokenizer_var.get()
             tok = resolve_tokenizer(tokenizer_name)
 
             input_tokens, input_ids = tok.encode(input_text)
             output_tokens, output_ids = tok.encode(output_text)
-
-            mode = self.diff_mode_var.get()
 
             # Get token representations based on mode
             if mode == "id":
