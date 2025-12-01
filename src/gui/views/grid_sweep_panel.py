@@ -41,7 +41,11 @@ class SweepConfig:
 
 
 class GridSweepPanel(ttk.Frame):
-    """Panel for running parameter sweeps."""
+    """Panel for running parameter sweeps.
+
+    Can optionally place the results table in an external container
+    (e.g., a notebook tab) by passing results_container.
+    """
 
     def __init__(
         self,
@@ -50,12 +54,14 @@ class GridSweepPanel(ttk.Frame):
         get_input_text: Callable[[], str],
         get_tokenizers: Callable[[], List[str]],
         on_results_changed: Callable[[], None] | None = None,
+        results_container: ttk.Frame | None = None,
     ) -> None:
         super().__init__(parent)
         self.service = service
         self.get_input_text = get_input_text
         self.get_tokenizers = get_tokenizers
         self.on_results_changed = on_results_changed
+        self.results_container = results_container
 
         # State
         self.running = False
@@ -87,9 +93,12 @@ class GridSweepPanel(ttk.Frame):
             pady=5,
         ).pack(side=tk.LEFT)
 
-        # Main content
+        # Main content - only expand if results are inline
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
-        content_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        if self.results_container is None:
+            content_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        else:
+            content_container.pack(fill=tk.X, padx=2, pady=2)
 
         content = tk.Frame(content_container, bg=COLORS["black"])
         content.pack(fill=tk.BOTH, expand=True)
@@ -274,9 +283,14 @@ class GridSweepPanel(ttk.Frame):
         )
         self.progress_label.pack(anchor="w", pady=(2, 0))
 
-        # Results section
-        results_header = tk.Frame(content, bg=COLORS["dark"])
-        results_header.pack(fill=tk.X, padx=8, pady=(15, 0))
+        # Results section - place in external container if provided
+        results_parent = self.results_container if self.results_container else content
+
+        results_header = tk.Frame(results_parent, bg=COLORS["dark"])
+        if self.results_container:
+            results_header.pack(fill=tk.X, padx=2, pady=(2, 0))
+        else:
+            results_header.pack(fill=tk.X, padx=8, pady=(15, 0))
 
         tk.Label(
             results_header,
@@ -288,8 +302,11 @@ class GridSweepPanel(ttk.Frame):
         ).pack(side=tk.LEFT)
 
         # Results table
-        table_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
-        table_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
+        table_container = tk.Frame(results_parent, bg=COLORS["border"], padx=1, pady=1)
+        if self.results_container:
+            table_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+        else:
+            table_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
 
         table_inner = tk.Frame(table_container, bg=COLORS["darker"])
         table_inner.pack(fill=tk.BOTH, expand=True)

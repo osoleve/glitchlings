@@ -27,7 +27,7 @@ class ChartData(NamedTuple):
 
 
 class ChartsPanel(ttk.Frame):
-    """Panel for visualizing metrics and distributions."""
+    """Panel for visualizing metrics and distributions in a grid layout."""
 
     def __init__(
         self,
@@ -43,9 +43,12 @@ class ChartsPanel(ttk.Frame):
 
         # Variables
         self.source_var = tk.StringVar(value="scan")
-        self.chart_type_var = tk.StringVar(value="histogram")
         self.metric_var = tk.StringVar(value="jsd")
         self.tokenizer_var = tk.StringVar()
+
+        # Chart text widgets for grid display
+        self.chart_texts: Dict[str, scrolledtext.ScrolledText] = {}
+        self.chart_titles: Dict[str, tk.Label] = {}
 
         self._create_widgets()
 
@@ -92,26 +95,7 @@ class ChartsPanel(ttk.Frame):
             state="readonly",
         )
         self.source_combo.pack(side=tk.LEFT, padx=(8, 20))
-        self.source_combo.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
-
-        # Chart type
-        tk.Label(
-            controls,
-            text="Chart:",
-            font=FONTS["small"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["black"],
-        ).pack(side=tk.LEFT)
-
-        chart_combo = ttk.Combobox(
-            controls,
-            textvariable=self.chart_type_var,
-            values=["histogram", "boxplot", "line"],
-            width=12,
-            state="readonly",
-        )
-        chart_combo.pack(side=tk.LEFT, padx=(8, 20))
-        chart_combo.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
+        self.source_combo.bind("<<ComboboxSelected>>", lambda e: self._update_charts())
 
         # Metric
         tk.Label(
@@ -130,7 +114,7 @@ class ChartsPanel(ttk.Frame):
             state="readonly",
         )
         self.metric_combo.pack(side=tk.LEFT, padx=(8, 20))
-        self.metric_combo.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
+        self.metric_combo.bind("<<ComboboxSelected>>", lambda e: self._update_charts())
 
         # Tokenizer
         tk.Label(
@@ -149,7 +133,7 @@ class ChartsPanel(ttk.Frame):
             state="readonly",
         )
         self.tokenizer_combo.pack(side=tk.LEFT, padx=(8, 0))
-        self.tokenizer_combo.bind("<<ComboboxSelected>>", lambda e: self._update_chart())
+        self.tokenizer_combo.bind("<<ComboboxSelected>>", lambda e: self._update_charts())
 
         # Refresh button
         refresh_btn = tk.Button(
@@ -163,73 +147,128 @@ class ChartsPanel(ttk.Frame):
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
-            command=self._update_chart,
+            command=self._update_charts,
         )
         refresh_btn.pack(side=tk.RIGHT)
 
-        # Chart display area (ASCII art for now)
-        chart_header = tk.Frame(content, bg=COLORS["dark"])
-        chart_header.pack(fill=tk.X, padx=8, pady=(8, 0))
+        # Charts grid container (2x2 grid: histogram, boxplot, line, stats)
+        charts_frame = tk.Frame(content, bg=COLORS["black"])
+        charts_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
+
+        # Configure 2x2 grid
+        charts_frame.grid_rowconfigure(0, weight=1)
+        charts_frame.grid_rowconfigure(1, weight=1)
+        charts_frame.grid_columnconfigure(0, weight=1)
+        charts_frame.grid_columnconfigure(1, weight=1)
+
+        # Create chart panels for each type
+        chart_types = [
+            ("histogram", "HISTOGRAM", 0, 0),
+            ("boxplot", "BOXPLOT", 0, 1),
+            ("line", "LINE CHART", 1, 0),
+        ]
+
+        for chart_type, title, row, col in chart_types:
+            self._create_chart_cell(charts_frame, chart_type, title, row, col)
+
+        # Stats panel in bottom-right (row=1, col=1)
+        stats_outer = tk.Frame(charts_frame, bg=COLORS["border"], padx=1, pady=1)
+        stats_outer.grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+
+        stats_inner = tk.Frame(stats_outer, bg=COLORS["black"])
+        stats_inner.pack(fill=tk.BOTH, expand=True)
+
+        stats_header = tk.Frame(stats_inner, bg=COLORS["dark"])
+        stats_header.pack(fill=tk.X)
 
         tk.Label(
-            chart_header,
-            text="░ CHART",
+            stats_header,
+            text="░ STATISTICS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
             bg=COLORS["dark"],
             padx=4,
         ).pack(side=tk.LEFT)
 
-        self.chart_title = tk.Label(
-            chart_header,
+        stats_content = tk.Frame(stats_inner, bg=COLORS["darker"])
+        stats_content.pack(fill=tk.BOTH, expand=True)
+
+        self.stats_label = tk.Label(
+            stats_content,
+            text="No data available\n\nRun a sweep to generate charts",
+            font=FONTS["small"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["darker"],
+            padx=12,
+            pady=12,
+            justify=tk.LEFT,
+            anchor="nw",
+        )
+        self.stats_label.pack(fill=tk.BOTH, expand=True)
+
+    def _create_chart_cell(
+        self, parent: tk.Frame, chart_type: str, title: str, row: int, col: int
+    ) -> None:
+        """Create a single chart cell in the grid."""
+        # Outer border frame
+        outer = tk.Frame(parent, bg=COLORS["border"], padx=1, pady=1)
+        outer.grid(row=row, column=col, sticky="nsew", padx=2, pady=2)
+
+        inner = tk.Frame(outer, bg=COLORS["black"])
+        inner.pack(fill=tk.BOTH, expand=True)
+
+        # Header
+        header = tk.Frame(inner, bg=COLORS["dark"])
+        header.pack(fill=tk.X)
+
+        tk.Label(
+            header,
+            text=f"░ {title}",
+            font=FONTS["tiny"],
+            fg=COLORS["cyan_dim"],
+            bg=COLORS["dark"],
+            padx=4,
+        ).pack(side=tk.LEFT)
+
+        title_label = tk.Label(
+            header,
             text="",
             font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["dark"],
             padx=4,
         )
-        self.chart_title.pack(side=tk.RIGHT)
+        title_label.pack(side=tk.RIGHT)
+        self.chart_titles[chart_type] = title_label
 
-        chart_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
-        chart_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
+        # Chart text area
+        chart_container = tk.Frame(inner, bg=COLORS["darker"])
+        chart_container.pack(fill=tk.BOTH, expand=True)
 
-        self.chart_text = scrolledtext.ScrolledText(
+        chart_text = scrolledtext.ScrolledText(
             chart_container,
             wrap=tk.NONE,
-            height=20,
-            font=("Consolas", 9),
+            height=8,
+            font=("Consolas", 8),
             fg=COLORS["green"],
             bg=COLORS["darker"],
             relief=tk.FLAT,
-            padx=12,
-            pady=8,
-            state=tk.DISABLED,
-        )
-        self.chart_text.pack(fill=tk.BOTH, expand=True)
-
-        # Configure tags for chart colors
-        self.chart_text.tag_configure("bar", foreground=COLORS["cyan"])
-        self.chart_text.tag_configure("axis", foreground=COLORS["green_dim"])
-        self.chart_text.tag_configure("label", foreground=COLORS["amber"])
-        self.chart_text.tag_configure("title", foreground=COLORS["green_bright"])
-
-        # Stats panel
-        stats_frame = tk.Frame(content, bg=COLORS["dark"])
-        stats_frame.pack(fill=tk.X, padx=8, pady=(0, 8))
-
-        self.stats_label = tk.Label(
-            stats_frame,
-            text="No data available · Run a scan or sweep to generate charts",
-            font=FONTS["small"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
             padx=8,
             pady=6,
+            state=tk.DISABLED,
         )
-        self.stats_label.pack(fill=tk.X)
+        chart_text.pack(fill=tk.BOTH, expand=True)
 
-    def _update_chart(self) -> None:
-        """Update the chart display."""
+        # Configure tags for chart colors
+        chart_text.tag_configure("bar", foreground=COLORS["cyan"])
+        chart_text.tag_configure("axis", foreground=COLORS["green_dim"])
+        chart_text.tag_configure("label", foreground=COLORS["amber"])
+        chart_text.tag_configure("title", foreground=COLORS["green_bright"])
+
+        self.chart_texts[chart_type] = chart_text
+
+    def _update_charts(self) -> None:
+        """Update all charts in the grid."""
         scan_results = self.get_scan_results()
         sweep_results = self.get_sweep_results() if self.get_sweep_results else []
         dataset_results = self.get_dataset_results() if self.get_dataset_results else {}
@@ -274,7 +313,6 @@ class ChartsPanel(ttk.Frame):
             self.metric_var.set(metrics[0] if metrics else "")
 
         metric = self.metric_var.get()
-        chart_type = self.chart_type_var.get()
         data = self._build_chart_data(
             source, tok_name, metric, scan_results, sweep_results, dataset_results
         )
@@ -283,25 +321,29 @@ class ChartsPanel(ttk.Frame):
             self._show_no_data()
             return
 
-        # Update title
-        self.chart_title.config(text=f"{metric.upper()} · {tok_name} [{data.source_label}]")
+        # Update all chart titles
+        title_suffix = f"{metric.upper()} · {tok_name}"
+        for chart_type in self.chart_titles:
+            self.chart_titles[chart_type].config(text=title_suffix)
 
-        # Generate chart based on type
-        if chart_type == "histogram":
-            self._draw_histogram(data.distribution_values, metric)
-        elif chart_type == "boxplot":
-            self._draw_boxplot(data.distribution_values, metric)
-        elif chart_type == "line":
-            self._draw_line(
-                data.trend_values,
-                metric,
-                x_label=data.x_label,
-                x_values=data.x_values,
-            )
+        # Draw all charts
+        self._draw_histogram(data.distribution_values, metric)
+        self._draw_boxplot(data.distribution_values, metric)
+        self._draw_line(
+            data.trend_values,
+            metric,
+            x_label=data.x_label,
+            x_values=data.x_values,
+        )
 
         # Update stats
         stats_values = data.distribution_values or data.trend_values
         self._update_stats(stats_values, metric, data.source_label)
+
+    # Keep old method name as alias for compatibility
+    def _update_chart(self) -> None:
+        """Alias for _update_charts for backward compatibility."""
+        self._update_charts()
 
     def _get_tokenizers_for_source(
         self,
@@ -405,26 +447,31 @@ class ChartsPanel(ttk.Frame):
         return ChartData(values, values, None, x_label, source)
 
     def _show_no_data(self) -> None:
-        """Display no data message."""
-        self.chart_text.config(state=tk.NORMAL)
-        self.chart_text.delete("1.0", tk.END)
-        self.chart_text.insert(
-            tk.END,
-            "\n\n       No chart data available.\n\n"
-            "       Run a scan or sweep to generate metrics.\n\n"
-            "       Charts will render distributions or parameter trends when data arrives.",
-        )
-        self.chart_text.config(state=tk.DISABLED)
-        self.stats_label.config(text="No data available · Run a scan or sweep to generate charts")
-        self.chart_title.config(text="")
+        """Display no data message in all charts."""
+        no_data_msg = "\n  No data available.\n\n  Run a sweep to\n  generate metrics."
+
+        for chart_type, chart_text in self.chart_texts.items():
+            chart_text.config(state=tk.NORMAL)
+            chart_text.delete("1.0", tk.END)
+            chart_text.insert(tk.END, no_data_msg)
+            chart_text.config(state=tk.DISABLED)
+
+        for title_label in self.chart_titles.values():
+            title_label.config(text="")
+
+        self.stats_label.config(text="No data available\n\nRun a sweep to generate charts")
 
     def _draw_histogram(self, values: List[float], metric: str) -> None:
         """Draw an ASCII histogram."""
-        self.chart_text.config(state=tk.NORMAL)
-        self.chart_text.delete("1.0", tk.END)
+        chart_text = self.chart_texts.get("histogram")
+        if chart_text is None:
+            return
+
+        chart_text.config(state=tk.NORMAL)
+        chart_text.delete("1.0", tk.END)
 
         if not values:
-            self.chart_text.config(state=tk.DISABLED)
+            chart_text.config(state=tk.DISABLED)
             return
 
         # Calculate histogram bins
@@ -435,7 +482,7 @@ class ChartsPanel(ttk.Frame):
         if min_val == max_val:
             max_val = min_val + 0.1
 
-        num_bins = 10
+        num_bins = 8  # Reduced for smaller grid cells
         bin_width = (max_val - min_val) / num_bins
         bins = [0] * num_bins
 
@@ -445,35 +492,37 @@ class ChartsPanel(ttk.Frame):
             bins[bin_idx] += 1
 
         max_count = max(bins) if bins else 1
-        chart_width = 50
+        chart_width = 30  # Reduced for grid layout
 
         # Title
-        self.chart_text.insert(tk.END, f"\n  {metric.upper()} Distribution\n", "title")
-        self.chart_text.insert(tk.END, f"  n={len(values)}\n\n", "axis")
+        chart_text.insert(tk.END, f" {metric.upper()} n={len(values)}\n\n", "title")
 
         # Draw bars
         for i, count in enumerate(bins):
             bar_len = int((count / max_count) * chart_width) if max_count > 0 else 0
             bin_start = min_val + i * bin_width
 
-            label = f"  {bin_start:6.3f} │"
-            self.chart_text.insert(tk.END, label, "label")
-            self.chart_text.insert(tk.END, "█" * bar_len, "bar")
-            self.chart_text.insert(tk.END, f" {count}\n", "axis")
+            label = f" {bin_start:5.2f}│"
+            chart_text.insert(tk.END, label, "label")
+            chart_text.insert(tk.END, "█" * bar_len, "bar")
+            chart_text.insert(tk.END, f" {count}\n", "axis")
 
         # X-axis
-        self.chart_text.insert(tk.END, f"  {'─' * 8}┴{'─' * chart_width}\n", "axis")
-        self.chart_text.insert(tk.END, f"         └{'─' * chart_width}→ count\n", "axis")
+        chart_text.insert(tk.END, f" {'─' * 6}┴{'─' * chart_width}→\n", "axis")
 
-        self.chart_text.config(state=tk.DISABLED)
+        chart_text.config(state=tk.DISABLED)
 
     def _draw_boxplot(self, values: List[float], metric: str) -> None:
         """Draw an ASCII boxplot."""
-        self.chart_text.config(state=tk.NORMAL)
-        self.chart_text.delete("1.0", tk.END)
+        chart_text = self.chart_texts.get("boxplot")
+        if chart_text is None:
+            return
+
+        chart_text.config(state=tk.NORMAL)
+        chart_text.delete("1.0", tk.END)
 
         if not values:
-            self.chart_text.config(state=tk.DISABLED)
+            chart_text.config(state=tk.DISABLED)
             return
 
         sorted_vals = sorted(values)
@@ -486,7 +535,7 @@ class ChartsPanel(ttk.Frame):
         q3 = sorted_vals[3 * n // 4] if n >= 4 else max_val
         mean = statistics.mean(values)
 
-        chart_width = 60
+        chart_width = 40  # Reduced for grid layout
 
         # Normalize positions
         range_val = max_val - min_val if max_val != min_val else 1
@@ -495,8 +544,7 @@ class ChartsPanel(ttk.Frame):
             return int(((v - min_val) / range_val) * (chart_width - 1))
 
         # Title
-        self.chart_text.insert(tk.END, f"\n  {metric.upper()} Boxplot\n", "title")
-        self.chart_text.insert(tk.END, f"  n={len(values)}\n\n", "axis")
+        chart_text.insert(tk.END, f" {metric.upper()} n={len(values)}\n\n", "title")
 
         # Build boxplot line
         line = [" "] * chart_width
@@ -519,19 +567,16 @@ class ChartsPanel(ttk.Frame):
             else:
                 line[i] = "┃"
 
-        self.chart_text.insert(tk.END, "  ", "axis")
-        self.chart_text.insert(tk.END, "".join(line) + "\n", "bar")
+        chart_text.insert(tk.END, " ", "axis")
+        chart_text.insert(tk.END, "".join(line) + "\n", "bar")
 
-        # Labels
-        self.chart_text.insert(tk.END, "\n", "axis")
-        self.chart_text.insert(tk.END, f"  Min:    {min_val:.4f}\n", "label")
-        self.chart_text.insert(tk.END, f"  Q1:     {q1:.4f}\n", "label")
-        self.chart_text.insert(tk.END, f"  Median: {median:.4f}\n", "label")
-        self.chart_text.insert(tk.END, f"  Q3:     {q3:.4f}\n", "label")
-        self.chart_text.insert(tk.END, f"  Max:    {max_val:.4f}\n", "label")
-        self.chart_text.insert(tk.END, f"\n  Mean:   {mean:.4f}\n", "title")
+        # Compact labels (two columns)
+        chart_text.insert(tk.END, "\n", "axis")
+        chart_text.insert(tk.END, f" Min:{min_val:7.3f}  Q1:{q1:7.3f}\n", "label")
+        chart_text.insert(tk.END, f" Med:{median:7.3f}  Q3:{q3:7.3f}\n", "label")
+        chart_text.insert(tk.END, f" Max:{max_val:7.3f}  μ:{mean:8.3f}\n", "label")
 
-        self.chart_text.config(state=tk.DISABLED)
+        chart_text.config(state=tk.DISABLED)
 
     def _draw_line(
         self,
@@ -542,11 +587,15 @@ class ChartsPanel(ttk.Frame):
         x_values: List[float] | None = None,
     ) -> None:
         """Draw an ASCII line chart showing values over an index or parameter grid."""
-        self.chart_text.config(state=tk.NORMAL)
-        self.chart_text.delete("1.0", tk.END)
+        chart_text = self.chart_texts.get("line")
+        if chart_text is None:
+            return
+
+        chart_text.config(state=tk.NORMAL)
+        chart_text.delete("1.0", tk.END)
 
         if not values:
-            self.chart_text.config(state=tk.DISABLED)
+            chart_text.config(state=tk.DISABLED)
             return
 
         x_points = (
@@ -559,8 +608,8 @@ class ChartsPanel(ttk.Frame):
         max_val = max(values)
         range_val = max_val - min_val if max_val != min_val else 1
 
-        chart_height = 15
-        chart_width = min(60, len(values))
+        chart_height = 8  # Reduced for grid layout
+        chart_width = min(35, len(values))  # Reduced for grid layout
 
         # Sample values if too many
         if len(values) > chart_width:
@@ -574,77 +623,82 @@ class ChartsPanel(ttk.Frame):
 
         # Title
         x_title = x_label.replace("_", " ").title() if x_label else "Index"
-        self.chart_text.insert(tk.END, f"\n  {metric.upper()} over {x_title}s\n", "title")
-        self.chart_text.insert(tk.END, f"  n={len(values)}\n\n", "axis")
+        chart_text.insert(tk.END, f" {metric.upper()} vs {x_title}\n\n", "title")
 
         # Create grid
-        grid = [[" "] * (len(sampled) + 8) for _ in range(chart_height)]
+        grid = [[" "] * (len(sampled) + 7) for _ in range(chart_height)]
 
         # Plot points
         for x, v in enumerate(sampled):
             y = int(((v - min_val) / range_val) * (chart_height - 1))
             y = chart_height - 1 - y  # Flip Y axis
             if 0 <= y < chart_height:
-                grid[y][x + 8] = "●"
+                grid[y][x + 7] = "●"
 
         # Add Y axis labels
         for i in range(chart_height):
             val = max_val - (i / (chart_height - 1)) * range_val
-            label = f"{val:6.3f} │"
+            label = f"{val:5.2f}│"
             for j, c in enumerate(label):
                 grid[i][j] = c
 
         # Draw grid
         for row in grid:
-            self.chart_text.insert(tk.END, "  ", "axis")
+            chart_text.insert(tk.END, " ", "axis")
             for c in row:
                 if c == "●":
-                    self.chart_text.insert(tk.END, c, "bar")
+                    chart_text.insert(tk.END, c, "bar")
                 elif c in "│─":
-                    self.chart_text.insert(tk.END, c, "axis")
+                    chart_text.insert(tk.END, c, "axis")
                 else:
-                    self.chart_text.insert(tk.END, c, "label")
-            self.chart_text.insert(tk.END, "\n")
+                    chart_text.insert(tk.END, c, "label")
+            chart_text.insert(tk.END, "\n")
 
         # X axis
-        self.chart_text.insert(
-            tk.END, f"  {'─' * 8}┴{'─' * len(sampled)}→ {x_label}\n", "axis"
-        )
+        chart_text.insert(tk.END, f" {'─' * 6}┴{'─' * len(sampled)}→\n", "axis")
         if sampled_x:
             start_val, end_val = sampled_x[0], sampled_x[-1]
             try:
-                self.chart_text.insert(
+                chart_text.insert(
                     tk.END,
-                    f"  start={start_val:.3f}  │  end={end_val:.3f}\n",
+                    f" [{start_val:.2f} → {end_val:.2f}]\n",
                     "axis",
                 )
             except Exception:
                 pass
 
-        self.chart_text.config(state=tk.DISABLED)
+        chart_text.config(state=tk.DISABLED)
 
     def _update_stats(
         self, values: List[float], metric: str, source_label: str | None = None
     ) -> None:
         """Update statistics display."""
         if not values:
-            self.stats_label.config(text="No data")
+            self.stats_label.config(text="No data available")
             return
 
         mean = statistics.mean(values)
         std = statistics.stdev(values) if len(values) > 1 else 0
         min_val = min(values)
         max_val = max(values)
+        median = statistics.median(values)
 
-        stats_text = (
-            f"{metric.upper()}: mean={mean:.4f} ± {std:.4f}  "
-            f"│  min={min_val:.4f}  max={max_val:.4f}  "
-            f"│  n={len(values)}"
-        )
+        # Multi-line format for the stats panel
+        stats_lines = [
+            f"{metric.upper()} Statistics",
+            "─────────────────────",
+            f"Mean:   {mean:.4f} ± {std:.4f}",
+            f"Median: {median:.4f}",
+            f"Min:    {min_val:.4f}",
+            f"Max:    {max_val:.4f}",
+            f"Range:  {max_val - min_val:.4f}",
+            f"Count:  {len(values)}",
+        ]
         if source_label:
-            stats_text = f"{stats_text}  │  {source_label}"
-        self.stats_label.config(text=stats_text)
+            stats_lines.append(f"Source: {source_label}")
+
+        self.stats_label.config(text="\n".join(stats_lines))
 
     def refresh(self) -> None:
-        """Refresh the chart with current data."""
-        self._update_chart()
+        """Refresh all charts with current data."""
+        self._update_charts()

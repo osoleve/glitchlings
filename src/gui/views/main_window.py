@@ -150,13 +150,11 @@ class MainFrame(ttk.Frame):
         self.token_diff_tab = ttk.Frame(self.content_tabs)
         self.dataset_tab = ttk.Frame(self.content_tabs)
         self.sweep_tab = ttk.Frame(self.content_tabs)
-        self.charts_tab = ttk.Frame(self.content_tabs)
 
         self.content_tabs.add(self.input_tab, text="Input")
         self.content_tabs.add(self.token_diff_tab, text="Token Diff")
         self.content_tabs.add(self.dataset_tab, text="Datasets")
         self.content_tabs.add(self.sweep_tab, text="Sweep")
-        self.content_tabs.add(self.charts_tab, text="Charts")
 
         # Input section with vector styling
         input_frame = self._create_vector_labelframe(self.input_tab, "INPUT")
@@ -327,23 +325,38 @@ class MainFrame(ttk.Frame):
         )
         self.dataset_panel.pack(fill=tk.BOTH, expand=True)
 
-        # Grid Sweep tab
+        # Grid Sweep tab - controls at top, notebook below for Results/Charts
+        from .charts_panel import ChartsPanel
         from .grid_sweep_panel import GridSweepPanel
 
+        # Create notebook for Results/Charts (will be placed below controls)
+        self.sweep_notebook = ttk.Notebook(self.sweep_tab)
+
+        # Results tab frame (for the results table)
+        self.sweep_results_tab = ttk.Frame(self.sweep_notebook)
+        self.sweep_notebook.add(self.sweep_results_tab, text="Results")
+
+        # Charts tab frame
+        self.sweep_charts_tab = ttk.Frame(self.sweep_notebook)
+        self.sweep_notebook.add(self.sweep_charts_tab, text="Charts")
+
+        # Sweep controls panel (at top, results go to external container)
         self.sweep_panel = GridSweepPanel(
             self.sweep_tab,
             service=self.controller.service if self.controller else None,
             get_input_text=self.get_input,
             get_tokenizers=self.get_enabled_tokenizers,
             on_results_changed=self._on_sweep_results_changed,
+            results_container=self.sweep_results_tab,
         )
-        self.sweep_panel.pack(fill=tk.BOTH, expand=True)
+        self.sweep_panel.pack(fill=tk.X)
 
-        # Charts tab
-        from .charts_panel import ChartsPanel
+        # Pack notebook below controls
+        self.sweep_notebook.pack(fill=tk.BOTH, expand=True)
 
+        # Charts panel inside Charts tab
         self.charts_panel = ChartsPanel(
-            self.charts_tab,
+            self.sweep_charts_tab,
             get_scan_results=self._get_scan_results,
             get_sweep_results=lambda: self.sweep_panel.get_results(),
             get_dataset_results=self._get_dataset_results,
