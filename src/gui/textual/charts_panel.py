@@ -310,14 +310,14 @@ class ChartsPanel(Container):  # type: ignore[misc]
         # Skip if we're programmatically updating
         if self._updating:
             return
-            
+
         select_id = event.select.id
         value = event.value
-        
+
         # Skip if value is blank/None
         if value is None or value == Select.BLANK:
             return
-        
+
         # Update internal state and redraw
         if select_id == "source-select":
             self._source = str(value)
@@ -366,7 +366,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         scan_results = self._get_scan_results() if self._get_scan_results else {}
         sweep_results = self._get_sweep_results() if self._get_sweep_results else []
         dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
-        
+
         # Prevent recursive updates while we set dropdown values
         self._updating = True
         try:
@@ -379,7 +379,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             if self._tokenizer_select and tokenizers:
                 self._tokenizer_select.set_options([(t, t) for t in tokenizers])
                 self._tokenizer_select.value = self._tokenizer
-            
+
             # Update metric dropdown
             metrics = self._get_metrics_for_source(
                 self._source, self._tokenizer, scan_results, sweep_results, dataset_results
@@ -391,7 +391,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
                 self._metric_select.value = self._metric
         finally:
             self._updating = False
-        
+
         # Draw charts with current selections
         self._draw_charts_only()
 
@@ -400,7 +400,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         scan_results = self._get_scan_results() if self._get_scan_results else {}
         sweep_results = self._get_sweep_results() if self._get_sweep_results else []
         dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
-        
+
         data = self._build_chart_data(
             self._source,
             self._tokenizer,
@@ -453,7 +453,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._do_update_charts_inner(scan_results, sweep_results, dataset_results)
         finally:
             self._updating = False
-    
+
     def _do_update_charts_inner(
         self,
         scan_results: dict[str, ScanResult] | None = None,
@@ -479,7 +479,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             sources.append(("Dataset", "dataset"))
 
         source_values = [s[1] for s in sources]
-        
+
         # Update source dropdown
         if self._source_select:
             # Validate current source
@@ -498,7 +498,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         tokenizers = self._get_tokenizers_for_source(
             self._source, scan_results, sweep_results, dataset_results
         )
-        
+
         # Update tokenizer dropdown
         if self._tokenizer_select:
             # Validate current tokenizer
@@ -521,7 +521,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             sweep_results,
             dataset_results,
         )
-        
+
         # Update metric dropdown - format is (label, value)
         if self._metric_select:
             # Validate current metric

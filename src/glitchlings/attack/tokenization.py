@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import zlib
+from functools import lru_cache
 from typing import Any, Protocol, Sequence
 
 DEFAULT_TIKTOKEN_ENCODINGS = ("o200k_base", "cl100k_base")
@@ -90,37 +91,48 @@ class HuggingFaceTokenizerWrapper:
         return [(encoding.tokens, encoding.ids) for encoding in encodings]
 
 
+@lru_cache(maxsize=32)
+def _resolve_tokenizer_from_string(tokenizer_name: str) -> Tokenizer:
+    """Cached tokenizer resolution for string names.
+
+    This cache dramatically improves performance by avoiding repeated
+    calls to Tokenizer.from_pretrained() for HuggingFace tokenizers,
+    which can take 50-500ms per call.
+    """
+    if importlib.util.find_spec("tiktoken"):
+        import tiktoken
+
+        try:
+            # Check if valid tiktoken encoding/model
+            try:
+                tiktoken.get_encoding(tokenizer_name)
+                return TiktokenTokenizer(tokenizer_name)
+            except ValueError:
+                try:
+                    tiktoken.encoding_for_model(tokenizer_name)
+                    return TiktokenTokenizer(tokenizer_name)
+                except (ValueError, KeyError):
+                    pass
+        except ImportError:
+            pass
+
+    if importlib.util.find_spec("tokenizers"):
+        from tokenizers import Tokenizer
+
+        try:
+            return HuggingFaceTokenizerWrapper(Tokenizer.from_pretrained(tokenizer_name))
+        except Exception:
+            pass
+
+    raise ValueError(f"Could not resolve tokenizer: {tokenizer_name}")
+
+
 def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
     if tokenizer is None:
         return _default_tokenizer()
 
     if isinstance(tokenizer, str):
-        if importlib.util.find_spec("tiktoken"):
-            import tiktoken
-
-            try:
-                # Check if valid tiktoken encoding/model
-                try:
-                    tiktoken.get_encoding(tokenizer)
-                    return TiktokenTokenizer(tokenizer)
-                except ValueError:
-                    try:
-                        tiktoken.encoding_for_model(tokenizer)
-                        return TiktokenTokenizer(tokenizer)
-                    except (ValueError, KeyError):
-                        pass
-            except ImportError:
-                pass
-
-        if importlib.util.find_spec("tokenizers"):
-            from tokenizers import Tokenizer
-
-            try:
-                return HuggingFaceTokenizerWrapper(Tokenizer.from_pretrained(tokenizer))
-            except Exception:
-                pass
-
-        raise ValueError(f"Could not resolve tokenizer: {tokenizer}")
+        return _resolve_tokenizer_from_string(tokenizer)
 
     # Check if it is a HuggingFace tokenizer object
     if importlib.util.find_spec("tokenizers"):
