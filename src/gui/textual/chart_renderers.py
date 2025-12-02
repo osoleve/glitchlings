@@ -41,7 +41,7 @@ class HistogramRenderer:
         output = Text()
 
         if not values:
-            output.append("No data available", style=PALETTE["muted"])
+            output.append("No data available", style=PALETTE["text_muted"])
             return output
 
         # Calculate histogram
@@ -49,7 +49,7 @@ class HistogramRenderer:
         max_val = max(values)
 
         if min_val == max_val:
-            output.append("All values are identical", style=PALETTE["muted"])
+            output.append("All values are identical", style=PALETTE["text_muted"])
             return output
 
         bin_width = (max_val - min_val) / self.bins
@@ -67,9 +67,9 @@ class HistogramRenderer:
             bin_start = min_val + i * bin_width
             bin_end = min_val + (i + 1) * bin_width
 
-            output.append(f"{bin_start:.3f}-{bin_end:.3f} ", style=PALETTE["muted"])
+            output.append(f"{bin_start:.3f}-{bin_end:.3f} ", style=PALETTE["text_muted"])
             output.append("█" * bar_len, style=PALETTE["cyan"])
-            output.append(f" {count}\n", style=PALETTE["muted"])
+            output.append(f" {count}\n", style=PALETTE["text_muted"])
 
         return output
 
@@ -94,7 +94,7 @@ class BoxPlotRenderer:
         output = Text()
 
         if not values:
-            output.append("No data available", style=PALETTE["muted"])
+            output.append("No data available", style=PALETTE["text_muted"])
             return output
 
         sorted_vals = sorted(values)
@@ -109,7 +109,7 @@ class BoxPlotRenderer:
         # Scale to chart width
         value_range = max_val - min_val
         if value_range == 0:
-            output.append("All values are identical", style=PALETTE["muted"])
+            output.append("All values are identical", style=PALETTE["text_muted"])
             return output
 
         def scale(v: float) -> int:
@@ -147,9 +147,9 @@ class BoxPlotRenderer:
         output.append("\n")
 
         # Labels
-        output.append(f"min={min_val:.3f} q1={q1:.3f} ", style=PALETTE["muted"])
+        output.append(f"min={min_val:.3f} q1={q1:.3f} ", style=PALETTE["text_muted"])
         output.append(f"median={q2:.3f} ", style=PALETTE["amber"])
-        output.append(f"q3={q3:.3f} max={max_val:.3f}", style=PALETTE["muted"])
+        output.append(f"q3={q3:.3f} max={max_val:.3f}", style=PALETTE["text_muted"])
 
         return output
 
@@ -175,11 +175,11 @@ class LineChartRenderer:
         output = Text()
 
         if not values:
-            output.append("No data available", style=PALETTE["muted"])
+            output.append("No data available", style=PALETTE["text_muted"])
             return output
 
         if len(values) < 2:
-            output.append("Need at least 2 points for line chart", style=PALETTE["muted"])
+            output.append("Need at least 2 points for line chart", style=PALETTE["text_muted"])
             return output
 
         # Downsample if too many points
@@ -194,7 +194,7 @@ class LineChartRenderer:
         value_range = max_val - min_val
 
         if value_range == 0:
-            output.append("All values are identical", style=PALETTE["muted"])
+            output.append("All values are identical", style=PALETTE["text_muted"])
             return output
 
         # Create grid
@@ -212,8 +212,8 @@ class LineChartRenderer:
             output.append("\n")
 
         # Labels
-        output.append(f"min={min_val:.3f} max={max_val:.3f} ", style=PALETTE["muted"])
-        output.append(f"points={len(values)}", style=PALETTE["muted"])
+        output.append(f"min={min_val:.3f} max={max_val:.3f} ", style=PALETTE["text_muted"])
+        output.append(f"points={len(values)}", style=PALETTE["text_muted"])
 
         return output
 
@@ -237,7 +237,7 @@ class StatsRenderer:
         output = Text()
 
         if not values:
-            output.append("No data available", style=PALETTE["muted"])
+            output.append("No data available", style=PALETTE["text_muted"])
             return output
 
         mean, std = calculate_stats(values)
@@ -252,6 +252,6 @@ class StatsRenderer:
         output.append(f"Min:    {min_val:.4f}\n", style=PALETTE["amber"])
         output.append(f"Max:    {max_val:.4f}\n", style=PALETTE["amber"])
         output.append(f"Range:  {max_val - min_val:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Count:  {len(values)}", style=PALETTE["muted"])
+        output.append(f"Count:  {len(values)}", style=PALETTE["text_muted"])
 
         return output

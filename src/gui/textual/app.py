@@ -33,7 +33,6 @@ from . import (
     TransformRequested,
     WorkspaceState,
 )
-from .charts_panel import ChartsPanel
 from .commands import GlitchlingCommands
 from .dataset_panel import DatasetPanel
 from .export_dialog import ExportDialog, SweepExportDialog
@@ -315,8 +314,7 @@ EXTRA_CSS = """
 }
 
 #dataset-panel,
-#sweep-panel,
-#charts-panel {
+#sweep-panel {
     display: none;
     width: 100%;
     height: 100%;
@@ -384,7 +382,6 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
         self._workspace_panel: WorkspacePanel | None = None
         self._dataset_panel: DatasetPanel | None = None
         self._sweep_panel: SweepPanel | None = None
-        self._charts_panel: ChartsPanel | None = None
         self._seed_control: SeedControl | None = None
         self._auto_update_checkbox: Checkbox | None = None
         self._current_view: NavTab = "workspace"
@@ -466,15 +463,6 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
                 )
                 yield self._sweep_panel
 
-                # Charts panel (hidden initially)
-                self._charts_panel = ChartsPanel(
-                    get_scan_results=self._get_scan_results,
-                    get_sweep_results=self._get_sweep_results,
-                    get_dataset_results=self._get_dataset_results,
-                    id="charts-panel",
-                )
-                yield self._charts_panel
-
         # Status bar
         self.status_bar = StatusBar(id="status")
         yield self.status_bar
@@ -507,11 +495,6 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
             self._dataset_panel.display = view == "datasets"
         if self._sweep_panel:
             self._sweep_panel.display = view == "sweeps"
-        if self._charts_panel:
-            self._charts_panel.display = view == "charts"
-            # Refresh charts when switching to the charts tab
-            if view == "charts":
-                self._charts_panel.refresh_charts()
 
     def _on_tab_change(self, tab: NavTab) -> None:
         """Handle navigation tab changes."""

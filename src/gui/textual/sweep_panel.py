@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
+
+if TYPE_CHECKING:
+    from .charts_panel import ChartsPanel
 
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -22,6 +25,8 @@ from textual.widgets import (
     ProgressBar,
     Select,
     Static,
+    TabbedContent,
+    TabPane,
 )
 from textual.widgets.option_list import Option
 from textual.worker import Worker, WorkerState
@@ -189,6 +194,15 @@ SweepPanel OptionList {
     height: 1fr;
     background: var(--glitch-bg);
 }
+
+SweepPanel TabbedContent {
+    height: 1fr;
+}
+
+SweepPanel TabPane {
+    height: 1fr;
+    padding: 0;
+}
 """
 
 
@@ -277,8 +291,12 @@ class SweepPanel(Static):  # type: ignore[misc]
         self._progress_bar: ProgressBar | None = None
         self._progress_label: Static | None = None
         self._results_list: OptionList | None = None
+        self._charts_panel: ChartsPanel | None = None
 
     def compose(self) -> ComposeResult:
+        # Import here to avoid circular import
+        from .charts_panel import ChartsPanel
+
         with Vertical(classes="sweep-content"):
             # Configuration panel
             with Container(classes="section-panel"):
@@ -355,17 +373,24 @@ class SweepPanel(Static):  # type: ignore[misc]
                     self._progress_label = Static("", classes="progress-label")
                     yield self._progress_label
 
-            # Results panel
+            # Results and Charts tabs
             with Container(classes="section-panel results-panel"):
                 with Horizontal(classes="section-header"):
-                    yield Label("SWEEP RESULTS", classes="section-title")
+                    yield Label("SWEEP RESULTS & ANALYSIS", classes="section-title")
 
-                self._results_list = OptionList(id="results-list", classes="results-table")
-                yield self._results_list
+                with TabbedContent():
+                    with TabPane("Results", id="results-tab"):
+                        self._results_list = OptionList(id="results-list", classes="results-table")
+                        yield self._results_list
+
+                    with TabPane("Charts", id="charts-tab"):
+                        self._charts_panel = ChartsPanel(get_sweep_results=self.get_results)
+                        yield self._charts_panel
 
     def on_mount(self) -> None:
         """Initialize UI state on mount."""
         self._update_param_options()
+        self.set_results_header()
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         """Handle glitchling checkbox changes."""
@@ -503,6 +528,7 @@ class SweepPanel(Static):  # type: ignore[misc]
             self._run_btn.add_class("-running")
         if self._results_list:
             self._results_list.clear_options()
+            self.set_results_header()
         if self._progress_label:
             self._progress_label.update("Starting sweep...")
 
@@ -640,7 +666,7 @@ class SweepPanel(Static):  # type: ignore[misc]
         ned = fmt(first_tok.get("ned", []))
         sr = fmt(first_tok.get("sr", []))
 
-        row = f"{point.param_value:.3f}".ljust(10) + jsd.ljust(18) + ned.ljust(18) + sr.ljust(18)
+        row = f"{point.param_value:.3f}".ljust(12) + jsd.ljust(20) + ned.ljust(20) + sr.ljust(20)
         self._results_list.add_option(Option(row))
         self._results.append(point)
 
@@ -669,6 +695,10 @@ class SweepPanel(Static):  # type: ignore[misc]
 
         if self._export_btn:
             self._export_btn.disabled = not results
+
+        # Update charts panel with new data
+        if self._charts_panel:
+            self._charts_panel.refresh_charts()
 
         self.post_message(self.SweepCompleted(results))
 
@@ -702,9 +732,14 @@ class SweepPanel(Static):  # type: ignore[misc]
         return self._running
 
     def set_results_header(self) -> None:
-        """Set up the results table header."""
+        """Set up the results table header with meaningful column names."""
         if self._results_list:
             self._results_list.clear_options()
-            header = "Param".ljust(10) + "JSD".ljust(18) + "NED".ljust(18) + "SR".ljust(18)
+            header = (
+                "Parameter".ljust(12)
+                + "JS Divergence".ljust(20)
+                + "Edit Distance".ljust(20)
+                + "Subsequence Ret.".ljust(20)
+            )
             self._results_list.add_option(Option(header))
-            self._results_list.add_option(Option("─" * 64))
+            self._results_list.add_option(Option("─" * 72))

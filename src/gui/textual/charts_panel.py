@@ -15,11 +15,13 @@ from textual.containers import Container, Horizontal, Vertical
 from textual.message import Message
 from textual.widgets import (
     Button,
+    Checkbox,
     Label,
     Select,
     Static,
 )
 
+from ..metrics_utils import calculate_stats
 from .chart_renderers import (
     HISTOGRAM_BINS,
     HISTOGRAM_CHART_WIDTH,
@@ -98,6 +100,12 @@ ChartsPanel .refresh-btn {
 
 ChartsPanel .refresh-btn:hover {
     color: var(--glitch-bright);
+}
+
+ChartsPanel .auto-refresh-checkbox {
+    width: auto;
+    margin-left: 1;
+    margin-right: 0;
 }
 
 ChartsPanel .charts-grid {
@@ -214,6 +222,8 @@ class ChartsPanel(Container):  # type: ignore[misc]
         self._metric = "jsd"
         self._tokenizer = ""
         self._updating = False  # Prevent recursive updates
+        self._auto_refresh = False  # Auto-refresh enabled state
+        self._refresh_timer = None  # Timer for auto-refresh
 
         # Chart display widgets
         self._histogram_display: Static | None = None
@@ -231,6 +241,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         self._source_select: Select[str] | None = None
         self._metric_select: Select[str] | None = None
         self._tokenizer_select: Select[str] | None = None
+        self._auto_refresh_checkbox: Checkbox | None = None
 
         # Chart renderers
         self._histogram_renderer = HistogramRenderer()
@@ -244,7 +255,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             with Horizontal(classes="controls-row"):
                 yield Label("Source:", classes="control-label")
                 yield Select(
-                    [],
+                    [("Sweep", "sweep")],  # Start with default option
                     id="source-select",
                     allow_blank=False,
                 )
@@ -261,10 +272,14 @@ class ChartsPanel(Container):  # type: ignore[misc]
                 )
                 yield Label("Tokenizer:", classes="control-label")
                 yield Select(
-                    [],
+                    [("None", "")],  # Start with placeholder
                     id="tokenizer-select",
                     allow_blank=True,
                 )
+                self._auto_refresh_checkbox = Checkbox(
+                    "Auto-refresh", id="auto-refresh-checkbox", classes="auto-refresh-checkbox"
+                )
+                yield self._auto_refresh_checkbox
                 yield Button("↻ Refresh", id="refresh-btn", classes="refresh-btn")
 
             # Charts grid (2x2)
@@ -350,6 +365,15 @@ class ChartsPanel(Container):  # type: ignore[misc]
         """Handle button presses."""
         if event.button.id == "refresh-btn":
             self._update_charts()
+
+    def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
+        """Handle checkbox changes."""
+        if event.checkbox.id == "auto-refresh-checkbox":
+            self._auto_refresh = event.value
+            if self._auto_refresh:
+                self._start_auto_refresh()
+            else:
+                self._stop_auto_refresh()
 
     def action_refresh(self) -> None:
         """Refresh charts."""
@@ -553,7 +577,8 @@ class ChartsPanel(Container):  # type: ignore[misc]
                 if not metric_values:
                     continue
                 distribution_values.extend(metric_values)
-                trend_values.append(statistics.mean(metric_values))
+                mean, _ = calculate_stats(metric_values)
+                trend_values.append(mean)
                 x_values.append(point.param_value)
 
             if not trend_values and not distribution_values:
@@ -605,6 +630,10 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if dataset_results:
             sources.append(("Dataset", "dataset"))
 
+        # Always have at least one option to prevent empty Select error
+        if not sources:
+            sources = [("No Data", "sweep")]
+
         source_values = [s[1] for s in sources]
 
         if self._source_select:
@@ -614,7 +643,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             if source_values:
                 self._source_select.value = self._source
 
-        return bool(sources)
+        return bool(sweep_results or dataset_results)
 
     def _update_tokenizer_dropdown(
         self,
@@ -748,9 +777,9 @@ class ChartsPanel(Container):  # type: ignore[misc]
         # Use renderer for the chart
         chart_output = self._boxplot_renderer.render(values, metric)
 
-        # Add spacing and use chart output
+        # Add spacing and combine outputs
         output.append(" ")
-        output.extend(chart_output)
+        output.append_text(chart_output)
         output.append("\n")
 
         self._boxplot_display.update(output)
@@ -868,3 +897,24 @@ class ChartsPanel(Container):  # type: ignore[misc]
     def refresh_charts(self) -> None:
         """Refresh all charts with current data."""
         self._update_charts()
+
+    def _start_auto_refresh(self) -> None:
+        """Start the auto-refresh timer."""
+        if self._refresh_timer is None:
+            # 30 updates per second = 1/30 seconds = ~0.033 seconds
+            self._refresh_timer = self.set_interval(1 / 30, self._auto_refresh_tick)
+
+    def _stop_auto_refresh(self) -> None:
+        """Stop the auto-refresh timer."""
+        if self._refresh_timer is not None:
+            self._refresh_timer.stop()
+            self._refresh_timer = None
+
+    def _auto_refresh_tick(self) -> None:
+        """Called by the timer to refresh charts."""
+        if self._auto_refresh:
+            self._update_charts()
+
+    def on_unmount(self) -> None:
+        """Clean up timer when unmounting."""
+        self._stop_auto_refresh()

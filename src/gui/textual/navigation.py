@@ -13,13 +13,12 @@ from textual.widgets import ListItem, ListView, Static
 
 from .theme import themed_css
 
-NavTab = Literal["workspace", "datasets", "sweeps", "charts", "compare"]
+NavTab = Literal["workspace", "datasets", "sweeps", "compare"]
 
 NAV_ITEMS: list[tuple[NavTab, str, str]] = [
     ("workspace", "⚡", "Workspace"),
     ("datasets", "📊", "Datasets"),
     ("sweeps", "🎚️", "Sweeps"),
-    ("charts", "📈", "Charts"),
     ("compare", "🔍", "Compare"),
 ]
 
@@ -105,8 +104,7 @@ class NavigationPanel(Static):  # type: ignore[misc]
         Binding("1", "select_tab('workspace')", "Workspace", show=False),
         Binding("2", "select_tab('datasets')", "Datasets", show=False),
         Binding("3", "select_tab('sweeps')", "Sweeps", show=False),
-        Binding("4", "select_tab('charts')", "Charts", show=False),
-        Binding("5", "select_tab('compare')", "Compare", show=False),
+        Binding("4", "select_tab('compare')", "Compare", show=False),
     ]
 
     class TabSelected(Message):  # type: ignore[misc]
@@ -144,7 +142,7 @@ class NavigationPanel(Static):  # type: ignore[misc]
         yield self._list_view
         yield Static(
             Text.assemble(
-                ("1-5 ", "dim"),
+                ("1-4 ", "dim"),
                 ("switch tabs", ""),
             ),
             classes="nav-footer",

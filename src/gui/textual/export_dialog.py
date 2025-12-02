@@ -5,7 +5,6 @@ Provides dialogs for exporting session and sweep data in various formats.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
@@ -122,8 +121,15 @@ class ExportResult:
     file_path: str | None = None
 
 
-class BaseExportDialog(ModalScreen[ExportResult], ABC):
-    """Base class for export dialogs with common functionality."""
+class BaseExportDialog(ModalScreen[ExportResult]):
+    """Base class for export dialogs with common functionality.
+
+    Subclasses should implement:
+    - _get_dialog_title() -> str
+    - _get_status_text() -> str
+    - _compose_options() -> ComposeResult
+    - _get_export_content() -> str
+    """
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel"),
@@ -150,21 +156,22 @@ class BaseExportDialog(ModalScreen[ExportResult], ABC):
         self.on_file_save = on_file_save
         self._format = "json"
 
-    @abstractmethod
     def _get_dialog_title(self) -> str:
-        """Get the dialog title text."""
+        """Get the dialog title text. Subclasses should override."""
+        raise NotImplementedError("Subclasses must implement _get_dialog_title")
 
-    @abstractmethod
     def _get_status_text(self) -> str:
-        """Build status text describing available data."""
+        """Build status text describing available data. Subclasses should override."""
+        raise NotImplementedError("Subclasses must implement _get_status_text")
 
-    @abstractmethod
     def _compose_options(self) -> ComposeResult:
-        """Compose dialog-specific options widgets."""
+        """Compose dialog-specific options widgets. Subclasses should override."""
+        raise NotImplementedError("Subclasses must implement _compose_options")
+        yield  # Make this a generator
 
-    @abstractmethod
     def _get_export_content(self) -> str:
-        """Generate export content in selected format."""
+        """Generate export content in selected format. Subclasses should override."""
+        raise NotImplementedError("Subclasses must implement _get_export_content")
 
     def compose(self) -> ComposeResult:
         """Compose the dialog UI."""
