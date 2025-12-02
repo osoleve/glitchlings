@@ -310,8 +310,14 @@ class SweepPoint:
 
     param_value: float
     metrics: Dict[str, Dict[str, List[float]]] = field(default_factory=dict)
-    glitchling_name: str = ""
+    glitchling_names: List[str] = field(default_factory=list)
     parameter_name: str = ""
+
+    # Backward compatibility property
+    @property
+    def glitchling_name(self) -> str:
+        """Return first glitchling name for backward compatibility."""
+        return self.glitchling_names[0] if self.glitchling_names else ""
 
 
 def export_sweep_to_json(
@@ -343,8 +349,15 @@ def export_sweep_to_json(
     # Extract metadata from first point
     first = results[0]
     if options.include_metadata:
+        # Support both single glitchling_name and multiple glitchling_names
+        glitchling_names = getattr(first, "glitchling_names", [])
+        if not glitchling_names:
+            # Fallback to old single name
+            single_name = getattr(first, "glitchling_name", "")
+            glitchling_names = [single_name] if single_name else []
+
         output["metadata"] = {
-            "glitchling": getattr(first, "glitchling_name", ""),
+            "glitchlings": glitchling_names,
             "parameter": getattr(first, "parameter_name", ""),
             "point_count": len(results),
         }
@@ -408,8 +421,14 @@ def export_sweep_to_csv(
     # Metadata header comments
     first = results[0]
     if options.include_metadata:
+        # Support both single glitchling_name and multiple glitchling_names
+        glitchling_names = getattr(first, "glitchling_names", [])
+        if not glitchling_names:
+            single_name = getattr(first, "glitchling_name", "")
+            glitchling_names = [single_name] if single_name else []
+
         output.write(f"# Exported: {datetime.now().isoformat()}\n")
-        output.write(f"# Glitchling: {getattr(first, 'glitchling_name', 'Unknown')}\n")
+        output.write(f"# Glitchlings: {', '.join(glitchling_names)}\n")
         output.write(f"# Parameter: {getattr(first, 'parameter_name', 'Unknown')}\n")
         output.write(f"# Points: {len(results)}\n")
         output.write("#\n")
@@ -478,9 +497,15 @@ def export_sweep_to_markdown(
 
     first = results[0]
     if options.include_metadata:
+        # Support both single glitchling_name and multiple glitchling_names
+        glitchling_names = getattr(first, "glitchling_names", [])
+        if not glitchling_names:
+            single_name = getattr(first, "glitchling_name", "")
+            glitchling_names = [single_name] if single_name else []
+
         lines.append("## Configuration")
         lines.append("")
-        lines.append(f"- **Glitchling:** {getattr(first, 'glitchling_name', 'Unknown')}")
+        lines.append(f"- **Glitchlings:** {', '.join(glitchling_names)}")
         lines.append(f"- **Parameter:** {getattr(first, 'parameter_name', 'Unknown')}")
         lines.append(f"- **Sweep Points:** {len(results)}")
         lines.append("")

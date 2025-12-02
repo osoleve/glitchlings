@@ -24,8 +24,14 @@ class SweepPoint:
 
     param_value: float
     metrics: Dict[str, Dict[str, List[float]]] = field(default_factory=dict)
-    glitchling_name: str = ""
+    glitchling_names: List[str] = field(default_factory=list)
     parameter_name: str = ""
+
+    # Backward compatibility property
+    @property
+    def glitchling_name(self) -> str:
+        """Return first glitchling name for backward compatibility."""
+        return self.glitchling_names[0] if self.glitchling_names else ""
 
 
 @dataclass
@@ -45,6 +51,7 @@ class GridSweepPanel(ttk.Frame):
 
     Can optionally place the results table in an external container
     (e.g., a notebook tab) by passing results_container.
+    Supports sweeping over multiple glitchlings simultaneously.
     """
 
     def __init__(
@@ -67,8 +74,15 @@ class GridSweepPanel(ttk.Frame):
         self.running = False
         self.results: List[SweepPoint] = []
 
+        # Glitchling selection state: track which are selected via checkboxes
+        self.glitchling_vars: Dict[str, tk.BooleanVar] = {}
+        for cls in AVAILABLE_GLITCHLINGS:
+            self.glitchling_vars[cls.__name__] = tk.BooleanVar(value=False)
+        # Select first glitchling by default
+        if AVAILABLE_GLITCHLINGS:
+            self.glitchling_vars[AVAILABLE_GLITCHLINGS[0].__name__].set(True)
+
         # Variables
-        self.glitchling_var = tk.StringVar()
         self.param_var = tk.StringVar()
         self.start_var = tk.StringVar(value="0.0")
         self.end_var = tk.StringVar(value="1.0")
@@ -107,38 +121,115 @@ class GridSweepPanel(ttk.Frame):
         config_frame = tk.Frame(content, bg=COLORS["black"])
         config_frame.pack(fill=tk.X, padx=8, pady=8)
 
-        # Row 1: Glitchling and Parameter selection
+        # Row 1: Glitchling multi-select and Parameter selection
         row1 = tk.Frame(config_frame, bg=COLORS["black"])
         row1.pack(fill=tk.X, pady=4)
 
+        # Glitchling selection label
         tk.Label(
             row1,
-            text="Glitchling:",
+            text="Glitchlings:",
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, anchor="n")
 
-        glitchling_names = [cls.__name__ for cls in AVAILABLE_GLITCHLINGS]
-        self.glitchling_combo = ttk.Combobox(
-            row1,
-            textvariable=self.glitchling_var,
-            values=glitchling_names,
-            width=15,
-            state="readonly",
+        # Glitchling checkboxes container with scrollable frame
+        glitch_select_frame = tk.Frame(row1, bg=COLORS["darker"], padx=2, pady=2)
+        glitch_select_frame.pack(side=tk.LEFT, padx=(8, 20))
+
+        # Create a canvas and scrollbar for the checkbox list
+        glitch_canvas = tk.Canvas(
+            glitch_select_frame,
+            bg=COLORS["darker"],
+            highlightthickness=0,
+            width=180,
+            height=80,
         )
-        self.glitchling_combo.pack(side=tk.LEFT, padx=(8, 20))
-        self.glitchling_combo.bind("<<ComboboxSelected>>", lambda e: self._on_glitchling_change())
-        if glitchling_names:
-            self.glitchling_var.set(glitchling_names[0])
+        glitch_scrollbar = ttk.Scrollbar(
+            glitch_select_frame, orient=tk.VERTICAL, command=glitch_canvas.yview
+        )
+        glitch_inner = tk.Frame(glitch_canvas, bg=COLORS["darker"])
 
+        glitch_canvas.configure(yscrollcommand=glitch_scrollbar.set)
+
+        glitch_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        glitch_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        canvas_window = glitch_canvas.create_window((0, 0), window=glitch_inner, anchor="nw")
+
+        # Create checkboxes for each glitchling
+        self.glitchling_checkboxes: List[tk.Checkbutton] = []
+        for cls in AVAILABLE_GLITCHLINGS:
+            name = cls.__name__
+            cb = tk.Checkbutton(
+                glitch_inner,
+                text=name,
+                variable=self.glitchling_vars[name],
+                font=FONTS["mono"],
+                fg=COLORS["amber"],
+                bg=COLORS["darker"],
+                selectcolor=COLORS["dark"],
+                activeforeground=COLORS["green_bright"],
+                activebackground=COLORS["darker"],
+                command=self._on_glitchling_change,
+            )
+            cb.pack(anchor="w")
+            self.glitchling_checkboxes.append(cb)
+
+        # Update scroll region when inner frame changes
+        def on_frame_configure(event: "tk.Event[tk.Frame]") -> None:
+            glitch_canvas.configure(scrollregion=glitch_canvas.bbox("all"))
+
+        glitch_inner.bind("<Configure>", on_frame_configure)
+
+        # Ensure canvas resizes properly
+        def on_canvas_configure(event: "tk.Event[tk.Canvas]") -> None:
+            glitch_canvas.itemconfig(canvas_window, width=event.width)
+
+        glitch_canvas.bind("<Configure>", on_canvas_configure)
+
+        # Select All / Clear buttons
+        select_btn_frame = tk.Frame(row1, bg=COLORS["black"])
+        select_btn_frame.pack(side=tk.LEFT, padx=(0, 20), anchor="n")
+
+        tk.Button(
+            select_btn_frame,
+            text="All",
+            font=FONTS["tiny"],
+            fg=COLORS["cyan"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["highlight"],
+            bd=0,
+            padx=6,
+            pady=2,
+            cursor="hand2",
+            command=self._select_all_glitchlings,
+        ).pack(pady=(0, 2))
+
+        tk.Button(
+            select_btn_frame,
+            text="None",
+            font=FONTS["tiny"],
+            fg=COLORS["cyan"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["highlight"],
+            bd=0,
+            padx=6,
+            pady=2,
+            cursor="hand2",
+            command=self._clear_all_glitchlings,
+        ).pack()
+
+        # Parameter selection
         tk.Label(
             row1,
             text="Parameter:",
             font=FONTS["small"],
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
-        ).pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT, anchor="n")
 
         self.param_combo = ttk.Combobox(
             row1,
@@ -147,7 +238,7 @@ class GridSweepPanel(ttk.Frame):
             width=18,
             state="readonly",
         )
-        self.param_combo.pack(side=tk.LEFT, padx=(8, 0))
+        self.param_combo.pack(side=tk.LEFT, padx=(8, 0), anchor="n")
 
         # Row 2: Range configuration
         row2 = tk.Frame(config_frame, bg=COLORS["black"])
@@ -364,23 +455,57 @@ class GridSweepPanel(ttk.Frame):
         self.results_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         results_scroll.pack(side=tk.RIGHT, fill=tk.Y)
 
+    def _get_selected_glitchlings(self) -> List[str]:
+        """Return list of currently selected glitchling names."""
+        return [name for name, var in self.glitchling_vars.items() if var.get()]
+
+    def _select_all_glitchlings(self) -> None:
+        """Select all glitchlings."""
+        for var in self.glitchling_vars.values():
+            var.set(True)
+        self._on_glitchling_change()
+
+    def _clear_all_glitchlings(self) -> None:
+        """Clear all glitchling selections."""
+        for var in self.glitchling_vars.values():
+            var.set(False)
+        self._on_glitchling_change()
+
     def _on_glitchling_change(self) -> None:
-        """Update parameter dropdown when glitchling changes."""
-        glitchling_name = self.glitchling_var.get()
-        params = GLITCHLING_PARAMS.get(glitchling_name, {})
+        """Update parameter dropdown when glitchling selection changes."""
+        selected = self._get_selected_glitchlings()
 
-        # Filter to numeric parameters only
-        numeric_params = [
-            name for name, info in params.items() if info.get("type") in ("float", "int")
-        ]
+        if not selected:
+            self.param_combo["values"] = []
+            self.param_var.set("")
+            return
 
-        self.param_combo["values"] = numeric_params
-        if numeric_params:
-            self.param_var.set(numeric_params[0])
-            # Set range based on parameter info
-            param_info = params.get(numeric_params[0], {})
-            self.start_var.set(str(param_info.get("min", 0.0)))
-            self.end_var.set(str(param_info.get("max", 1.0)))
+        # Find numeric parameters common to all selected glitchlings
+        common_params: set[str] | None = None
+        for name in selected:
+            params = GLITCHLING_PARAMS.get(name, {})
+            numeric_params = {
+                pname for pname, info in params.items() if info.get("type") in ("float", "int")
+            }
+            if common_params is None:
+                common_params = numeric_params
+            else:
+                common_params &= numeric_params
+
+        param_list = sorted(common_params) if common_params else []
+        self.param_combo["values"] = param_list
+
+        # If current param not in new list, select first available
+        if self.param_var.get() not in param_list:
+            if param_list:
+                self.param_var.set(param_list[0])
+                # Set range based on first selected glitchling's param info
+                first_glitch = selected[0]
+                param_info = GLITCHLING_PARAMS.get(first_glitch, {}).get(param_list[0], {})
+                self.start_var.set(str(param_info.get("min", 0.0)))
+                self.end_var.set(str(param_info.get("max", 1.0)))
+            else:
+                self.param_var.set("")
 
     def _run_sweep(self) -> None:
         """Start or cancel a parameter sweep."""
@@ -404,21 +529,20 @@ class GridSweepPanel(ttk.Frame):
         if step <= 0 or start >= end:
             return
 
-        glitchling_name = self.glitchling_var.get()
+        selected_names = self._get_selected_glitchlings()
         param_name = self.param_var.get()
         tokenizers = self.get_tokenizers()
 
-        if not glitchling_name or not param_name:
+        if not selected_names or not param_name:
             return
 
-        # Find glitchling class
-        glitchling_cls = None
+        # Find glitchling classes for selected names
+        glitchling_classes: List[type] = []
         for cls in AVAILABLE_GLITCHLINGS:
-            if cls.__name__ == glitchling_name:
-                glitchling_cls = cls
-                break
+            if cls.__name__ in selected_names:
+                glitchling_classes.append(cls)
 
-        if not glitchling_cls:
+        if not glitchling_classes:
             return
 
         self.running = True
@@ -435,7 +559,7 @@ class GridSweepPanel(ttk.Frame):
             target=self._sweep_worker,
             args=(
                 input_text,
-                glitchling_cls,
+                glitchling_classes,
                 param_name,
                 start,
                 end,
@@ -450,7 +574,7 @@ class GridSweepPanel(ttk.Frame):
     def _sweep_worker(
         self,
         input_text: str,
-        glitchling_cls: type,
+        glitchling_classes: List[type],
         param_name: str,
         start: float,
         end: float,
@@ -458,7 +582,7 @@ class GridSweepPanel(ttk.Frame):
         seeds: int,
         tokenizers: List[str],
     ) -> None:
-        """Worker thread for running sweep."""
+        """Worker thread for running sweep with multiple glitchlings."""
         # Calculate sweep points
         points: List[float] = []
         current = start
@@ -467,6 +591,7 @@ class GridSweepPanel(ttk.Frame):
             current += step
 
         total = len(points) * seeds
+        glitchling_names = [cls.__name__ for cls in glitchling_classes]
 
         for i, param_value in enumerate(points):
             if not self.running:
@@ -480,9 +605,19 @@ class GridSweepPanel(ttk.Frame):
 
                 seed = 42 + seed_offset
 
-                # Create glitchling with this parameter value
-                glitchling = glitchling_cls(seed=seed, **{param_name: param_value})
-                gaggle = Gaggle([glitchling], seed=seed)
+                # Create all glitchlings with this parameter value
+                glitchlings = []
+                for cls in glitchling_classes:
+                    # Check if this glitchling supports the parameter
+                    cls_params = GLITCHLING_PARAMS.get(cls.__name__, {})
+                    if param_name in cls_params:
+                        glitchling = cls(seed=seed, **{param_name: param_value})
+                    else:
+                        # Use default parameters if this param doesn't apply
+                        glitchling = cls(seed=seed)
+                    glitchlings.append(glitchling)
+
+                gaggle = Gaggle(glitchlings, seed=seed)
                 output = str(gaggle.corrupt(input_text))
 
                 # Calculate metrics for each tokenizer
@@ -510,7 +645,7 @@ class GridSweepPanel(ttk.Frame):
             sweep_point = SweepPoint(
                 param_value=param_value,
                 metrics=point_metrics,
-                glitchling_name=glitchling_cls.__name__,
+                glitchling_names=glitchling_names,
                 parameter_name=param_name,
             )
             self.results.append(sweep_point)
@@ -608,7 +743,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Find the root window
         root = self.winfo_toplevel()
-        SweepExportDialog(root, self.results)  # type: ignore[arg-type]
+        SweepExportDialog(root, self.results)
 
     def get_results(self) -> List[SweepPoint]:
         """Return current sweep results."""

@@ -13,6 +13,7 @@ from ..model import ScanResult
 from ..preferences import Preferences
 from ..theme import APP_VERSION, COLORS, DEFAULT_TOKENIZERS, FONTS
 from .glitchling_panel import GlitchlingPanel
+from .tokenizer_comparison_panel import TokenizerComparisonPanel
 from .tokenizer_panel import TokenizerPanel
 from .utils import create_tooltip
 
@@ -56,6 +57,7 @@ class MainFrame(ttk.Frame):
 
         self.glitchling_panel: GlitchlingPanel
         self.tokenizer_panel: TokenizerPanel
+        self.tokenizer_comparison_panel: TokenizerComparisonPanel
         self.input_text: scrolledtext.ScrolledText
         self.token_diff_text: scrolledtext.ScrolledText
         self.diff_tokenizer_combo: ttk.Combobox
@@ -155,6 +157,10 @@ class MainFrame(ttk.Frame):
         self.content_tabs.add(self.token_diff_tab, text="Token Diff")
         self.content_tabs.add(self.dataset_tab, text="Datasets")
         self.content_tabs.add(self.sweep_tab, text="Sweep")
+
+        # Tokenizer Comparison tab
+        self.compare_tab = ttk.Frame(self.content_tabs)
+        self.content_tabs.add(self.compare_tab, text="Compare")
 
         # Input section with vector styling
         input_frame = self._create_vector_labelframe(self.input_tab, "INPUT")
@@ -362,6 +368,14 @@ class MainFrame(ttk.Frame):
             get_dataset_results=self._get_dataset_results,
         )
         self.charts_panel.pack(fill=tk.BOTH, expand=True)
+
+        # Tokenizer Comparison panel inside Compare tab
+        self.tokenizer_comparison_panel = TokenizerComparisonPanel(
+            self.compare_tab,
+            get_input_text=self.get_input,
+            get_tokenizers=self.get_enabled_tokenizers,
+        )
+        self.tokenizer_comparison_panel.pack(fill=tk.BOTH, expand=True)
 
         # Metrics section (visible only on Input/Token Diff tabs)
         self._metrics_container = ttk.Frame(right_pane)
