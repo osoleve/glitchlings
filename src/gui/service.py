@@ -1,4 +1,4 @@
-import statistics
+import logging
 import threading
 from typing import Any, Callable, Dict, List, Sequence, Tuple
 
@@ -10,9 +10,11 @@ from glitchlings.attack import (
 from glitchlings.attack.tokenization import resolve_tokenizer
 from glitchlings.zoo import Gaggle
 
+from .metrics_utils import calculate_stats, format_metric, format_stats_display, format_token_delta
 from .textual.state import ScanResult
 
 DEFAULT_TOKENIZER = "cl100k_base"
+logger = logging.getLogger(__name__)
 
 
 class GlitchlingService:
@@ -78,27 +80,28 @@ class GlitchlingService:
                         try:
                             jsd = jensen_shannon_divergence(tokens_in, tokens_out)
                             tok_results["jsd"] = f"{jsd:.4f}"
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate JSD for {tok_name}: {e}")
 
                         try:
                             ned = normalized_edit_distance(tokens_in, tokens_out)
                             tok_results["ned"] = f"{ned:.4f}"
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate NED for {tok_name}: {e}")
 
                         try:
                             sr = subsequence_retention(tokens_in, tokens_out)
                             tok_results["sr"] = f"{sr:.4f}"
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate SR for {tok_name}: {e}")
                 else:
                     # Just input stats if needed, but for now we return empty metrics
                     pass
 
                 results[tok_name] = tok_results
 
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to calculate metrics for tokenizer {tok_name}: {e}")
                 results[tok_name] = tok_results
 
         return results
@@ -132,7 +135,8 @@ class GlitchlingService:
         for tok_name in tokenizers:
             try:
                 resolved_toks[tok_name] = resolve_tokenizer(tok_name)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to resolve tokenizer {tok_name}: {e}")
                 resolved_toks[tok_name] = None
 
         # Pre-encode input text
@@ -144,7 +148,8 @@ class GlitchlingService:
                     tokens, ids = tok.encode(input_text)
                     input_tokens[tok_name] = tokens
                     input_ids[tok_name] = ids
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to encode input text with {tok_name}: {e}")
                     input_tokens[tok_name] = []
                     input_ids[tok_name] = []
             else:
@@ -193,24 +198,24 @@ class GlitchlingService:
                             jsd_val = jensen_shannon_divergence(in_tokens, out_tokens)
                             if isinstance(jsd_val, (int, float)):
                                 metrics_lists[tok_name]["jsd"].append(float(jsd_val))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate JSD for {tok_name} seed {seed}: {e}")
 
                         try:
                             ned_val = normalized_edit_distance(in_tokens, out_tokens)
                             if isinstance(ned_val, (int, float)):
                                 metrics_lists[tok_name]["ned"].append(float(ned_val))
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate NED for {tok_name} seed {seed}: {e}")
 
                         try:
                             sr_val = subsequence_retention(in_tokens, out_tokens)
                             if isinstance(sr_val, (int, float)):
                                 metrics_lists[tok_name]["sr"].append(float(sr_val))
-                        except Exception:
-                            pass
-                except Exception:
-                    pass
+                        except Exception as e:
+                            logger.debug(f"Failed to calculate SR for {tok_name} seed {seed}: {e}")
+                except Exception as e:
+                    logger.debug(f"Failed to encode output text with {tok_name} seed {seed}: {e}")
 
         # Aggregate metrics (mean ± std)
         aggregated: Dict[str, Dict[str, str]] = {}
@@ -219,21 +224,15 @@ class GlitchlingService:
             for metric_name in ["token_delta", "jsd", "ned", "sr"]:
                 values = metrics_lists[tok_name][metric_name]
                 if values:
-                    mean = statistics.mean(values)
-                    if len(values) > 1:
-                        std = statistics.stdev(values)
-                        if metric_name == "token_delta":
-                            # Format token delta with sign
-                            sign = "+" if mean > 0 else ""
-                            tok_metrics[metric_name] = f"{sign}{mean:.1f} ± {std:.1f}"
-                        else:
-                            tok_metrics[metric_name] = f"{mean:.4f} ± {std:.4f}"
+                    mean, std = calculate_stats(values)
+                    if metric_name == "token_delta":
+                        tok_metrics[metric_name] = format_token_delta(
+                            mean, std if len(values) > 1 else None, decimals=1
+                        )
                     else:
-                        if metric_name == "token_delta":
-                            sign = "+" if mean > 0 else ""
-                            tok_metrics[metric_name] = f"{sign}{mean:.1f}"
-                        else:
-                            tok_metrics[metric_name] = f"{mean:.4f}"
+                        tok_metrics[metric_name] = format_metric(
+                            mean, std if len(values) > 1 else None, decimals=4
+                        )
                 else:
                     tok_metrics[metric_name] = "-"
             aggregated[tok_name] = tok_metrics
@@ -256,21 +255,14 @@ class GlitchlingService:
             "char_count_out": "Character Count (out)",
         }
 
-        def fmt_stats(values: Sequence[float | int]) -> str:
-            if not values:
-                return "-"
-            numbers = [float(value) for value in values]
-            mean = statistics.mean(numbers)
-            if len(numbers) > 1:
-                std = statistics.stdev(numbers)
-                return f"{mean:.3f} +/- {std:.3f}"
-            return f"{mean:.3f}"
-
         for metric_name in metric_order:
             formatted_rows.append(
                 (
                     display_names.get(metric_name, metric_name),
-                    [fmt_stats(getattr(results[tok], metric_name, [])) for tok in tokenizers],
+                    [
+                        format_stats_display(getattr(results[tok], metric_name, []), decimals=3)
+                        for tok in tokenizers
+                    ],
                 )
             )
 
@@ -325,7 +317,8 @@ class GlitchlingService:
         for tok_name in tokenizers:
             try:
                 resolved_toks[tok_name] = resolve_tokenizer(tok_name)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to resolve tokenizer {tok_name} in dataset worker: {e}")
                 resolved_toks[tok_name] = None
 
         results: Dict[str, ScanResult] = {tok: ScanResult() for tok in tokenizers}
@@ -350,7 +343,8 @@ class GlitchlingService:
                     output_text = str(gaggle.corrupt(sample))
                 else:
                     output_text = sample
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to transform sample {idx} with seed {seed}: {e}")
                 output_text = sample
 
             for tok_name in tokenizers:
@@ -361,7 +355,8 @@ class GlitchlingService:
                 try:
                     input_tokens, input_ids = tok.encode(sample)
                     output_tokens, output_ids = tok.encode(output_text)
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Failed to encode sample {idx} with {tok_name}: {e}")
                     continue
 
                 res = results[tok_name]
@@ -374,22 +369,22 @@ class GlitchlingService:
                         jsd_val = jensen_shannon_divergence(input_tokens, output_tokens)
                         if isinstance(jsd_val, (int, float)):
                             res.jsd.append(float(jsd_val))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to calculate JSD for sample {idx} with {tok_name}: {e}")
 
                     try:
                         ned_val = normalized_edit_distance(input_tokens, output_tokens)
                         if isinstance(ned_val, (int, float)):
                             res.ned.append(float(ned_val))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to calculate NED for sample {idx} with {tok_name}: {e}")
 
                     try:
                         sr_val = subsequence_retention(input_tokens, output_tokens)
                         if isinstance(sr_val, (int, float)):
                             res.sr.append(float(sr_val))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug(f"Failed to calculate SR for sample {idx} with {tok_name}: {e}")
 
             processed += 1
             if (idx + 1) % progress_stride == 0 or idx == total_samples - 1:

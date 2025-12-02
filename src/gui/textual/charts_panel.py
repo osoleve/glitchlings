@@ -5,7 +5,6 @@ Provides ASCII-style charts for metrics visualization.
 
 from __future__ import annotations
 
-import statistics
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -21,16 +20,20 @@ from textual.widgets import (
     Static,
 )
 
+from .chart_renderers import (
+    HISTOGRAM_BINS,
+    HISTOGRAM_CHART_WIDTH,
+    BOXPLOT_CHART_WIDTH,
+    LINE_CHART_HEIGHT,
+    LINE_CHART_MAX_WIDTH,
+    HistogramRenderer,
+    BoxPlotRenderer,
+    LineChartRenderer,
+    StatsRenderer,
+)
 from .state import ScanResult
 from .sweep_panel import SweepPoint
 from .theme import PALETTE, substitute_vars
-
-# Chart rendering constants
-HISTOGRAM_BINS = 8
-HISTOGRAM_CHART_WIDTH = 28
-BOXPLOT_CHART_WIDTH = 40
-LINE_CHART_HEIGHT = 8
-LINE_CHART_MAX_WIDTH = 32
 
 _RAW_CSS = """
 ChartsPanel {
@@ -229,6 +232,12 @@ class ChartsPanel(Container):  # type: ignore[misc]
         self._metric_select: Select[str] | None = None
         self._tokenizer_select: Select[str] | None = None
 
+        # Chart renderers
+        self._histogram_renderer = HistogramRenderer()
+        self._boxplot_renderer = BoxPlotRenderer()
+        self._line_renderer = LineChartRenderer()
+        self._stats_renderer = StatsRenderer()
+
     def compose(self) -> ComposeResult:
         with Vertical(classes="charts-content"):
             # Controls row
@@ -366,24 +375,76 @@ class ChartsPanel(Container):  # type: ignore[misc]
         dataset_results: dict[str, ScanResult] | None = None,
     ) -> None:
         """Update all charts with current data."""
-        self._do_update_charts(scan_results, sweep_results, dataset_results)
+        # Prevent recursive updates from select change events
+        self._updating = True
+        try:
+            # Get data from callbacks if not provided
+            if scan_results is None:
+                scan_results = self._get_scan_results() if self._get_scan_results else {}
+            if sweep_results is None:
+                sweep_results = self._get_sweep_results() if self._get_sweep_results else []
+            if dataset_results is None:
+                dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
+
+            # Update source dropdown
+            if not self._update_source_dropdown(sweep_results, dataset_results):
+                self._show_no_data()
+                return
+
+            # Update tokenizer dropdown
+            if not self._update_tokenizer_dropdown(scan_results, sweep_results, dataset_results):
+                self._show_no_data()
+                return
+
+            # Update metric dropdown
+            self._update_metric_dropdown(scan_results, sweep_results, dataset_results)
+
+            # Build and render charts
+            data = self._build_chart_data(
+                self._source,
+                self._tokenizer,
+                self._metric,
+                scan_results,
+                sweep_results,
+                dataset_results,
+            )
+
+            if data is None:
+                self._show_no_data()
+                return
+
+            self._render_charts(data)
+        finally:
+            self._updating = False
 
     def _refresh_dropdowns_only(self) -> None:
-        """Refresh tokenizer and metric dropdowns for current source, then draw."""
+        """Refresh tokenizer and metric dropdowns for current source, then redraw charts."""
         scan_results = self._get_scan_results() if self._get_scan_results else {}
         sweep_results = self._get_sweep_results() if self._get_sweep_results else []
         dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
 
-        # Prevent recursive updates while we set dropdown values
         self._updating = True
         try:
             self._update_tokenizer_dropdown(scan_results, sweep_results, dataset_results)
             self._update_metric_dropdown(scan_results, sweep_results, dataset_results)
+
+            # Build and render charts with current selections
+            data = self._build_chart_data(
+                self._source,
+                self._tokenizer,
+                self._metric,
+                scan_results,
+                sweep_results,
+                dataset_results,
+            )
+
+            if data is None:
+                self._show_no_data()
+                return
+
+            self._render_charts(data)
         finally:
             self._updating = False
-
-        # Draw charts with current selections
-        self._draw_charts_only()
 
     def _draw_charts_only(self) -> None:
         """Draw charts without updating dropdowns."""
@@ -391,64 +452,6 @@ class ChartsPanel(Container):  # type: ignore[misc]
         sweep_results = self._get_sweep_results() if self._get_sweep_results else []
         dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
 
-        data = self._build_chart_data(
-            self._source,
-            self._tokenizer,
-            self._metric,
-            scan_results,
-            sweep_results,
-            dataset_results,
-        )
-
-        if data is None:
-            self._show_no_data()
-            return
-
-        self._render_charts(data)
-
-    def _do_update_charts(
-        self,
-        scan_results: dict[str, ScanResult] | None = None,
-        sweep_results: list[SweepPoint] | None = None,
-        dataset_results: dict[str, ScanResult] | None = None,
-    ) -> None:
-        """Internal chart update logic."""
-        # Prevent recursive updates from select change events
-        self._updating = True
-        try:
-            self._do_update_charts_inner(scan_results, sweep_results, dataset_results)
-        finally:
-            self._updating = False
-
-    def _do_update_charts_inner(
-        self,
-        scan_results: dict[str, ScanResult] | None = None,
-        sweep_results: list[SweepPoint] | None = None,
-        dataset_results: dict[str, ScanResult] | None = None,
-    ) -> None:
-        """Internal chart update logic (inner, called with _updating=True)."""
-        # Get data from callbacks if not provided
-        if scan_results is None:
-            scan_results = self._get_scan_results() if self._get_scan_results else {}
-        if sweep_results is None:
-            sweep_results = self._get_sweep_results() if self._get_sweep_results else []
-        if dataset_results is None:
-            dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
-
-        # Update source dropdown
-        if not self._update_source_dropdown(sweep_results, dataset_results):
-            self._show_no_data()
-            return
-
-        # Update tokenizer dropdown
-        if not self._update_tokenizer_dropdown(scan_results, sweep_results, dataset_results):
-            self._show_no_data()
-            return
-
-        # Update metric dropdown
-        self._update_metric_dropdown(scan_results, sweep_results, dataset_results)
-
-        # Build chart data
         data = self._build_chart_data(
             self._source,
             self._tokenizer,
@@ -713,39 +716,19 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._histogram_display.update("")
             return
 
-        # Calculate histogram bins
-        min_val = min(values)
-        max_val = max(values)
-
-        # Handle edge case where all values are the same
-        if min_val == max_val:
-            max_val = min_val + 0.1
-
-        num_bins = HISTOGRAM_BINS
-        bin_width = (max_val - min_val) / num_bins
-        bins = [0] * num_bins
-
-        for v in values:
-            bin_idx = int((v - min_val) / bin_width)
-            bin_idx = min(bin_idx, num_bins - 1)
-            bins[bin_idx] += 1
-
-        max_count = max(bins) if bins else 1
-        chart_width = HISTOGRAM_CHART_WIDTH
-
-        # Build output
+        # Build output with header
         output = Text()
         output.append(f" {metric.upper()} n={len(values)}\n\n", style=PALETTE["green_bright"])
 
-        for i, count in enumerate(bins):
-            bar_len = int((count / max_count) * chart_width) if max_count > 0 else 0
-            bin_start = min_val + i * bin_width
+        # Use renderer for the chart
+        chart_output = self._histogram_renderer.render(values, metric)
 
-            output.append(f" {bin_start:5.2f}│", style=PALETTE["amber"])
-            output.append("█" * bar_len, style=PALETTE["cyan"])
-            output.append(f" {count}\n", style=PALETTE["green_dim"])
+        # Adjust formatting to match existing style
+        for line in chart_output.plain.split("\n"):
+            if line.strip():
+                output.append(f" {line}\n", style=PALETTE["cyan"])
 
-        output.append(f" {'─' * 6}┴{'─' * chart_width}→\n", style=PALETTE["green_dim"])
+        output.append(f" {'─' * 6}┴{'─' * HISTOGRAM_CHART_WIDTH}→\n", style=PALETTE["green_dim"])
 
         self._histogram_display.update(output)
 
@@ -758,57 +741,17 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._boxplot_display.update("")
             return
 
-        sorted_vals = sorted(values)
-        n = len(sorted_vals)
-
-        min_val = sorted_vals[0]
-        max_val = sorted_vals[-1]
-        median = statistics.median(sorted_vals)
-        q1 = sorted_vals[n // 4] if n >= 4 else min_val
-        q3 = sorted_vals[3 * n // 4] if n >= 4 else max_val
-        mean = statistics.mean(values)
-
-        chart_width = BOXPLOT_CHART_WIDTH
-
-        # Normalize positions
-        range_val = max_val - min_val if max_val != min_val else 1
-
-        def pos(v: float) -> int:
-            return int(((v - min_val) / range_val) * (chart_width - 1))
-
-        # Build output
+        # Build output with header
         output = Text()
         output.append(f" {metric.upper()} n={len(values)}\n\n", style=PALETTE["green_bright"])
 
-        # Build boxplot line
-        line = [" "] * chart_width
-        line[pos(min_val)] = "├"
-        line[pos(max_val)] = "┤"
-        line[pos(q1)] = "┌"
-        line[pos(q3)] = "┐"
-        line[pos(median)] = "│"
+        # Use renderer for the chart
+        chart_output = self._boxplot_renderer.render(values, metric)
 
-        # Fill whiskers
-        for i in range(pos(min_val) + 1, pos(q1)):
-            line[i] = "─"
-        for i in range(pos(q3) + 1, pos(max_val)):
-            line[i] = "─"
-
-        # Fill box
-        for i in range(pos(q1) + 1, pos(q3)):
-            if i != pos(median):
-                line[i] = "█"
-            else:
-                line[i] = "┃"
-
-        output.append(" ", style=PALETTE["green_dim"])
-        output.append("".join(line) + "\n", style=PALETTE["cyan"])
-
-        # Labels
-        output.append("\n", style="")
-        output.append(f" Min:{min_val:7.3f}  Q1:{q1:7.3f}\n", style=PALETTE["amber"])
-        output.append(f" Med:{median:7.3f}  Q3:{q3:7.3f}\n", style=PALETTE["amber"])
-        output.append(f" Max:{max_val:7.3f}  μ:{mean:8.3f}\n", style=PALETTE["amber"])
+        # Add spacing and use chart output
+        output.append(" ")
+        output.extend(chart_output)
+        output.append("\n")
 
         self._boxplot_display.update(output)
 
@@ -913,23 +856,12 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._stats_display.update("No data available")
             return
 
-        mean = statistics.mean(values)
-        std = statistics.stdev(values) if len(values) > 1 else 0
-        min_val = min(values)
-        max_val = max(values)
-        median = statistics.median(values)
+        # Use renderer for statistics
+        output = self._stats_renderer.render(values, metric)
 
-        output = Text()
-        output.append(f"{metric.upper()} Statistics\n", style=PALETTE["green_bright"])
-        output.append("─────────────────────\n", style=PALETTE["border"])
-        output.append(f"Mean:   {mean:.4f} ± {std:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Median: {median:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Min:    {min_val:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Max:    {max_val:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Range:  {max_val - min_val:.4f}\n", style=PALETTE["amber"])
-        output.append(f"Count:  {len(values)}\n", style=PALETTE["amber"])
+        # Add source label if provided
         if source_label:
-            output.append(f"Source: {source_label}\n", style=PALETTE["text_muted"])
+            output.append(f"\nSource: {source_label}", style=PALETTE["text_muted"])
 
         self._stats_display.update(output)
 

@@ -838,7 +838,9 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
         """
         # Generate a default filename
         from datetime import datetime
+        import logging
 
+        logger = logging.getLogger(__name__)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"glitchlings_export_{timestamp}{extension}"
 
@@ -848,7 +850,17 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
             path = Path.cwd() / filename
             path.write_text(content, encoding="utf-8")
             return path
-        except OSError:
+        except PermissionError as e:
+            logger.error(f"Permission denied when saving to {path}: {e}")
+            self.notify(f"Permission denied: Cannot save to {path}", severity="error")
+            return None
+        except OSError as e:
+            if e.errno == 28:  # ENOSPC - No space left on device
+                logger.error(f"Disk full when saving to {path}: {e}")
+                self.notify("Cannot save: Disk full", severity="error")
+            else:
+                logger.error(f"Failed to save file to {path}: {e}")
+                self.notify(f"Failed to save file: {e}", severity="error")
             return None
 
     def request_transform(self, *, input_text: str | None = None) -> None:

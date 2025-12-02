@@ -629,13 +629,12 @@ class SweepPanel(Static):  # type: ignore[misc]
         first_tok = next(iter(point.metrics.values()), {})
 
         def fmt(values: list[float]) -> str:
+            from ..metrics_utils import format_metric, calculate_stats
+
             if not values:
                 return "-"
-            mean = statistics.mean(values)
-            if len(values) > 1:
-                std = statistics.stdev(values)
-                return f"{mean:.4f} ± {std:.4f}"
-            return f"{mean:.4f}"
+            mean, std = calculate_stats(values)
+            return format_metric(mean, std if len(values) > 1 else None, decimals=4)
 
         jsd = fmt(first_tok.get("jsd", []))
         ned = fmt(first_tok.get("ned", []))

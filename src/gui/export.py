@@ -8,11 +8,11 @@ from __future__ import annotations
 import csv
 import io
 import json
-import statistics
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
 
+from .metrics_utils import calculate_stats, format_metric
 from .textual.state import ScanResult
 from .session import SessionConfig, session_to_dict
 
@@ -139,12 +139,12 @@ def export_to_csv(data: ExportData, options: ExportOptions) -> str:
                     scan_result = data.scan_results[tok]
                     values = getattr(scan_result, metric_name, [])
                     if values:
-                        import statistics
-
                         if stat == "mean":
-                            val = statistics.mean(values)
+                            mean, _ = calculate_stats(values)
+                            val = mean
                         elif stat == "std":
-                            val = statistics.stdev(values) if len(values) > 1 else 0
+                            _, std = calculate_stats(values)
+                            val = std
                         elif stat == "min":
                             val = min(values)
                         else:
@@ -259,8 +259,7 @@ def export_to_markdown(data: ExportData, options: ExportOptions) -> str:
             for tok in tokenizers:
                 values = getattr(data.scan_results[tok], metric_name, [])
                 if values:
-                    mean = statistics.mean(values)
-                    std = statistics.stdev(values) if len(values) > 1 else 0
+                    mean, std = calculate_stats(values)
                     row += f" {mean:.3f} ± {std:.3f} |"
                 else:
                     row += " - |"
@@ -385,8 +384,7 @@ def export_sweep_to_json(
                     tok_data[metric_name] = {"mean": None, "std": None}
                     continue
 
-                mean_val = statistics.mean(values)
-                std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+                mean_val, std_val = calculate_stats(values)
                 tok_data[metric_name] = {
                     "mean": round(mean_val, 6),
                     "std": round(std_val, 6),
@@ -463,8 +461,7 @@ def export_sweep_to_csv(
             for metric in ["jsd", "ned", "sr"]:
                 values = tok_metrics.get(metric, [])
                 if values:
-                    mean_val = statistics.mean(values)
-                    std_val = statistics.stdev(values) if len(values) > 1 else 0.0
+                    mean_val, std_val = calculate_stats(values)
                     row.append(f"{mean_val:.6f}")
                     row.append(f"{std_val:.6f}")
                 else:
@@ -549,9 +546,8 @@ def export_sweep_to_markdown(
             for metric in ["jsd", "ned", "sr"]:
                 values = tok_metrics.get(metric, [])
                 if values:
-                    mean_val = statistics.mean(values)
-                    std_val = statistics.stdev(values) if len(values) > 1 else 0.0
-                    row_parts.append(f"{mean_val:.4f} ± {std_val:.4f}")
+                    mean_val, std_val = calculate_stats(values)
+                    row_parts.append(format_metric(mean_val, std_val, decimals=4))
                 else:
                     row_parts.append("-")
 
