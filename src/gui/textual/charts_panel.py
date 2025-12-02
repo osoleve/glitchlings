@@ -901,8 +901,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
     def _start_auto_refresh(self) -> None:
         """Start the auto-refresh timer."""
         if self._refresh_timer is None:
-            # 30 updates per second = 1/30 seconds = ~0.033 seconds
-            self._refresh_timer = self.set_interval(1 / 30, self._auto_refresh_tick)
+            self._refresh_timer = self.set_interval(1, self._auto_refresh_tick)
 
     def _stop_auto_refresh(self) -> None:
         """Stop the auto-refresh timer."""
