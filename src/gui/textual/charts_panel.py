@@ -73,7 +73,7 @@ ChartsPanel .control-label {
 }
 
 ChartsPanel Select {
-    width: 12;
+    width: 18;
     margin-right: 1;
 }
 
@@ -200,7 +200,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         self._get_sweep_results = get_sweep_results
         self._get_dataset_results = get_dataset_results
 
-        self._source = "scan"
+        self._source = "sweep"
         self._metric = "jsd"
         self._tokenizer = ""
         self._updating = False  # Prevent recursive updates
@@ -228,9 +228,9 @@ class ChartsPanel(Container):  # type: ignore[misc]
             with Horizontal(classes="controls-row"):
                 yield Label("Source:", classes="control-label")
                 yield Select(
-                    [("Scan", "scan")],
+                    [],
                     id="source-select",
-                    value="scan",
+                    allow_blank=False,
                 )
                 yield Label("Metric:", classes="control-label")
                 yield Select(
@@ -471,8 +471,6 @@ class ChartsPanel(Container):  # type: ignore[misc]
 
         # Determine available sources - format is (label, value)
         sources: list[tuple[str, str]] = []
-        if scan_results:
-            sources.append(("Scan", "scan"))
         if sweep_results:
             sources.append(("Sweep", "sweep"))
         if dataset_results:
@@ -484,7 +482,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if self._source_select:
             # Validate current source
             if self._source not in source_values:
-                self._source = source_values[0] if source_values else "scan"
+                self._source = source_values[0] if source_values else "sweep"
             self._source_select.set_options(sources)
             # Explicitly set value after set_options
             if source_values:
