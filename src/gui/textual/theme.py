@@ -39,7 +39,9 @@ COLORS = {
     "text_muted": "#8b949e",
 }
 
-DEFAULT_FONT_STACK = "Cascadia Code, JetBrains Mono, Consolas, Monaco, monospace"
+DEFAULT_FONT_STACK = (
+    "Berkeley Mono, Fira Code, Cascadia Code, JetBrains Mono, Consolas, Monaco, monospace"
+)
 PALETTE = dict(COLORS)
 
 GREEN_NOISE = PALETTE["green_dim"].lstrip("#")

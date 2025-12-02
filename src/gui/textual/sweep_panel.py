@@ -505,15 +505,16 @@ class SweepPanel(Static):  # type: ignore[misc]
 
         self.post_message(self.SweepRequested(config))
 
-        # Run sweep in worker
+        # Run sweep in worker thread (thread=True enables call_from_thread)
         tokenizers = self._get_tokenizers() if self._get_tokenizers else ["cl100k_base"]
         self.run_worker(
-            self._sweep_worker(input_text, config, tokenizers),
+            lambda: self._sweep_worker(input_text, config, tokenizers),
             name="sweep",
             exclusive=True,
+            thread=True,
         )
 
-    async def _sweep_worker(
+    def _sweep_worker(
         self,
         input_text: str,
         config: SweepConfig,
@@ -579,7 +580,7 @@ class SweepPanel(Static):  # type: ignore[misc]
 
                 # Update progress
                 progress = ((i * config.seeds_per_point + seed_offset + 1) / total) * 100
-                self.call_from_thread(
+                self.app.call_from_thread(
                     self._update_progress,
                     progress,
                     i + 1,
@@ -598,7 +599,7 @@ class SweepPanel(Static):  # type: ignore[misc]
             results.append(sweep_point)
 
             # Add row to results table
-            self.call_from_thread(self._add_result_row, sweep_point)
+            self.app.call_from_thread(self._add_result_row, sweep_point)
 
         return results
 

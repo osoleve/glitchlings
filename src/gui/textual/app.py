@@ -283,9 +283,9 @@ EXTRA_CSS = """
 }
 
 #sidebar {
-    width: 32;
-    min-width: 28;
-    max-width: 44;
+    width: 42;
+    min-width: 36;
+    max-width: 56;
     height: 100%;
     padding-right: 1;
 }

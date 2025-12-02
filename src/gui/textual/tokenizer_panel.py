@@ -53,24 +53,12 @@ TokenizerPanel .tokenizer-list {
 }
 
 TokenizerPanel .tokenizer-item {
-    height: 2;
-    layout: horizontal;
-    align: left middle;
+    height: auto;
     padding: 0 1;
 }
 
-TokenizerPanel .tokenizer-checkbox {
-    width: auto;
-    padding-right: 1;
-}
-
-TokenizerPanel .tokenizer-name {
+TokenizerPanel .tokenizer-item Checkbox {
     width: 1fr;
-    color: var(--glitch-ink);
-}
-
-TokenizerPanel .tokenizer-name.-enabled {
-    color: var(--glitch-bright);
 }
 
 TokenizerPanel .add-tokenizer {
@@ -114,27 +102,17 @@ class TokenizerItem(Static):  # type: ignore[misc]
         self._name = name
         self._enabled = enabled
         self._checkbox: Checkbox | None = None
-        self._label: Label | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(classes="tokenizer-item"):
             self._checkbox = Checkbox(
-                "", value=self._enabled, id=f"tok-check-{_sanitize_id(self._name)}"
+                self._name, value=self._enabled, id=f"tok-check-{_sanitize_id(self._name)}"
             )
             yield self._checkbox
-            self._label = Label(self._name, classes="tokenizer-name")
-            if self._enabled:
-                self._label.add_class("-enabled")
-            yield self._label
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         """Handle checkbox toggle."""
         self._enabled = event.value
-        if self._label:
-            if self._enabled:
-                self._label.add_class("-enabled")
-            else:
-                self._label.remove_class("-enabled")
         self.post_message(self.ToggleChanged(self._name, self._enabled))
 
     @property

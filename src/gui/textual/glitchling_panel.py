@@ -49,25 +49,12 @@ GlitchlingPanel .glitchling-item {
 }
 
 GlitchlingPanel .glitchling-header {
-    height: 2;
-    layout: horizontal;
-    align: left middle;
+    height: auto;
     padding: 0 1;
 }
 
-GlitchlingPanel .glitchling-checkbox {
-    width: auto;
-    padding-right: 1;
-}
-
-GlitchlingPanel .glitchling-name {
+GlitchlingPanel .glitchling-header Checkbox {
     width: 1fr;
-    color: var(--glitch-ink);
-}
-
-GlitchlingPanel .glitchling-name.-enabled {
-    color: var(--glitch-bright);
-    text-style: bold;
 }
 
 GlitchlingPanel .glitchling-params {
@@ -160,26 +147,29 @@ class GlitchlingItem(Static):  # type: ignore[misc]
             self.enabled = enabled
             self.params = params
 
-    def __init__(self, cls: type[Glitchling], *, id: str | None = None) -> None:
+    def __init__(
+        self, cls: type[Glitchling], *, enabled: bool = True, id: str | None = None
+    ) -> None:
         super().__init__(id=id)
         self._cls = cls
-        self._enabled = False
+        self._enabled = enabled
         self._param_specs = get_glitchling_params(cls)
         self._param_values: dict[str, Any] = {
             name: default for name, (_, default) in self._param_specs.items()
         }
         self._param_inputs: dict[str, Input] = {}
         self._checkbox: Checkbox | None = None
-        self._name_label: Label | None = None
         self._params_container: Container | None = None
 
     def compose(self) -> ComposeResult:
         with Container(classes="glitchling-item"):
             with Horizontal(classes="glitchling-header"):
-                self._checkbox = Checkbox("", id=f"check-{self._cls.__name__}")
+                self._checkbox = Checkbox(
+                    self._cls.__name__,
+                    value=self._enabled,
+                    id=f"check-{self._cls.__name__}",
+                )
                 yield self._checkbox
-                self._name_label = Label(self._cls.__name__, classes="glitchling-name")
-                yield self._name_label
 
             self._params_container = Container(classes="glitchling-params")
             with self._params_container:
@@ -198,11 +188,6 @@ class GlitchlingItem(Static):  # type: ignore[misc]
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         """Handle checkbox toggle."""
         self._enabled = event.value
-        if self._name_label:
-            if self._enabled:
-                self._name_label.add_class("-enabled")
-            else:
-                self._name_label.remove_class("-enabled")
         if self._params_container:
             if self._enabled and self._param_specs:
                 self._params_container.add_class("-visible")
@@ -279,9 +264,16 @@ class GlitchlingPanel(Static):  # type: ignore[misc]
         yield Static("GLITCHLINGS", classes="panel-header")
         with VerticalScroll(classes="glitchling-list"):
             for cls in self._glitchlings:
-                item = GlitchlingItem(cls, id=f"glitchling-{cls.__name__}")
+                # Default first two glitchlings to enabled
+                enabled = cls.__name__ in ("Typogre", "Hokey")
+                item = GlitchlingItem(cls, enabled=enabled, id=f"glitchling-{cls.__name__}")
                 self._items[cls.__name__] = item
                 yield item
+
+    def on_mount(self) -> None:
+        """Notify initial selection state after mount."""
+        # Give the app a chance to set up listeners before notifying
+        self.call_later(self._notify_selection_change)
 
     def on_glitchling_item_config_changed(self, event: GlitchlingItem.ConfigChanged) -> None:
         """Handle individual glitchling config changes."""

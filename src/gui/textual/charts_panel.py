@@ -203,6 +203,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         self._source = "scan"
         self._metric = "jsd"
         self._tokenizer = ""
+        self._updating = False  # Prevent recursive updates
 
         # Chart display widgets
         self._histogram_display: Static | None = None
@@ -306,16 +307,28 @@ class ChartsPanel(Container):  # type: ignore[misc]
 
     def on_select_changed(self, event: Select.Changed) -> None:
         """Handle select changes."""
+        # Skip if we're programmatically updating
+        if self._updating:
+            return
+            
         select_id = event.select.id
+        value = event.value
+        
+        # Skip if value is blank/None
+        if value is None or value == Select.BLANK:
+            return
+        
+        # Update internal state and redraw
         if select_id == "source-select":
-            self._source = str(event.value) if event.value else "scan"
-            self._update_charts()
+            self._source = str(value)
+            # When source changes, refresh dropdowns and redraw
+            self._refresh_dropdowns_only()
         elif select_id == "metric-select":
-            self._metric = str(event.value) if event.value else "jsd"
-            self._update_charts()
+            self._metric = str(value)
+            self._draw_charts_only()
         elif select_id == "tokenizer-select":
-            self._tokenizer = str(event.value) if event.value else ""
-            self._update_charts()
+            self._tokenizer = str(value)
+            self._draw_charts_only()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
@@ -346,6 +359,108 @@ class ChartsPanel(Container):  # type: ignore[misc]
         dataset_results: dict[str, ScanResult] | None = None,
     ) -> None:
         """Update all charts with current data."""
+        self._do_update_charts(scan_results, sweep_results, dataset_results)
+
+    def _refresh_dropdowns_only(self) -> None:
+        """Refresh tokenizer and metric dropdowns for current source, then draw."""
+        scan_results = self._get_scan_results() if self._get_scan_results else {}
+        sweep_results = self._get_sweep_results() if self._get_sweep_results else []
+        dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
+        
+        # Prevent recursive updates while we set dropdown values
+        self._updating = True
+        try:
+            # Update tokenizer dropdown for new source
+            tokenizers = self._get_tokenizers_for_source(
+                self._source, scan_results, sweep_results, dataset_results
+            )
+            if self._tokenizer not in tokenizers:
+                self._tokenizer = tokenizers[0] if tokenizers else ""
+            if self._tokenizer_select and tokenizers:
+                self._tokenizer_select.set_options([(t, t) for t in tokenizers])
+                self._tokenizer_select.value = self._tokenizer
+            
+            # Update metric dropdown
+            metrics = self._get_metrics_for_source(
+                self._source, self._tokenizer, scan_results, sweep_results, dataset_results
+            )
+            if self._metric not in metrics:
+                self._metric = metrics[0] if metrics else "jsd"
+            if self._metric_select and metrics:
+                self._metric_select.set_options([(m.upper(), m) for m in metrics])
+                self._metric_select.value = self._metric
+        finally:
+            self._updating = False
+        
+        # Draw charts with current selections
+        self._draw_charts_only()
+
+    def _draw_charts_only(self) -> None:
+        """Draw charts without updating dropdowns."""
+        scan_results = self._get_scan_results() if self._get_scan_results else {}
+        sweep_results = self._get_sweep_results() if self._get_sweep_results else []
+        dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
+        
+        data = self._build_chart_data(
+            self._source,
+            self._tokenizer,
+            self._metric,
+            scan_results,
+            sweep_results,
+            dataset_results,
+        )
+
+        if data is None:
+            self._show_no_data()
+            return
+
+        # Update subtitles
+        subtitle = f"{self._metric.upper()} · {self._tokenizer}"
+        if self._histogram_subtitle:
+            self._histogram_subtitle.update(subtitle)
+        if self._boxplot_subtitle:
+            self._boxplot_subtitle.update(subtitle)
+        if self._line_subtitle:
+            self._line_subtitle.update(subtitle)
+        if self._stats_subtitle:
+            self._stats_subtitle.update(subtitle)
+
+        # Draw charts
+        self._draw_histogram(data.distribution_values, self._metric)
+        self._draw_boxplot(data.distribution_values, self._metric)
+        self._draw_line(
+            data.trend_values,
+            self._metric,
+            x_label=data.x_label,
+            x_values=data.x_values,
+        )
+        self._update_stats(
+            data.distribution_values or data.trend_values,
+            self._metric,
+            data.source_label,
+        )
+
+    def _do_update_charts(
+        self,
+        scan_results: dict[str, ScanResult] | None = None,
+        sweep_results: list[SweepPoint] | None = None,
+        dataset_results: dict[str, ScanResult] | None = None,
+    ) -> None:
+        """Internal chart update logic."""
+        # Prevent recursive updates from select change events
+        self._updating = True
+        try:
+            self._do_update_charts_inner(scan_results, sweep_results, dataset_results)
+        finally:
+            self._updating = False
+    
+    def _do_update_charts_inner(
+        self,
+        scan_results: dict[str, ScanResult] | None = None,
+        sweep_results: list[SweepPoint] | None = None,
+        dataset_results: dict[str, ScanResult] | None = None,
+    ) -> None:
+        """Internal chart update logic (inner, called with _updating=True)."""
         # Get data from callbacks if not provided
         if scan_results is None:
             scan_results = self._get_scan_results() if self._get_scan_results else {}
@@ -354,46 +469,51 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if dataset_results is None:
             dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
 
-        # Update source dropdown
+        # Determine available sources - format is (label, value)
         sources: list[tuple[str, str]] = []
         if scan_results:
-            sources.append(("scan", "Scan"))
+            sources.append(("Scan", "scan"))
         if sweep_results:
-            sources.append(("sweep", "Sweep"))
+            sources.append(("Sweep", "sweep"))
         if dataset_results:
-            sources.append(("dataset", "Dataset"))
+            sources.append(("Dataset", "dataset"))
 
+        source_values = [s[1] for s in sources]
+        
+        # Update source dropdown
         if self._source_select:
-            current_sources = [s[0] for s in sources]
+            # Validate current source
+            if self._source not in source_values:
+                self._source = source_values[0] if source_values else "scan"
             self._source_select.set_options(sources)
-            if not self._source or self._source not in current_sources:
-                if sources:
-                    self._source = sources[0][0]
-                    try:
-                        self._source_select.value = self._source
-                    except Exception:
-                        pass
+            # Explicitly set value after set_options
+            if source_values:
+                self._source_select.value = self._source
 
         if not sources:
             self._show_no_data()
             return
 
-        # Update tokenizer dropdown
+        # Get tokenizers for current source
         tokenizers = self._get_tokenizers_for_source(
             self._source, scan_results, sweep_results, dataset_results
         )
+        
+        # Update tokenizer dropdown
         if self._tokenizer_select:
+            # Validate current tokenizer
+            if self._tokenizer not in tokenizers:
+                self._tokenizer = tokenizers[0] if tokenizers else ""
             self._tokenizer_select.set_options([(t, t) for t in tokenizers])
-            if not self._tokenizer or self._tokenizer not in tokenizers:
-                if tokenizers:
-                    self._tokenizer = tokenizers[0]
-                    self._tokenizer_select.value = self._tokenizer
+            # Explicitly set value after set_options
+            if tokenizers:
+                self._tokenizer_select.value = self._tokenizer
 
         if not self._tokenizer:
             self._show_no_data()
             return
 
-        # Update metric dropdown
+        # Get metrics for current source and tokenizer
         metrics = self._get_metrics_for_source(
             self._source,
             self._tokenizer,
@@ -401,12 +521,16 @@ class ChartsPanel(Container):  # type: ignore[misc]
             sweep_results,
             dataset_results,
         )
+        
+        # Update metric dropdown - format is (label, value)
         if self._metric_select:
-            self._metric_select.set_options([(m, m.upper()) for m in metrics])
-            if not self._metric or self._metric not in metrics:
-                if metrics:
-                    self._metric = metrics[0]
-                    self._metric_select.value = self._metric
+            # Validate current metric
+            if self._metric not in metrics:
+                self._metric = metrics[0] if metrics else "jsd"
+            self._metric_select.set_options([(m.upper(), m) for m in metrics])
+            # Explicitly set value after set_options
+            if metrics:
+                self._metric_select.value = self._metric
 
         # Build chart data
         data = self._build_chart_data(
@@ -490,8 +614,16 @@ class ChartsPanel(Container):  # type: ignore[misc]
         available = []
         results = dataset_results if source == "dataset" else scan_results
         for name in metrics:
-            if any(getattr(result, name, []) for result in results.values()):
-                available.append(name)
+            for result in results.values():
+                # Handle both ScanResult objects and dict[str, str] from app metrics
+                if isinstance(result, dict):
+                    if result.get(name) is not None:
+                        available.append(name)
+                        break
+                else:
+                    if getattr(result, name, []):
+                        available.append(name)
+                        break
         return available or metrics
 
     def _coerce_numeric(self, values: list[Any]) -> list[float]:
@@ -545,8 +677,21 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if result is None:
             return None
 
-        raw_values = getattr(result, metric, [])
-        values = self._coerce_numeric(list(raw_values))
+        # Handle both ScanResult objects and dict[str, str] from app metrics
+        if isinstance(result, dict):
+            # Scan results from app.metrics are dict[str, str] with single values
+            raw_value = result.get(metric)
+            if raw_value is None:
+                return None
+            try:
+                values = [float(raw_value)]
+            except (TypeError, ValueError):
+                return None
+        else:
+            # ScanResult dataclass with list attributes
+            raw_values = getattr(result, metric, [])
+            values = self._coerce_numeric(list(raw_values))
+
         if not values:
             return None
 
