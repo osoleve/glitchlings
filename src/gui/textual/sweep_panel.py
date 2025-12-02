@@ -28,6 +28,9 @@ from textual.worker import Worker, WorkerState
 
 from glitchlings.zoo import Gaggle
 
+# Sweep configuration constants
+DEFAULT_SEED_BASE = 42
+
 from .definitions import AVAILABLE_GLITCHLINGS, GLITCHLING_PARAMS
 from .theme import themed_css
 
@@ -547,7 +550,7 @@ class SweepPanel(Static):  # type: ignore[misc]
                 if not self._running:
                     break
 
-                seed = 42 + seed_offset
+                seed = DEFAULT_SEED_BASE + seed_offset
 
                 # Create glitchlings with this parameter value
                 glitchlings = []

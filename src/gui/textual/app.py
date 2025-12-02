@@ -137,13 +137,15 @@ class SeedControl(Static):  # type: ignore[misc]
             try:
                 self._seed = int(event.value)
             except ValueError:
-                pass
+                # Ignore invalid input, keep previous value
+                return
         elif event.input.id == "multi-seed-count":
             try:
                 self._multi_seed_count = max(1, int(event.value))
                 self._notify_multi_seed_change()
             except ValueError:
-                pass
+                # Ignore invalid input, keep previous value
+                return
 
     def on_checkbox_changed(self, event: Checkbox.Changed) -> None:
         if event.checkbox.id == "multi-seed-check":
@@ -627,8 +629,8 @@ class GlitchlingsTextualApp(App[AppState]):  # type: ignore[misc]
 
     def _on_sweep_results_changed(self) -> None:
         """Handle sweep results updates."""
-        # Could update charts panel if implemented
-        pass
+        # Charts panel automatically fetches results via callback
+        # No additional action needed here
 
     def on_unmount(self) -> None:
         # Save preferences before exit

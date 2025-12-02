@@ -25,6 +25,13 @@ from .state import ScanResult
 from .sweep_panel import SweepPoint
 from .theme import PALETTE, substitute_vars
 
+# Chart rendering constants
+HISTOGRAM_BINS = 8
+HISTOGRAM_CHART_WIDTH = 28
+BOXPLOT_CHART_WIDTH = 40
+LINE_CHART_HEIGHT = 8
+LINE_CHART_MAX_WIDTH = 32
+
 _RAW_CSS = """
 ChartsPanel {
     width: 100%;
@@ -370,25 +377,8 @@ class ChartsPanel(Container):  # type: ignore[misc]
         # Prevent recursive updates while we set dropdown values
         self._updating = True
         try:
-            # Update tokenizer dropdown for new source
-            tokenizers = self._get_tokenizers_for_source(
-                self._source, scan_results, sweep_results, dataset_results
-            )
-            if self._tokenizer not in tokenizers:
-                self._tokenizer = tokenizers[0] if tokenizers else ""
-            if self._tokenizer_select and tokenizers:
-                self._tokenizer_select.set_options([(t, t) for t in tokenizers])
-                self._tokenizer_select.value = self._tokenizer
-
-            # Update metric dropdown
-            metrics = self._get_metrics_for_source(
-                self._source, self._tokenizer, scan_results, sweep_results, dataset_results
-            )
-            if self._metric not in metrics:
-                self._metric = metrics[0] if metrics else "jsd"
-            if self._metric_select and metrics:
-                self._metric_select.set_options([(m.upper(), m) for m in metrics])
-                self._metric_select.value = self._metric
+            self._update_tokenizer_dropdown(scan_results, sweep_results, dataset_results)
+            self._update_metric_dropdown(scan_results, sweep_results, dataset_results)
         finally:
             self._updating = False
 
@@ -414,31 +404,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._show_no_data()
             return
 
-        # Update subtitles
-        subtitle = f"{self._metric.upper()} · {self._tokenizer}"
-        if self._histogram_subtitle:
-            self._histogram_subtitle.update(subtitle)
-        if self._boxplot_subtitle:
-            self._boxplot_subtitle.update(subtitle)
-        if self._line_subtitle:
-            self._line_subtitle.update(subtitle)
-        if self._stats_subtitle:
-            self._stats_subtitle.update(subtitle)
-
-        # Draw charts
-        self._draw_histogram(data.distribution_values, self._metric)
-        self._draw_boxplot(data.distribution_values, self._metric)
-        self._draw_line(
-            data.trend_values,
-            self._metric,
-            x_label=data.x_label,
-            x_values=data.x_values,
-        )
-        self._update_stats(
-            data.distribution_values or data.trend_values,
-            self._metric,
-            data.source_label,
-        )
+        self._render_charts(data)
 
     def _do_update_charts(
         self,
@@ -469,66 +435,18 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if dataset_results is None:
             dataset_results = self._get_dataset_results() if self._get_dataset_results else {}
 
-        # Determine available sources - format is (label, value)
-        sources: list[tuple[str, str]] = []
-        if sweep_results:
-            sources.append(("Sweep", "sweep"))
-        if dataset_results:
-            sources.append(("Dataset", "dataset"))
-
-        source_values = [s[1] for s in sources]
-
         # Update source dropdown
-        if self._source_select:
-            # Validate current source
-            if self._source not in source_values:
-                self._source = source_values[0] if source_values else "sweep"
-            self._source_select.set_options(sources)
-            # Explicitly set value after set_options
-            if source_values:
-                self._source_select.value = self._source
-
-        if not sources:
+        if not self._update_source_dropdown(sweep_results, dataset_results):
             self._show_no_data()
             return
-
-        # Get tokenizers for current source
-        tokenizers = self._get_tokenizers_for_source(
-            self._source, scan_results, sweep_results, dataset_results
-        )
 
         # Update tokenizer dropdown
-        if self._tokenizer_select:
-            # Validate current tokenizer
-            if self._tokenizer not in tokenizers:
-                self._tokenizer = tokenizers[0] if tokenizers else ""
-            self._tokenizer_select.set_options([(t, t) for t in tokenizers])
-            # Explicitly set value after set_options
-            if tokenizers:
-                self._tokenizer_select.value = self._tokenizer
-
-        if not self._tokenizer:
+        if not self._update_tokenizer_dropdown(scan_results, sweep_results, dataset_results):
             self._show_no_data()
             return
 
-        # Get metrics for current source and tokenizer
-        metrics = self._get_metrics_for_source(
-            self._source,
-            self._tokenizer,
-            scan_results,
-            sweep_results,
-            dataset_results,
-        )
-
-        # Update metric dropdown - format is (label, value)
-        if self._metric_select:
-            # Validate current metric
-            if self._metric not in metrics:
-                self._metric = metrics[0] if metrics else "jsd"
-            self._metric_select.set_options([(m.upper(), m) for m in metrics])
-            # Explicitly set value after set_options
-            if metrics:
-                self._metric_select.value = self._metric
+        # Update metric dropdown
+        self._update_metric_dropdown(scan_results, sweep_results, dataset_results)
 
         # Build chart data
         data = self._build_chart_data(
@@ -544,31 +462,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             self._show_no_data()
             return
 
-        # Update subtitles
-        subtitle = f"{self._metric.upper()} · {self._tokenizer}"
-        if self._histogram_subtitle:
-            self._histogram_subtitle.update(subtitle)
-        if self._boxplot_subtitle:
-            self._boxplot_subtitle.update(subtitle)
-        if self._line_subtitle:
-            self._line_subtitle.update(subtitle)
-        if self._stats_subtitle:
-            self._stats_subtitle.update(subtitle)
-
-        # Draw charts
-        self._draw_histogram(data.distribution_values, self._metric)
-        self._draw_boxplot(data.distribution_values, self._metric)
-        self._draw_line(
-            data.trend_values,
-            self._metric,
-            x_label=data.x_label,
-            x_values=data.x_values,
-        )
-        self._update_stats(
-            data.distribution_values or data.trend_values,
-            self._metric,
-            data.source_label,
-        )
+        self._render_charts(data)
 
     def _get_tokenizers_for_source(
         self,
@@ -696,6 +590,96 @@ class ChartsPanel(Container):  # type: ignore[misc]
         x_label = "sample" if source == "dataset" else "seed"
         return ChartData(values, values, None, x_label, source)
 
+    def _update_source_dropdown(
+        self,
+        sweep_results: list[SweepPoint],
+        dataset_results: dict[str, ScanResult],
+    ) -> bool:
+        """Update source dropdown. Returns False if no sources available."""
+        sources: list[tuple[str, str]] = []
+        if sweep_results:
+            sources.append(("Sweep", "sweep"))
+        if dataset_results:
+            sources.append(("Dataset", "dataset"))
+
+        source_values = [s[1] for s in sources]
+
+        if self._source_select:
+            if self._source not in source_values:
+                self._source = source_values[0] if source_values else "sweep"
+            self._source_select.set_options(sources)
+            if source_values:
+                self._source_select.value = self._source
+
+        return bool(sources)
+
+    def _update_tokenizer_dropdown(
+        self,
+        scan_results: dict[str, ScanResult],
+        sweep_results: list[SweepPoint],
+        dataset_results: dict[str, ScanResult],
+    ) -> bool:
+        """Update tokenizer dropdown. Returns False if no tokenizers available."""
+        tokenizers = self._get_tokenizers_for_source(
+            self._source, scan_results, sweep_results, dataset_results
+        )
+
+        if self._tokenizer_select:
+            if self._tokenizer not in tokenizers:
+                self._tokenizer = tokenizers[0] if tokenizers else ""
+            self._tokenizer_select.set_options([(t, t) for t in tokenizers])
+            if tokenizers:
+                self._tokenizer_select.value = self._tokenizer
+
+        return bool(self._tokenizer)
+
+    def _update_metric_dropdown(
+        self,
+        scan_results: dict[str, ScanResult],
+        sweep_results: list[SweepPoint],
+        dataset_results: dict[str, ScanResult],
+    ) -> None:
+        """Update metric dropdown."""
+        metrics = self._get_metrics_for_source(
+            self._source, self._tokenizer, scan_results, sweep_results, dataset_results
+        )
+
+        if self._metric_select:
+            if self._metric not in metrics:
+                self._metric = metrics[0] if metrics else "jsd"
+            self._metric_select.set_options([(m.upper(), m) for m in metrics])
+            if metrics:
+                self._metric_select.value = self._metric
+
+    def _render_charts(self, data: ChartData) -> None:
+        """Render all charts with the given data."""
+        subtitle = f"{self._metric.upper()} · {self._tokenizer}"
+
+        # Update subtitles
+        if self._histogram_subtitle:
+            self._histogram_subtitle.update(subtitle)
+        if self._boxplot_subtitle:
+            self._boxplot_subtitle.update(subtitle)
+        if self._line_subtitle:
+            self._line_subtitle.update(subtitle)
+        if self._stats_subtitle:
+            self._stats_subtitle.update(subtitle)
+
+        # Draw charts
+        self._draw_histogram(data.distribution_values, self._metric)
+        self._draw_boxplot(data.distribution_values, self._metric)
+        self._draw_line(
+            data.trend_values,
+            self._metric,
+            x_label=data.x_label,
+            x_values=data.x_values,
+        )
+        self._update_stats(
+            data.distribution_values or data.trend_values,
+            self._metric,
+            data.source_label,
+        )
+
     def _show_no_data(self) -> None:
         """Display no data message in all charts."""
         no_data = Text("No data available\n\nRun a sweep to generate charts")
@@ -737,7 +721,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         if min_val == max_val:
             max_val = min_val + 0.1
 
-        num_bins = 8
+        num_bins = HISTOGRAM_BINS
         bin_width = (max_val - min_val) / num_bins
         bins = [0] * num_bins
 
@@ -747,7 +731,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
             bins[bin_idx] += 1
 
         max_count = max(bins) if bins else 1
-        chart_width = 28
+        chart_width = HISTOGRAM_CHART_WIDTH
 
         # Build output
         output = Text()
@@ -784,7 +768,7 @@ class ChartsPanel(Container):  # type: ignore[misc]
         q3 = sorted_vals[3 * n // 4] if n >= 4 else max_val
         mean = statistics.mean(values)
 
-        chart_width = 40
+        chart_width = BOXPLOT_CHART_WIDTH
 
         # Normalize positions
         range_val = max_val - min_val if max_val != min_val else 1
@@ -854,8 +838,8 @@ class ChartsPanel(Container):  # type: ignore[misc]
         max_val = max(values)
         range_val = max_val - min_val if max_val != min_val else 1
 
-        chart_height = 8
-        chart_width = min(32, len(values))
+        chart_height = LINE_CHART_HEIGHT
+        chart_width = min(LINE_CHART_MAX_WIDTH, len(values))
 
         # Sample values if too many
         if len(values) > chart_width:
