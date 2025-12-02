@@ -905,7 +905,7 @@ class MainFrame(ttk.Frame):
             return
 
         try:
-            panes = list(self._right_pane.panes())
+            panes = list(self._right_pane.panes())  # type: ignore[no-untyped-call]
             metrics_in_pane = str(self._metrics_container) in panes
         except tk.TclError:
             return

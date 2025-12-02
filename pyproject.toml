@@ -50,6 +50,7 @@ Changelog = "https://github.com/osoleve/glitchlings/releases"
 [project.scripts]
 glitchlings = "glitchlings.main:main"
 glitchlings-refresh-docs = "glitchlings.dev.docs:main"
+glitchlings-tui = "gui.textual:main"
 
 [project.optional-dependencies]
 all = [
@@ -63,6 +64,7 @@ all = [
     "mkdocstrings-python>=1.10.0",
     "mypy>=1.8.0",
     "numpy>=1.24,<3.0",
+    "textual>=0.80.0,<1.0",
     "pre-commit>=3.8.0",
     "py-gutenberg==1.0.0",
     "pytest>=8.0.0",
@@ -78,6 +80,7 @@ gutenberg = ["py-gutenberg==1.0.0"]
 hf = ["datasets>=4.0.0"]
 lightning = ["pytorch_lightning>=2.0.0"]
 prime = ["verifiers>=0.1.8", "jellyfish==1.2.0"]
+gui = ["textual>=0.80.0,<1.0"]
 torch = ["torch>=2.0.0"]
 dev = [
     "pytest>=8.0.0",
@@ -94,6 +97,7 @@ dev = [
     "mypy>=1.8.0",
     "pre-commit>=3.8.0",
     "types-PyYAML>=6.0.0",
+    "textual>=0.80.0,<1.0",
 ]
 
 [build-system]

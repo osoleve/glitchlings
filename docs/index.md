@@ -111,6 +111,7 @@ Glitchlings slot neatly into existing pipelines:
 - [Dataset workflows](datasets.md) - how to glitch Hugging Face datasets and PyTorch data loaders with the provided wrappers and column selection.
 - [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
 - [Determinism guide](determinism.md) - seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
+- [Textual TUI](textual-gui.md) - terminal-based GUI for interactive experimentation (requires `gui` extra).
 
 ### Command line interface
 
@@ -189,3 +190,4 @@ If the Python pipeline regression guard fails on slower hardware, raise the safe
 - [Dataset workflows](datasets.md) - dataset and loader corruption patterns.
 - [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras.
 - [Determinism guide](determinism.md) - seeds and RNG guidance.
+- [Textual TUI](textual-gui.md) - interactive terminal GUI for experimentation.

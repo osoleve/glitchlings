@@ -39,6 +39,13 @@ class ExportData:
     scan_results: Dict[str, ScanResult] = field(default_factory=dict)
 
 
+def _infer_scan_count(scan_results: Dict[str, ScanResult]) -> int:
+    """Best-effort scan count derived from stored results."""
+    for result in scan_results.values():
+        return len(result.token_delta)
+    return 0
+
+
 def export_to_json(data: ExportData, options: ExportOptions) -> str:
     """Export session data to JSON format."""
     result: Dict[str, Any] = {
@@ -230,7 +237,8 @@ def export_to_markdown(data: ExportData, options: ExportOptions) -> str:
     if options.include_scan_results and data.scan_results:
         lines.append("## Scan Results")
         lines.append("")
-        lines.append(f"*Scanned {data.config.scan_count} seeds starting from {data.config.seed}*")
+        scan_count = _infer_scan_count(data.scan_results)
+        lines.append(f"*Scanned {scan_count} seeds starting from {data.config.seed}*")
         lines.append("")
 
         import statistics

@@ -10,7 +10,7 @@ import threading
 import tkinter as tk
 from dataclasses import dataclass, field
 from tkinter import ttk
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, cast
 
 from glitchlings.zoo import Gaggle
 
@@ -743,7 +743,7 @@ class GridSweepPanel(ttk.Frame):
         from .sweep_export_dialog import SweepExportDialog
 
         # Find the root window
-        root = self.winfo_toplevel()
+        root = cast(tk.Tk, self.winfo_toplevel())
         SweepExportDialog(root, self.results)
 
     def get_results(self) -> List[SweepPoint]:
