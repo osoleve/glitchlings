@@ -27,7 +27,7 @@ class TokenizerPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header with vector terminal styling
-        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
         header_frame.pack_propagate(False)
 
@@ -37,9 +37,9 @@ class TokenizerPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=10,
+            padx=12,
         )
-        header.pack(side=tk.LEFT, pady=8)
+        header.pack(side=tk.LEFT, pady=10)
 
         # Scrollable frame with border
         scroll_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -70,11 +70,11 @@ class TokenizerPanel(ttk.Frame):
 
         # Separator - more subtle
         sep = tk.Frame(self.scrollable_frame, bg=COLORS["border_subtle"], height=1)
-        sep.pack(fill=tk.X, padx=10, pady=8)
+        sep.pack(fill=tk.X, padx=12, pady=10)
 
         # Add new tokenizer row
         add_frame = tk.Frame(self.scrollable_frame, bg=COLORS["black"])
-        add_frame.pack(fill=tk.X, padx=5, pady=4)
+        add_frame.pack(fill=tk.X, padx=6, pady=6)
 
         add_label = tk.Label(
             add_frame,
@@ -83,11 +83,11 @@ class TokenizerPanel(ttk.Frame):
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
         )
-        add_label.pack(side=tk.LEFT, padx=(0, 4))
+        add_label.pack(side=tk.LEFT, padx=(0, 6))
 
         self.new_tok_entry = tk.Entry(
             add_frame,
-            width=18,
+            width=20,
             font=FONTS["small"],
             fg=COLORS["amber"],
             bg=COLORS["darker"],
@@ -95,7 +95,7 @@ class TokenizerPanel(ttk.Frame):
             relief=tk.SOLID,
             bd=1,
         )
-        self.new_tok_entry.pack(side=tk.LEFT, padx=2)
+        self.new_tok_entry.pack(side=tk.LEFT, padx=4)
         self.new_tok_entry.bind("<Return>", lambda e: self._add_new_tokenizer())
         create_tooltip(self.new_tok_entry, "Enter tokenizer name (tiktoken or HuggingFace)")
 
@@ -109,12 +109,12 @@ class TokenizerPanel(ttk.Frame):
             activebackground=COLORS["green"],
             bd=0,
             relief=tk.FLAT,
-            padx=10,
-            pady=3,
+            padx=12,
+            pady=4,
             cursor="hand2",
             command=self._add_new_tokenizer,
         )
-        add_btn.pack(side=tk.LEFT, padx=6)
+        add_btn.pack(side=tk.LEFT, padx=8)
 
         def _add_enter(e: tk.Event) -> None:
             add_btn.config(bg=COLORS["green"], fg=COLORS["darker"])
@@ -134,7 +134,7 @@ class TokenizerPanel(ttk.Frame):
         self.tokenizer_vars[name] = var
 
         frame = tk.Frame(self.scrollable_frame, bg=COLORS["black"])
-        frame.pack(fill=tk.X, padx=5, pady=3)
+        frame.pack(fill=tk.X, padx=6, pady=4)
         self.tokenizer_frames[name] = frame
 
         # Status indicator
@@ -145,7 +145,7 @@ class TokenizerPanel(ttk.Frame):
             fg=COLORS["green"],
             bg=COLORS["black"],
         )
-        status_dot.pack(side=tk.LEFT, padx=(0, 4))
+        status_dot.pack(side=tk.LEFT, padx=(0, 6))
 
         check = tk.Checkbutton(
             frame,
@@ -166,7 +166,7 @@ class TokenizerPanel(ttk.Frame):
         remove_btn = tk.Button(
             frame,
             text="×",
-            width=2,
+            width=3,
             font=FONTS["small"],
             fg=COLORS["text_muted"],
             bg=COLORS["black"],
@@ -177,7 +177,7 @@ class TokenizerPanel(ttk.Frame):
             cursor="hand2",
             command=partial(self._remove_tokenizer, name),
         )
-        remove_btn.pack(side=tk.RIGHT, padx=2)
+        remove_btn.pack(side=tk.RIGHT, padx=4)
 
     def _add_new_tokenizer(self) -> None:
         name = self.new_tok_entry.get().strip()

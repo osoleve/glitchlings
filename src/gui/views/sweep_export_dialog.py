@@ -39,17 +39,26 @@ class SweepExportDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     def _build_ui(self) -> None:
-        container = tk.Frame(self, bg=COLORS["black"], padx=15, pady=15)
-        container.pack(fill=tk.BOTH, expand=True)
+        # Header
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
+        header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
-        # Title
         tk.Label(
-            container,
+            header_frame,
             text="▓▒░ EXPORT SWEEP ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["black"],
-        ).pack(anchor="w", pady=(0, 15))
+            bg=COLORS["surface"],
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
+
+        # Content
+        content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
+        content_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        container = tk.Frame(content_container, bg=COLORS["black"], padx=16, pady=16)
+        container.pack(fill=tk.BOTH, expand=True)
 
         # Format selection
         format_frame = tk.Frame(container, bg=COLORS["black"])
@@ -58,7 +67,7 @@ class SweepExportDialog(tk.Toplevel):
         tk.Label(
             format_frame,
             text="Export Format:",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
@@ -69,7 +78,7 @@ class SweepExportDialog(tk.Toplevel):
                 text=label,
                 variable=self.format_var,
                 value=value,
-                font=FONTS["body"],
+                font=FONTS["small"],
                 fg=COLORS["green"],
                 bg=COLORS["black"],
                 activeforeground=COLORS["green_bright"],
@@ -134,18 +143,20 @@ class SweepExportDialog(tk.Toplevel):
 
         # Buttons
         button_row = tk.Frame(container, bg=COLORS["black"])
-        button_row.pack(fill=tk.X)
+        button_row.pack(fill=tk.X, pady=(12, 0))
 
         tk.Button(
             button_row,
             text="Cancel",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self.destroy,
         ).pack(side=tk.RIGHT, padx=(8, 0))
@@ -153,13 +164,15 @@ class SweepExportDialog(tk.Toplevel):
         tk.Button(
             button_row,
             text="Copy to Clipboard",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self._copy_to_clipboard,
         ).pack(side=tk.RIGHT, padx=(8, 0))
@@ -167,13 +180,15 @@ class SweepExportDialog(tk.Toplevel):
         tk.Button(
             button_row,
             text="Export to File...",
-            font=FONTS["body"],
-            fg=COLORS["black"],
+            font=FONTS["button"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self._export_to_file,
         ).pack(side=tk.RIGHT)

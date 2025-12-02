@@ -50,7 +50,7 @@ class TokenizerComparisonPanel(ttk.Frame):
     def _create_widgets(self) -> None:
         """Create the panel widgets."""
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
         header_frame.pack_propagate(False)
 
@@ -60,8 +60,8 @@ class TokenizerComparisonPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=10,
-        ).pack(side=tk.LEFT, pady=8)
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
 
         # Refresh button
         refresh_btn = tk.Button(
@@ -74,12 +74,12 @@ class TokenizerComparisonPanel(ttk.Frame):
             activebackground=COLORS["surface"],
             bd=0,
             relief=tk.FLAT,
-            padx=8,
-            pady=2,
+            padx=10,
+            pady=3,
             cursor="hand2",
             command=self.refresh,
         )
-        refresh_btn.pack(side=tk.RIGHT, padx=10, pady=8)
+        refresh_btn.pack(side=tk.RIGHT, padx=12, pady=8)
 
         # Text source toggle (input vs corrupted)
         source_frame = tk.Frame(header_frame, bg=COLORS["surface"])
@@ -142,16 +142,17 @@ class TokenizerComparisonPanel(ttk.Frame):
         viz_frame = tk.Frame(paned, bg=COLORS["black"])
         paned.add(viz_frame, weight=3)
 
-        viz_header = tk.Frame(viz_frame, bg=COLORS["dark"])
+        viz_header = tk.Frame(viz_frame, bg=COLORS["surface"], height=32)
         viz_header.pack(fill=tk.X, pady=(0, 4))
+        viz_header.pack_propagate(False)
         tk.Label(
             viz_header,
             text="░ TOKEN BOUNDARIES",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=8,
+        ).pack(side=tk.LEFT, pady=6)
 
         # Scrollable container for tokenizer visualizations
         viz_scroll_container = tk.Frame(viz_frame, bg=COLORS["border"], padx=1, pady=1)
@@ -196,16 +197,17 @@ class TokenizerComparisonPanel(ttk.Frame):
         stats_frame = tk.Frame(paned, bg=COLORS["black"])
         paned.add(stats_frame, weight=1)
 
-        stats_header = tk.Frame(stats_frame, bg=COLORS["dark"])
+        stats_header = tk.Frame(stats_frame, bg=COLORS["surface"], height=32)
         stats_header.pack(fill=tk.X, pady=(0, 4))
+        stats_header.pack_propagate(False)
         tk.Label(
             stats_header,
             text="░ ENCODING STATISTICS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=8,
+        ).pack(side=tk.LEFT, pady=6)
 
         stats_container = tk.Frame(stats_frame, bg=COLORS["border"], padx=1, pady=1)
         stats_container.pack(fill=tk.BOTH, expand=True)

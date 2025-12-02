@@ -50,7 +50,7 @@ class DatasetPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
         header_frame.pack_propagate(False)
 
@@ -60,9 +60,9 @@ class DatasetPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=10,
+            padx=12,
         )
-        header.pack(side=tk.LEFT, pady=8)
+        header.pack(side=tk.LEFT, pady=10)
 
         self.status_label = tk.Label(
             header_frame,
@@ -71,7 +71,7 @@ class DatasetPanel(ttk.Frame):
             fg=COLORS["text_muted"],
             bg=COLORS["surface"],
         )
-        self.status_label.pack(side=tk.RIGHT, padx=10, pady=8)
+        self.status_label.pack(side=tk.RIGHT, padx=12, pady=10)
 
         # Main content with border
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -82,7 +82,7 @@ class DatasetPanel(ttk.Frame):
 
         # Source selection tabs
         source_frame = tk.Frame(content, bg=COLORS["black"])
-        source_frame.pack(fill=tk.X, padx=8, pady=(8, 4))
+        source_frame.pack(fill=tk.X, padx=16, pady=(16, 6))
 
         for value, label, tooltip in [
             ("local", "Local Files", "Load text from local .txt files"),
@@ -104,16 +104,16 @@ class DatasetPanel(ttk.Frame):
                 cursor="hand2",
                 command=self._on_source_change,
             )
-            rb.pack(side=tk.LEFT, padx=(0, 15))
+            rb.pack(side=tk.LEFT, padx=(0, 20))
             create_tooltip(rb, tooltip)
 
         # Separator
         sep = tk.Frame(content, bg=COLORS["border"], height=1)
-        sep.pack(fill=tk.X, padx=8, pady=6)
+        sep.pack(fill=tk.X, padx=16, pady=8)
 
         # Source-specific options frame
         self.options_frame = tk.Frame(content, bg=COLORS["black"])
-        self.options_frame.pack(fill=tk.X, padx=8, pady=4)
+        self.options_frame.pack(fill=tk.X, padx=16, pady=6)
 
         # Create option panels (only one visible at a time)
         self.local_options = self._create_local_options()
@@ -125,7 +125,7 @@ class DatasetPanel(ttk.Frame):
 
         # Sample size and load button
         controls_frame = tk.Frame(content, bg=COLORS["black"])
-        controls_frame.pack(fill=tk.X, padx=8, pady=8)
+        controls_frame.pack(fill=tk.X, padx=16, pady=10)
 
         tk.Label(
             controls_frame,
@@ -148,7 +148,7 @@ class DatasetPanel(ttk.Frame):
             relief=tk.SOLID,
             bd=1,
         )
-        sample_spin.pack(side=tk.LEFT, padx=(4, 15))
+        sample_spin.pack(side=tk.LEFT, padx=(6, 20))
 
         self.load_btn = tk.Button(
             controls_frame,
@@ -160,26 +160,26 @@ class DatasetPanel(ttk.Frame):
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
-            padx=16,
-            pady=6,
+            padx=18,
+            pady=8,
             cursor="hand2",
             command=self._load_dataset,
         )
         self.load_btn.pack(side=tk.RIGHT)
 
         # Preview section
-        preview_header = tk.Frame(content, bg=COLORS["surface"], height=24)
-        preview_header.pack(fill=tk.X, padx=8, pady=(8, 0))
+        preview_header = tk.Frame(content, bg=COLORS["surface"], height=28)
+        preview_header.pack(fill=tk.X, padx=16, pady=(10, 0))
         preview_header.pack_propagate(False)
 
         tk.Label(
             preview_header,
-            text="▁ PREVIEW",
+            text="  PREVIEW",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
             bg=COLORS["surface"],
-            padx=6,
-        ).pack(side=tk.LEFT, pady=4)
+            padx=8,
+        ).pack(side=tk.LEFT, pady=6)
 
         nav_label = tk.Label(
             preview_header,
@@ -188,10 +188,10 @@ class DatasetPanel(ttk.Frame):
             fg=COLORS["text_muted"],
             bg=COLORS["surface"],
         )
-        nav_label.pack(side=tk.LEFT, padx=8, pady=4)
+        nav_label.pack(side=tk.LEFT, padx=10, pady=6)
 
         nav_frame = tk.Frame(content, bg=COLORS["black"])
-        nav_frame.pack(fill=tk.X, padx=8, pady=(4, 0))
+        nav_frame.pack(fill=tk.X, padx=16, pady=(6, 0))
 
         self.prev_btn = tk.Button(
             nav_frame,
@@ -214,7 +214,7 @@ class DatasetPanel(ttk.Frame):
             font=FONTS["tiny"],
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
-        ).pack(side=tk.LEFT, padx=(12, 4))
+        ).pack(side=tk.LEFT, padx=(14, 6))
 
         self.index_spin = tk.Spinbox(
             nav_frame,
@@ -240,7 +240,7 @@ class DatasetPanel(ttk.Frame):
             fg=COLORS["green_dim"],
             bg=COLORS["black"],
         )
-        self.total_label.pack(side=tk.LEFT, padx=(4, 12))
+        self.total_label.pack(side=tk.LEFT, padx=(6, 14))
 
         self.next_btn = tk.Button(
             nav_frame,
@@ -274,7 +274,7 @@ class DatasetPanel(ttk.Frame):
 
         # Preview text area
         preview_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
-        preview_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
+        preview_container.pack(fill=tk.BOTH, expand=True, padx=16, pady=(6, 10))
 
         self.preview_text = scrolledtext.ScrolledText(
             preview_container,
@@ -287,26 +287,26 @@ class DatasetPanel(ttk.Frame):
             selectbackground=COLORS["highlight"],
             selectforeground=COLORS["green_bright"],
             relief=tk.FLAT,
-            padx=8,
-            pady=6,
+            padx=10,
+            pady=8,
             state=tk.DISABLED,
         )
         self.preview_text.pack(fill=tk.BOTH, expand=True)
         self._clear_preview()
 
         # Batch processing controls
-        batch_header = tk.Frame(content, bg=COLORS["surface"], height=24)
-        batch_header.pack(fill=tk.X, padx=8, pady=(0, 0))
+        batch_header = tk.Frame(content, bg=COLORS["surface"], height=28)
+        batch_header.pack(fill=tk.X, padx=16, pady=(0, 0))
         batch_header.pack_propagate(False)
 
         tk.Label(
             batch_header,
-            text="▁ BATCH METRICS",
+            text="  BATCH METRICS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
             bg=COLORS["surface"],
-            padx=6,
-        ).pack(side=tk.LEFT, pady=4)
+            padx=8,
+        ).pack(side=tk.LEFT, pady=6)
 
         self.batch_status = tk.Label(
             batch_header,
@@ -315,10 +315,10 @@ class DatasetPanel(ttk.Frame):
             fg=COLORS["text_muted"],
             bg=COLORS["surface"],
         )
-        self.batch_status.pack(side=tk.RIGHT, padx=8, pady=4)
+        self.batch_status.pack(side=tk.RIGHT, padx=10, pady=6)
 
         batch_controls = tk.Frame(content, bg=COLORS["black"])
-        batch_controls.pack(fill=tk.X, padx=8, pady=(2, 6))
+        batch_controls.pack(fill=tk.X, padx=16, pady=(4, 8))
 
         self.batch_btn = tk.Button(
             batch_controls,
@@ -331,14 +331,14 @@ class DatasetPanel(ttk.Frame):
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
-            padx=10,
-            pady=4,
+            padx=12,
+            pady=6,
             command=self._on_batch_clicked,
         )
         self.batch_btn.pack(side=tk.LEFT)
 
         progress_frame = tk.Frame(batch_controls, bg=COLORS["black"])
-        progress_frame.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(10, 0))
+        progress_frame.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(12, 0))
 
         self.batch_progress = ttk.Progressbar(
             progress_frame,
@@ -350,7 +350,7 @@ class DatasetPanel(ttk.Frame):
 
         # Batch results table
         results_container = tk.Frame(content, bg=COLORS["border"], padx=1, pady=1)
-        results_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+        results_container.pack(fill=tk.BOTH, expand=True, padx=16, pady=(0, 10))
 
         results_inner = tk.Frame(results_container, bg=COLORS["darker"])
         results_inner.pack(fill=tk.BOTH, expand=True)

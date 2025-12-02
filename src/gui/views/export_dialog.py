@@ -41,21 +41,26 @@ class ExportDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     def _build_ui(self) -> None:
-        container = tk.Frame(self, bg=COLORS["black"], padx=15, pady=15)
-        container.pack(fill=tk.BOTH, expand=True)
+        # Header with vector terminal styling
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
+        header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
-        # Title
         tk.Label(
-            container,
+            header_frame,
             text="▓▒░ EXPORT SESSION ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["black"],
-        ).pack(anchor="w", pady=(0, 15))
+            bg=COLORS["surface"],
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
+
+        container = tk.Frame(self, bg=COLORS["black"], padx=16, pady=16)
+        container.pack(fill=tk.BOTH, expand=True)
 
         # Format selection
         format_frame = tk.Frame(container, bg=COLORS["black"])
-        format_frame.pack(fill=tk.X, pady=(0, 15))
+        format_frame.pack(fill=tk.X, pady=(0, 20))
 
         tk.Label(
             format_frame,
@@ -83,8 +88,8 @@ class ExportDialog(tk.Toplevel):
             rb.pack(side=tk.LEFT, padx=(15, 0))
 
         # Options section
-        options_frame = tk.Frame(container, bg=COLORS["dark"], padx=10, pady=10)
-        options_frame.pack(fill=tk.X, pady=(0, 15))
+        options_frame = tk.Frame(container, bg=COLORS["dark"], padx=12, pady=12)
+        options_frame.pack(fill=tk.X, pady=(0, 20))
 
         tk.Label(
             options_frame,
@@ -118,7 +123,7 @@ class ExportDialog(tk.Toplevel):
 
         # Preview / info
         info_frame = tk.Frame(container, bg=COLORS["black"])
-        info_frame.pack(fill=tk.X, pady=(0, 15))
+        info_frame.pack(fill=tk.X, pady=(0, 20))
 
         has_scan = bool(self.export_data.scan_results)
         has_metrics = bool(self.export_data.metrics)
@@ -146,41 +151,47 @@ class ExportDialog(tk.Toplevel):
         tk.Button(
             button_row,
             text="Cancel",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=16,
+            pady=8,
             cursor="hand2",
             command=self.destroy,
-        ).pack(side=tk.RIGHT, padx=(8, 0))
+        ).pack(side=tk.RIGHT, padx=(12, 0))
 
         tk.Button(
             button_row,
             text="Copy to Clipboard",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=16,
+            pady=8,
             cursor="hand2",
             command=self._copy_to_clipboard,
-        ).pack(side=tk.RIGHT, padx=(8, 0))
+        ).pack(side=tk.RIGHT, padx=(12, 0))
 
         tk.Button(
             button_row,
             text="Export to File...",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["black"],
             bg=COLORS["green"],
             activeforeground=COLORS["black"],
             activebackground=COLORS["green_bright"],
             relief=tk.FLAT,
             bd=0,
+            padx=16,
+            pady=8,
             cursor="hand2",
             command=self._export_to_file,
         ).pack(side=tk.RIGHT)

@@ -38,26 +38,35 @@ class SaveSessionDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     def _build_ui(self) -> None:
-        container = tk.Frame(self, bg=COLORS["black"], padx=15, pady=15)
-        container.pack(fill=tk.BOTH, expand=True)
+        # Header
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
+        header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
-        # Title
         tk.Label(
-            container,
+            header_frame,
             text="▓▒░ SAVE SESSION ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["black"],
-        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 15))
+            bg=COLORS["surface"],
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
+
+        # Content
+        content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
+        content_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        container = tk.Frame(content_container, bg=COLORS["black"], padx=16, pady=16)
+        container.pack(fill=tk.BOTH, expand=True)
 
         # Session name
         tk.Label(
             container,
             text="Session Name:",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
-        ).grid(row=1, column=0, sticky="w", pady=(0, 6))
+        ).grid(row=0, column=0, sticky="w", pady=(0, 6))
 
         name_entry = tk.Entry(
             container,
@@ -70,20 +79,20 @@ class SaveSessionDialog(tk.Toplevel):
             relief=tk.SOLID,
             bd=1,
         )
-        name_entry.grid(row=1, column=1, padx=(8, 0), pady=(0, 6), sticky="ew")
+        name_entry.grid(row=0, column=1, padx=(8, 0), pady=(0, 6), sticky="ew")
         name_entry.focus_set()
 
         # Description
         tk.Label(
             container,
             text="Description:",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
-        ).grid(row=2, column=0, sticky="nw", pady=(0, 6))
+        ).grid(row=1, column=0, sticky="nw", pady=(0, 6))
 
         desc_frame = tk.Frame(container, bg=COLORS["border"], padx=1, pady=1)
-        desc_frame.grid(row=2, column=1, padx=(8, 0), pady=(0, 6), sticky="ew")
+        desc_frame.grid(row=1, column=1, padx=(8, 0), pady=(0, 6), sticky="ew")
 
         self.desc_text = tk.Text(
             desc_frame,
@@ -106,7 +115,7 @@ class SaveSessionDialog(tk.Toplevel):
             container,
             text="Include input text in session file",
             variable=self.include_input_var,
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green"],
             bg=COLORS["black"],
             activeforeground=COLORS["green_bright"],
@@ -115,11 +124,11 @@ class SaveSessionDialog(tk.Toplevel):
             highlightthickness=0,
             cursor="hand2",
         )
-        include_check.grid(row=3, column=0, columnspan=2, sticky="w", pady=(8, 15))
+        include_check.grid(row=2, column=0, columnspan=2, sticky="w", pady=(8, 15))
 
         # Summary of what will be saved
         summary_frame = tk.Frame(container, bg=COLORS["dark"], padx=8, pady=8)
-        summary_frame.grid(row=4, column=0, columnspan=2, sticky="ew", pady=(0, 15))
+        summary_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=(0, 15))
 
         glitchling_names = [name for name, _ in self.session_config.glitchlings]
         summary_text = (
@@ -139,18 +148,20 @@ class SaveSessionDialog(tk.Toplevel):
 
         # Buttons
         button_row = tk.Frame(container, bg=COLORS["black"])
-        button_row.grid(row=5, column=0, columnspan=2, sticky="e")
+        button_row.grid(row=4, column=0, columnspan=2, sticky="e", pady=(12, 0))
 
         tk.Button(
             button_row,
             text="Cancel",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self.destroy,
         ).pack(side=tk.RIGHT, padx=(8, 0))
@@ -158,13 +169,15 @@ class SaveSessionDialog(tk.Toplevel):
         save_btn = tk.Button(
             button_row,
             text="Save As...",
-            font=FONTS["body"],
-            fg=COLORS["black"],
+            font=FONTS["button"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self._save,
         )

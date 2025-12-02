@@ -33,7 +33,7 @@ class GlitchlingPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header with vector terminal styling
-        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
         header_frame.pack_propagate(False)
 
@@ -43,9 +43,9 @@ class GlitchlingPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=10,
+            padx=12,
         )
-        header.pack(side=tk.LEFT, pady=8)
+        header.pack(side=tk.LEFT, pady=10)
 
         # Count indicator with better styling
         self.count_var = tk.StringVar(value="0 active")
@@ -56,7 +56,7 @@ class GlitchlingPanel(ttk.Frame):
             fg=COLORS["green"],
             bg=COLORS["surface"],
         )
-        count_label.pack(side=tk.RIGHT, padx=10, pady=8)
+        count_label.pack(side=tk.RIGHT, padx=12, pady=10)
 
         # Scrollable frame for glitchlings with border
         scroll_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -107,7 +107,7 @@ class GlitchlingPanel(ttk.Frame):
 
         # Main frame for this glitchling with hover effect
         frame = GlitchlingFrame(self.scrollable_frame, name)
-        frame.pack(fill=tk.X, padx=3, pady=2)
+        frame.pack(fill=tk.X, padx=4, pady=2)
         self.frames[name] = frame
 
         # Header row with expand button and checkbox
@@ -119,7 +119,7 @@ class GlitchlingPanel(ttk.Frame):
         expand_btn = tk.Button(
             header_frame,
             text="▸",
-            width=2,
+            width=3,
             font=FONTS["small"],
             fg=COLORS["text_muted"],
             bg=COLORS["black"],
@@ -130,7 +130,7 @@ class GlitchlingPanel(ttk.Frame):
             cursor="hand2",
             command=partial(self._toggle_expand, name),
         )
-        expand_btn.pack(side=tk.LEFT, padx=(6, 4))
+        expand_btn.pack(side=tk.LEFT, padx=(4, 2))
         frame.expand_btn = expand_btn
 
         # Bind hover effects to expand button
@@ -158,6 +158,8 @@ class GlitchlingPanel(ttk.Frame):
             selectcolor=COLORS["darker"],
             highlightthickness=0,
             cursor="hand2",
+            padx=4,
+            pady=4,
         )
         check.pack(side=tk.LEFT, padx=2)
 
@@ -175,7 +177,7 @@ class GlitchlingPanel(ttk.Frame):
         desc = GLITCHLING_DESCRIPTIONS.get(name, "")
         if desc:
             # Truncate long descriptions
-            display_desc = desc if len(desc) <= 45 else desc[:42] + "..."
+            display_desc = desc if len(desc) <= 40 else desc[:37] + "..."
             desc_label = tk.Label(
                 header_frame,
                 text=f"· {display_desc}",
@@ -183,7 +185,7 @@ class GlitchlingPanel(ttk.Frame):
                 fg=COLORS["green_dim"],
                 bg=COLORS["black"],
             )
-            desc_label.pack(side=tk.LEFT, padx=(6, 0))
+            desc_label.pack(side=tk.LEFT, padx=(8, 0))
             # Show full description on hover via title attribute
             create_tooltip(desc_label, desc)
 
@@ -237,7 +239,7 @@ class GlitchlingPanel(ttk.Frame):
             fg=COLORS["cyan_dim"],
             bg=COLORS["black"],
         )
-        label.grid(row=row_idx, column=0, sticky="w", padx=(26, 10), pady=2)
+        label.grid(row=row_idx, column=0, sticky="w", padx=(32, 12), pady=4)
 
         widget: Any = None
         param_type = param_info["type"]
@@ -276,7 +278,7 @@ class GlitchlingPanel(ttk.Frame):
                 parent,
                 textvariable=var_str,
                 values=param_info["choices"],
-                width=14,
+                width=16,
                 state="readonly",
             )
             widget.bind("<<ComboboxSelected>>", lambda e: self.on_change())
@@ -289,12 +291,12 @@ class GlitchlingPanel(ttk.Frame):
 
         elif param_type == "text":
             var_text = tk.StringVar(value=param_info["default"])
-            widget = ttk.Entry(parent, textvariable=var_text, width=14)
+            widget = ttk.Entry(parent, textvariable=var_text, width=16)
             widget.bind("<Return>", lambda e: self.on_change())
             self.param_widgets[glitchling_name][param_name] = var_text
 
         if widget:
-            widget.grid(row=row_idx, column=1, sticky="w", padx=4, pady=2)
+            widget.grid(row=row_idx, column=1, sticky="w", padx=4, pady=4)
 
     def _update_count(self) -> None:
         """Update the count of active glitchlings."""

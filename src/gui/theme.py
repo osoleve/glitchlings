@@ -47,17 +47,17 @@ COLORS = {
     "green_dark": "#14532d",
     "green_muted": "#166534",
     # Background - layered depth with subtle warmth
-    "black": "#0c1117",
+    "black": "#0d1117",  # Slightly deeper black
     "dark": "#161b22",
-    "darker": "#090c10",
+    "darker": "#010409",  # Darker input fields
     "panel": "#1c2128",
     "surface": "#21262d",
     # Accent colors - harmonized palette
-    "cyan": "#7dd3fc",
-    "cyan_dim": "#155e75",
-    "cyan_bright": "#a5f3fc",
+    "cyan": "#38bdf8",  # More vibrant cyan
+    "cyan_dim": "#0c4a6e",
+    "cyan_bright": "#bae6fd",
     "amber": "#fbbf24",
-    "amber_dim": "#92400e",
+    "amber_dim": "#78350f",
     "amber_bright": "#fcd34d",
     "red": "#f87171",
     "red_dim": "#7f1d1d",
@@ -79,7 +79,7 @@ COLORS = {
 _MONO_FONTS = ("Cascadia Code", "JetBrains Mono", "Consolas", "Monaco", "monospace")
 
 FONTS: Dict[str, Any] = {
-    "header": (_MONO_FONTS, 15, "bold"),
+    "header": (_MONO_FONTS, 16, "bold"),
     "title": (_MONO_FONTS, 11, "bold"),
     "section": (_MONO_FONTS, 10, "bold"),
     "body": (_MONO_FONTS, 10),
@@ -140,6 +140,8 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "font": FONTS["button"],
         "padding": (12, 6),
         "focuscolor": COLORS["green_dim"],
+        "relief": "flat",
+        "borderwidth": 1,
     },
     "Primary.TButton": {
         "background": COLORS["green_dark"],
@@ -147,6 +149,8 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "bordercolor": COLORS["green_muted"],
         "font": FONTS["button"],
         "padding": (14, 7),
+        "relief": "flat",
+        "borderwidth": 1,
     },
     "Danger.TButton": {
         "background": COLORS["red_dim"],
@@ -154,16 +158,20 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "bordercolor": COLORS["red_dim"],
         "font": FONTS["button"],
         "padding": (12, 6),
+        "relief": "flat",
+        "borderwidth": 1,
     },
     "TCheckbutton": {
         "background": COLORS["black"],
         "foreground": COLORS["green"],
         "font": FONTS["body"],
+        "focuscolor": COLORS["black"],  # Remove dotted focus line
     },
     "TRadiobutton": {
         "background": COLORS["black"],
         "foreground": COLORS["green"],
         "font": FONTS["body"],
+        "focuscolor": COLORS["black"],
     },
     "TEntry": {
         "fieldbackground": COLORS["darker"],
@@ -171,7 +179,8 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "insertcolor": COLORS["green_bright"],
         "bordercolor": COLORS["border"],
         "font": FONTS["mono"],
-        "padding": (4, 2),
+        "padding": (6, 4),  # More padding
+        "relief": "flat",
     },
     "TSpinbox": {
         "fieldbackground": COLORS["darker"],
@@ -180,6 +189,7 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "bordercolor": COLORS["border"],
         "font": FONTS["mono"],
         "padding": (4, 2),
+        "relief": "flat",
     },
     "TCombobox": {
         "fieldbackground": COLORS["darker"],
@@ -195,39 +205,44 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "bordercolor": COLORS["border"],
         "arrowcolor": COLORS["green"],
         "gripcount": 0,
+        "relief": "flat",
+        "width": 12,
     },
-    "TPanedwindow": {"background": COLORS["green_dim"]},
+    "TPanedwindow": {"background": COLORS["border"]},  # Thinner separator look
     "Treeview": {
         "background": COLORS["darker"],
         "foreground": COLORS["green"],
         "fieldbackground": COLORS["darker"],
         "bordercolor": COLORS["border"],
         "font": FONTS["metric"],
-        "rowheight": 24,
+        "rowheight": 28,  # Taller rows
     },
     "Treeview.Heading": {
         "background": COLORS["dark"],
         "foreground": COLORS["cyan"],
         "font": FONTS["body"],
         "bordercolor": COLORS["border"],
-        "padding": (4, 3),
+        "padding": (8, 6),
+        "relief": "flat",
     },
     "TNotebook": {
         "background": COLORS["black"],
         "bordercolor": COLORS["border"],
-        "tabmargins": (4, 6, 4, 2),
+        "tabmargins": (4, 6, 4, 0),
     },
     "TNotebook.Tab": {
         "background": COLORS["surface"],
         "foreground": COLORS["text_muted"],
-        "padding": (14, 6),
+        "padding": (16, 8),
         "focuscolor": COLORS["green_dim"],
+        "borderwidth": 0,
     },
     "TSeparator": {"background": COLORS["border"]},
     "TProgressbar": {
         "background": COLORS["green"],
         "troughcolor": COLORS["darker"],
         "bordercolor": COLORS["border"],
+        "thickness": 6,
     },
 }
 
@@ -275,7 +290,7 @@ STYLE_MAPS: Dict[str, Dict[str, Any]] = {
         "foreground": [("active", COLORS["green_bright"])],
     },
     "TNotebook.Tab": {
-        "background": [("selected", COLORS["dark"]), ("active", COLORS["hover"])],
+        "background": [("selected", COLORS["black"]), ("active", COLORS["hover"])],
         "foreground": [("selected", COLORS["green_bright"]), ("active", COLORS["green"])],
     },
 }

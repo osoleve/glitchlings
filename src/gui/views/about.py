@@ -30,7 +30,7 @@ def show_about_dialog(parent: tk.Tk) -> None:
     _center_window(about, ABOUT_WIDTH, ABOUT_HEIGHT)
 
     outer_border = tk.Frame(about, bg=COLORS["green_dim"], padx=2, pady=2)
-    outer_border.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
+    outer_border.pack(fill=tk.BOTH, expand=True, padx=16, pady=16)
 
     border = tk.Frame(outer_border, bg=COLORS["border"], padx=1, pady=1)
     border.pack(fill=tk.BOTH, expand=True)
@@ -52,7 +52,7 @@ def show_about_dialog(parent: tk.Tk) -> None:
         bg=COLORS["black"],
         justify=tk.CENTER,
     )
-    header.pack(pady=(12, 0))
+    header.pack(pady=(16, 0))
 
     desc = tk.Label(
         inner,
@@ -63,10 +63,10 @@ def show_about_dialog(parent: tk.Tk) -> None:
         bg=COLORS["black"],
         justify=tk.CENTER,
     )
-    desc.pack(pady=12)
+    desc.pack(pady=16)
 
     features_frame = tk.Frame(inner, bg=COLORS["black"])
-    features_frame.pack(pady=10)
+    features_frame.pack(pady=12)
 
     features = [
         "◆ 10 unique glitchling creatures",
@@ -82,10 +82,10 @@ def show_about_dialog(parent: tk.Tk) -> None:
             fg=COLORS["cyan"],
             bg=COLORS["black"],
             anchor="w",
-        ).pack(anchor="w", padx=20)
+        ).pack(anchor="w", padx=24)
 
     sep_frame = tk.Frame(inner, bg=COLORS["black"])
-    sep_frame.pack(fill=tk.X, padx=40, pady=10)
+    sep_frame.pack(fill=tk.X, padx=40, pady=12)
     tk.Frame(sep_frame, bg=COLORS["green_dim"], height=1).pack(fill=tk.X)
 
     status = tk.Label(
@@ -95,11 +95,11 @@ def show_about_dialog(parent: tk.Tk) -> None:
         fg=COLORS["cyan_bright"],
         bg=COLORS["black"],
     )
-    status.pack(pady=8)
+    status.pack(pady=10)
 
     close_btn = tk.Button(
         inner,
-        text="[ CLOSE ]",
+        text="CLOSE",
         font=FONTS["button"],
         fg=COLORS["green"],
         bg=COLORS["surface"],
@@ -112,6 +112,6 @@ def show_about_dialog(parent: tk.Tk) -> None:
         cursor="hand2",
         command=about.destroy,
     )
-    close_btn.pack(pady=18)
+    close_btn.pack(pady=20)
 
     about.bind("<Escape>", lambda e: about.destroy())

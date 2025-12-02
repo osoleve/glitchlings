@@ -30,22 +30,38 @@ class PreferencesDialog(tk.Toplevel):
 
         self.font_var = tk.StringVar(value=preferences.font_family)
         self.font_size_var = tk.IntVar(value=preferences.font_size)
-        self.tokenizers_var = tk.StringVar(
-            value=", ".join(preferences.default_tokenizers)
-        )
+        self.tokenizers_var = tk.StringVar(value=", ".join(preferences.default_tokenizers))
         self.copy_meta_var = tk.BooleanVar(value=preferences.copy_metadata)
 
         self._build_ui()
         self.protocol("WM_DELETE_WINDOW", self.destroy)
 
     def _build_ui(self) -> None:
-        container = tk.Frame(self, bg=COLORS["black"], padx=10, pady=10)
+        # Header
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
+        header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
+
+        tk.Label(
+            header_frame,
+            text="▓▒░ PREFERENCES ░▒▓",
+            font=FONTS["section"],
+            fg=COLORS["cyan"],
+            bg=COLORS["surface"],
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
+
+        # Content
+        content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
+        content_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
+
+        container = tk.Frame(content_container, bg=COLORS["black"], padx=16, pady=16)
         container.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(
             container,
             text="Font family",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
         ).grid(row=0, column=0, sticky="w", pady=(0, 6))
@@ -62,7 +78,7 @@ class PreferencesDialog(tk.Toplevel):
         tk.Label(
             container,
             text="Font size",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
         ).grid(row=1, column=0, sticky="w", pady=(0, 6))
@@ -85,7 +101,7 @@ class PreferencesDialog(tk.Toplevel):
         tk.Label(
             container,
             text="Default tokenizers (comma separated)",
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green_bright"],
             bg=COLORS["black"],
         ).grid(row=2, column=0, sticky="w", pady=(0, 6))
@@ -107,7 +123,7 @@ class PreferencesDialog(tk.Toplevel):
             container,
             text="Copy metadata with output",
             variable=self.copy_meta_var,
-            font=FONTS["body"],
+            font=FONTS["small"],
             fg=COLORS["green"],
             bg=COLORS["black"],
             activeforeground=COLORS["green_bright"],
@@ -119,35 +135,39 @@ class PreferencesDialog(tk.Toplevel):
         copy_check.grid(row=3, column=0, columnspan=2, sticky="w", pady=(4, 10))
 
         button_row = tk.Frame(container, bg=COLORS["black"])
-        button_row.grid(row=4, column=0, columnspan=2, sticky="e")
+        button_row.grid(row=4, column=0, columnspan=2, sticky="e", pady=(12, 0))
 
         tk.Button(
             button_row,
             text="Cancel",
-            font=FONTS["body"],
+            font=FONTS["button"],
             fg=COLORS["green"],
             bg=COLORS["dark"],
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self.destroy,
-        ).pack(side=tk.RIGHT, padx=(4, 0))
+        ).pack(side=tk.RIGHT, padx=(8, 0))
 
         tk.Button(
             button_row,
             text="Save",
-            font=FONTS["body"],
-            fg=COLORS["black"],
+            font=FONTS["button"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             relief=tk.FLAT,
             bd=0,
+            padx=12,
+            pady=6,
             cursor="hand2",
             command=self._save,
-        ).pack(side=tk.RIGHT, padx=(0, 4))
+        ).pack(side=tk.RIGHT, padx=(0, 8))
 
         container.columnconfigure(1, weight=1)
 

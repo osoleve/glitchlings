@@ -94,7 +94,7 @@ class GridSweepPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=40)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
         header_frame.pack_propagate(False)
 
@@ -104,8 +104,8 @@ class GridSweepPanel(ttk.Frame):
             font=FONTS["section"],
             fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=10,
-        ).pack(side=tk.LEFT, pady=8)
+            padx=12,
+        ).pack(side=tk.LEFT, pady=10)
 
         # Main content - only expand if results are inline
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -119,11 +119,11 @@ class GridSweepPanel(ttk.Frame):
 
         # Configuration section
         config_frame = tk.Frame(content, bg=COLORS["black"])
-        config_frame.pack(fill=tk.X, padx=8, pady=8)
+        config_frame.pack(fill=tk.X, padx=10, pady=10)
 
         # Row 1: Glitchling multi-select and Parameter selection
         row1 = tk.Frame(config_frame, bg=COLORS["black"])
-        row1.pack(fill=tk.X, pady=4)
+        row1.pack(fill=tk.X, pady=6)
 
         # Glitchling selection label
         tk.Label(
@@ -136,7 +136,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Glitchling checkboxes container with scrollable frame
         glitch_select_frame = tk.Frame(row1, bg=COLORS["darker"], padx=2, pady=2)
-        glitch_select_frame.pack(side=tk.LEFT, padx=(8, 20))
+        glitch_select_frame.pack(side=tk.LEFT, padx=(8, 24))
 
         # Create a canvas and scrollbar for the checkbox list
         glitch_canvas = tk.Canvas(
@@ -190,7 +190,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Select All / Clear buttons
         select_btn_frame = tk.Frame(row1, bg=COLORS["black"])
-        select_btn_frame.pack(side=tk.LEFT, padx=(0, 20), anchor="n")
+        select_btn_frame.pack(side=tk.LEFT, padx=(0, 24), anchor="n")
 
         tk.Button(
             select_btn_frame,
@@ -201,11 +201,11 @@ class GridSweepPanel(ttk.Frame):
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             bd=0,
-            padx=6,
-            pady=2,
+            padx=8,
+            pady=3,
             cursor="hand2",
             command=self._select_all_glitchlings,
-        ).pack(pady=(0, 2))
+        ).pack(pady=(0, 4))
 
         tk.Button(
             select_btn_frame,
@@ -216,8 +216,8 @@ class GridSweepPanel(ttk.Frame):
             activeforeground=COLORS["green_bright"],
             activebackground=COLORS["highlight"],
             bd=0,
-            padx=6,
-            pady=2,
+            padx=8,
+            pady=3,
             cursor="hand2",
             command=self._clear_all_glitchlings,
         ).pack()
@@ -242,7 +242,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Row 2: Range configuration
         row2 = tk.Frame(config_frame, bg=COLORS["black"])
-        row2.pack(fill=tk.X, pady=4)
+        row2.pack(fill=tk.X, pady=6)
 
         tk.Label(
             row2,
@@ -292,7 +292,7 @@ class GridSweepPanel(ttk.Frame):
             font=FONTS["small"],
             fg=COLORS["text_muted"],
             bg=COLORS["black"],
-        ).pack(side=tk.LEFT, padx=(15, 0))
+        ).pack(side=tk.LEFT, padx=(16, 0))
 
         step_entry = tk.Entry(
             row2,
@@ -309,7 +309,7 @@ class GridSweepPanel(ttk.Frame):
 
         # Row 3: Seeds per point
         row3 = tk.Frame(config_frame, bg=COLORS["black"])
-        row3.pack(fill=tk.X, pady=4)
+        row3.pack(fill=tk.X, pady=6)
 
         tk.Label(
             row3,
@@ -345,8 +345,8 @@ class GridSweepPanel(ttk.Frame):
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
-            padx=16,
-            pady=6,
+            padx=18,
+            pady=8,
             cursor="hand2",
             command=self._run_sweep,
         )
@@ -364,17 +364,17 @@ class GridSweepPanel(ttk.Frame):
             disabledforeground=COLORS["disabled"],
             bd=0,
             relief=tk.FLAT,
-            padx=12,
-            pady=6,
+            padx=14,
+            pady=8,
             cursor="hand2",
             state=tk.DISABLED,
             command=self._open_export_dialog,
         )
-        self.export_btn.pack(side=tk.RIGHT, padx=(0, 10))
+        self.export_btn.pack(side=tk.RIGHT, padx=(0, 12))
 
         # Progress bar
         self.progress_frame = tk.Frame(config_frame, bg=COLORS["black"])
-        self.progress_frame.pack(fill=tk.X, pady=(8, 0))
+        self.progress_frame.pack(fill=tk.X, pady=(10, 0))
 
         self.progress_var = tk.DoubleVar(value=0)
         self.progress_bar = ttk.Progressbar(
@@ -397,28 +397,28 @@ class GridSweepPanel(ttk.Frame):
         # Results section - place in external container if provided
         results_parent = self.results_container if self.results_container else content
 
-        results_header = tk.Frame(results_parent, bg=COLORS["surface"], height=24)
+        results_header = tk.Frame(results_parent, bg=COLORS["surface"], height=40)
         if self.results_container:
             results_header.pack(fill=tk.X, padx=2, pady=(2, 0))
         else:
-            results_header.pack(fill=tk.X, padx=8, pady=(15, 0))
+            results_header.pack(fill=tk.X, padx=10, pady=(16, 0))
         results_header.pack_propagate(False)
 
         tk.Label(
             results_header,
-            text="▁ SWEEP RESULTS",
-            font=FONTS["tiny"],
-            fg=COLORS["cyan_dim"],
+            text="  SWEEP RESULTS",
+            font=FONTS["section"],
+            fg=COLORS["cyan"],
             bg=COLORS["surface"],
-            padx=6,
-        ).pack(side=tk.LEFT, pady=4)
+            padx=8,
+        ).pack(side=tk.LEFT, pady=10)
 
         # Results table
         table_container = tk.Frame(results_parent, bg=COLORS["border"], padx=1, pady=1)
         if self.results_container:
             table_container.pack(fill=tk.BOTH, expand=True, padx=2, pady=2)
         else:
-            table_container.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 8))
+            table_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=(4, 10))
 
         table_inner = tk.Frame(table_container, bg=COLORS["darker"])
         table_inner.pack(fill=tk.BOTH, expand=True)
