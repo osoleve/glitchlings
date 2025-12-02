@@ -34,53 +34,62 @@ from glitchlings.zoo.pedant.stones import PedantStone
 from glitchlings.zoo.rushmore import RushmoreMode
 
 # Application info
-APP_VERSION = "1.2.0"
+APP_VERSION = "1.3.0"
 APP_TITLE = "GLITCHLINGS TERMINAL"
 
-# Color palette - refreshed neo-terminal colors with soft mint glow
+# Color palette - refined neo-terminal colors with balanced contrast
 COLORS = {
-    # Primary mint glow - slightly more vibrant
-    "green": "#50fa7b",
-    "green_dim": "#2f6b57",
-    "green_glow": "#8affc0",
-    "green_bright": "#d8ffe9",
-    "green_dark": "#0f2f2a",
-    "green_muted": "#3f7a66",
-    # Background - deep midnight blues
-    "black": "#0b0f19",
-    "dark": "#131a2a",
-    "darker": "#080b12",
-    "panel": "#1a233a",
-    # Accent colors
-    "cyan": "#8be9fd",
-    "cyan_dim": "#1d5f7a",
-    "cyan_bright": "#b4f0ff",
-    "amber": "#ffb86c",
-    "amber_dim": "#8f4f1f",
-    "amber_bright": "#ffd7a1",
-    "red": "#ff5555",
-    "red_dim": "#7f1d30",
-    "magenta": "#ff79c6",
-    "yellow": "#f1fa8c",
-    # UI chrome
-    "border": "#2d3f55",
-    "border_bright": "#50fa7b",
-    "highlight": "#2a3b55",
-    "disabled": "#3b4b60",
+    # Primary mint/green - refined for better readability
+    "green": "#4ade80",
+    "green_dim": "#22543d",
+    "green_glow": "#86efac",
+    "green_bright": "#bbf7d0",
+    "green_dark": "#14532d",
+    "green_muted": "#166534",
+    # Background - layered depth with subtle warmth
+    "black": "#0c1117",
+    "dark": "#161b22",
+    "darker": "#090c10",
+    "panel": "#1c2128",
+    "surface": "#21262d",
+    # Accent colors - harmonized palette
+    "cyan": "#7dd3fc",
+    "cyan_dim": "#155e75",
+    "cyan_bright": "#a5f3fc",
+    "amber": "#fbbf24",
+    "amber_dim": "#92400e",
+    "amber_bright": "#fcd34d",
+    "red": "#f87171",
+    "red_dim": "#7f1d1d",
+    "magenta": "#f472b6",
+    "purple": "#a78bfa",
+    "yellow": "#fde047",
+    # UI chrome - refined borders and highlights
+    "border": "#30363d",
+    "border_bright": "#4ade80",
+    "border_subtle": "#21262d",
+    "highlight": "#1f2937",
+    "hover": "#2d333b",
+    "disabled": "#484f58",
+    "text_muted": "#8b949e",
 }
 
 # Font configuration - using monospace fonts for authentic terminal feel
+# Cascading font fallbacks for cross-platform compatibility
+_MONO_FONTS = ("Cascadia Code", "JetBrains Mono", "Consolas", "Monaco", "monospace")
+
 FONTS: Dict[str, Any] = {
-    "header": ("Consolas", 14, "bold"),
-    "title": ("Consolas", 11, "bold"),
-    "section": ("Consolas", 10, "bold"),
-    "body": ("Consolas", 10),
-    "mono": ("Consolas", 10),
-    "small": ("Consolas", 9),
-    "tiny": ("Consolas", 8),
-    "status": ("Consolas", 9),
-    "metric": ("Consolas", 9),
-    "glitch_name": ("Consolas", 11, "bold"),
+    "header": (_MONO_FONTS, 15, "bold"),
+    "title": (_MONO_FONTS, 11, "bold"),
+    "section": (_MONO_FONTS, 10, "bold"),
+    "body": (_MONO_FONTS, 10),
+    "mono": (_MONO_FONTS, 10),
+    "small": (_MONO_FONTS, 9),
+    "tiny": (_MONO_FONTS, 8),
+    "status": (_MONO_FONTS, 9),
+    "metric": (_MONO_FONTS, 9),
+    "glitch_name": (_MONO_FONTS, 11, "bold"),
+    "button": (_MONO_FONTS, 9, "bold"),
 }
 
 MENU_STYLES = {
@@ -95,10 +104,16 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
     ".": {"background": COLORS["black"], "foreground": COLORS["green"]},
     "TFrame": {"background": COLORS["black"], "bordercolor": COLORS["border"]},
     "Panel.TFrame": {"background": COLORS["dark"], "bordercolor": COLORS["border"]},
+    "Surface.TFrame": {"background": COLORS["surface"], "bordercolor": COLORS["border"]},
     "TLabel": {
         "background": COLORS["black"],
         "foreground": COLORS["green"],
         "font": FONTS["body"],
+    },
+    "Muted.TLabel": {
+        "background": COLORS["black"],
+        "foreground": COLORS["text_muted"],
+        "font": FONTS["small"],
     },
     "Header.TLabel": {
         "background": COLORS["black"],
@@ -119,18 +134,25 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
         "padding": (4, 2),
     },
     "TButton": {
-        "background": COLORS["dark"],
+        "background": COLORS["surface"],
         "foreground": COLORS["green"],
         "bordercolor": COLORS["border"],
-        "font": FONTS["body"],
-        "padding": (10, 5),
+        "font": FONTS["button"],
+        "padding": (12, 6),
         "focuscolor": COLORS["green_dim"],
     },
     "Primary.TButton": {
         "background": COLORS["green_dark"],
         "foreground": COLORS["green_bright"],
-        "bordercolor": COLORS["green_dim"],
-        "font": FONTS["body"],
+        "bordercolor": COLORS["green_muted"],
+        "font": FONTS["button"],
+        "padding": (14, 7),
+    },
+    "Danger.TButton": {
+        "background": COLORS["red_dim"],
+        "foreground": COLORS["red"],
+        "bordercolor": COLORS["red_dim"],
+        "font": FONTS["button"],
         "padding": (12, 6),
     },
     "TCheckbutton": {
@@ -193,12 +215,12 @@ STYLE_CONFIGS: Dict[str, Dict[str, Any]] = {
     "TNotebook": {
         "background": COLORS["black"],
         "bordercolor": COLORS["border"],
-        "tabmargins": (2, 4, 2, 0),
+        "tabmargins": (4, 6, 4, 2),
     },
     "TNotebook.Tab": {
-        "background": COLORS["dark"],
-        "foreground": COLORS["green"],
-        "padding": (12, 5),
+        "background": COLORS["surface"],
+        "foreground": COLORS["text_muted"],
+        "padding": (14, 6),
         "focuscolor": COLORS["green_dim"],
     },
     "TSeparator": {"background": COLORS["border"]},
@@ -253,8 +275,8 @@ STYLE_MAPS: Dict[str, Dict[str, Any]] = {
         "foreground": [("active", COLORS["green_bright"])],
     },
     "TNotebook.Tab": {
-        "background": [("selected", COLORS["black"]), ("active", COLORS["green_dark"])],
-        "foreground": [("selected", COLORS["green_bright"]), ("active", COLORS["green_glow"])],
+        "background": [("selected", COLORS["dark"]), ("active", COLORS["hover"])],
+        "foreground": [("selected", COLORS["green_bright"]), ("active", COLORS["green"])],
     },
 }
 

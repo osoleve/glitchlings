@@ -33,34 +33,30 @@ class GlitchlingPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header with vector terminal styling
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
-
-        header_inner = tk.Frame(header_frame, bg=COLORS["dark"])
-        header_inner.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
 
         header = tk.Label(
-            header_inner,
+            header_frame,
             text="▓▒░ GLITCHLINGS ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
-            padx=8,
-            pady=5,
+            bg=COLORS["surface"],
+            padx=10,
         )
-        header.pack(side=tk.LEFT)
+        header.pack(side=tk.LEFT, pady=8)
 
         # Count indicator with better styling
         self.count_var = tk.StringVar(value="0 active")
         count_label = tk.Label(
-            header_inner,
+            header_frame,
             textvariable=self.count_var,
             font=FONTS["tiny"],
             fg=COLORS["green"],
-            bg=COLORS["dark"],
-            padx=8,
+            bg=COLORS["surface"],
         )
-        count_label.pack(side=tk.RIGHT, padx=6, pady=5)
+        count_label.pack(side=tk.RIGHT, padx=10, pady=8)
 
         # Scrollable frame for glitchlings with border
         scroll_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -125,7 +121,7 @@ class GlitchlingPanel(ttk.Frame):
             text="▸",
             width=2,
             font=FONTS["small"],
-            fg=COLORS["green_muted"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
             activeforeground=COLORS["cyan"],
             activebackground=COLORS["black"],
@@ -134,7 +130,7 @@ class GlitchlingPanel(ttk.Frame):
             cursor="hand2",
             command=partial(self._toggle_expand, name),
         )
-        expand_btn.pack(side=tk.LEFT, padx=(4, 4))
+        expand_btn.pack(side=tk.LEFT, padx=(6, 4))
         frame.expand_btn = expand_btn
 
         # Bind hover effects to expand button
@@ -142,7 +138,7 @@ class GlitchlingPanel(ttk.Frame):
             expand_btn.config(fg=COLORS["cyan"])
 
         def on_expand_leave(event: tk.Event) -> None:
-            fg = COLORS["cyan"] if self.expanded.get(name) else COLORS["green_muted"]
+            fg = COLORS["cyan"] if self.expanded.get(name) else COLORS["text_muted"]
             expand_btn.config(fg=fg)
 
         expand_btn.bind("<Enter>", on_expand_enter)
@@ -208,7 +204,7 @@ class GlitchlingPanel(ttk.Frame):
             return
 
         is_enabled = self.enabled[name].get()
-        bg_color = COLORS["dark"] if is_enabled else COLORS["black"]
+        bg_color = COLORS["surface"] if is_enabled else COLORS["black"]
         fg_color = COLORS["green_bright"] if is_enabled else COLORS["green"]
 
         frame.header_frame.config(bg=bg_color)
@@ -316,7 +312,7 @@ class GlitchlingPanel(ttk.Frame):
             frame.expand_btn.config(text="▾", fg=COLORS["cyan"])
             frame.param_frame.pack(fill=tk.X, after=frame.winfo_children()[0])
         else:
-            frame.expand_btn.config(text="▸", fg=COLORS["green_muted"])
+            frame.expand_btn.config(text="▸", fg=COLORS["text_muted"])
             frame.param_frame.pack_forget()
 
     def get_enabled_glitchlings(self) -> List[Tuple[type[Any], Dict[str, Any]]]:

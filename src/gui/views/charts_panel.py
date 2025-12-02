@@ -54,18 +54,18 @@ class ChartsPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
         tk.Label(
             header_frame,
             text="▓▒░ VISUALIZATION ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
-            padx=8,
-            pady=5,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=10,
+        ).pack(side=tk.LEFT, pady=8)
 
         # Main content
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -76,14 +76,14 @@ class ChartsPanel(ttk.Frame):
 
         # Controls row
         controls = tk.Frame(content, bg=COLORS["black"])
-        controls.pack(fill=tk.X, padx=8, pady=8)
+        controls.pack(fill=tk.X, padx=10, pady=10)
 
         # Data source
         tk.Label(
             controls,
             text="Source:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -102,7 +102,7 @@ class ChartsPanel(ttk.Frame):
             controls,
             text="Metric:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -121,7 +121,7 @@ class ChartsPanel(ttk.Frame):
             controls,
             text="Tokenizer:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -139,15 +139,17 @@ class ChartsPanel(ttk.Frame):
         refresh_btn = tk.Button(
             controls,
             text="↻ Refresh",
-            font=FONTS["small"],
-            fg=COLORS["green"],
-            bg=COLORS["dark"],
+            font=FONTS["tiny"],
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
             activeforeground=COLORS["green_bright"],
-            activebackground=COLORS["highlight"],
+            activebackground=COLORS["surface"],
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
             command=self._update_charts,
+            padx=8,
+            pady=2,
         )
         refresh_btn.pack(side=tk.RIGHT)
 
@@ -172,23 +174,24 @@ class ChartsPanel(ttk.Frame):
             self._create_chart_cell(charts_frame, chart_type, title, row, col)
 
         # Stats panel in bottom-right (row=1, col=1)
-        stats_outer = tk.Frame(charts_frame, bg=COLORS["border"], padx=1, pady=1)
-        stats_outer.grid(row=1, column=1, sticky="nsew", padx=2, pady=2)
+        stats_outer = tk.Frame(charts_frame, bg=COLORS["border_subtle"], padx=1, pady=1)
+        stats_outer.grid(row=1, column=1, sticky="nsew", padx=3, pady=3)
 
         stats_inner = tk.Frame(stats_outer, bg=COLORS["black"])
         stats_inner.pack(fill=tk.BOTH, expand=True)
 
-        stats_header = tk.Frame(stats_inner, bg=COLORS["dark"])
+        stats_header = tk.Frame(stats_inner, bg=COLORS["surface"], height=24)
         stats_header.pack(fill=tk.X)
+        stats_header.pack_propagate(False)
 
         tk.Label(
             stats_header,
-            text="░ STATISTICS",
+            text="▁ STATISTICS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=6,
+        ).pack(side=tk.LEFT, pady=4)
 
         stats_content = tk.Frame(stats_inner, bg=COLORS["darker"])
         stats_content.pack(fill=tk.BOTH, expand=True)
@@ -197,10 +200,10 @@ class ChartsPanel(ttk.Frame):
             stats_content,
             text="No data available\n\nRun a sweep to generate charts",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["darker"],
-            padx=12,
-            pady=12,
+            padx=14,
+            pady=14,
             justify=tk.LEFT,
             anchor="nw",
         )
@@ -211,34 +214,35 @@ class ChartsPanel(ttk.Frame):
     ) -> None:
         """Create a single chart cell in the grid."""
         # Outer border frame
-        outer = tk.Frame(parent, bg=COLORS["border"], padx=1, pady=1)
-        outer.grid(row=row, column=col, sticky="nsew", padx=2, pady=2)
+        outer = tk.Frame(parent, bg=COLORS["border_subtle"], padx=1, pady=1)
+        outer.grid(row=row, column=col, sticky="nsew", padx=3, pady=3)
 
         inner = tk.Frame(outer, bg=COLORS["black"])
         inner.pack(fill=tk.BOTH, expand=True)
 
         # Header
-        header = tk.Frame(inner, bg=COLORS["dark"])
+        header = tk.Frame(inner, bg=COLORS["surface"], height=24)
         header.pack(fill=tk.X)
+        header.pack_propagate(False)
 
         tk.Label(
             header,
-            text=f"░ {title}",
+            text=f"▁ {title}",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=6,
+        ).pack(side=tk.LEFT, pady=4)
 
         title_label = tk.Label(
             header,
             text="",
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
-            padx=4,
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
+            padx=6,
         )
-        title_label.pack(side=tk.RIGHT)
+        title_label.pack(side=tk.RIGHT, pady=4)
         self.chart_titles[chart_type] = title_label
 
         # Chart text area

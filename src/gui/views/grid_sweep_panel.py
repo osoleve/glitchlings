@@ -94,18 +94,18 @@ class GridSweepPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
         tk.Label(
             header_frame,
             text="▓▒░ PARAMETER SWEEP ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
-            padx=8,
-            pady=5,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=10,
+        ).pack(side=tk.LEFT, pady=8)
 
         # Main content - only expand if results are inline
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -130,7 +130,7 @@ class GridSweepPanel(ttk.Frame):
             row1,
             text="Glitchlings:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT, anchor="n")
 
@@ -227,7 +227,7 @@ class GridSweepPanel(ttk.Frame):
             row1,
             text="Parameter:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT, anchor="n")
 
@@ -248,7 +248,7 @@ class GridSweepPanel(ttk.Frame):
             row2,
             text="Range:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -269,7 +269,7 @@ class GridSweepPanel(ttk.Frame):
             row2,
             text="to",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT, padx=8)
 
@@ -290,7 +290,7 @@ class GridSweepPanel(ttk.Frame):
             row2,
             text="step",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT, padx=(15, 0))
 
@@ -315,7 +315,7 @@ class GridSweepPanel(ttk.Frame):
             row3,
             text="Seeds per point:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -338,15 +338,15 @@ class GridSweepPanel(ttk.Frame):
         self.run_btn = tk.Button(
             row3,
             text="▶ RUN SWEEP",
-            font=FONTS["section"],
-            fg=COLORS["black"],
+            font=FONTS["button"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
-            padx=14,
-            pady=4,
+            padx=16,
+            pady=6,
             cursor="hand2",
             command=self._run_sweep,
         )
@@ -355,22 +355,22 @@ class GridSweepPanel(ttk.Frame):
         # Export button (initially disabled)
         self.export_btn = tk.Button(
             row3,
-            text="⬇ EXPORT",
-            font=FONTS["section"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
+            text="⬇ Export",
+            font=FONTS["button"],
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
             activeforeground=COLORS["green"],
-            activebackground=COLORS["highlight"],
-            disabledforeground=COLORS["border"],
+            activebackground=COLORS["surface"],
+            disabledforeground=COLORS["disabled"],
             bd=0,
             relief=tk.FLAT,
-            padx=10,
-            pady=4,
+            padx=12,
+            pady=6,
             cursor="hand2",
             state=tk.DISABLED,
             command=self._open_export_dialog,
         )
-        self.export_btn.pack(side=tk.RIGHT, padx=(0, 8))
+        self.export_btn.pack(side=tk.RIGHT, padx=(0, 10))
 
         # Progress bar
         self.progress_frame = tk.Frame(config_frame, bg=COLORS["black"])
@@ -389,7 +389,7 @@ class GridSweepPanel(ttk.Frame):
             self.progress_frame,
             text="",
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         )
         self.progress_label.pack(anchor="w", pady=(2, 0))
@@ -397,20 +397,21 @@ class GridSweepPanel(ttk.Frame):
         # Results section - place in external container if provided
         results_parent = self.results_container if self.results_container else content
 
-        results_header = tk.Frame(results_parent, bg=COLORS["dark"])
+        results_header = tk.Frame(results_parent, bg=COLORS["surface"], height=24)
         if self.results_container:
             results_header.pack(fill=tk.X, padx=2, pady=(2, 0))
         else:
             results_header.pack(fill=tk.X, padx=8, pady=(15, 0))
+        results_header.pack_propagate(False)
 
         tk.Label(
             results_header,
-            text="░ SWEEP RESULTS",
+            text="▁ SWEEP RESULTS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=6,
+        ).pack(side=tk.LEFT, pady=4)
 
         # Results table
         table_container = tk.Frame(results_parent, bg=COLORS["border"], padx=1, pady=1)

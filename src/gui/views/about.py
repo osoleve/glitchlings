@@ -30,7 +30,7 @@ def show_about_dialog(parent: tk.Tk) -> None:
     _center_window(about, ABOUT_WIDTH, ABOUT_HEIGHT)
 
     outer_border = tk.Frame(about, bg=COLORS["green_dim"], padx=2, pady=2)
-    outer_border.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+    outer_border.pack(fill=tk.BOTH, expand=True, padx=12, pady=12)
 
     border = tk.Frame(outer_border, bg=COLORS["border"], padx=1, pady=1)
     border.pack(fill=tk.BOTH, expand=True)
@@ -52,7 +52,7 @@ def show_about_dialog(parent: tk.Tk) -> None:
         bg=COLORS["black"],
         justify=tk.CENTER,
     )
-    header.pack(pady=(10, 0))
+    header.pack(pady=(12, 0))
 
     desc = tk.Label(
         inner,
@@ -100,18 +100,18 @@ def show_about_dialog(parent: tk.Tk) -> None:
     close_btn = tk.Button(
         inner,
         text="[ CLOSE ]",
-        font=FONTS["section"],
+        font=FONTS["button"],
         fg=COLORS["green"],
-        bg=COLORS["dark"],
-        activeforeground=COLORS["black"],
+        bg=COLORS["surface"],
+        activeforeground=COLORS["darker"],
         activebackground=COLORS["green"],
-        bd=1,
-        relief=tk.SOLID,
-        padx=20,
-        pady=6,
+        bd=0,
+        relief=tk.FLAT,
+        padx=24,
+        pady=8,
         cursor="hand2",
         command=about.destroy,
     )
-    close_btn.pack(pady=15)
+    close_btn.pack(pady=18)
 
     about.bind("<Escape>", lambda e: about.destroy())

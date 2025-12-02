@@ -50,28 +50,28 @@ class TokenizerComparisonPanel(ttk.Frame):
     def _create_widgets(self) -> None:
         """Create the panel widgets."""
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
+        header_frame.pack_propagate(False)
 
         tk.Label(
             header_frame,
             text="▓▒░ TOKENIZER COMPARISON ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
-            padx=8,
-            pady=5,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=10,
+        ).pack(side=tk.LEFT, pady=8)
 
         # Refresh button
         refresh_btn = tk.Button(
             header_frame,
-            text="⟳ REFRESH",
+            text="↻ Refresh",
             font=FONTS["tiny"],
-            fg=COLORS["green"],
-            bg=COLORS["dark"],
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
             activeforeground=COLORS["green_bright"],
-            activebackground=COLORS["highlight"],
+            activebackground=COLORS["surface"],
             bd=0,
             relief=tk.FLAT,
             padx=8,
@@ -79,19 +79,19 @@ class TokenizerComparisonPanel(ttk.Frame):
             cursor="hand2",
             command=self.refresh,
         )
-        refresh_btn.pack(side=tk.RIGHT, padx=8)
+        refresh_btn.pack(side=tk.RIGHT, padx=10, pady=8)
 
         # Text source toggle (input vs corrupted)
-        source_frame = tk.Frame(header_frame, bg=COLORS["dark"])
-        source_frame.pack(side=tk.RIGHT, padx=8)
+        source_frame = tk.Frame(header_frame, bg=COLORS["surface"])
+        source_frame.pack(side=tk.RIGHT, padx=8, pady=8)
 
         tk.Label(
             source_frame,
             text="View:",
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
-        ).pack(side=tk.LEFT, padx=(0, 4))
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
+        ).pack(side=tk.LEFT, padx=(0, 6))
 
         input_radio = tk.Radiobutton(
             source_frame,
@@ -101,10 +101,10 @@ class TokenizerComparisonPanel(ttk.Frame):
             command=self.refresh,
             font=FONTS["small"],
             fg=COLORS["green"],
-            bg=COLORS["dark"],
+            bg=COLORS["surface"],
             activeforeground=COLORS["green_bright"],
-            activebackground=COLORS["dark"],
-            selectcolor=COLORS["darker"],
+            activebackground=COLORS["surface"],
+            selectcolor=COLORS["dark"],
             highlightthickness=0,
             cursor="hand2",
         )
@@ -118,10 +118,10 @@ class TokenizerComparisonPanel(ttk.Frame):
             command=self.refresh,
             font=FONTS["small"],
             fg=COLORS["amber"],
-            bg=COLORS["dark"],
+            bg=COLORS["surface"],
             activeforeground=COLORS["amber_bright"],
-            activebackground=COLORS["dark"],
-            selectcolor=COLORS["darker"],
+            activebackground=COLORS["surface"],
+            selectcolor=COLORS["dark"],
             highlightthickness=0,
             cursor="hand2",
         )

@@ -50,32 +50,28 @@ class DatasetPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
-
-        header_inner = tk.Frame(header_frame, bg=COLORS["dark"])
-        header_inner.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
 
         header = tk.Label(
-            header_inner,
+            header_frame,
             text="▓▒░ DATASET SOURCE ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
-            padx=8,
-            pady=5,
+            bg=COLORS["surface"],
+            padx=10,
         )
-        header.pack(side=tk.LEFT)
+        header.pack(side=tk.LEFT, pady=8)
 
         self.status_label = tk.Label(
-            header_inner,
+            header_frame,
             text="No dataset loaded",
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
-            padx=8,
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
         )
-        self.status_label.pack(side=tk.RIGHT, padx=6, pady=5)
+        self.status_label.pack(side=tk.RIGHT, padx=10, pady=8)
 
         # Main content with border
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -135,7 +131,7 @@ class DatasetPanel(ttk.Frame):
             controls_frame,
             text="Sample Size:",
             font=FONTS["small"],
-            fg=COLORS["green_dim"],
+            fg=COLORS["text_muted"],
             bg=COLORS["black"],
         ).pack(side=tk.LEFT)
 
@@ -157,41 +153,42 @@ class DatasetPanel(ttk.Frame):
         self.load_btn = tk.Button(
             controls_frame,
             text="▶ LOAD DATASET",
-            font=FONTS["section"],
-            fg=COLORS["black"],
+            font=FONTS["button"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
-            padx=14,
-            pady=4,
+            padx=16,
+            pady=6,
             cursor="hand2",
             command=self._load_dataset,
         )
         self.load_btn.pack(side=tk.RIGHT)
 
         # Preview section
-        preview_header = tk.Frame(content, bg=COLORS["dark"])
+        preview_header = tk.Frame(content, bg=COLORS["surface"], height=24)
         preview_header.pack(fill=tk.X, padx=8, pady=(8, 0))
+        preview_header.pack_propagate(False)
 
         tk.Label(
             preview_header,
-            text="░ PREVIEW",
+            text="▁ PREVIEW",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT, padx=(0, 6))
+            bg=COLORS["surface"],
+            padx=6,
+        ).pack(side=tk.LEFT, pady=4)
 
         nav_label = tk.Label(
             preview_header,
             text="Navigate samples",
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
         )
-        nav_label.pack(side=tk.LEFT)
+        nav_label.pack(side=tk.LEFT, padx=8, pady=4)
 
         nav_frame = tk.Frame(content, bg=COLORS["black"])
         nav_frame.pack(fill=tk.X, padx=8, pady=(4, 0))
@@ -298,42 +295,44 @@ class DatasetPanel(ttk.Frame):
         self._clear_preview()
 
         # Batch processing controls
-        batch_header = tk.Frame(content, bg=COLORS["dark"])
+        batch_header = tk.Frame(content, bg=COLORS["surface"], height=24)
         batch_header.pack(fill=tk.X, padx=8, pady=(0, 0))
+        batch_header.pack_propagate(False)
 
         tk.Label(
             batch_header,
-            text="� BATCH METRICS",
+            text="▁ BATCH METRICS",
             font=FONTS["tiny"],
             fg=COLORS["cyan_dim"],
-            bg=COLORS["dark"],
-            padx=4,
-        ).pack(side=tk.LEFT)
+            bg=COLORS["surface"],
+            padx=6,
+        ).pack(side=tk.LEFT, pady=4)
 
         self.batch_status = tk.Label(
             batch_header,
             textvariable=self.batch_status_var,
             font=FONTS["tiny"],
-            fg=COLORS["green_dim"],
-            bg=COLORS["dark"],
-            padx=6,
+            fg=COLORS["text_muted"],
+            bg=COLORS["surface"],
         )
-        self.batch_status.pack(side=tk.RIGHT)
+        self.batch_status.pack(side=tk.RIGHT, padx=8, pady=4)
 
         batch_controls = tk.Frame(content, bg=COLORS["black"])
         batch_controls.pack(fill=tk.X, padx=8, pady=(2, 6))
 
         self.batch_btn = tk.Button(
             batch_controls,
-            text="? PROCESS DATASET",
+            text="▶ PROCESS DATASET",
             font=FONTS["tiny"],
-            fg=COLORS["black"],
+            fg=COLORS["darker"],
             bg=COLORS["green"],
-            activeforeground=COLORS["black"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green_bright"],
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
+            padx=10,
+            pady=4,
             command=self._on_batch_clicked,
         )
         self.batch_btn.pack(side=tk.LEFT)
@@ -822,9 +821,7 @@ class DatasetPanel(ttk.Frame):
 
         self.sample_index_var.set(str(self.current_index + 1))
         self.prev_btn.config(state=tk.NORMAL if self.current_index > 0 else tk.DISABLED)
-        self.next_btn.config(
-            state=tk.NORMAL if self.current_index < total - 1 else tk.DISABLED
-        )
+        self.next_btn.config(state=tk.NORMAL if self.current_index < total - 1 else tk.DISABLED)
 
     def _show_sample(self, index: int) -> None:
         """Render a specific sample in the preview area."""

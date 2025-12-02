@@ -12,24 +12,24 @@ def create_tooltip(widget: tk.Widget, text: str) -> None:
         if tooltip is not None:
             return
         x = widget.winfo_rootx() + 20
-        y = widget.winfo_rooty() + widget.winfo_height() + 5
+        y = widget.winfo_rooty() + widget.winfo_height() + 8
         tooltip = tk.Toplevel(widget)
         tooltip.wm_overrideredirect(True)
         tooltip.wm_geometry(f"+{x}+{y}")
-        tooltip.configure(bg=COLORS["dark"])
+        tooltip.configure(bg=COLORS["border"])
 
-        # Border frame
-        border = tk.Frame(tooltip, bg=COLORS["border"], padx=1, pady=1)
+        # Border frame with subtle shadow effect
+        border = tk.Frame(tooltip, bg=COLORS["surface"], padx=1, pady=1)
         border.pack(fill=tk.BOTH, expand=True)
 
         label = tk.Label(
             border,
             text=text,
             font=FONTS["tiny"],
-            fg=COLORS["green"],
-            bg=COLORS["dark"],
-            padx=6,
-            pady=3,
+            fg=COLORS["green_bright"],
+            bg=COLORS["surface"],
+            padx=8,
+            pady=4,
         )
         label.pack()
 

@@ -27,22 +27,19 @@ class TokenizerPanel(ttk.Frame):
 
     def _create_widgets(self) -> None:
         # Header with vector terminal styling
-        header_frame = tk.Frame(self, bg=COLORS["dark"], padx=1, pady=1)
+        header_frame = tk.Frame(self, bg=COLORS["surface"], height=36)
         header_frame.pack(fill=tk.X, padx=2, pady=(2, 0))
-
-        header_inner = tk.Frame(header_frame, bg=COLORS["dark"])
-        header_inner.pack(fill=tk.X)
+        header_frame.pack_propagate(False)
 
         header = tk.Label(
-            header_inner,
+            header_frame,
             text="▓▒░ TOKENIZERS ░▒▓",
             font=FONTS["section"],
             fg=COLORS["cyan"],
-            bg=COLORS["dark"],
+            bg=COLORS["surface"],
             padx=10,
-            pady=6,
         )
-        header.pack(fill=tk.X)
+        header.pack(side=tk.LEFT, pady=8)
 
         # Scrollable frame with border
         scroll_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -71,9 +68,9 @@ class TokenizerPanel(ttk.Frame):
         for tok in defaults:
             self._add_tokenizer(tok)
 
-        # Separator
-        sep = tk.Frame(self.scrollable_frame, bg=COLORS["border"], height=1)
-        sep.pack(fill=tk.X, padx=8, pady=6)
+        # Separator - more subtle
+        sep = tk.Frame(self.scrollable_frame, bg=COLORS["border_subtle"], height=1)
+        sep.pack(fill=tk.X, padx=10, pady=8)
 
         # Add new tokenizer row
         add_frame = tk.Frame(self.scrollable_frame, bg=COLORS["black"])
@@ -104,22 +101,29 @@ class TokenizerPanel(ttk.Frame):
 
         add_btn = tk.Button(
             add_frame,
-            text="+ ADD",
+            text="+ Add",
             font=FONTS["tiny"],
-            fg=COLORS["green_bright"],
-            bg=COLORS["green_dim"],
-            activeforeground=COLORS["black"],
+            fg=COLORS["green"],
+            bg=COLORS["surface"],
+            activeforeground=COLORS["darker"],
             activebackground=COLORS["green"],
             bd=0,
             relief=tk.FLAT,
             padx=10,
-            pady=2,
+            pady=3,
             cursor="hand2",
             command=self._add_new_tokenizer,
         )
         add_btn.pack(side=tk.LEFT, padx=6)
-        add_btn.bind("<Enter>", lambda e: add_btn.config(bg=COLORS["green"]))
-        add_btn.bind("<Leave>", lambda e: add_btn.config(bg=COLORS["green_dim"]))
+
+        def _add_enter(e: tk.Event) -> None:
+            add_btn.config(bg=COLORS["green"], fg=COLORS["darker"])
+
+        def _add_leave(e: tk.Event) -> None:
+            add_btn.config(bg=COLORS["surface"], fg=COLORS["green"])
+
+        add_btn.bind("<Enter>", _add_enter)
+        add_btn.bind("<Leave>", _add_leave)
 
     def _add_tokenizer(self, name: str) -> None:
         if name in self.tokenizers:
@@ -163,11 +167,11 @@ class TokenizerPanel(ttk.Frame):
             frame,
             text="×",
             width=2,
-            font=FONTS["tiny"],
-            fg=COLORS["red"],
-            bg=COLORS["panel"],
-            activeforeground=COLORS["amber"],
-            activebackground=COLORS["red_dim"],
+            font=FONTS["small"],
+            fg=COLORS["text_muted"],
+            bg=COLORS["black"],
+            activeforeground=COLORS["red"],
+            activebackground=COLORS["black"],
             bd=0,
             relief=tk.FLAT,
             cursor="hand2",
