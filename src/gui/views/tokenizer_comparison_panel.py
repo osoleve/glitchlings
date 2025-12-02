@@ -31,11 +31,16 @@ class TokenizerComparisonPanel(ttk.Frame):
         self,
         parent: ttk.Frame,
         get_input_text: Callable[[], str],
+        get_output_text: Callable[[], str],
         get_tokenizers: Callable[[], List[str]],
     ) -> None:
         super().__init__(parent)
         self.get_input_text = get_input_text
+        self.get_output_text = get_output_text
         self.get_tokenizers = get_tokenizers
+
+        # Text source toggle
+        self._text_source_var = tk.StringVar(value="input")
 
         # Cached results
         self._cached_results: Dict[str, Tuple[List[str], List[int]]] = {}
@@ -75,6 +80,52 @@ class TokenizerComparisonPanel(ttk.Frame):
             command=self.refresh,
         )
         refresh_btn.pack(side=tk.RIGHT, padx=8)
+
+        # Text source toggle (input vs corrupted)
+        source_frame = tk.Frame(header_frame, bg=COLORS["dark"])
+        source_frame.pack(side=tk.RIGHT, padx=8)
+
+        tk.Label(
+            source_frame,
+            text="View:",
+            font=FONTS["tiny"],
+            fg=COLORS["green_dim"],
+            bg=COLORS["dark"],
+        ).pack(side=tk.LEFT, padx=(0, 4))
+
+        input_radio = tk.Radiobutton(
+            source_frame,
+            text="Input",
+            variable=self._text_source_var,
+            value="input",
+            command=self.refresh,
+            font=FONTS["small"],
+            fg=COLORS["green"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["green_bright"],
+            activebackground=COLORS["dark"],
+            selectcolor=COLORS["darker"],
+            highlightthickness=0,
+            cursor="hand2",
+        )
+        input_radio.pack(side=tk.LEFT)
+
+        output_radio = tk.Radiobutton(
+            source_frame,
+            text="Corrupted",
+            variable=self._text_source_var,
+            value="output",
+            command=self.refresh,
+            font=FONTS["small"],
+            fg=COLORS["amber"],
+            bg=COLORS["dark"],
+            activeforeground=COLORS["amber_bright"],
+            activebackground=COLORS["dark"],
+            selectcolor=COLORS["darker"],
+            highlightthickness=0,
+            cursor="hand2",
+        )
+        output_radio.pack(side=tk.LEFT, padx=(8, 0))
 
         # Main content container
         content_container = tk.Frame(self, bg=COLORS["border"], padx=1, pady=1)
@@ -187,7 +238,11 @@ class TokenizerComparisonPanel(ttk.Frame):
 
     def refresh(self) -> None:
         """Refresh the comparison view with current text and tokenizers."""
-        text = self.get_input_text()
+        source = self._text_source_var.get()
+        if source == "output":
+            text = self.get_output_text()
+        else:
+            text = self.get_input_text()
         tokenizers = self.get_tokenizers()
 
         if not text or not tokenizers:
@@ -272,7 +327,8 @@ class TokenizerComparisonPanel(ttk.Frame):
 
             tk.Label(
                 id_frame,
-                text="IDs: " + " ".join(str(i) for i in ids[:20])
+                text="IDs: "
+                + " ".join(str(i) for i in ids[:20])
                 + ("..." if len(ids) > 20 else ""),
                 font=FONTS["tiny"],
                 fg=COLORS["green_dim"],
@@ -308,9 +364,12 @@ class TokenizerComparisonPanel(ttk.Frame):
 
     def get_comparison_data(self) -> Dict[str, Any]:
         """Return the current comparison data for export."""
+        source = self._text_source_var.get()
+        text = self.get_output_text() if source == "output" else self.get_input_text()
         data: Dict[str, Any] = {
             "tokenizers": {},
-            "text_length": len(self.get_input_text()),
+            "text_length": len(text),
+            "text_source": source,
         }
 
         for tok_name, (tokens, ids) in self._cached_results.items():

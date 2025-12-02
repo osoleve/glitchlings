@@ -373,6 +373,7 @@ class MainFrame(ttk.Frame):
         self.tokenizer_comparison_panel = TokenizerComparisonPanel(
             self.compare_tab,
             get_input_text=self.get_input,
+            get_output_text=self.get_output,
             get_tokenizers=self.get_enabled_tokenizers,
         )
         self.tokenizer_comparison_panel.pack(fill=tk.BOTH, expand=True)
@@ -859,6 +860,13 @@ class MainFrame(ttk.Frame):
         """Handle updates from the tokenizer panel."""
         self._on_settings_change()
         self._update_preferences(default_tokenizers=self.tokenizer_panel.get_all_tokenizers())
+
+        # Update the diff tokenizer combobox with the new tokenizer list
+        tokenizers = self.tokenizer_panel.get_all_tokenizers()
+        if tokenizers:
+            self.diff_tokenizer_combo["values"] = tokenizers
+            if self.diff_tokenizer_var.get() not in tokenizers:
+                self.diff_tokenizer_var.set(tokenizers[0])
 
     def _on_settings_change(self) -> None:
         """Called when any setting changes."""
