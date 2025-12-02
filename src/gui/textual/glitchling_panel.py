@@ -17,10 +17,12 @@ from .theme import themed_css
 CSS = """
 GlitchlingPanel {
     width: 100%;
-    height: 1fr;
+    height: auto;
     min-height: 8;
+    max-height: 18;
     background: var(--glitch-panel);
     border: solid var(--glitch-border);
+    margin-bottom: 1;
 }
 
 GlitchlingPanel .panel-header {
@@ -34,6 +36,7 @@ GlitchlingPanel .panel-header {
 
 GlitchlingPanel .glitchling-list {
     height: 1fr;
+    min-height: 6;
     padding: 0;
     background: transparent;
     overflow-y: auto;
@@ -84,12 +87,12 @@ GlitchlingPanel .param-row {
 }
 
 GlitchlingPanel .param-label {
-    width: 10;
+    width: 12;
     color: var(--glitch-muted);
 }
 
 GlitchlingPanel .param-input {
-    width: 10;
+    width: 14;
     height: 1;
 }
 

@@ -46,6 +46,7 @@ TokenizerPanel .panel-header {
 
 TokenizerPanel .tokenizer-list {
     height: 1fr;
+    min-height: 4;
     padding: 0;
     background: transparent;
     overflow-y: auto;

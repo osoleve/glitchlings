@@ -33,7 +33,22 @@ WorkspacePanel {
 }
 
 WorkspacePanel .workspace-content {
+    height: 100%;
+    width: 100%;
+    layout: vertical;
+}
+
+WorkspacePanel TabbedContent {
     height: 1fr;
+    min-height: 10;
+}
+
+WorkspacePanel ContentSwitcher {
+    height: 1fr;
+}
+
+WorkspacePanel TabPane {
+    height: 100%;
     padding: 0;
 }
 
@@ -41,7 +56,6 @@ WorkspacePanel .text-panel {
     background: var(--glitch-panel);
     border: solid var(--glitch-border);
     padding: 0;
-    margin-bottom: 1;
     height: 1fr;
     min-height: 6;
 }
@@ -122,8 +136,8 @@ WorkspacePanel .diff-view {
 
 WorkspacePanel .metrics-panel {
     height: auto;
-    min-height: 4;
-    max-height: 8;
+    min-height: 6;
+    max-height: 12;
     background: var(--glitch-panel);
     border: solid var(--glitch-border);
 }
@@ -139,6 +153,7 @@ WorkspacePanel .metrics-header {
 WorkspacePanel .metrics-table {
     padding: 0 1;
     overflow-y: auto;
+    overflow-x: auto;
 }
 
 WorkspacePanel .metrics-row {
@@ -154,15 +169,6 @@ WorkspacePanel .metrics-label {
 WorkspacePanel .metrics-value {
     width: 1fr;
     color: var(--glitch-ink);
-}
-
-WorkspacePanel TabbedContent {
-    height: 1fr;
-}
-
-WorkspacePanel TabPane {
-    height: 1fr;
-    padding: 0;
 }
 """
 
@@ -289,19 +295,25 @@ class MetricsTable(Static):  # type: ignore[misc]
 
         result = Text()
 
+        # Truncate tokenizer names for display
+        def truncate(name: str, max_len: int = 14) -> str:
+            if len(name) <= max_len:
+                return name
+            return name[: max_len - 2] + ".."
+
         # Header row
-        result.append("Metric".ljust(24), style="cyan bold")
+        result.append("Metric".ljust(22), style="cyan bold")
         for tok in self._tokenizers:
-            result.append(tok.ljust(16), style="cyan bold")
+            result.append(truncate(tok).ljust(14), style="cyan bold")
         result.append("\n")
-        result.append("─" * (24 + 16 * len(self._tokenizers)) + "\n", style="dim")
+        result.append("─" * (22 + 14 * len(self._tokenizers)) + "\n", style="dim")
 
         # Data rows
         for metric_key, metric_label in self.METRIC_LABELS.items():
-            result.append(metric_label.ljust(24), style="")
+            result.append(metric_label.ljust(22), style="")
             for tok in self._tokenizers:
                 value = self._metrics.get(tok, {}).get(metric_key, "-")
-                result.append(str(value).ljust(16), style="green")
+                result.append(str(value).ljust(14), style="green")
             result.append("\n")
 
         self.update(result)

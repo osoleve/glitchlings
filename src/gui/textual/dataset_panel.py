@@ -33,12 +33,13 @@ CSS = """
 DatasetPanel {
     width: 100%;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 DatasetPanel .dataset-content {
-    height: 1fr;
+    height: 100%;
     padding: 0;
+    overflow-y: auto;
 }
 
 DatasetPanel .section-panel {
@@ -131,7 +132,8 @@ DatasetPanel .load-btn:hover {
 
 DatasetPanel .preview-panel {
     height: 1fr;
-    min-height: 8;
+    min-height: 10;
+    max-height: 50%;
 }
 
 DatasetPanel .nav-row {
@@ -182,7 +184,8 @@ DatasetPanel .preview-text {
 
 DatasetPanel .batch-panel {
     height: auto;
-    min-height: 10;
+    min-height: 12;
+    max-height: 40%;
 }
 
 DatasetPanel .progress-row {

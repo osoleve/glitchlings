@@ -283,35 +283,41 @@ EXTRA_CSS = """
 }
 
 #sidebar {
-    width: 26;
-    min-width: 20;
-    max-width: 32;
-    height: 1fr;
+    width: 32;
+    min-width: 28;
+    max-width: 44;
+    height: 100%;
     padding-right: 1;
-    overflow-y: auto;
 }
 
 #nav-panel {
     height: auto;
-    max-height: 12;
+    max-height: 14;
     margin-bottom: 1;
 }
 
 #sidebar-panels {
     height: 1fr;
+    min-height: 16;
     overflow-y: auto;
 }
 
 #main-content {
     width: 1fr;
-    height: 1fr;
-    overflow-y: auto;
+    height: 100%;
+}
+
+#workspace-panel {
+    width: 100%;
+    height: 100%;
 }
 
 #dataset-panel,
 #sweep-panel,
 #charts-panel {
     display: none;
+    width: 100%;
+    height: 100%;
 }
 
 .panel {

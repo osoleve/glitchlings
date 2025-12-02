@@ -28,9 +28,10 @@ CSS = """
 NavigationPanel {
     width: 100%;
     height: auto;
-    max-height: 100%;
+    max-height: 14;
     background: var(--glitch-panel);
     border: solid var(--glitch-border);
+    margin-bottom: 1;
 }
 
 NavigationPanel .nav-header {

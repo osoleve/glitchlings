@@ -10,7 +10,7 @@ from glitchlings.attack import (
 from glitchlings.attack.tokenization import resolve_tokenizer
 from glitchlings.zoo import Gaggle
 
-from .model import ScanResult
+from .textual.state import ScanResult
 
 DEFAULT_TOKENIZER = "cl100k_base"
 

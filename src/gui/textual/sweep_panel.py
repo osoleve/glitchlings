@@ -28,19 +28,20 @@ from textual.worker import Worker, WorkerState
 
 from glitchlings.zoo import Gaggle
 
-from ..theme import AVAILABLE_GLITCHLINGS, GLITCHLING_PARAMS
+from .definitions import AVAILABLE_GLITCHLINGS, GLITCHLING_PARAMS
 from .theme import themed_css
 
 CSS = """
 SweepPanel {
     width: 100%;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 SweepPanel .sweep-content {
-    height: 1fr;
+    height: 100%;
     padding: 0;
+    overflow-y: auto;
 }
 
 SweepPanel .section-panel {
@@ -173,7 +174,7 @@ SweepPanel .progress-label {
 
 SweepPanel .results-panel {
     height: 1fr;
-    min-height: 10;
+    min-height: 12;
 }
 
 SweepPanel .results-table {

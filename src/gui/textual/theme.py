@@ -2,7 +2,42 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from ..theme import COLORS
+# Color palette - refined neo-terminal colors with balanced contrast
+COLORS = {
+    # Primary mint/green - refined for better readability
+    "green": "#4ade80",
+    "green_dim": "#22543d",
+    "green_glow": "#86efac",
+    "green_bright": "#bbf7d0",
+    "green_dark": "#14532d",
+    "green_muted": "#166534",
+    # Background - layered depth with subtle warmth
+    "black": "#0d1117",  # Slightly deeper black
+    "dark": "#161b22",
+    "darker": "#010409",  # Darker input fields
+    "panel": "#1c2128",
+    "surface": "#21262d",
+    # Accent colors - harmonized palette
+    "cyan": "#38bdf8",  # More vibrant cyan
+    "cyan_dim": "#0c4a6e",
+    "cyan_bright": "#bae6fd",
+    "amber": "#fbbf24",
+    "amber_dim": "#78350f",
+    "amber_bright": "#fcd34d",
+    "red": "#f87171",
+    "red_dim": "#7f1d1d",
+    "magenta": "#f472b6",
+    "purple": "#a78bfa",
+    "yellow": "#fde047",
+    # UI chrome - refined borders and highlights
+    "border": "#30363d",
+    "border_bright": "#4ade80",
+    "border_subtle": "#21262d",
+    "highlight": "#1f2937",
+    "hover": "#2d333b",
+    "disabled": "#484f58",
+    "text_muted": "#8b949e",
+}
 
 DEFAULT_FONT_STACK = "Cascadia Code, JetBrains Mono, Consolas, Monaco, monospace"
 PALETTE = dict(COLORS)

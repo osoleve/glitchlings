@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List
 
-from .model import ScanResult
+from .textual.state import ScanResult
 from .session import SessionConfig, session_to_dict
 
 

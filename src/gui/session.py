@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from .theme import AVAILABLE_GLITCHLINGS
+from .textual.definitions import AVAILABLE_GLITCHLINGS
 
 # Map glitchling names to classes for deserialization
 GLITCHLING_MAP = {cls.__name__: cls for cls in AVAILABLE_GLITCHLINGS}

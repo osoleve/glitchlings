@@ -5,7 +5,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Iterable, List
 
-from .theme import DEFAULT_TOKENIZERS
+from .textual.definitions import DEFAULT_TOKENIZERS
 
 PREFERENCES_PATH = Path.home() / ".glitchlings_gui_prefs.json"
 

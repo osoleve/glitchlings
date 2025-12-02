@@ -6,12 +6,23 @@ import logging
 from dataclasses import dataclass, field, is_dataclass, replace
 from typing import Any, Awaitable, Callable, Generic, Literal, TypeVar
 
-from ..model import ScanResult
 from ..preferences import Preferences
 from .events import StatusTone
 
 DEFAULT_DIFF_TOKENIZER = "cl100k_base"
 DiffMode = Literal["label", "id"]
+
+
+@dataclass
+class ScanResult:
+    """Results from a scan operation."""
+
+    token_count_out: list[int] = field(default_factory=list)
+    token_delta: list[int] = field(default_factory=list)
+    jsd: list[float] = field(default_factory=list)
+    ned: list[float] = field(default_factory=list)
+    sr: list[float] = field(default_factory=list)
+    char_count_out: list[int] = field(default_factory=list)
 
 
 @dataclass(slots=True)

@@ -21,7 +21,7 @@ from textual.widgets import (
     Static,
 )
 
-from ..model import ScanResult
+from .state import ScanResult
 from .sweep_panel import SweepPoint
 from .theme import PALETTE, substitute_vars
 
@@ -29,12 +29,13 @@ _RAW_CSS = """
 ChartsPanel {
     width: 100%;
     height: 100%;
-    overflow-y: auto;
+    overflow: hidden;
 }
 
 ChartsPanel .charts-content {
-    height: 1fr;
+    height: 100%;
     padding: 0;
+    overflow: hidden;
 }
 
 ChartsPanel .section-panel {
@@ -91,17 +92,20 @@ ChartsPanel .refresh-btn:hover {
 
 ChartsPanel .charts-grid {
     height: 1fr;
+    min-height: 16;
     layout: grid;
     grid-size: 2 2;
     grid-gutter: 1;
     padding: 1;
+    overflow: hidden;
 }
 
 ChartsPanel .chart-cell {
-    height: 1fr;
-    min-height: 8;
+    height: 100%;
+    min-height: 10;
     background: var(--glitch-bg);
     border: solid var(--glitch-border);
+    overflow: hidden;
 }
 
 ChartsPanel .chart-header {
@@ -125,6 +129,7 @@ ChartsPanel .chart-content {
     height: 1fr;
     padding: 0 1;
     overflow-y: auto;
+    overflow-x: hidden;
 }
 
 ChartsPanel .chart-display {
@@ -359,11 +364,15 @@ class ChartsPanel(Container):  # type: ignore[misc]
             sources.append(("dataset", "Dataset"))
 
         if self._source_select:
+            current_sources = [s[0] for s in sources]
             self._source_select.set_options(sources)
-            if not self._source or self._source not in [s[0] for s in sources]:
+            if not self._source or self._source not in current_sources:
                 if sources:
                     self._source = sources[0][0]
-                    self._source_select.value = self._source
+                    try:
+                        self._source_select.value = self._source
+                    except Exception:
+                        pass
 
         if not sources:
             self._show_no_data()
