@@ -325,13 +325,20 @@ def assemble_single_result_fields(
     Returns:
         Dictionary suitable for AttackResult construction.
     """
+    # For single strings, tokens are batched internally as [[...]]
+    # so we unwrap the first (and only) element
+    input_tokens = input_encoded.tokens[0] if input_encoded.tokens else []
+    output_tokens = output_encoded.tokens[0] if output_encoded.tokens else []
+    input_ids = input_encoded.token_ids[0] if input_encoded.token_ids else []
+    output_ids = output_encoded.token_ids[0] if output_encoded.token_ids else []
+
     return {
         "original": original,
         "corrupted": corrupted,
-        "input_tokens": input_encoded.tokens,
-        "output_tokens": output_encoded.tokens,
-        "input_token_ids": input_encoded.token_ids,
-        "output_token_ids": output_encoded.token_ids,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "input_token_ids": input_ids,
+        "output_token_ids": output_ids,
         "tokenizer_info": tokenizer_info,
         "metrics": metrics,
     }
