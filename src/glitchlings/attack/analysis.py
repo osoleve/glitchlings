@@ -239,7 +239,7 @@ class SeedSweep:
 
     def __init__(
         self,
-        glitchlings: "Corruptor | str | Iterable[str | Corruptor]",
+        glitchlings: "Corruptor | str | Sequence[str | Corruptor]",
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
     ) -> None:
@@ -666,7 +666,7 @@ class TokenizerComparison:
 
     def __init__(
         self,
-        glitchlings: "Corruptor | str | Iterable[str | Corruptor]",
+        glitchlings: "Corruptor | str | Sequence[str | Corruptor]",
         tokenizers: Sequence[str | Tokenizer],
         *,
         seed: int | None = None,

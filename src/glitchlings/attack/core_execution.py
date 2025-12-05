@@ -83,13 +83,16 @@ def resolve_glitchlings(
 
     Args:
         glitchlings: Glitchling specification.
-        seed: Master seed for the gaggle.
+        seed: Master seed for the gaggle. If None, uses DEFAULT_ATTACK_SEED.
         transcript_target: Which transcript turns to corrupt.
 
     Returns:
         A Gaggle instance ready for corruption.
     """
+    from ..conf import DEFAULT_ATTACK_SEED
     from ..protocols import Corruptor as CorruptorProtocol
+
+    effective_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
 
     # Clone to avoid mutating caller-owned objects
     cloned: Any
@@ -110,7 +113,7 @@ def resolve_glitchlings(
 
     return coerce_gaggle(
         cloned,
-        seed=seed,
+        seed=effective_seed,
         apply_seed_to_existing=True,
         transcript_target=transcript_target,
     )
@@ -150,7 +153,7 @@ def execute_corruption(
         return corrupted_batch, corrupted_batch
 
     if plan.input_type == "transcript":
-        corrupted_transcript = gaggle.corrupt(original_container)
+        corrupted_transcript = gaggle.corrupt(cast(Transcript, original_container))
         if not is_transcript(corrupted_transcript):
             raise ValueError("Attack expected transcript output for transcript input.")
         corrupted_contents = extract_transcript_contents_pure(

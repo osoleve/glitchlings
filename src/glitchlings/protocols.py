@@ -42,12 +42,12 @@ class Corruptor(Protocol):
         ...     seed = 42
         ...     transcript_target = "last"
         ...     def corrupt(self, text): return text.upper()
-        ...     def clone(self): return MockCorruptor()
+        ...     def clone(self, seed=None): return MockCorruptor()
         >>> attack = Attack(MockCorruptor())  # Works with protocol
     """
 
     seed: int | None
-    transcript_target: "TranscriptTarget | None"
+    transcript_target: "TranscriptTarget"
 
     def corrupt(
         self,
@@ -63,8 +63,11 @@ class Corruptor(Protocol):
         """
         ...
 
-    def clone(self) -> "Corruptor":
-        """Create a copy of this corruptor.
+    def clone(self, seed: int | None = None) -> "Corruptor":
+        """Create a copy of this corruptor, optionally with a new seed.
+
+        Args:
+            seed: Optional new seed for the clone.
 
         Returns:
             A new Corruptor instance with the same configuration.
@@ -80,7 +83,7 @@ class Clonable(Protocol):
     without caring about their other capabilities.
     """
 
-    def clone(self) -> "Clonable":
+    def clone(self, seed: int | None = None) -> "Clonable":
         """Create a copy of this object."""
         ...
 

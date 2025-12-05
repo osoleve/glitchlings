@@ -13,7 +13,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -259,7 +259,7 @@ class Attack:
 
     def __init__(
         self,
-        glitchlings: Corruptor | str | Iterable[str | Corruptor],
+        glitchlings: Corruptor | str | Sequence[str | Corruptor],
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Metric] | None = None,
         *,
