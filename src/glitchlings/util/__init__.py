@@ -1,8 +1,3 @@
-from glitchlings.zoo.transforms import KeyNeighborMap
-from glitchlings.zoo.transforms import (
-    compute_string_diffs as string_diffs,
-)
-
 from .keyboards import (
     KEYNEIGHBORS,
     SHIFT_MAPS,
@@ -14,8 +9,6 @@ from .keyboards import (
 
 __all__ = [
     "SAMPLE_TEXT",
-    "string_diffs",
-    "KeyNeighborMap",
     "KeyboardLayouts",
     "ShiftMap",
     "ShiftMaps",

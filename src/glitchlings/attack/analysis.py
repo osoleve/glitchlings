@@ -40,7 +40,7 @@ from .encode import describe_tokenizer
 from .tokenization import Tokenizer, resolve_tokenizer
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
-    from ..zoo.core import Glitchling
+    from ..protocols import Corruptor
 
 
 # ---------------------------------------------------------------------------
@@ -239,7 +239,7 @@ class SeedSweep:
 
     def __init__(
         self,
-        glitchlings: "Glitchling | str | Iterable[str | Glitchling]",
+        glitchlings: "Corruptor | str | Iterable[str | Corruptor]",
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
     ) -> None:
@@ -398,9 +398,7 @@ class GridSearchResult:
             "ranking_minimize": self.ranking_minimize,
             "best_params": self.best_point.params if self.best_point else None,
             "best_metrics": self.best_point.metrics if self.best_point else None,
-            "all_points": [
-                {"params": p.params, "metrics": p.metrics} for p in self.points
-            ],
+            "all_points": [{"params": p.params, "metrics": p.metrics} for p in self.points],
         }
 
 
@@ -423,7 +421,7 @@ class GridSearch:
 
     def __init__(
         self,
-        glitchling_class: type["Glitchling"],
+        glitchling_class: type["Corruptor"],
         param_grid: dict[str, list[Any]],
         *,
         tokenizer: str | Tokenizer | None = None,
@@ -487,11 +485,13 @@ class GridSearch:
             # Pure: extract scalar metrics
             metrics_dict = extract_scalar_metrics(result.metrics)
 
-            points.append(GridSearchPoint(
-                params=combo,
-                result=result,
-                metrics=metrics_dict,
-            ))
+            points.append(
+                GridSearchPoint(
+                    params=combo,
+                    result=result,
+                    metrics=metrics_dict,
+                )
+            )
 
         # Pure: find best point
         best_point: GridSearchPoint | None = None
@@ -666,7 +666,7 @@ class TokenizerComparison:
 
     def __init__(
         self,
-        glitchlings: "Glitchling | str | Iterable[str | Glitchling]",
+        glitchlings: "Corruptor | str | Iterable[str | Corruptor]",
         tokenizers: Sequence[str | Tokenizer],
         *,
         seed: int | None = None,
@@ -739,13 +739,15 @@ class TokenizerComparison:
             tokens, token_ids = _extract_output_tokens(result)
             metrics_dict = extract_scalar_metrics(result.metrics)
 
-            entries.append(TokenizerComparisonEntry(
-                tokenizer_name=tokenizer_name,
-                result=result,
-                tokens=tokens,
-                token_ids=token_ids,
-                metrics=metrics_dict,
-            ))
+            entries.append(
+                TokenizerComparisonEntry(
+                    tokenizer_name=tokenizer_name,
+                    result=result,
+                    tokens=tokens,
+                    token_ids=token_ids,
+                    metrics=metrics_dict,
+                )
+            )
 
         return TokenizerComparisonResult(
             text=text,

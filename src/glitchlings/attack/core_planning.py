@@ -139,10 +139,7 @@ def plan_attack(text: str | Transcript | Sequence[str]) -> AttackPlan:
             batch_size=1,
         )
 
-    message = (
-        f"Attack expects string, transcript, or list of strings, "
-        f"got {type(text).__name__}"
-    )
+    message = f"Attack expects string, transcript, or list of strings, got {type(text).__name__}"
     raise TypeError(message)
 
 

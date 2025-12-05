@@ -44,7 +44,7 @@ from .metrics import (
 from .tokenization import Tokenizer
 
 if TYPE_CHECKING:
-    from ..zoo.core import Glitchling
+    from ..protocols import Corruptor
 
 
 # ---------------------------------------------------------------------------
@@ -71,11 +71,11 @@ def get_default_metrics() -> dict[str, Metric]:
 
 
 def resolve_glitchlings(
-    glitchlings: "Glitchling | str | Sequence[str | Glitchling]",
+    glitchlings: "Corruptor | str | Sequence[str | Corruptor]",
     *,
     seed: int | None,
     transcript_target: Any = None,
-) -> "Glitchling":
+) -> "Corruptor":
     """Resolve glitchling specification into a Gaggle.
 
     This impure function clones glitchlings and coerces them into a
@@ -89,18 +89,18 @@ def resolve_glitchlings(
     Returns:
         A Gaggle instance ready for corruption.
     """
-    from ..zoo.core import Glitchling as GlitchlingClass
+    from ..protocols import Corruptor as CorruptorProtocol
 
     # Clone to avoid mutating caller-owned objects
     cloned: Any
-    if isinstance(glitchlings, GlitchlingClass):
+    if isinstance(glitchlings, CorruptorProtocol):
         cloned = glitchlings.clone()
     elif isinstance(glitchlings, str):
         cloned = glitchlings
     elif isinstance(glitchlings, Sequence):
-        cloned_list: list[str | Glitchling] = []
+        cloned_list: list[str | Corruptor] = []
         for entry in glitchlings:
-            if isinstance(entry, GlitchlingClass):
+            if isinstance(entry, CorruptorProtocol):
                 cloned_list.append(entry.clone())
             else:
                 cloned_list.append(entry)
@@ -122,7 +122,7 @@ def resolve_glitchlings(
 
 
 def execute_corruption(
-    gaggle: "Glitchling",
+    gaggle: "Corruptor",
     plan: AttackPlan,
     original_container: str | Transcript | Sequence[str],
 ) -> tuple[str | Transcript | Sequence[str], list[str]]:
@@ -235,7 +235,7 @@ def execute_metrics(
 
 
 def execute_attack(
-    gaggle: "Glitchling",
+    gaggle: "Corruptor",
     tokenizer: Tokenizer,
     metrics: dict[str, Metric],
     plan: AttackPlan,
@@ -271,9 +271,7 @@ def execute_attack(
         )
 
     # Execute corruption
-    corrupted_container, corrupted_contents = execute_corruption(
-        gaggle, plan, original_container
-    )
+    corrupted_container, corrupted_contents = execute_corruption(gaggle, plan, original_container)
 
     # Tokenize
     input_encoded = execute_tokenization(tokenizer, plan.original_contents)
@@ -317,7 +315,7 @@ def execute_attack(
 
 
 def execute_comparison_entry(
-    gaggle: "Glitchling",
+    gaggle: "Corruptor",
     tokenizer: Tokenizer,
     tokenizer_info: str,
     metrics: dict[str, Metric],

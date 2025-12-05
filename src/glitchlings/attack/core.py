@@ -18,8 +18,8 @@ from dataclasses import dataclass
 from typing import cast
 
 from ..conf import DEFAULT_ATTACK_SEED
+from ..protocols import Corruptor
 from ..util.transcripts import Transcript, TranscriptTarget
-from ..zoo.core import Glitchling
 from .core_execution import (
     execute_attack,
     get_default_metrics,
@@ -259,7 +259,7 @@ class Attack:
 
     def __init__(
         self,
-        glitchlings: Glitchling | str | Iterable[str | Glitchling],
+        glitchlings: Corruptor | str | Iterable[str | Corruptor],
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Metric] | None = None,
         *,
