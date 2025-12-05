@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "glitchlings[attack,gutenberg]",
+# ]
+# ///
 """Example: Using Project Gutenberg books with tokenizer analysis tools.
 
 This script demonstrates how to:
@@ -6,11 +12,12 @@ This script demonstrates how to:
 2. Use book excerpts as input for SeedSweep, GridSearch, and TokenizerComparison
 3. Analyze how different corruption settings affect literary text
 
-Requirements:
-    pip install py-gutenberg tiktoken
-
 Usage:
-    python gutenberg_analysis.py
+    uv run examples/gutenberg_analysis.py
+
+Or with manual installation:
+    pip install glitchlings[attack,gutenberg]
+    python examples/gutenberg_analysis.py
 """
 
 from __future__ import annotations
