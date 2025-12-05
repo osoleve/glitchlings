@@ -1,3 +1,7 @@
+# ruff: noqa: I001
+# Import order is intentional to avoid circular imports.
+# attack module must be imported after zoo (attack.core imports zoo.core.Glitchling)
+
 from .auggie import Auggie
 from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
@@ -30,8 +34,6 @@ from .zoo import (
     zeedub,
 )
 
-# Import attack module after zoo to avoid circular imports
-# (attack.core imports zoo.core.Glitchling)
 from .attack import (
     Attack,
     AttackResult,
