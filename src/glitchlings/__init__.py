@@ -1,13 +1,3 @@
-from .attack import (
-    Attack,
-    AttackResult,
-    GridSearch,
-    GridSearchResult,
-    SeedSweep,
-    SeedSweepResult,
-    TokenizerComparison,
-    TokenizerComparisonResult,
-)
 from .auggie import Auggie
 from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
@@ -38,6 +28,19 @@ from .zoo import (
     summon,
     typogre,
     zeedub,
+)
+
+# Import attack module after zoo to avoid circular imports
+# (attack.core imports zoo.core.Glitchling)
+from .attack import (
+    Attack,
+    AttackResult,
+    GridSearch,
+    GridSearchResult,
+    SeedSweep,
+    SeedSweepResult,
+    TokenizerComparison,
+    TokenizerComparisonResult,
 )
 
 __all__ = [
