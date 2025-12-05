@@ -1,5 +1,17 @@
 """Attack submodule for comparing text before and after corruption."""
 
+from .analysis import (
+    GridSearch,
+    GridSearchPoint,
+    GridSearchResult,
+    SeedSweep,
+    SeedSweepResult,
+    TokenizerComparison,
+    TokenizerComparisonEntry,
+    TokenizerComparisonResult,
+    compute_aggregate_stats,
+    format_stats_summary,
+)
 from .compose import (
     AttackResultComponents,
     EncodedPayload,
@@ -31,6 +43,17 @@ __all__ = [
     "jensen_shannon_divergence",
     "normalized_edit_distance",
     "subsequence_retention",
+    # Analysis tools
+    "SeedSweep",
+    "SeedSweepResult",
+    "GridSearch",
+    "GridSearchResult",
+    "GridSearchPoint",
+    "TokenizerComparison",
+    "TokenizerComparisonResult",
+    "TokenizerComparisonEntry",
+    "compute_aggregate_stats",
+    "format_stats_summary",
     # Compose (pure)
     "AttackResultComponents",
     "EncodedPayload",
