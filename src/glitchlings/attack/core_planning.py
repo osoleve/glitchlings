@@ -29,7 +29,6 @@ from typing import Any, TypeGuard
 
 from ..util.transcripts import Transcript
 
-
 # ---------------------------------------------------------------------------
 # Type Guards
 # ---------------------------------------------------------------------------
@@ -126,7 +125,7 @@ def plan_attack(text: str | Transcript | Sequence[str]) -> AttackPlan:
         )
 
     if is_transcript_like(text):
-        contents = extract_transcript_contents_pure(text)  # type: ignore
+        contents = extract_transcript_contents_pure(text)  # type: ignore[arg-type]
         return AttackPlan(
             input_type="transcript",
             original_contents=contents,
@@ -218,8 +217,8 @@ class ResultPlan:
             Formatted metrics appropriate for the result type.
         """
         if self.is_batch:
-            return _format_metrics_for_batch(raw_metrics)
-        return _format_metrics_for_single(raw_metrics)
+            return _format_metrics_for_batch(raw_metrics)  # type: ignore[return-value]
+        return _format_metrics_for_single(raw_metrics)  # type: ignore[return-value]
 
 
 def plan_result(
@@ -427,8 +426,8 @@ def compute_token_counts(
     """
     # Check if batched
     if input_tokens and isinstance(input_tokens[0], list):
-        input_counts = [len(batch) for batch in input_tokens]  # type: ignore
-        output_counts = [len(batch) for batch in output_tokens]  # type: ignore
+        input_counts = [len(batch) for batch in input_tokens]
+        output_counts = [len(batch) for batch in output_tokens]
     else:
         input_counts = [len(input_tokens)]
         output_counts = [len(output_tokens)]

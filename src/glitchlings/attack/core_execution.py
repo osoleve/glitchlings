@@ -21,7 +21,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Callable, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from ..util.adapters import coerce_gaggle
 from ..util.transcripts import Transcript, is_transcript
@@ -34,14 +34,14 @@ from .core_planning import (
     assemble_single_result_fields,
     extract_transcript_contents_pure,
 )
-from .encode import describe_tokenizer, encode_batch
+from .encode import encode_batch
 from .metrics import (
     Metric,
     jensen_shannon_divergence,
     normalized_edit_distance,
     subsequence_retention,
 )
-from .tokenization import Tokenizer, resolve_tokenizer
+from .tokenization import Tokenizer
 
 if TYPE_CHECKING:
     from ..zoo.core import Glitchling
@@ -92,10 +92,11 @@ def resolve_glitchlings(
     from ..zoo.core import Glitchling as GlitchlingClass
 
     # Clone to avoid mutating caller-owned objects
+    cloned: Any
     if isinstance(glitchlings, GlitchlingClass):
         cloned = glitchlings.clone()
     elif isinstance(glitchlings, str):
-        cloned: Any = glitchlings
+        cloned = glitchlings
     elif isinstance(glitchlings, Sequence):
         cloned_list: list[str | Glitchling] = []
         for entry in glitchlings:
@@ -218,8 +219,8 @@ def execute_metrics(
         metric_outputs: list[str] | list[list[str]] = output_tokens
     else:
         # For single strings, pass flat token lists
-        metric_inputs = input_tokens[0] if input_tokens else []  # type: ignore
-        metric_outputs = output_tokens[0] if output_tokens else []  # type: ignore
+        metric_inputs = input_tokens[0] if input_tokens else []  # type: ignore[assignment]
+        metric_outputs = output_tokens[0] if output_tokens else []  # type: ignore[assignment]
 
     computed: dict[str, float | list[float]] = {}
     for name, metric_fn in metrics.items():
@@ -263,8 +264,8 @@ def execute_attack(
     # Handle empty input
     if plan.is_empty:
         return assemble_empty_result_fields(
-            original=original_container,  # type: ignore
-            corrupted=original_container,  # type: ignore
+            original=original_container,
+            corrupted=original_container,
             tokenizer_info=result_plan.tokenizer_info,
             metric_names=result_plan.metric_names,
         )
@@ -292,8 +293,8 @@ def execute_attack(
     # Assemble result
     if plan.is_batch:
         return assemble_batch_result_fields(
-            original=original_container,  # type: ignore
-            corrupted=corrupted_container,  # type: ignore
+            original=original_container,
+            corrupted=corrupted_container,
             input_encoded=input_encoded,
             output_encoded=output_encoded,
             tokenizer_info=result_plan.tokenizer_info,

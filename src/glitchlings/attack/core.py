@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import cast
 
 from ..conf import DEFAULT_ATTACK_SEED
 from ..util.transcripts import Transcript, TranscriptTarget
@@ -26,7 +26,6 @@ from .core_execution import (
     resolve_glitchlings,
 )
 from .core_planning import (
-    is_string_batch,
     plan_attack,
     plan_comparison,
     plan_result,
@@ -34,7 +33,6 @@ from .core_planning import (
 from .encode import describe_tokenizer
 from .metrics import Metric
 from .tokenization import Tokenizer, resolve_tokenizer
-
 
 # ---------------------------------------------------------------------------
 # Result Data Classes

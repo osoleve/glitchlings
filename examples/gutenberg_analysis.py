@@ -34,14 +34,10 @@ if not HAS_GUTENBERG:
     print("Install it with: pip install py-gutenberg")
     sys.exit(1)
 
-from gutenberg import GutenbergAPI
+from gutenberg import GutenbergAPI  # noqa: E402, I001
 
-from glitchlings import Typogre, Mim1c, Rushmore
-from glitchlings.attack import (
-    SeedSweep,
-    GridSearch,
-    TokenizerComparison,
-)
+from glitchlings import Mim1c, Rushmore, Typogre  # noqa: E402
+from glitchlings.attack import GridSearch, SeedSweep, TokenizerComparison  # noqa: E402
 
 
 # Famous book IDs from Project Gutenberg
@@ -121,7 +117,7 @@ def demo_grid_search(text: str, title: str) -> None:
     print("GRID SEARCH ANALYSIS")
     print("=" * 70)
     print(f"Book: {title}")
-    print(f"Searching for optimal Typogre rate...")
+    print("Searching for optimal Typogre rate...")
 
     tokenizer = "cl100k_base" if HAS_TIKTOKEN else None
 

@@ -643,8 +643,8 @@ def _extract_output_tokens(
     if isinstance(result.output_tokens, list) and result.output_tokens:
         if isinstance(result.output_tokens[0], list):
             # Batched - take first
-            return result.output_tokens[0], result.output_token_ids[0]  # type: ignore
-        return result.output_tokens, result.output_token_ids  # type: ignore
+            return result.output_tokens[0], result.output_token_ids[0]  # type: ignore[return-value]
+        return result.output_tokens, result.output_token_ids  # type: ignore[return-value]
     return [], []
 
 
