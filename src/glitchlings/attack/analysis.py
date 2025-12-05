@@ -1,17 +1,27 @@
 """Analysis tools for comparing tokenizers and exploring parameter spaces.
 
-This module provides three main analysis tools:
+This module provides three analysis tools following the functional purity
+architecture:
 
 1. **SeedSweep**: Run an attack across many seeds to collect aggregate metrics
 2. **GridSearch**: Search across parameter combinations to find optimal settings
-3. **TokenizerComparison**: Compare token streams and metrics across multiple tokenizers
+3. **TokenizerComparison**: Compare token streams and metrics across tokenizers
 
-Design Philosophy
------------------
-These tools follow the functional purity architecture:
-- Pure functions for computing statistics and formatting results
-- Impure orchestration classes that coordinate Attack runs
-- Dataclasses for structured, immutable result objects
+Module Structure
+----------------
+**Pure Functions** (no side effects):
+- ``compute_aggregate_stats()``: Statistical aggregation
+- ``format_stats_summary()``: String formatting
+- ``extract_scalar_metrics()``: Metric extraction
+- ``generate_param_combinations()``: Grid generation
+- ``rank_grid_points()``: Sorting by metric
+
+**Pure Data Classes** (immutable results):
+- ``SeedSweepResult``, ``GridSearchResult``, ``TokenizerComparisonResult``
+- ``GridSearchPoint``, ``TokenizerComparisonEntry``
+
+**Impure Orchestrators** (coordinate execution):
+- ``SeedSweep``, ``GridSearch``, ``TokenizerComparison``
 
 See AGENTS.md "Functional Purity Architecture" for full details.
 """
@@ -24,8 +34,8 @@ from dataclasses import dataclass, field
 from itertools import product
 from typing import TYPE_CHECKING, Any, Callable
 
-from ..util.adapters import coerce_gaggle
 from .core import Attack, AttackResult
+from .core_execution import resolve_glitchlings
 from .encode import describe_tokenizer
 from .tokenization import Tokenizer, resolve_tokenizer
 
@@ -39,13 +49,13 @@ if TYPE_CHECKING:  # pragma: no cover - typing only
 
 
 def compute_aggregate_stats(values: Sequence[float]) -> dict[str, float]:
-    """Compute aggregate statistics for a sequence of metric values.
+    """Compute aggregate statistics for a sequence of values (pure).
 
     Args:
         values: Sequence of float values to aggregate.
 
     Returns:
-        Dictionary containing mean, std, min, max, and median.
+        Dictionary with mean, std, min, max, and median.
     """
     if not values:
         return {"mean": 0.0, "std": 0.0, "min": 0.0, "max": 0.0, "median": 0.0}
@@ -67,7 +77,7 @@ def compute_aggregate_stats(values: Sequence[float]) -> dict[str, float]:
 
 
 def format_stats_summary(stats: dict[str, float], precision: int = 4) -> str:
-    """Format aggregate statistics as a compact string.
+    """Format aggregate statistics as a compact string (pure).
 
     Args:
         stats: Dictionary of statistic name to value.
@@ -79,21 +89,94 @@ def format_stats_summary(stats: dict[str, float], precision: int = 4) -> str:
     return " ".join(f"{key}={value:.{precision}f}" for key, value in stats.items())
 
 
+def extract_scalar_metrics(
+    metrics: dict[str, float | list[float]],
+) -> dict[str, float]:
+    """Extract scalar metric values from potentially batched metrics (pure).
+
+    For list metrics, returns the first element. For scalar metrics,
+    returns the value unchanged.
+
+    Args:
+        metrics: Dictionary of metric names to values.
+
+    Returns:
+        Dictionary with all values as scalars.
+    """
+    return {
+        name: val if isinstance(val, float) else val[0] if val else 0.0
+        for name, val in metrics.items()
+    }
+
+
 # ---------------------------------------------------------------------------
-# SeedSweep: Aggregate metrics across seeds
+# Pure Grid Search Helpers
+# ---------------------------------------------------------------------------
+
+
+def generate_param_combinations(
+    param_grid: dict[str, list[Any]],
+) -> list[dict[str, Any]]:
+    """Generate all combinations of parameters from a grid (pure).
+
+    Args:
+        param_grid: Dictionary mapping parameter names to value lists.
+
+    Returns:
+        List of dictionaries, each representing one parameter combination.
+    """
+    if not param_grid:
+        return [{}]
+
+    param_names = list(param_grid.keys())
+    param_values = [param_grid[name] for name in param_names]
+
+    combinations: list[dict[str, Any]] = []
+    for values in product(*param_values):
+        combo = dict(zip(param_names, values))
+        combinations.append(combo)
+
+    return combinations
+
+
+def rank_grid_points(
+    points: list["GridSearchPoint"],
+    *,
+    rank_by: str,
+    minimize: bool = True,
+) -> list["GridSearchPoint"]:
+    """Sort grid points by a metric (pure).
+
+    Args:
+        points: List of grid search points to sort.
+        rank_by: Metric name to rank by.
+        minimize: If True, lower values rank first.
+
+    Returns:
+        Sorted list of points.
+    """
+    return sorted(
+        points,
+        key=lambda p: p.metrics.get(rank_by, float("inf") if minimize else float("-inf")),
+        reverse=not minimize,
+    )
+
+
+# ---------------------------------------------------------------------------
+# SeedSweep: Result and Orchestrator
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class SeedSweepResult:
-    """Results from sweeping across multiple seeds.
+    """Results from sweeping across multiple seeds (pure data class).
 
     Attributes:
         seeds: List of seeds that were tested.
         text: The input text that was corrupted.
         tokenizer_info: Description of the tokenizer used.
         per_seed_results: Mapping from seed to AttackResult.
-        per_seed_metrics: Mapping from seed to metrics dict.
+        per_seed_metrics: Mapping from seed to scalar metrics dict.
         aggregate_stats: Aggregated statistics per metric.
     """
 
@@ -105,14 +188,7 @@ class SeedSweepResult:
     aggregate_stats: dict[str, dict[str, float]]
 
     def summary(self, *, show_seeds: int = 5) -> str:
-        """Generate a human-readable summary of the sweep results.
-
-        Args:
-            show_seeds: Maximum number of individual seed results to display.
-
-        Returns:
-            Formatted multi-line summary string.
-        """
+        """Generate a human-readable summary (pure formatting)."""
         lines: list[str] = [
             f"SeedSweep Results ({len(self.seeds)} seeds)",
             f"Tokenizer: {self.tokenizer_info}",
@@ -138,7 +214,7 @@ class SeedSweepResult:
         return "\n".join(lines)
 
     def to_report(self) -> dict[str, object]:
-        """Convert results to a JSON-serializable dictionary."""
+        """Convert to JSON-serializable dictionary (pure)."""
         return {
             "seeds": self.seeds,
             "text": self.text,
@@ -149,11 +225,10 @@ class SeedSweepResult:
 
 
 class SeedSweep:
-    """Sweep across multiple seeds to collect aggregate metrics.
+    """Sweep across multiple seeds to collect aggregate metrics (impure).
 
-    This tool runs the same attack configuration across many different seeds
-    and computes aggregate statistics (mean, std, min, max, median) for each
-    metric. This helps understand the variance in corruption behavior.
+    This orchestrator runs attacks across many seeds and computes
+    aggregate statistics (mean, std, min, max, median) for each metric.
 
     Example:
         >>> from glitchlings import Typogre
@@ -178,6 +253,7 @@ class SeedSweep:
         self._glitchlings_spec = glitchlings
         self._tokenizer_spec = tokenizer
         self._metrics = metrics
+        # Impure: resolve tokenizer once
         self._resolved_tokenizer = resolve_tokenizer(tokenizer)
         self._tokenizer_info = describe_tokenizer(self._resolved_tokenizer, tokenizer)
 
@@ -186,19 +262,20 @@ class SeedSweep:
         text: str,
         seeds: Iterable[int],
     ) -> SeedSweepResult:
-        """Run the sweep across the specified seeds.
+        """Run the sweep across specified seeds (impure execution).
 
         Args:
             text: Input text to corrupt.
             seeds: Iterable of seed values to test.
 
         Returns:
-            SeedSweepResult containing per-seed and aggregate statistics.
+            SeedSweepResult with per-seed and aggregate statistics.
         """
         seeds_list = list(seeds)
         per_seed_results: dict[int, AttackResult] = {}
         per_seed_metrics: dict[int, dict[str, float]] = {}
 
+        # Impure: run attacks for each seed
         for seed in seeds_list:
             attack = Attack(
                 self._glitchlings_spec,
@@ -208,13 +285,10 @@ class SeedSweep:
             )
             result = attack.run(text)
             per_seed_results[seed] = result
-            # Extract scalar metrics (for single-string input)
-            per_seed_metrics[seed] = {
-                name: val if isinstance(val, float) else val[0] if val else 0.0
-                for name, val in result.metrics.items()
-            }
+            # Pure: extract scalar metrics
+            per_seed_metrics[seed] = extract_scalar_metrics(result.metrics)
 
-        # Compute aggregate statistics per metric
+        # Pure: compute aggregate statistics
         aggregate_stats: dict[str, dict[str, float]] = {}
         if per_seed_metrics:
             metric_names = list(next(iter(per_seed_metrics.values())).keys())
@@ -233,13 +307,13 @@ class SeedSweep:
 
 
 # ---------------------------------------------------------------------------
-# GridSearch: Search parameter combinations
+# GridSearch: Result and Orchestrator
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class GridSearchPoint:
-    """A single point in the parameter grid with its results.
+    """A single point in the parameter grid (pure data class).
 
     Attributes:
         params: Dictionary of parameter name to value for this point.
@@ -254,7 +328,7 @@ class GridSearchPoint:
 
 @dataclass
 class GridSearchResult:
-    """Results from a grid search across parameter combinations.
+    """Results from a grid search (pure data class).
 
     Attributes:
         text: The input text that was corrupted.
@@ -263,7 +337,7 @@ class GridSearchResult:
         points: All evaluated grid points with results.
         best_point: The point with the best metric value (if ranked).
         ranking_metric: Name of the metric used for ranking.
-        ranking_minimize: Whether the ranking minimized (True) or maximized (False).
+        ranking_minimize: Whether ranking minimized (True) or maximized.
     """
 
     text: str
@@ -275,14 +349,7 @@ class GridSearchResult:
     ranking_minimize: bool
 
     def summary(self, *, show_top: int = 10) -> str:
-        """Generate a human-readable summary of the grid search results.
-
-        Args:
-            show_top: Number of top results to display.
-
-        Returns:
-            Formatted multi-line summary string.
-        """
+        """Generate a human-readable summary (pure formatting)."""
         lines: list[str] = [
             f"GridSearch Results ({len(self.points)} combinations)",
             f"Tokenizer: {self.tokenizer_info}",
@@ -302,15 +369,17 @@ class GridSearchResult:
             lines.append("")
             lines.append(f"Best ({direction} {self.ranking_metric}):")
             lines.append(f"  params: {self.best_point.params}")
-            lines.append(f"  {self.ranking_metric}: {self.best_point.metrics.get(self.ranking_metric, 'N/A'):.4f}")
+            metric_val = self.best_point.metrics.get(self.ranking_metric, 0.0)
+            lines.append(f"  {self.ranking_metric}: {metric_val:.4f}")
 
         if show_top > 0 and self.ranking_metric:
             lines.append("")
             lines.append(f"Top {min(show_top, len(self.points))} Results:")
-            sorted_points = sorted(
+            # Pure: use rank_grid_points helper
+            sorted_points = rank_grid_points(
                 self.points,
-                key=lambda p: p.metrics.get(self.ranking_metric, float("inf")),
-                reverse=not self.ranking_minimize,
+                rank_by=self.ranking_metric,
+                minimize=self.ranking_minimize,
             )
             for i, point in enumerate(sorted_points[:show_top], 1):
                 metric_val = point.metrics.get(self.ranking_metric, 0.0)
@@ -319,7 +388,7 @@ class GridSearchResult:
         return "\n".join(lines)
 
     def to_report(self) -> dict[str, object]:
-        """Convert results to a JSON-serializable dictionary."""
+        """Convert to JSON-serializable dictionary (pure)."""
         return {
             "text": self.text,
             "tokenizer": self.tokenizer_info,
@@ -336,11 +405,10 @@ class GridSearchResult:
 
 
 class GridSearch:
-    """Search across parameter combinations to find optimal settings.
+    """Search across parameter combinations (impure orchestrator).
 
-    This tool performs a grid search over specified parameter ranges,
-    evaluating the attack at each combination and ranking by a specified
-    metric.
+    This tool performs a grid search over parameter ranges, evaluating
+    the attack at each combination and ranking by a specified metric.
 
     Example:
         >>> from glitchlings import Typogre
@@ -367,9 +435,9 @@ class GridSearch:
 
         Args:
             glitchling_class: The Glitchling class to instantiate.
-            param_grid: Dictionary mapping parameter names to lists of values to try.
+            param_grid: Dictionary mapping param names to value lists.
             tokenizer: Tokenizer name or instance.
-            base_params: Default parameters to use (grid params override these).
+            base_params: Default parameters (grid params override).
             seed: Seed for reproducibility.
             metrics: Optional custom metrics.
         """
@@ -378,23 +446,9 @@ class GridSearch:
         self._base_params = base_params or {}
         self._seed = seed
         self._metrics = metrics
+        # Impure: resolve tokenizer once
         self._resolved_tokenizer = resolve_tokenizer(tokenizer)
         self._tokenizer_info = describe_tokenizer(self._resolved_tokenizer, tokenizer)
-
-    def _generate_param_combinations(self) -> list[dict[str, Any]]:
-        """Generate all combinations of parameters from the grid."""
-        if not self._param_grid:
-            return [{}]
-
-        param_names = list(self._param_grid.keys())
-        param_values = [self._param_grid[name] for name in param_names]
-
-        combinations: list[dict[str, Any]] = []
-        for values in product(*param_values):
-            combo = dict(zip(param_names, values))
-            combinations.append(combo)
-
-        return combinations
 
     def run(
         self,
@@ -403,21 +457,22 @@ class GridSearch:
         rank_by: str | None = "normalized_edit_distance",
         minimize: bool = True,
     ) -> GridSearchResult:
-        """Run the grid search over all parameter combinations.
+        """Run grid search over all combinations (impure execution).
 
         Args:
             text: Input text to corrupt.
-            rank_by: Metric name to rank results by. None for no ranking.
+            rank_by: Metric name to rank by (None for no ranking).
             minimize: If True, lower metric values are better.
 
         Returns:
-            GridSearchResult containing all evaluated points and the best one.
+            GridSearchResult with all points and best one.
         """
-        combinations = self._generate_param_combinations()
+        # Pure: generate combinations
+        combinations = generate_param_combinations(self._param_grid)
         points: list[GridSearchPoint] = []
 
+        # Impure: run attacks for each combination
         for combo in combinations:
-            # Merge base params with grid params
             params = {**self._base_params, **combo}
             glitchling = self._glitchling_class(**params)
 
@@ -429,11 +484,8 @@ class GridSearch:
             )
             result = attack.run(text)
 
-            # Extract scalar metrics
-            metrics_dict: dict[str, float] = {
-                name: val if isinstance(val, float) else val[0] if val else 0.0
-                for name, val in result.metrics.items()
-            }
+            # Pure: extract scalar metrics
+            metrics_dict = extract_scalar_metrics(result.metrics)
 
             points.append(GridSearchPoint(
                 params=combo,
@@ -441,14 +493,10 @@ class GridSearch:
                 metrics=metrics_dict,
             ))
 
-        # Find best point if ranking requested
+        # Pure: find best point
         best_point: GridSearchPoint | None = None
         if rank_by and points:
-            sorted_points = sorted(
-                points,
-                key=lambda p: p.metrics.get(rank_by, float("inf") if minimize else float("-inf")),
-                reverse=not minimize,
-            )
+            sorted_points = rank_grid_points(points, rank_by=rank_by, minimize=minimize)
             best_point = sorted_points[0]
 
         return GridSearchResult(
@@ -463,13 +511,13 @@ class GridSearch:
 
 
 # ---------------------------------------------------------------------------
-# TokenizerComparison: Compare across multiple tokenizers
+# TokenizerComparison: Result and Orchestrator
 # ---------------------------------------------------------------------------
 
 
 @dataclass
 class TokenizerComparisonEntry:
-    """Results for a single tokenizer in a comparison.
+    """Results for a single tokenizer in a comparison (pure data class).
 
     Attributes:
         tokenizer_name: Identifier/description of the tokenizer.
@@ -488,7 +536,7 @@ class TokenizerComparisonEntry:
 
 @dataclass
 class TokenizerComparisonResult:
-    """Results from comparing multiple tokenizers.
+    """Results from comparing multiple tokenizers (pure data class).
 
     Attributes:
         text: Original input text.
@@ -503,7 +551,7 @@ class TokenizerComparisonResult:
     metric_comparison: dict[str, dict[str, float]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        """Build the metric comparison table after initialization."""
+        """Build metric comparison table (pure computation)."""
         if not self.metric_comparison and self.entries:
             all_metric_names: set[str] = set()
             for entry in self.entries:
@@ -516,14 +564,7 @@ class TokenizerComparisonResult:
                 }
 
     def summary(self, *, show_tokens: int = 10) -> str:
-        """Generate a human-readable comparison summary.
-
-        Args:
-            show_tokens: Maximum tokens to display per tokenizer.
-
-        Returns:
-            Formatted multi-line summary string.
-        """
+        """Generate a human-readable comparison summary (pure formatting)."""
         lines: list[str] = [
             f"TokenizerComparison Results ({len(self.entries)} tokenizers)",
             f"Input: {self.text[:60]}{'...' if len(self.text) > 60 else ''}",
@@ -566,14 +607,7 @@ class TokenizerComparisonResult:
         return "\n".join(lines)
 
     def to_report(self, *, include_token_ids: bool = True) -> dict[str, object]:
-        """Convert results to a JSON-serializable dictionary.
-
-        Args:
-            include_token_ids: Whether to include token ID arrays.
-
-        Returns:
-            Dictionary suitable for JSON serialization.
-        """
+        """Convert to JSON-serializable dictionary (pure)."""
         entries_data = []
         for entry in self.entries:
             entry_data: dict[str, object] = {
@@ -595,12 +629,30 @@ class TokenizerComparisonResult:
         }
 
 
-class TokenizerComparison:
-    """Compare token streams and metrics across multiple tokenizers.
+def _extract_output_tokens(
+    result: AttackResult,
+) -> tuple[list[str], list[int]]:
+    """Extract output tokens from an AttackResult (pure helper).
 
-    This tool runs the same attack with multiple tokenizers to see how
-    different tokenization schemes affect the resulting token streams
-    and corruption metrics.
+    Args:
+        result: AttackResult to extract from.
+
+    Returns:
+        Tuple of (tokens, token_ids).
+    """
+    if isinstance(result.output_tokens, list) and result.output_tokens:
+        if isinstance(result.output_tokens[0], list):
+            # Batched - take first
+            return result.output_tokens[0], result.output_token_ids[0]  # type: ignore
+        return result.output_tokens, result.output_token_ids  # type: ignore
+    return [], []
+
+
+class TokenizerComparison:
+    """Compare token streams and metrics across tokenizers (impure).
+
+    This tool runs the same attack with multiple tokenizers to compare
+    how different tokenization schemes affect token streams and metrics.
 
     Example:
         >>> from glitchlings import Typogre
@@ -624,8 +676,8 @@ class TokenizerComparison:
 
         Args:
             glitchlings: Glitchling specification (same as Attack).
-            tokenizers: List of tokenizer names or instances to compare.
-            seed: Seed for reproducibility (same seed used for all tokenizers).
+            tokenizers: List of tokenizer names/instances to compare.
+            seed: Seed for reproducibility (same for all tokenizers).
             metrics: Optional custom metrics.
 
         Raises:
@@ -639,7 +691,7 @@ class TokenizerComparison:
         self._seed = seed
         self._metrics = metrics
 
-        # Pre-resolve tokenizers
+        # Impure: pre-resolve tokenizers
         self._resolved_tokenizers: list[tuple[str, Tokenizer]] = []
         for spec in self._tokenizer_specs:
             resolved = resolve_tokenizer(spec)
@@ -647,22 +699,22 @@ class TokenizerComparison:
             self._resolved_tokenizers.append((info, resolved))
 
     def run(self, text: str) -> TokenizerComparisonResult:
-        """Run the comparison across all tokenizers.
+        """Run comparison across all tokenizers (impure execution).
 
         Args:
             text: Input text to corrupt.
 
         Returns:
-            TokenizerComparisonResult containing entries for each tokenizer.
+            TokenizerComparisonResult with entries for each tokenizer.
         """
         entries: list[TokenizerComparisonEntry] = []
         corrupted_text: str = ""
 
-        # Create a single gaggle to ensure same corruption for all tokenizers
-        gaggle = coerce_gaggle(
+        # Impure: create gaggle for consistent corruption across tokenizers
+        gaggle = resolve_glitchlings(
             self._glitchlings_spec,
             seed=self._seed,
-            apply_seed_to_existing=True,
+            transcript_target=None,
         )
         corrupted_result = gaggle.corrupt(text)
         if isinstance(corrupted_result, str):
@@ -673,6 +725,7 @@ class TokenizerComparison:
                 turn.get("content", "") for turn in corrupted_result if isinstance(turn, dict)
             )
 
+        # Impure: run attack with each tokenizer
         for tokenizer_name, tokenizer in self._resolved_tokenizers:
             attack = Attack(
                 gaggle.clone(),  # Clone to reset RNG state
@@ -682,25 +735,9 @@ class TokenizerComparison:
             )
             result = attack.run(text)
 
-            # Extract tokens and metrics
-            tokens: list[str]
-            token_ids: list[int]
-            if isinstance(result.output_tokens, list) and result.output_tokens:
-                if isinstance(result.output_tokens[0], list):
-                    # Batched - take first
-                    tokens = result.output_tokens[0]  # type: ignore
-                    token_ids = result.output_token_ids[0]  # type: ignore
-                else:
-                    tokens = result.output_tokens  # type: ignore
-                    token_ids = result.output_token_ids  # type: ignore
-            else:
-                tokens = []
-                token_ids = []
-
-            metrics_dict: dict[str, float] = {
-                name: val if isinstance(val, float) else val[0] if val else 0.0
-                for name, val in result.metrics.items()
-            }
+            # Pure: extract tokens and metrics
+            tokens, token_ids = _extract_output_tokens(result)
+            metrics_dict = extract_scalar_metrics(result.metrics)
 
             entries.append(TokenizerComparisonEntry(
                 tokenizer_name=tokenizer_name,
@@ -718,9 +755,13 @@ class TokenizerComparison:
 
 
 __all__ = [
-    # Pure helpers
+    # Pure statistical helpers
     "compute_aggregate_stats",
     "format_stats_summary",
+    "extract_scalar_metrics",
+    # Pure grid helpers
+    "generate_param_combinations",
+    "rank_grid_points",
     # SeedSweep
     "SeedSweep",
     "SeedSweepResult",
