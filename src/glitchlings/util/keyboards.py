@@ -9,11 +9,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from glitchlings.zoo.transforms import (
-    KeyNeighborMap,
-    build_keyboard_neighbor_map,
-)
-
 __all__ = [
     "KeyboardLayouts",
     "KeyNeighbors",
@@ -21,7 +16,57 @@ __all__ = [
     "ShiftMap",
     "ShiftMaps",
     "SHIFT_MAPS",
+    "KeyNeighborMap",
+    "build_keyboard_neighbor_map",
 ]
+
+# Type alias for keyboard neighbor maps
+KeyNeighborMap = dict[str, list[str]]
+
+
+def build_keyboard_neighbor_map(rows: Iterable[str]) -> KeyNeighborMap:
+    """Derive 8-neighbour adjacency lists from keyboard layout rows.
+
+    Each row represents a keyboard row with characters positioned by index.
+    Spaces are treated as empty positions. Characters are normalized to lowercase.
+
+    Args:
+        rows: Iterable of strings representing keyboard rows, with
+            characters positioned to reflect their physical layout.
+
+    Returns:
+        Dictionary mapping each lowercase character to its adjacent characters.
+
+    Example:
+        >>> rows = ["qwerty", " asdfg"]  # 'a' offset by 1
+        >>> neighbors = build_keyboard_neighbor_map(rows)
+        >>> neighbors['s']  # adjacent to q, w, e, a, d on QWERTY
+        ['q', 'w', 'e', 'a', 'd']
+    """
+    grid: dict[tuple[int, int], str] = {}
+    for y, row in enumerate(rows):
+        for x, char in enumerate(row):
+            if char == " ":
+                continue
+            grid[(x, y)] = char.lower()
+
+    neighbors: KeyNeighborMap = {}
+    for (x, y), char in grid.items():
+        seen: list[str] = []
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                candidate = grid.get((x + dx, y + dy))
+                if candidate is None:
+                    continue
+                seen.append(candidate)
+        # Preserve encounter order but drop duplicates for determinism
+        deduped = list(dict.fromkeys(seen))
+        neighbors[char] = deduped
+
+    return neighbors
+
 
 KeyboardLayouts = dict[str, KeyNeighborMap]
 ShiftMap = dict[str, str]

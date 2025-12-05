@@ -1,3 +1,13 @@
+from .attack import (
+    Attack,
+    AttackResult,
+    GridSearch,
+    GridSearchResult,
+    SeedSweep,
+    SeedSweepResult,
+    TokenizerComparison,
+    TokenizerComparisonResult,
+)
 from .auggie import Auggie
 from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
@@ -31,7 +41,18 @@ from .zoo import (
 )
 
 __all__ = [
+    # Attack analysis
+    "Attack",
+    "AttackResult",
+    "SeedSweep",
+    "SeedSweepResult",
+    "GridSearch",
+    "GridSearchResult",
+    "TokenizerComparison",
+    "TokenizerComparisonResult",
+    # Builder
     "Auggie",
+    # Glitchlings
     "Typogre",
     "typogre",
     "Mim1c",
@@ -57,6 +78,7 @@ __all__ = [
     "Glitchling",
     "Gaggle",
     "plan_glitchlings",
+    # Utilities
     "SAMPLE_TEXT",
     "AttackConfig",
     "build_gaggle",

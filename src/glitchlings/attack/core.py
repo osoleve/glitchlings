@@ -1,39 +1,59 @@
+"""Attack orchestrator for measuring corruption impact.
+
+This module provides the Attack class, a boundary layer that coordinates
+glitchling corruption and metric computation. It follows the functional
+purity architecture:
+
+- **Pure planning**: Input analysis and result planning (core_planning.py)
+- **Impure execution**: Corruption, tokenization, metrics (core_execution.py)
+- **Boundary layer**: This module - validates inputs and delegates
+
+See AGENTS.md "Functional Purity Architecture" for full details.
+"""
+
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, TypeGuard, cast
+from typing import cast
 
 from ..conf import DEFAULT_ATTACK_SEED
-from ..util.adapters import coerce_gaggle
-from ..util.transcripts import Transcript, TranscriptTarget, is_transcript
-from ..zoo.core import Glitchling
-from .compose import (
-    build_batch_result,
-    build_empty_result,
-    build_single_result,
-    extract_transcript_contents,
+from ..protocols import Corruptor
+from ..util.transcripts import Transcript, TranscriptTarget
+from .core_execution import (
+    execute_attack,
+    get_default_metrics,
+    resolve_glitchlings,
 )
-from .encode import describe_tokenizer, encode_batch
-from .metrics import (
-    Metric,
-    jensen_shannon_divergence,
-    normalized_edit_distance,
-    subsequence_retention,
+from .core_planning import (
+    plan_attack,
+    plan_comparison,
+    plan_result,
 )
+from .encode import describe_tokenizer
+from .metrics import Metric
 from .tokenization import Tokenizer, resolve_tokenizer
 
-
-def _is_string_batch(value: Any) -> TypeGuard[Sequence[str]]:
-    if isinstance(value, (str, bytes)):
-        return False
-    if not isinstance(value, Sequence):
-        return False
-    return all(isinstance(item, str) for item in value)
+# ---------------------------------------------------------------------------
+# Result Data Classes
+# ---------------------------------------------------------------------------
 
 
 @dataclass
 class AttackResult:
+    """Result of an attack operation containing tokens and metrics.
+
+    Attributes:
+        original: Original input (string, transcript, or batch).
+        corrupted: Corrupted output (same type as original).
+        input_tokens: Tokenized original content.
+        output_tokens: Tokenized corrupted content.
+        input_token_ids: Token IDs for original.
+        output_token_ids: Token IDs for corrupted.
+        tokenizer_info: Description of the tokenizer used.
+        metrics: Computed metric values.
+    """
+
     original: str | Transcript | Sequence[str]
     corrupted: str | Transcript | Sequence[str]
     input_tokens: list[str] | list[list[str]]
@@ -44,29 +64,32 @@ class AttackResult:
     metrics: dict[str, float | list[float]]
 
     def _tokens_are_batched(self) -> bool:
+        """Check if tokens represent a batch."""
         tokens = self.input_tokens
         if tokens and isinstance(tokens[0], list):
             return True
         return isinstance(self.original, list) or isinstance(self.corrupted, list)
 
     def _token_batches(self) -> tuple[list[list[str]], list[list[str]]]:
+        """Get tokens as batches (wrapping single sequences if needed)."""
         if self._tokens_are_batched():
             return (
                 cast(list[list[str]], self.input_tokens),
                 cast(list[list[str]], self.output_tokens),
             )
-
         return (
             [cast(list[str], self.input_tokens)],
             [cast(list[str], self.output_tokens)],
         )
 
     def _token_counts(self) -> tuple[list[int], list[int]]:
+        """Compute token counts per batch item."""
         inputs, outputs = self._token_batches()
         return [len(tokens) for tokens in inputs], [len(tokens) for tokens in outputs]
 
     @staticmethod
     def _format_metric_value(value: float | list[float]) -> str:
+        """Format a metric value for display."""
         if isinstance(value, list):
             if not value:
                 return "[]"
@@ -78,17 +101,18 @@ class AttackResult:
             maximum = max(value)
             mean = total / len(value)
             return f"avg={mean:.3f} min={minimum:.3f} max={maximum:.3f}"
-
         return f"{value:.3f}"
 
     @staticmethod
     def _format_token(token: str, *, max_length: int) -> str:
+        """Format a token for display, truncating if needed."""
         clean = token.replace("\n", "\\n")
         if len(clean) > max_length:
             return clean[: max_length - 3] + "..."
         return clean
 
     def to_report(self) -> dict[str, object]:
+        """Convert to a JSON-serializable dictionary."""
         input_counts, output_counts = self._token_counts()
         return {
             "tokenizer": self.tokenizer_info,
@@ -106,6 +130,15 @@ class AttackResult:
         }
 
     def summary(self, *, max_rows: int = 8, max_token_length: int = 24) -> str:
+        """Generate a human-readable summary.
+
+        Args:
+            max_rows: Maximum rows to display in token drift.
+            max_token_length: Maximum characters per token.
+
+        Returns:
+            Formatted multi-line summary string.
+        """
         input_batches, output_batches = self._token_batches()
         input_counts, output_counts = self._token_counts()
         is_batch = self._tokens_are_batched()
@@ -170,20 +203,30 @@ class AttackResult:
 
 @dataclass
 class MultiAttackResult:
+    """Results from comparing multiple tokenizers.
+
+    Attributes:
+        results: Mapping from tokenizer name to AttackResult.
+        order: Ordered list of tokenizer names.
+    """
+
     results: dict[str, AttackResult]
     order: list[str]
 
     @property
     def primary(self) -> AttackResult:
+        """Get the primary (first) result."""
         return self.results[self.order[0]]
 
     def to_report(self) -> dict[str, object]:
+        """Convert to a JSON-serializable dictionary."""
         return {
             "tokenizers": list(self.order),
             "results": {name: self.results[name].to_report() for name in self.order},
         }
 
     def summary(self, *, max_rows: int = 6, max_token_length: int = 24) -> str:
+        """Generate a human-readable comparison summary."""
         lines: list[str] = []
         for index, name in enumerate(self.order, start=1):
             lines.append(f"{index}. {name}")
@@ -195,22 +238,28 @@ class MultiAttackResult:
         return "\n".join(lines)
 
 
+# ---------------------------------------------------------------------------
+# Attack Orchestrator
+# ---------------------------------------------------------------------------
+
+
 class Attack:
     """Orchestrator for applying glitchling corruptions and measuring impact.
 
-    Attack is a thin orchestrator that coordinates:
-    - Glitchling invocation (impure: may use Rust FFI)
-    - Tokenization (impure: resolves tokenizers)
-    - Metric computation (impure: calls Rust metrics)
-    - Result composition (delegated to pure compose.py helpers)
+    Attack is a thin boundary layer that:
+    1. Validates inputs at construction time
+    2. Delegates planning to pure functions (core_planning.py)
+    3. Delegates execution to impure functions (core_execution.py)
 
-    The class validates inputs at construction time (boundary layer)
-    and delegates pure operations to compose.py and encode.py modules.
+    Example:
+        >>> attack = Attack(Typogre(rate=0.05), tokenizer='cl100k_base')
+        >>> result = attack.run("Hello world")
+        >>> print(result.summary())
     """
 
     def __init__(
         self,
-        glitchlings: Glitchling | str | Iterable[str | Glitchling],
+        glitchlings: Corruptor | str | Sequence[str | Corruptor],
         tokenizer: str | Tokenizer | None = None,
         metrics: Mapping[str, Metric] | None = None,
         *,
@@ -220,200 +269,75 @@ class Attack:
         """Initialize an Attack.
 
         Args:
-            glitchlings: A single Glitchling (including Gaggle), a string specification
-                         (e.g. 'Typogre(rate=0.05)'), or an iterable of glitchlings/specs.
-            tokenizer: Tokenizer name (e.g. 'cl100k_base', 'bert-base-uncased'),
-                       Tokenizer object, or None (defaults to whitespace).
-            metrics: Dictionary of metric functions. If None, defaults are used.
-            seed: Optional master seed used when building a Gaggle. When a Gaggle
-                  instance is provided directly, the seed is applied to that instance
-                  to keep runs deterministic. Instances are cloned before seeding to
-                  avoid mutating caller-owned objects.
-            transcript_target: Which transcript turns to corrupt. When None (default),
-                uses the Gaggle default ("last"). Accepts:
+            glitchlings: Glitchling specification - a single Glitchling,
+                string spec (e.g. 'Typogre(rate=0.05)'), or iterable of these.
+            tokenizer: Tokenizer name (e.g. 'cl100k_base'), Tokenizer instance,
+                or None (defaults to whitespace tokenizer).
+            metrics: Dictionary of metric functions. If None, uses defaults
+                (jensen_shannon_divergence, normalized_edit_distance,
+                subsequence_retention).
+            seed: Master seed for the Gaggle. If None, uses DEFAULT_ATTACK_SEED.
+            transcript_target: Which transcript turns to corrupt. Accepts:
                 - "last": corrupt only the last turn (default)
                 - "all": corrupt all turns
-                - "assistant": corrupt only assistant turns
-                - "user": corrupt only user turns
-                - int: corrupt a specific index (negative indexing supported)
+                - "assistant"/"user": corrupt only those roles
+                - int: corrupt a specific index
                 - Sequence[int]: corrupt specific indices
         """
-        # Boundary validation and resolution (impure)
+        # Boundary: resolve seed
         gaggle_seed = seed if seed is not None else DEFAULT_ATTACK_SEED
-        cloned_glitchlings = self._clone_glitchling_specs(glitchlings)
-        self.glitchlings = coerce_gaggle(
-            cloned_glitchlings,
+
+        # Impure: resolve glitchlings (clones to avoid mutation)
+        self.glitchlings = resolve_glitchlings(
+            glitchlings,
             seed=gaggle_seed,
-            apply_seed_to_existing=True,
             transcript_target=transcript_target,
         )
 
-        # Impure tokenizer resolution
+        # Impure: resolve tokenizer
         self.tokenizer = resolve_tokenizer(tokenizer)
         self.tokenizer_info = describe_tokenizer(self.tokenizer, tokenizer)
 
-        # Metrics setup
+        # Setup metrics
         if metrics is None:
-            self.metrics: dict[str, Metric] = {
-                "jensen_shannon_divergence": jensen_shannon_divergence,
-                "normalized_edit_distance": normalized_edit_distance,
-                "subsequence_retention": subsequence_retention,
-            }
+            self.metrics: dict[str, Metric] = get_default_metrics()
         else:
             self.metrics = dict(metrics)
-
-    @staticmethod
-    def _clone_glitchling_specs(
-        glitchlings: Glitchling | str | Iterable[str | Glitchling],
-    ) -> Glitchling | str | list[str | Glitchling]:
-        """Return cloned glitchling specs so Attack ownership never mutates inputs."""
-        if isinstance(glitchlings, Glitchling):
-            return glitchlings.clone()
-
-        if isinstance(glitchlings, str):
-            return glitchlings
-
-        if isinstance(glitchlings, Iterable):
-            cloned_specs: list[str | Glitchling] = []
-            for entry in glitchlings:
-                if isinstance(entry, Glitchling):
-                    cloned_specs.append(entry.clone())
-                else:
-                    cloned_specs.append(entry)
-            return cloned_specs
-
-        return glitchlings
 
     def run(self, text: str | Transcript | Sequence[str]) -> AttackResult:
         """Apply corruptions and calculate metrics.
 
-        Supports single strings, batches of strings, and chat transcripts. For
-        batched inputs (transcripts or lists of strings) metrics are computed
-        per entry and returned as lists.
+        Supports single strings, batches of strings, and chat transcripts.
+        For batched inputs, metrics are computed per entry and returned
+        as lists.
 
         Args:
-            text: Input text, transcript, or batch of plain strings to corrupt.
+            text: Input text, transcript, or batch of strings to corrupt.
 
         Returns:
             AttackResult containing original, corrupted, tokens, and metrics.
+
+        Raises:
+            TypeError: If input type is not recognized.
         """
-        if _is_string_batch(text):
-            original_batch = list(text)
-            corrupted_batch: list[str] = []
-            for entry in original_batch:
-                corrupted = self.glitchlings.corrupt(entry)
-                if not isinstance(corrupted, str):
-                    raise TypeError("Attack expected string output when given a batch of strings.")
-                corrupted_batch.append(corrupted)
-
-            return self._compose_result(
-                original_container=original_batch,
-                corrupted_container=corrupted_batch,
-                original_contents=original_batch,
-                corrupted_contents=corrupted_batch,
-                is_batch=True,
-            )
-
-        if is_transcript(text):
-            original_transcript = text
-            corrupted_transcript = self.glitchlings.corrupt(original_transcript)
-            if not is_transcript(corrupted_transcript):
-                raise ValueError("Attack expected output type to mirror input type.")
-
-            original_contents = extract_transcript_contents(original_transcript)
-            corrupted_contents = extract_transcript_contents(corrupted_transcript)
-
-            return self._compose_result(
-                original_container=original_transcript,
-                corrupted_container=corrupted_transcript,
-                original_contents=original_contents,
-                corrupted_contents=corrupted_contents,
-                is_batch=True,
-            )
-
-        if not isinstance(text, str):
-            message = (
-                "Attack.run expected string, transcript, or list of strings, "
-                f"got {type(text).__name__}"
-            )
-            raise TypeError(message)
-
-        corrupted = self.glitchlings.corrupt(text)
-        if not isinstance(corrupted, str):
-            raise TypeError("Attack expected output type to mirror input type.")
-
-        return self._compose_result(
-            original_container=text,
-            corrupted_container=corrupted,
-            original_contents=[text],
-            corrupted_contents=[corrupted],
-            is_batch=False,
+        # Pure: plan the attack
+        attack_plan = plan_attack(text)
+        result_plan = plan_result(
+            attack_plan,
+            list(self.metrics.keys()),
+            self.tokenizer_info,
         )
 
-    def _compose_result(
-        self,
-        *,
-        original_container: str | Transcript | Sequence[str],
-        corrupted_container: str | Transcript | Sequence[str],
-        original_contents: list[str],
-        corrupted_contents: list[str],
-        is_batch: bool,
-    ) -> AttackResult:
-        if len(original_contents) != len(corrupted_contents):
-            raise ValueError("Inputs and outputs must contain the same number of entries.")
-
-        if not original_contents:
-            fields = build_empty_result(
-                original_container,
-                corrupted_container,
-                self.tokenizer_info,
-                list(self.metrics.keys()),
-            )
-            return AttackResult(**fields)  # type: ignore[arg-type]
-
-        batched_input_tokens, batched_input_token_ids = encode_batch(
-            self.tokenizer, original_contents
-        )
-        batched_output_tokens, batched_output_token_ids = encode_batch(
-            self.tokenizer, corrupted_contents
+        # Impure: execute the attack
+        fields = execute_attack(
+            self.glitchlings,
+            self.tokenizer,
+            self.metrics,
+            attack_plan,
+            result_plan,
+            text,
         )
 
-        metric_inputs: list[str] | list[list[str]]
-        metric_outputs: list[str] | list[list[str]]
-        if is_batch:
-            metric_inputs = batched_input_tokens
-            metric_outputs = batched_output_tokens
-        else:
-            metric_inputs = batched_input_tokens[0]
-            metric_outputs = batched_output_tokens[0]
-
-        computed_metrics: dict[str, float | list[float]] = {}
-        for name, metric_fn in self.metrics.items():
-            computed_metrics[name] = metric_fn(metric_inputs, metric_outputs)
-
-        if not is_batch:
-            fields = build_single_result(
-                original=cast(str, original_container),
-                corrupted=cast(str, corrupted_container),
-                input_tokens=batched_input_tokens[0],
-                input_token_ids=batched_input_token_ids[0],
-                output_tokens=batched_output_tokens[0],
-                output_token_ids=batched_output_token_ids[0],
-                tokenizer_info=self.tokenizer_info,
-                metrics=computed_metrics,
-            )
-            return AttackResult(**fields)  # type: ignore[arg-type]
-
-        fields = build_batch_result(
-            original=original_container,
-            corrupted=corrupted_container,
-            input_tokens=batched_input_tokens,
-            input_token_ids=batched_input_token_ids,
-            output_tokens=batched_output_tokens,
-            output_token_ids=batched_output_token_ids,
-            tokenizer_info=self.tokenizer_info,
-            metrics=computed_metrics,
-        )
         return AttackResult(**fields)  # type: ignore[arg-type]
 
     def compare(
@@ -423,9 +347,24 @@ class Attack:
         tokenizers: Sequence[str | Tokenizer],
         include_self: bool = True,
     ) -> MultiAttackResult:
-        """Run the attack across multiple tokenizers for side-by-side comparison."""
-        if not tokenizers and not include_self:
-            raise ValueError("At least one tokenizer must be provided for comparison.")
+        """Run the attack across multiple tokenizers for comparison.
+
+        The same corruption is applied once, then tokenized with each
+        tokenizer to compare token-level impacts.
+
+        Args:
+            text: Input text to corrupt and compare.
+            tokenizers: Additional tokenizer names/instances to compare.
+            include_self: Whether to include this Attack's tokenizer.
+
+        Returns:
+            MultiAttackResult with results for each tokenizer.
+
+        Raises:
+            ValueError: If no tokenizers would be compared.
+        """
+        # Pure: plan the comparison
+        comparison_plan = plan_comparison(tokenizers, include_self=include_self)
 
         results: dict[str, AttackResult] = {}
         order: list[str] = []
@@ -441,7 +380,8 @@ class Attack:
         runner_seed = self.glitchlings.seed
         transcript_target = getattr(self.glitchlings, "transcript_target", None)
 
-        if include_self:
+        # Include self if requested
+        if comparison_plan.include_self:
             baseline = Attack(
                 self.glitchlings,
                 tokenizer=self.tokenizer,
@@ -451,7 +391,8 @@ class Attack:
             ).run(text)
             record(baseline)
 
-        for spec in tokenizers:
+        # Run with each comparison tokenizer
+        for spec in comparison_plan.tokenizer_specs:
             resolved_tokenizer = resolve_tokenizer(spec)
             comparator = Attack(
                 self.glitchlings,
@@ -463,3 +404,10 @@ class Attack:
             record(comparator.run(text))
 
         return MultiAttackResult(results=results, order=order)
+
+
+__all__ = [
+    "Attack",
+    "AttackResult",
+    "MultiAttackResult",
+]

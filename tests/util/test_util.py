@@ -1,6 +1,6 @@
 import pytest
 
-from glitchlings.util import string_diffs
+from glitchlings.zoo.transforms import compute_string_diffs as string_diffs
 
 
 def test_string_diffs_groups_consecutive_edits_and_skips_equals():
