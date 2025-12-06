@@ -61,8 +61,9 @@ class TiktokenTokenizer:
 
 
 class HuggingFaceTokenizerWrapper:
-    def __init__(self, tokenizer_obj: Any):
+    def __init__(self, tokenizer_obj: Any, *, unknown_token: str = "[UNK]"):
         self.tokenizer = tokenizer_obj
+        self.unknown_token = unknown_token
 
     def encode(self, text: str) -> tuple[list[str], list[int]]:
         # tokenizers.Tokenizer.encode returns an Encoding object
@@ -82,15 +83,73 @@ class HuggingFaceTokenizerWrapper:
                 return result
         except (AttributeError, TypeError):
             pass
-        # Fallback: simple join without any replacements
-        return "".join(tokens)
+        # Fallback: join with spaces, replacing unknown tokens
+        decoded_tokens = []
+        for token in tokens:
+            token_id = None
+            try:
+                token_id = self.tokenizer.token_to_id(token)
+            except (AttributeError, TypeError):
+                pass
+            if token_id is None:
+                decoded_tokens.append(self.unknown_token)
+            else:
+                decoded_tokens.append(token)
+        return " ".join(decoded_tokens)
 
     def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:
         encodings = self.tokenizer.encode_batch(list(texts))
         return [(encoding.tokens, encoding.ids) for encoding in encodings]
 
 
+def list_available_tokenizers() -> list[str]:
+    """List tokenizer names that can be resolved.
+
+    Returns a list of known tokenizer names including:
+    - Tiktoken encodings (if tiktoken is installed)
+    - A note about HuggingFace tokenizers (if tokenizers is installed)
+    - 'whitespace' (always available)
+
+    Returns:
+        List of available tokenizer names/descriptions.
+    """
+    available: list[str] = []
+
+    if importlib.util.find_spec("tiktoken"):
+        import tiktoken
+
+        # Add known tiktoken encodings
+        for encoding in DEFAULT_TIKTOKEN_ENCODINGS:
+            try:
+                tiktoken.get_encoding(encoding)
+                available.append(encoding)
+            except ValueError:
+                pass
+        # Add common model names
+        available.extend(["gpt-4", "gpt-4o", "gpt-3.5-turbo"])
+
+    if importlib.util.find_spec("tokenizers"):
+        available.append("<any HuggingFace tokenizer name>")
+
+    available.append("whitespace")
+    return available
+
+
 def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
+    """Resolve a tokenizer specification to a Tokenizer instance.
+
+    Args:
+        tokenizer: One of:
+            - None: Use default tokenizer (tiktoken o200k_base, or whitespace)
+            - str: Tokenizer name (tiktoken encoding, model name, or HF tokenizer)
+            - Tokenizer: Pass through as-is
+
+    Returns:
+        A Tokenizer instance.
+
+    Raises:
+        ValueError: If string tokenizer cannot be resolved.
+    """
     if tokenizer is None:
         return _default_tokenizer()
 
@@ -120,7 +179,11 @@ def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
             except Exception:
                 pass
 
-        raise ValueError(f"Could not resolve tokenizer: {tokenizer}")
+        available = list_available_tokenizers()
+        raise ValueError(
+            f"Could not resolve tokenizer: {tokenizer!r}. "
+            f"Available: {', '.join(available)}"
+        )
 
     # Check if it is a HuggingFace tokenizer object
     if importlib.util.find_spec("tokenizers"):
@@ -153,5 +216,6 @@ __all__ = [
     "TiktokenTokenizer",
     "Tokenizer",
     "WhitespaceTokenizer",
+    "list_available_tokenizers",
     "resolve_tokenizer",
 ]

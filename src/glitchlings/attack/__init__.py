@@ -37,17 +37,6 @@ from .analysis import (
     generate_param_combinations,
     rank_grid_points,
 )
-from .compose import (
-    AttackResultComponents,
-    EncodedPayload,
-    build_batch_result,
-    build_empty_metrics,
-    build_empty_result,
-    build_single_result,
-    extract_transcript_contents,
-    format_metrics_for_batch,
-    format_metrics_for_single,
-)
 from .core import Attack, AttackResult, MultiAttackResult
 from .core_execution import (
     execute_attack,
@@ -59,13 +48,16 @@ from .core_execution import (
 )
 from .core_planning import (
     AttackPlan,
+    BatchAdapter,
     ComparisonPlan,
     EncodedData,
     ResultPlan,
     assemble_batch_result_fields,
     assemble_empty_result_fields,
+    assemble_result_fields,
     assemble_single_result_fields,
     compute_token_counts,
+    extract_transcript_contents,
     format_token_count_delta,
     is_string_batch,
     is_transcript_like,
@@ -80,7 +72,7 @@ from .metrics import (
     subsequence_retention,
 )
 from .metrics_dispatch import TokenBatch, TokenSequence, is_batch, validate_batch_consistency
-from .tokenization import Tokenizer
+from .tokenization import Tokenizer, list_available_tokenizers
 
 __all__ = [
     # Core orchestration
@@ -88,6 +80,7 @@ __all__ = [
     "AttackResult",
     "MultiAttackResult",
     "Tokenizer",
+    "list_available_tokenizers",
     # Metrics
     "jensen_shannon_divergence",
     "normalized_edit_distance",
@@ -109,6 +102,7 @@ __all__ = [
     "rank_grid_points",
     # Core planning (pure)
     "AttackPlan",
+    "BatchAdapter",
     "ResultPlan",
     "ComparisonPlan",
     "EncodedData",
@@ -117,10 +111,12 @@ __all__ = [
     "plan_comparison",
     "is_string_batch",
     "is_transcript_like",
+    "assemble_result_fields",
     "assemble_single_result_fields",
     "assemble_batch_result_fields",
     "assemble_empty_result_fields",
     "compute_token_counts",
+    "extract_transcript_contents",
     "format_token_count_delta",
     # Core execution (impure)
     "get_default_metrics",
@@ -129,16 +125,6 @@ __all__ = [
     "execute_tokenization",
     "execute_metrics",
     "execute_attack",
-    # Compose (pure) - legacy
-    "AttackResultComponents",
-    "EncodedPayload",
-    "build_batch_result",
-    "build_empty_metrics",
-    "build_empty_result",
-    "build_single_result",
-    "extract_transcript_contents",
-    "format_metrics_for_batch",
-    "format_metrics_for_single",
     # Encode (pure)
     "describe_tokenizer",
     "encode_batch",

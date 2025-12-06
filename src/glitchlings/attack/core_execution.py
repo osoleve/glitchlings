@@ -27,12 +27,12 @@ from ..util.adapters import coerce_gaggle
 from ..util.transcripts import Transcript, is_transcript
 from .core_planning import (
     AttackPlan,
+    BatchAdapter,
     EncodedData,
     ResultPlan,
-    assemble_batch_result_fields,
     assemble_empty_result_fields,
-    assemble_single_result_fields,
-    extract_transcript_contents_pure,
+    assemble_result_fields,
+    extract_transcript_contents,
 )
 from .encode import encode_batch
 from .metrics import (
@@ -156,7 +156,7 @@ def execute_corruption(
         corrupted_transcript = gaggle.corrupt(cast(Transcript, original_container))
         if not is_transcript(corrupted_transcript):
             raise ValueError("Attack expected transcript output for transcript input.")
-        corrupted_contents = extract_transcript_contents_pure(
+        corrupted_contents = extract_transcript_contents(
             cast(Sequence[Mapping[str, Any]], corrupted_transcript)
         )
         return corrupted_transcript, corrupted_contents
@@ -200,34 +200,30 @@ def execute_tokenization(
 
 def execute_metrics(
     metrics: dict[str, Metric],
-    input_tokens: list[str] | list[list[str]],
-    output_tokens: list[str] | list[list[str]],
-    *,
-    is_batch: bool,
-) -> dict[str, float | list[float]]:
-    """Execute metric computation.
+    input_tokens: list[list[str]],
+    output_tokens: list[list[str]],
+) -> dict[str, list[float]]:
+    """Execute metric computation on batched tokens.
+
+    All inputs are processed as batches internally. Use BatchAdapter
+    to unwrap results for single-item inputs.
 
     Args:
         metrics: Dictionary of metric functions.
-        input_tokens: Original tokens (flat or batched).
-        output_tokens: Corrupted tokens (flat or batched).
-        is_batch: Whether inputs are batched.
+        input_tokens: Original tokens (always batched 2D list).
+        output_tokens: Corrupted tokens (always batched 2D list).
 
     Returns:
-        Dictionary of computed metric values.
+        Dictionary of computed metric values (always as lists).
     """
-    # Prepare tokens for metrics
-    if is_batch:
-        metric_inputs: list[str] | list[list[str]] = input_tokens
-        metric_outputs: list[str] | list[list[str]] = output_tokens
-    else:
-        # For single strings, pass flat token lists
-        metric_inputs = input_tokens[0] if input_tokens else []  # type: ignore[assignment]
-        metric_outputs = output_tokens[0] if output_tokens else []  # type: ignore[assignment]
-
-    computed: dict[str, float | list[float]] = {}
+    computed: dict[str, list[float]] = {}
     for name, metric_fn in metrics.items():
-        computed[name] = metric_fn(metric_inputs, metric_outputs)
+        result = metric_fn(input_tokens, output_tokens)
+        # Ensure result is always a list
+        if isinstance(result, list):
+            computed[name] = result
+        else:
+            computed[name] = [result]
 
     return computed
 
@@ -248,10 +244,11 @@ def execute_attack(
     """Execute a complete attack and return result fields.
 
     This function orchestrates the full attack execution:
-    1. Execute corruption
-    2. Tokenize original and corrupted content
-    3. Compute metrics
-    4. Assemble result fields
+    1. Create batch adapter for uniform processing
+    2. Execute corruption
+    3. Tokenize original and corrupted content (always as batch)
+    4. Compute metrics (always as batch)
+    5. Assemble result fields (adapter unwraps as needed)
 
     Args:
         gaggle: Glitchling(s) for corruption.
@@ -273,42 +270,32 @@ def execute_attack(
             metric_names=result_plan.metric_names,
         )
 
+    # Create batch adapter for uniform processing
+    adapter = BatchAdapter.from_plan(plan)
+
     # Execute corruption
     corrupted_container, corrupted_contents = execute_corruption(gaggle, plan, original_container)
 
-    # Tokenize
+    # Tokenize (always returns batched EncodedData)
     input_encoded = execute_tokenization(tokenizer, plan.original_contents)
     output_encoded = execute_tokenization(tokenizer, corrupted_contents)
 
-    # Compute metrics
-    raw_metrics = execute_metrics(
+    # Compute metrics (always returns batched metrics)
+    batch_metrics = execute_metrics(
         metrics,
-        cast(Any, input_encoded.tokens),
-        cast(Any, output_encoded.tokens),
-        is_batch=plan.is_batch,
+        input_encoded.tokens,
+        output_encoded.tokens,
     )
 
-    # Format metrics according to result type
-    formatted_metrics = result_plan.format_metrics(raw_metrics)
-
-    # Assemble result
-    if plan.is_batch:
-        return assemble_batch_result_fields(
-            original=original_container,
-            corrupted=corrupted_container,
-            input_encoded=input_encoded,
-            output_encoded=output_encoded,
-            tokenizer_info=result_plan.tokenizer_info,
-            metrics=formatted_metrics,
-        )
-
-    return assemble_single_result_fields(
-        original=cast(str, original_container),
-        corrupted=cast(str, corrupted_container),
+    # Assemble result (adapter handles unwrapping for single inputs)
+    return assemble_result_fields(
+        adapter=adapter,
+        original=original_container,
+        corrupted=corrupted_container,
         input_encoded=input_encoded,
         output_encoded=output_encoded,
         tokenizer_info=result_plan.tokenizer_info,
-        metrics=cast(dict[str, float], formatted_metrics),
+        metrics=batch_metrics,
     )
 
 
