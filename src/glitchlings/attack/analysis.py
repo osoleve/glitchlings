@@ -223,6 +223,68 @@ class SeedSweepResult:
             "aggregate_stats": self.aggregate_stats,
         }
 
+    def filter_by_metric(
+        self,
+        metric_name: str,
+        *,
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> dict[int, AttackResult]:
+        """Filter per-seed results by metric thresholds.
+
+        Args:
+            metric_name: Name of the metric to filter by.
+            min_value: Minimum metric value (inclusive).
+            max_value: Maximum metric value (inclusive).
+
+        Returns:
+            Dictionary mapping seeds to AttackResults that meet criteria.
+        """
+        results: dict[int, AttackResult] = {}
+        for seed in self.seeds:
+            metrics = self.per_seed_metrics.get(seed, {})
+            value = metrics.get(metric_name)
+            if value is None:
+                continue
+            if min_value is not None and value < min_value:
+                continue
+            if max_value is not None and value > max_value:
+                continue
+            results[seed] = self.per_seed_results[seed]
+        return results
+
+    def export_csv(
+        self,
+        filepath: str,
+        *,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
+        """Export per-seed metrics to CSV.
+
+        Args:
+            filepath: Path to write the CSV file.
+            metrics: Specific metrics to include (None = all).
+        """
+        import csv
+
+        if not self.per_seed_metrics:
+            return
+
+        # Determine metrics to export
+        first_metrics = next(iter(self.per_seed_metrics.values()))
+        if metrics is None:
+            metric_names = list(first_metrics.keys())
+        else:
+            metric_names = list(metrics)
+
+        with open(filepath, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["seed"] + metric_names)
+            for seed in self.seeds:
+                seed_metrics = self.per_seed_metrics.get(seed, {})
+                row = [seed] + [seed_metrics.get(m, "") for m in metric_names]
+                writer.writerow(row)
+
 
 class SeedSweep:
     """Sweep across multiple seeds to collect aggregate metrics (impure).
@@ -261,12 +323,19 @@ class SeedSweep:
         self,
         text: str,
         seeds: Iterable[int],
+        *,
+        progress_callback: Callable[[list[tuple[int, AttackResult]]], None] | None = None,
+        early_stop: Callable[[int, AttackResult], bool] | None = None,
     ) -> SeedSweepResult:
         """Run the sweep across specified seeds (impure execution).
 
         Args:
             text: Input text to corrupt.
             seeds: Iterable of seed values to test.
+            progress_callback: Optional callback receiving list of (seed, result)
+                pairs collected so far.
+            early_stop: Optional predicate receiving (seed, result). If it returns
+                True, the sweep stops early.
 
         Returns:
             SeedSweepResult with per-seed and aggregate statistics.
@@ -274,6 +343,7 @@ class SeedSweep:
         seeds_list = list(seeds)
         per_seed_results: dict[int, AttackResult] = {}
         per_seed_metrics: dict[int, dict[str, float]] = {}
+        completed: list[tuple[int, AttackResult]] = []
 
         # Impure: run attacks for each seed
         for seed in seeds_list:
@@ -288,16 +358,26 @@ class SeedSweep:
             # Pure: extract scalar metrics
             per_seed_metrics[seed] = extract_scalar_metrics(result.metrics)
 
+            # Track progress
+            completed.append((seed, result))
+            if progress_callback is not None:
+                progress_callback(completed)
+
+            # Check early stopping
+            if early_stop is not None and early_stop(seed, result):
+                break
+
         # Pure: compute aggregate statistics
         aggregate_stats: dict[str, dict[str, float]] = {}
+        completed_seeds = [seed for seed, _ in completed]
         if per_seed_metrics:
             metric_names = list(next(iter(per_seed_metrics.values())).keys())
             for metric_name in metric_names:
-                values = [per_seed_metrics[seed][metric_name] for seed in seeds_list]
+                values = [per_seed_metrics[seed][metric_name] for seed in completed_seeds]
                 aggregate_stats[metric_name] = compute_aggregate_stats(values)
 
         return SeedSweepResult(
-            seeds=seeds_list,
+            seeds=completed_seeds,
             text=text,
             tokenizer_info=self._tokenizer_info,
             per_seed_results=per_seed_results,
@@ -401,6 +481,89 @@ class GridSearchResult:
             "all_points": [{"params": p.params, "metrics": p.metrics} for p in self.points],
         }
 
+    def filter_by_metric(
+        self,
+        metric_name: str,
+        *,
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> list[GridSearchPoint]:
+        """Filter grid points by metric thresholds.
+
+        Args:
+            metric_name: Name of the metric to filter by.
+            min_value: Minimum metric value (inclusive).
+            max_value: Maximum metric value (inclusive).
+
+        Returns:
+            List of GridSearchPoints that meet the criteria.
+        """
+        results: list[GridSearchPoint] = []
+        for point in self.points:
+            value = point.metrics.get(metric_name)
+            if value is None:
+                continue
+            if min_value is not None and value < min_value:
+                continue
+            if max_value is not None and value > max_value:
+                continue
+            results.append(point)
+        return results
+
+    def filter_by_params(self, **param_filters: Any) -> list[GridSearchPoint]:
+        """Filter grid points by parameter values.
+
+        Args:
+            **param_filters: Parameter name=value pairs to match.
+
+        Returns:
+            List of GridSearchPoints matching all filters.
+
+        Example:
+            >>> result.filter_by_params(rate=0.05)
+        """
+        results: list[GridSearchPoint] = []
+        for point in self.points:
+            match = all(point.params.get(name) == value for name, value in param_filters.items())
+            if match:
+                results.append(point)
+        return results
+
+    def export_csv(
+        self,
+        filepath: str,
+        *,
+        include_params: bool = True,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
+        """Export all grid points to CSV.
+
+        Args:
+            filepath: Path to write the CSV file.
+            include_params: Whether to include parameter columns.
+            metrics: Specific metrics to include (None = all).
+        """
+        import csv
+
+        if not self.points:
+            return
+
+        # Determine columns
+        param_names = list(self.param_grid.keys()) if include_params else []
+        first_metrics = self.points[0].metrics
+        if metrics is None:
+            metric_names = list(first_metrics.keys())
+        else:
+            metric_names = list(metrics)
+
+        with open(filepath, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(param_names + metric_names)
+            for point in self.points:
+                param_values = [point.params.get(p, "") for p in param_names]
+                metric_values = [point.metrics.get(m, "") for m in metric_names]
+                writer.writerow(param_values + metric_values)
+
 
 class GridSearch:
     """Search across parameter combinations (impure orchestrator).
@@ -454,6 +617,8 @@ class GridSearch:
         *,
         rank_by: str | None = "normalized_edit_distance",
         minimize: bool = True,
+        progress_callback: Callable[[list[GridSearchPoint]], None] | None = None,
+        early_stop: Callable[[GridSearchPoint], bool] | None = None,
     ) -> GridSearchResult:
         """Run grid search over all combinations (impure execution).
 
@@ -461,6 +626,10 @@ class GridSearch:
             text: Input text to corrupt.
             rank_by: Metric name to rank by (None for no ranking).
             minimize: If True, lower metric values are better.
+            progress_callback: Optional callback receiving list of evaluated
+                GridSearchPoints so far.
+            early_stop: Optional predicate receiving a GridSearchPoint. If it
+                returns True, the search stops early.
 
         Returns:
             GridSearchResult with all points and best one.
@@ -485,13 +654,20 @@ class GridSearch:
             # Pure: extract scalar metrics
             metrics_dict = extract_scalar_metrics(result.metrics)
 
-            points.append(
-                GridSearchPoint(
-                    params=combo,
-                    result=result,
-                    metrics=metrics_dict,
-                )
+            point = GridSearchPoint(
+                params=combo,
+                result=result,
+                metrics=metrics_dict,
             )
+            points.append(point)
+
+            # Callback with progress
+            if progress_callback is not None:
+                progress_callback(points)
+
+            # Check early stopping
+            if early_stop is not None and early_stop(point):
+                break
 
         # Pure: find best point
         best_point: GridSearchPoint | None = None
