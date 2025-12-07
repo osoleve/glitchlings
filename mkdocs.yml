@@ -49,6 +49,7 @@ nav:
           - '⛓️‍💥 Zeedub': glitchlings/zeedub.md
   - '🧪 Lab Notes':
       - 'Attack Helper': attack.md
+      - 'Analysis Tools': analysis-tools.md
       - 'Dataset Workflows': datasets.md
       - 'Determinism Protocols': determinism.md
       - 'Integrations & DLC': integrations.md
