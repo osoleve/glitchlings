@@ -185,51 +185,51 @@ For batch results, pass `batch_index` to analyze a specific item.
 
 ## Analysis tools
 
-### SeedSweep
+The attack module includes four analysis tools for systematic exploration. For detailed documentation with use cases, intuition, and examples, see the [Analysis Tools](analysis-tools.md) page.
 
-Run attacks across many seeds to collect aggregate statistics:
+| Tool | Purpose |
+|------|---------|
+| **SeedSweep** | Run attacks across many seeds to get aggregate statistics (mean, std, min, max, median) |
+| **GridSearch** | Search parameter combinations to find optimal settings |
+| **compare_tokenizers** | Compare how different tokenizers perceive the same corruption |
+| **compare_glitchlings** | Compare different corruption strategies on the same text |
+
+### Quick examples
 
 ```python
-from glitchlings import SeedSweep, Typogre
+from glitchlings import SeedSweep, GridSearch, Typogre
 
+# SeedSweep: understand variance across random seeds
 sweep = SeedSweep(Typogre(rate=0.05), tokenizer="cl100k_base")
 result = sweep.run("Hello world", seeds=range(100))
-
-print(result.summary())
 print(result.aggregate_stats["normalized_edit_distance"])
 # {"mean": 0.15, "std": 0.02, "min": 0.10, "max": 0.22, "median": 0.14}
 
-# Filter results by metric threshold
-high_impact = result.filter_by_metric("normalized_edit_distance", min_value=0.2)
+# GridSearch: find optimal parameters
+grid = GridSearch(Typogre, param_grid={"rate": [0.01, 0.05, 0.1, 0.2]})
+result = grid.run("Hello world", rank_by="normalized_edit_distance")
+print(f"Best rate: {result.best_point.params['rate']}")
 ```
 
-### GridSearch
-
-Search parameter combinations to find optimal settings:
-
 ```python
-from glitchlings import GridSearch, Typogre
+from glitchlings import compare_tokenizers, compare_glitchlings, Typogre, Mim1c
 
-grid = GridSearch(
-    Typogre,
-    param_grid={"rate": [0.01, 0.05, 0.1, 0.2]},
+# Compare tokenizers: same corruption, different tokenization
+result = compare_tokenizers(
+    "Hello world",
+    Typogre(rate=0.1),
+    tokenizers=["cl100k_base", "o200k_base", "gpt2"],
+)
+print(result.summary())
+
+# Compare glitchlings: different corruptions, same tokenizer
+result = compare_glitchlings(
+    "Hello world",
+    [("typos", Typogre(rate=0.05)), ("unicode", Mim1c(rate=0.05))],
     tokenizer="cl100k_base",
 )
-result = grid.run("Hello world", rank_by="normalized_edit_distance")
-
-print(result.summary())
-print(f"Best params: {result.best_point.params}")
-```
-
-Both support progress callbacks and early stopping:
-
-```python
-result = sweep.run(
-    text,
-    seeds=range(1000),
-    progress_callback=lambda results: print(f"Completed {len(results)}"),
-    early_stop=lambda seed, result: result.metrics["normalized_edit_distance"] > 0.5,
-)
+best = result.rank_by("normalized_edit_distance", minimize=False)[0]
+print(f"Most disruptive: {best.name}")
 ```
 
 ## Pandas integration
@@ -295,6 +295,26 @@ Custom metrics can be supplied; they should accept two token sequences or two ba
 ## Built-in metric reference
 
 This section provides detailed explanations and mathematical definitions for each built-in metric.
+
+### Choosing the right metric
+
+Different metrics capture different aspects of corruption impact:
+
+| If you want to measure... | Use this metric |
+|---------------------------|-----------------|
+| Overall sequence difference | **NED** (Normalized Edit Distance) |
+| Vocabulary/distribution shift | **JSD** (Jensen-Shannon Divergence) |
+| How much original content survives | **SR** (Subsequence Retention) |
+| Whether tokens became more/less diverse | **HD** (Entropy Delta) |
+| Subword boundary disruption | **MSI** (Merge-Split Index) |
+
+**Practical guidance:**
+
+- **For general "how bad is it?"**: Start with NED—it's intuitive and captures most effects.
+- **For adversarial attacks**: Use MSI—it specifically measures tokenization boundary disruption.
+- **For preservation testing**: Use SR—it tells you what fraction of the original survived.
+- **For distribution analysis**: Use JSD—it ignores order and focuses on vocabulary changes.
+- **For detecting degenerate outputs**: Use HD—negative values indicate collapsed/repetitive text.
 
 ### Jensen-Shannon Divergence (JSD)
 
