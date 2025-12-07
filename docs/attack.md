@@ -94,19 +94,165 @@ It highlights token count deltas, metric values, and a small token-by-token comp
 
 ## Comparing tokenizers
 
-Use `Attack.compare` to benchmark multiple tokenizers against the same corruption in one call. It returns a `MultiAttackResult` with keyed `AttackResult` objects and a combined summary:
+Use `compare_tokenizers()` to benchmark multiple tokenizers against the same corruption:
 
 ```python
-comparison = attack.compare(
-    SAMPLE_TEXT,
-    tokenizers=["cl100k_base", "gpt2"],
+from glitchlings import Typogre, compare_tokenizers
+
+result = compare_tokenizers(
+    "Hello world",
+    Typogre(rate=0.1),
+    tokenizers=["cl100k_base", "o200k_base", "gpt2"],
+    seed=42,
 )
 
-print(comparison.summary())
-json_ready = comparison.to_report()
+print(result.summary())
 ```
 
-When `include_self=True` (default), the Attack's configured tokenizer is included alongside the provided list.
+This applies the same corruption once, then tokenizes with each tokenizer to compare impacts.
+
+## Comparing glitchlings
+
+Use `compare_glitchlings()` to find which corruption strategy has the most impact for a specific tokenizer:
+
+```python
+from glitchlings import Typogre, Mim1c, Ekkokin, compare_glitchlings
+
+result = compare_glitchlings(
+    "Hello world",
+    [
+        ("typogre", Typogre(rate=0.05)),
+        ("confusables", Mim1c(rate=0.05)),
+        ("homophones", Ekkokin(rate=0.05)),
+    ],
+    tokenizer="o200k_base",
+)
+
+print(result.summary())
+
+# Find most disruptive glitchling
+best = result.rank_by("normalized_edit_distance", minimize=False)[0]
+print(f"Most disruptive: {best.name}")
+```
+
+## MetricName enum
+
+Use `MetricName` for type-safe metric references with IDE completion:
+
+```python
+from glitchlings import MetricName
+from glitchlings.attack import Attack
+
+# Reference individual metrics
+print(MetricName.NED.value)  # "normalized_edit_distance"
+
+# Get the function for a metric
+ned_func = MetricName.NED.func
+
+# Get all default metrics as a dict
+attack = Attack(Typogre(), metrics=MetricName.defaults())
+```
+
+Available metrics:
+
+| Enum | Value |
+|------|-------|
+| `MetricName.JSD` | `jensen_shannon_divergence` |
+| `MetricName.NED` | `normalized_edit_distance` |
+| `MetricName.SR` | `subsequence_retention` |
+
+## Token-level analysis
+
+`AttackResult` provides methods for detailed token analysis:
+
+```python
+result = attack.run("Hello world")
+
+# Get tokens that changed
+changes = result.get_changed_tokens()  # [(orig, corrupted), ...]
+
+# Get positions of mutations
+positions = result.get_mutation_positions()  # [0, 3, 5, ...]
+
+# Get detailed alignment with operation markers
+alignment = result.get_token_alignment()
+# [{"index": 0, "original": "Hello", "corrupted": "He1lo", "changed": True, "op": "!"}, ...]
+```
+
+For batch results, pass `batch_index` to analyze a specific item.
+
+## Analysis tools
+
+### SeedSweep
+
+Run attacks across many seeds to collect aggregate statistics:
+
+```python
+from glitchlings import SeedSweep, Typogre
+
+sweep = SeedSweep(Typogre(rate=0.05), tokenizer="cl100k_base")
+result = sweep.run("Hello world", seeds=range(100))
+
+print(result.summary())
+print(result.aggregate_stats["normalized_edit_distance"])
+# {"mean": 0.15, "std": 0.02, "min": 0.10, "max": 0.22, "median": 0.14}
+
+# Filter results by metric threshold
+high_impact = result.filter_by_metric("normalized_edit_distance", min_value=0.2)
+```
+
+### GridSearch
+
+Search parameter combinations to find optimal settings:
+
+```python
+from glitchlings import GridSearch, Typogre
+
+grid = GridSearch(
+    Typogre,
+    param_grid={"rate": [0.01, 0.05, 0.1, 0.2]},
+    tokenizer="cl100k_base",
+)
+result = grid.run("Hello world", rank_by="normalized_edit_distance")
+
+print(result.summary())
+print(f"Best params: {result.best_point.params}")
+```
+
+Both support progress callbacks and early stopping:
+
+```python
+result = sweep.run(
+    text,
+    seeds=range(1000),
+    progress_callback=lambda results: print(f"Completed {len(results)}"),
+    early_stop=lambda seed, result: result.metrics["normalized_edit_distance"] > 0.5,
+)
+```
+
+## Pandas integration
+
+Result classes provide `to_dataframe()` for analysis in pandas (requires `pip install pandas`):
+
+```python
+# SeedSweep results
+df = sweep_result.to_dataframe()  # seeds as index, metrics as columns
+
+# GridSearch results
+df = grid_result.to_dataframe()  # params and metrics as columns
+
+# Glitchling comparison
+df = comparison_result.to_dataframe()  # glitchling names as index
+```
+
+## CSV export
+
+Export results directly to CSV:
+
+```python
+sweep_result.export_csv("sweep_results.csv")
+grid_result.export_csv("grid_results.csv", include_params=True)
+```
 
 ## CLI reports
 
