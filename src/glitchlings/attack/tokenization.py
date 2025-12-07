@@ -83,7 +83,7 @@ class HuggingFaceTokenizerWrapper:
                 return result
         except (AttributeError, TypeError):
             pass
-        # Fallback: join with spaces, replacing unknown tokens
+        # Fallback: decode each token individually to handle artifacts properly
         decoded_tokens = []
         for token in tokens:
             token_id = None
@@ -94,7 +94,14 @@ class HuggingFaceTokenizerWrapper:
             if token_id is None:
                 decoded_tokens.append(self.unknown_token)
             else:
-                decoded_tokens.append(token)
+                # Decode the single token ID to properly handle artifacts
+                try:
+                    decoded = self.tokenizer.decode([token_id])
+                    decoded_tokens.append(decoded)
+                except (AttributeError, TypeError):
+                    # Last resort: strip common prefixes and use token as-is
+                    clean_token = token.lstrip("Ġ").lstrip("##").lstrip("▁")
+                    decoded_tokens.append(clean_token if clean_token else token)
         return " ".join(decoded_tokens)
 
     def encode_batch(self, texts: Sequence[str]) -> list[tuple[list[str], list[int]]]:

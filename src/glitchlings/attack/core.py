@@ -13,6 +13,7 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, cast
@@ -389,23 +390,41 @@ class Attack:
     def _validate_metrics(self) -> None:
         """Validate that metric functions have correct signatures.
 
+        Uses signature inspection to avoid executing metrics (which may have
+        side effects).
+
         Raises:
-            ValueError: If a metric function fails validation.
+            ValueError: If a metric function has an invalid signature.
         """
-        test_tokens: list[list[str]] = [["test", "tokens"]]
         for name, func in self.metrics.items():
+            if not callable(func):
+                raise ValueError(f"Metric '{name}' is not callable")
+
             try:
-                result = func(test_tokens, test_tokens)
-                if not isinstance(result, (float, int, list)):
-                    raise TypeError(
-                        f"Metric '{name}' returned {type(result).__name__}, "
-                        f"expected float or list[float]"
+                sig = inspect.signature(func)
+                params = list(sig.parameters.values())
+
+                # Count required positional parameters (no default, not *args/**kwargs)
+                positional_params = [
+                    p
+                    for p in params
+                    if p.kind
+                    in (
+                        inspect.Parameter.POSITIONAL_ONLY,
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
                     )
-            except TypeError as e:
-                # Re-raise TypeError with context
-                raise ValueError(f"Metric '{name}' failed validation: {e}") from e
-            except Exception as e:
-                raise ValueError(f"Metric '{name}' failed validation with test input: {e}") from e
+                    and p.default is inspect.Parameter.empty
+                ]
+
+                if len(positional_params) < 2:
+                    raise ValueError(
+                        f"Metric '{name}' must accept at least 2 positional arguments "
+                        f"(original_tokens, corrupted_tokens), found {len(positional_params)}"
+                    )
+            except (ValueError, TypeError) as e:
+                if "Metric" in str(e):
+                    raise
+                raise ValueError(f"Metric '{name}' has invalid signature: {e}") from e
 
     def run(self, text: str | Transcript | Sequence[str]) -> AttackResult:
         """Apply corruptions and calculate metrics.
