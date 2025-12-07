@@ -223,6 +223,86 @@ class SeedSweepResult:
             "aggregate_stats": self.aggregate_stats,
         }
 
+    def filter_by_metric(
+        self,
+        metric_name: str,
+        *,
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> dict[int, AttackResult]:
+        """Filter per-seed results by metric thresholds.
+
+        Args:
+            metric_name: Name of the metric to filter by.
+            min_value: Minimum metric value (inclusive).
+            max_value: Maximum metric value (inclusive).
+
+        Returns:
+            Dictionary mapping seeds to AttackResults that meet criteria.
+        """
+        results: dict[int, AttackResult] = {}
+        for seed in self.seeds:
+            metrics = self.per_seed_metrics.get(seed, {})
+            value = metrics.get(metric_name)
+            if value is None:
+                continue
+            if min_value is not None and value < min_value:
+                continue
+            if max_value is not None and value > max_value:
+                continue
+            results[seed] = self.per_seed_results[seed]
+        return results
+
+    def export_csv(
+        self,
+        filepath: str,
+        *,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
+        """Export per-seed metrics to CSV.
+
+        Args:
+            filepath: Path to write the CSV file.
+            metrics: Specific metrics to include (None = all).
+        """
+        import csv
+
+        if not self.per_seed_metrics:
+            return
+
+        # Determine metrics to export
+        first_metrics = next(iter(self.per_seed_metrics.values()))
+        if metrics is None:
+            metric_names = list(first_metrics.keys())
+        else:
+            metric_names = list(metrics)
+
+        with open(filepath, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(["seed"] + metric_names)
+            for seed in self.seeds:
+                seed_metrics = self.per_seed_metrics.get(seed, {})
+                row = [seed] + [seed_metrics.get(m, "") for m in metric_names]
+                writer.writerow(row)
+
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with seeds as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        return pd.DataFrame(self.per_seed_metrics).T
+
 
 class SeedSweep:
     """Sweep across multiple seeds to collect aggregate metrics (impure).
@@ -261,12 +341,19 @@ class SeedSweep:
         self,
         text: str,
         seeds: Iterable[int],
+        *,
+        progress_callback: Callable[[list[tuple[int, AttackResult]]], None] | None = None,
+        early_stop: Callable[[int, AttackResult], bool] | None = None,
     ) -> SeedSweepResult:
         """Run the sweep across specified seeds (impure execution).
 
         Args:
             text: Input text to corrupt.
             seeds: Iterable of seed values to test.
+            progress_callback: Optional callback receiving list of (seed, result)
+                pairs collected so far.
+            early_stop: Optional predicate receiving (seed, result). If it returns
+                True, the sweep stops early.
 
         Returns:
             SeedSweepResult with per-seed and aggregate statistics.
@@ -274,6 +361,7 @@ class SeedSweep:
         seeds_list = list(seeds)
         per_seed_results: dict[int, AttackResult] = {}
         per_seed_metrics: dict[int, dict[str, float]] = {}
+        completed: list[tuple[int, AttackResult]] = []
 
         # Impure: run attacks for each seed
         for seed in seeds_list:
@@ -288,16 +376,26 @@ class SeedSweep:
             # Pure: extract scalar metrics
             per_seed_metrics[seed] = extract_scalar_metrics(result.metrics)
 
+            # Track progress
+            completed.append((seed, result))
+            if progress_callback is not None:
+                progress_callback(completed)
+
+            # Check early stopping
+            if early_stop is not None and early_stop(seed, result):
+                break
+
         # Pure: compute aggregate statistics
         aggregate_stats: dict[str, dict[str, float]] = {}
+        completed_seeds = [seed for seed, _ in completed]
         if per_seed_metrics:
             metric_names = list(next(iter(per_seed_metrics.values())).keys())
             for metric_name in metric_names:
-                values = [per_seed_metrics[seed][metric_name] for seed in seeds_list]
+                values = [per_seed_metrics[seed][metric_name] for seed in completed_seeds]
                 aggregate_stats[metric_name] = compute_aggregate_stats(values)
 
         return SeedSweepResult(
-            seeds=seeds_list,
+            seeds=completed_seeds,
             text=text,
             tokenizer_info=self._tokenizer_info,
             per_seed_results=per_seed_results,
@@ -401,6 +499,111 @@ class GridSearchResult:
             "all_points": [{"params": p.params, "metrics": p.metrics} for p in self.points],
         }
 
+    def filter_by_metric(
+        self,
+        metric_name: str,
+        *,
+        min_value: float | None = None,
+        max_value: float | None = None,
+    ) -> list[GridSearchPoint]:
+        """Filter grid points by metric thresholds.
+
+        Args:
+            metric_name: Name of the metric to filter by.
+            min_value: Minimum metric value (inclusive).
+            max_value: Maximum metric value (inclusive).
+
+        Returns:
+            List of GridSearchPoints that meet the criteria.
+        """
+        results: list[GridSearchPoint] = []
+        for point in self.points:
+            value = point.metrics.get(metric_name)
+            if value is None:
+                continue
+            if min_value is not None and value < min_value:
+                continue
+            if max_value is not None and value > max_value:
+                continue
+            results.append(point)
+        return results
+
+    def filter_by_params(self, **param_filters: Any) -> list[GridSearchPoint]:
+        """Filter grid points by parameter values.
+
+        Args:
+            **param_filters: Parameter name=value pairs to match.
+
+        Returns:
+            List of GridSearchPoints matching all filters.
+
+        Example:
+            >>> result.filter_by_params(rate=0.05)
+        """
+        results: list[GridSearchPoint] = []
+        for point in self.points:
+            match = all(point.params.get(name) == value for name, value in param_filters.items())
+            if match:
+                results.append(point)
+        return results
+
+    def export_csv(
+        self,
+        filepath: str,
+        *,
+        include_params: bool = True,
+        metrics: Sequence[str] | None = None,
+    ) -> None:
+        """Export all grid points to CSV.
+
+        Args:
+            filepath: Path to write the CSV file.
+            include_params: Whether to include parameter columns.
+            metrics: Specific metrics to include (None = all).
+        """
+        import csv
+
+        if not self.points:
+            return
+
+        # Determine columns
+        param_names = list(self.param_grid.keys()) if include_params else []
+        first_metrics = self.points[0].metrics
+        if metrics is None:
+            metric_names = list(first_metrics.keys())
+        else:
+            metric_names = list(metrics)
+
+        with open(filepath, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(param_names + metric_names)
+            for point in self.points:
+                param_values = [point.params.get(p, "") for p in param_names]
+                metric_values = [point.metrics.get(m, "") for m in metric_names]
+                writer.writerow(param_values + metric_values)
+
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with parameters and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        rows = []
+        for point in self.points:
+            row = {**point.params, **point.metrics}
+            rows.append(row)
+        return pd.DataFrame(rows)
+
 
 class GridSearch:
     """Search across parameter combinations (impure orchestrator).
@@ -454,6 +657,8 @@ class GridSearch:
         *,
         rank_by: str | None = "normalized_edit_distance",
         minimize: bool = True,
+        progress_callback: Callable[[list[GridSearchPoint]], None] | None = None,
+        early_stop: Callable[[GridSearchPoint], bool] | None = None,
     ) -> GridSearchResult:
         """Run grid search over all combinations (impure execution).
 
@@ -461,6 +666,10 @@ class GridSearch:
             text: Input text to corrupt.
             rank_by: Metric name to rank by (None for no ranking).
             minimize: If True, lower metric values are better.
+            progress_callback: Optional callback receiving list of evaluated
+                GridSearchPoints so far.
+            early_stop: Optional predicate receiving a GridSearchPoint. If it
+                returns True, the search stops early.
 
         Returns:
             GridSearchResult with all points and best one.
@@ -485,13 +694,20 @@ class GridSearch:
             # Pure: extract scalar metrics
             metrics_dict = extract_scalar_metrics(result.metrics)
 
-            points.append(
-                GridSearchPoint(
-                    params=combo,
-                    result=result,
-                    metrics=metrics_dict,
-                )
+            point = GridSearchPoint(
+                params=combo,
+                result=result,
+                metrics=metrics_dict,
             )
+            points.append(point)
+
+            # Callback with progress
+            if progress_callback is not None:
+                progress_callback(points)
+
+            # Check early stopping
+            if early_stop is not None and early_stop(point):
+                break
 
         # Pure: find best point
         best_point: GridSearchPoint | None = None
@@ -628,6 +844,46 @@ class TokenizerComparisonResult:
             "metric_comparison": self.metric_comparison,
         }
 
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with tokenizer names as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        data = {entry.tokenizer_name: entry.metrics for entry in self.entries}
+        return pd.DataFrame(data).T
+
+    def export_csv(self, path: str) -> None:
+        """Export comparison results to CSV.
+
+        Args:
+            path: Output file path.
+        """
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not self.entries:
+                return
+
+            # Header: tokenizer_name, metric1, metric2, ...
+            metric_names = list(self.entries[0].metrics.keys())
+            writer.writerow(["tokenizer"] + metric_names)
+
+            for entry in self.entries:
+                row = [entry.tokenizer_name] + [entry.metrics.get(m, 0.0) for m in metric_names]
+                writer.writerow(row)
+
 
 def _extract_output_tokens(
     result: AttackResult,
@@ -756,6 +1012,288 @@ class TokenizerComparison:
         )
 
 
+# ---------------------------------------------------------------------------
+# GlitchlingComparison: Compare Multiple Glitchlings
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GlitchlingComparisonEntry:
+    """Results for a single glitchling in a comparison (pure data class).
+
+    Attributes:
+        name: Identifier for the glitchling.
+        glitchling: The glitchling instance used.
+        result: Full AttackResult for this glitchling.
+        metrics: Extracted scalar metrics.
+    """
+
+    name: str
+    glitchling: "Corruptor"
+    result: AttackResult
+    metrics: dict[str, float]
+
+
+@dataclass
+class GlitchlingComparisonResult:
+    """Results from comparing multiple glitchlings (pure data class).
+
+    Attributes:
+        text: The input text that was corrupted.
+        tokenizer_info: Description of the tokenizer used.
+        entries: List of results per glitchling.
+    """
+
+    text: str
+    tokenizer_info: str
+    entries: list[GlitchlingComparisonEntry]
+
+    @property
+    def metric_comparison(self) -> dict[str, dict[str, float]]:
+        """Get metrics organized by metric name -> glitchling name -> value."""
+        if not self.entries:
+            return {}
+
+        metric_names = list(self.entries[0].metrics.keys())
+        comparison: dict[str, dict[str, float]] = {}
+        for metric_name in metric_names:
+            comparison[metric_name] = {
+                entry.name: entry.metrics.get(metric_name, 0.0) for entry in self.entries
+            }
+        return comparison
+
+    def rank_by(
+        self,
+        metric_name: str,
+        *,
+        minimize: bool = True,
+    ) -> list[GlitchlingComparisonEntry]:
+        """Rank glitchlings by a specific metric.
+
+        Args:
+            metric_name: Metric to rank by.
+            minimize: If True, lower is better.
+
+        Returns:
+            Entries sorted by the metric.
+        """
+        return sorted(
+            self.entries,
+            key=lambda e: e.metrics.get(metric_name, float("inf")),
+            reverse=not minimize,
+        )
+
+    def summary(self, *, show_corrupted: bool = True) -> str:
+        """Generate a human-readable summary (pure formatting)."""
+        lines: list[str] = [
+            "╭─ Glitchling Comparison ─────────────────────────────────╮",
+            f"│ Tokenizer: {self.tokenizer_info:<45} │",
+            f"│ Input: {self.text[:47]:<47} │"
+            if len(self.text) <= 47
+            else f"│ Input: {self.text[:44]}... │",
+            "├──────────────────────────────────────────────────────────┤",
+        ]
+
+        # Metric comparison table
+        if self.entries:
+            metric_names = list(self.entries[0].metrics.keys())
+
+            # Header
+            header = "│ Glitchling"
+            for name in metric_names:
+                short_name = name[:10] if len(name) > 10 else name
+                header += f" │ {short_name:>10}"
+            header += " │"
+            lines.append(header)
+            lines.append("├" + "─" * 58 + "┤")
+
+            # Rows
+            for entry in self.entries:
+                row = f"│ {entry.name:<10}"
+                for metric_name in metric_names:
+                    val = entry.metrics.get(metric_name, 0.0)
+                    row += f" │ {val:>10.4f}"
+                row += " │"
+                lines.append(row)
+
+        if show_corrupted and self.entries:
+            lines.append("├──────────────────────────────────────────────────────────┤")
+            lines.append("│ Corrupted Outputs:                                       │")
+            for entry in self.entries:
+                corrupted = str(entry.result.corrupted)
+                if len(corrupted) > 45:
+                    corrupted = corrupted[:42] + "..."
+                lines.append(f"│   {entry.name}: {corrupted:<43} │")
+
+        lines.append("╰──────────────────────────────────────────────────────────╯")
+        return "\n".join(lines)
+
+    def to_report(self) -> dict[str, object]:
+        """Convert to JSON-serializable dictionary (pure)."""
+        return {
+            "text": self.text,
+            "tokenizer": self.tokenizer_info,
+            "entries": [
+                {
+                    "name": e.name,
+                    "corrupted": e.result.corrupted,
+                    "metrics": e.metrics,
+                }
+                for e in self.entries
+            ],
+            "metric_comparison": self.metric_comparison,
+        }
+
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with glitchling names as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        data = {entry.name: entry.metrics for entry in self.entries}
+        return pd.DataFrame(data).T
+
+    def export_csv(self, path: str) -> None:
+        """Export comparison results to CSV.
+
+        Args:
+            path: Output file path.
+        """
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not self.entries:
+                return
+
+            # Header: glitchling_name, metric1, metric2, ...
+            metric_names = list(self.entries[0].metrics.keys())
+            writer.writerow(["glitchling"] + metric_names)
+
+            for entry in self.entries:
+                row = [entry.name] + [entry.metrics.get(m, 0.0) for m in metric_names]
+                writer.writerow(row)
+
+
+def compare_glitchlings(
+    text: str,
+    glitchlings: Sequence[tuple[str, "Corruptor"]],
+    *,
+    tokenizer: str | Tokenizer | None = None,
+    metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
+    seed: int | None = None,
+) -> GlitchlingComparisonResult:
+    """Compare multiple glitchlings on the same text with the same tokenizer.
+
+    Holds the tokenizer fixed and varies the glitchlings - useful for finding
+    which corruption strategy has the most impact for a specific tokenizer.
+
+    Example:
+        >>> from glitchlings import Typogre, Mim1c, Ekkokin
+        >>> result = compare_glitchlings(
+        ...     "Hello world",
+        ...     [
+        ...         ("typogre", Typogre(rate=0.05)),
+        ...         ("mim1c", Mim1c(rate=0.05)),
+        ...         ("ekkokin", Ekkokin(rate=0.05)),
+        ...     ],
+        ...     tokenizer="o200k_base",
+        ... )
+        >>> print(result.summary())
+        >>> best = result.rank_by("normalized_edit_distance", minimize=False)[0]
+        >>> print(f"Most disruptive: {best.name}")
+
+    Args:
+        text: Input text to corrupt.
+        glitchlings: List of (name, glitchling) pairs to compare.
+        tokenizer: Tokenizer to use (same for all glitchlings).
+        metrics: Custom metrics (defaults to Attack defaults).
+        seed: Seed for reproducibility.
+
+    Returns:
+        GlitchlingComparisonResult with all entries.
+    """
+    resolved_tokenizer = resolve_tokenizer(tokenizer)
+    tokenizer_info = describe_tokenizer(resolved_tokenizer, tokenizer)
+
+    entries: list[GlitchlingComparisonEntry] = []
+    for name, glitchling in glitchlings:
+        attack = Attack(
+            glitchling,
+            tokenizer=resolved_tokenizer,
+            metrics=metrics,
+            seed=seed,
+        )
+        result = attack.run(text)
+        metrics_dict = extract_scalar_metrics(result.metrics)
+
+        entries.append(
+            GlitchlingComparisonEntry(
+                name=name,
+                glitchling=glitchling,
+                result=result,
+                metrics=metrics_dict,
+            )
+        )
+
+    return GlitchlingComparisonResult(
+        text=text,
+        tokenizer_info=tokenizer_info,
+        entries=entries,
+    )
+
+
+def compare_tokenizers(
+    text: str,
+    glitchling: "Corruptor | str | Sequence[str | Corruptor]",
+    tokenizers: Sequence[str | Tokenizer],
+    *,
+    metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
+    seed: int | None = None,
+) -> "TokenizerComparisonResult":
+    """Compare multiple tokenizers on the same corrupted text.
+
+    Holds the glitchling fixed and varies the tokenizers - useful for finding
+    which tokenizer is most affected by a specific corruption strategy.
+
+    Example:
+        >>> from glitchlings import Typogre
+        >>> result = compare_tokenizers(
+        ...     "Hello world",
+        ...     Typogre(rate=0.1),
+        ...     tokenizers=["o200k_base", "cl100k_base"],
+        ... )
+        >>> print(result.summary())
+
+    Args:
+        text: Input text to corrupt.
+        glitchling: Glitchling to apply (same corruption for all tokenizers).
+        tokenizers: List of tokenizer names/instances to compare.
+        metrics: Custom metrics (defaults to Attack defaults).
+        seed: Seed for reproducibility.
+
+    Returns:
+        TokenizerComparisonResult with all entries.
+    """
+    comparison = TokenizerComparison(
+        glitchling,
+        tokenizers=tokenizers,
+        metrics=metrics,
+        seed=seed,
+    )
+    return comparison.run(text)
+
+
 __all__ = [
     # Pure statistical helpers
     "compute_aggregate_stats",
@@ -775,4 +1313,9 @@ __all__ = [
     "TokenizerComparison",
     "TokenizerComparisonResult",
     "TokenizerComparisonEntry",
+    # Comparison functions
+    "compare_glitchlings",
+    "compare_tokenizers",
+    "GlitchlingComparisonResult",
+    "GlitchlingComparisonEntry",
 ]

@@ -168,7 +168,7 @@ PURE_MODULES = [
     SRC_DIR / "conf" / "types.py",
     SRC_DIR / "constants.py",
     # Attack pure modules
-    ATTACK_DIR / "compose.py",
+    ATTACK_DIR / "core_planning.py",
     ATTACK_DIR / "encode.py",
     ATTACK_DIR / "metrics_dispatch.py",
 ]
@@ -183,7 +183,7 @@ PURE_MODULE_NAMES = {
     "glitchlings.conf.types",
     "glitchlings.constants",
     # Attack pure modules
-    "glitchlings.attack.compose",
+    "glitchlings.attack.core_planning",
     "glitchlings.attack.encode",
     "glitchlings.attack.metrics_dispatch",
 }

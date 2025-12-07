@@ -21,8 +21,9 @@ Glitchlings is a Python library (with a Rust acceleration layer) for **determini
 pip install -e .[dev]
 
 # Quality gates (run all before committing)
-ruff check .                                    # Lint
-python -m mypy --config-file pyproject.toml src # Type check
+ruff check src                                  # Lint
+ruff format src                                 # Format
+python -m mypy src                              # Type check
 uv build                                        # Build (including Rust)
 pytest                                          # Tests
 
@@ -224,8 +225,9 @@ All glitchlings must be deterministic given the same seed:
 Run these before every commit:
 
 ```bash
-ruff check .                                     # Lint (must pass)
-python -m mypy --config-file pyproject.toml src  # Type check (must pass)
+ruff check src                                   # Lint (must pass)
+ruff format src                                  # Format (must pass)
+python -m mypy src                               # Type check (must pass)
 uv build                                         # Build (must succeed)
 pytest                                           # Tests (must pass)
 ```

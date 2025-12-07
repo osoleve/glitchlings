@@ -739,6 +739,10 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
         m
     )?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_subsequence_retention, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::entropy_delta, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_entropy_delta, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::merge_split_index, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_merge_split_index, m)?)?;
     m.add("Pipeline", _py.get_type::<Pipeline>())?;
     Ok(())
 }

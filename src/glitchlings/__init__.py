@@ -1,12 +1,17 @@
 from .attack import (
     Attack,
     AttackResult,
+    GlitchlingComparisonEntry,
+    GlitchlingComparisonResult,
     GridSearch,
     GridSearchResult,
+    MetricName,
     SeedSweep,
     SeedSweepResult,
     TokenizerComparison,
     TokenizerComparisonResult,
+    compare_glitchlings,
+    compare_tokenizers,
 )
 from .auggie import Auggie
 from .conf import AttackConfig, build_gaggle, load_attack_config
@@ -50,6 +55,13 @@ __all__ = [
     "GridSearchResult",
     "TokenizerComparison",
     "TokenizerComparisonResult",
+    # Comparison functions
+    "compare_glitchlings",
+    "compare_tokenizers",
+    "GlitchlingComparisonEntry",
+    "GlitchlingComparisonResult",
+    # Metrics
+    "MetricName",
     # Builder
     "Auggie",
     # Glitchlings

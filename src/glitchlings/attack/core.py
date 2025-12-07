@@ -13,9 +13,13 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+import inspect
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    pass  # For forward references in type hints
 
 from ..conf import DEFAULT_ATTACK_SEED
 from ..protocols import Corruptor
@@ -27,7 +31,6 @@ from .core_execution import (
 )
 from .core_planning import (
     plan_attack,
-    plan_comparison,
     plan_result,
 )
 from .encode import describe_tokenizer
@@ -200,42 +203,119 @@ class AttackResult:
 
         return "\n".join(lines)
 
+    # -------------------------------------------------------------------------
+    # Token-Level Analysis
+    # -------------------------------------------------------------------------
 
-@dataclass
-class MultiAttackResult:
-    """Results from comparing multiple tokenizers.
+    def get_metric(self, name: str) -> float | list[float] | None:
+        """Get a specific metric value by name.
 
-    Attributes:
-        results: Mapping from tokenizer name to AttackResult.
-        order: Ordered list of tokenizer names.
-    """
+        Args:
+            name: Metric name (e.g., 'normalized_edit_distance').
 
-    results: dict[str, AttackResult]
-    order: list[str]
+        Returns:
+            Metric value, or None if not found.
+        """
+        return self.metrics.get(name)
 
-    @property
-    def primary(self) -> AttackResult:
-        """Get the primary (first) result."""
-        return self.results[self.order[0]]
+    def get_changed_tokens(self, batch_index: int = 0) -> list[tuple[str, str]]:
+        """Get tokens that changed between original and corrupted.
 
-    def to_report(self) -> dict[str, object]:
-        """Convert to a JSON-serializable dictionary."""
-        return {
-            "tokenizers": list(self.order),
-            "results": {name: self.results[name].to_report() for name in self.order},
-        }
+        Args:
+            batch_index: Which batch item to analyze (0 for single strings).
 
-    def summary(self, *, max_rows: int = 6, max_token_length: int = 24) -> str:
-        """Generate a human-readable comparison summary."""
-        lines: list[str] = []
-        for index, name in enumerate(self.order, start=1):
-            lines.append(f"{index}. {name}")
-            nested = self.results[name].summary(
-                max_rows=max_rows,
-                max_token_length=max_token_length,
+        Returns:
+            List of (original_token, corrupted_token) pairs where they differ.
+            Only includes positions where both tokens exist and are different.
+        """
+        input_batches, output_batches = self._token_batches()
+        if batch_index >= len(input_batches):
+            return []
+
+        input_tokens = input_batches[batch_index]
+        output_tokens = output_batches[batch_index]
+
+        changes: list[tuple[str, str]] = []
+        for i in range(min(len(input_tokens), len(output_tokens))):
+            if input_tokens[i] != output_tokens[i]:
+                changes.append((input_tokens[i], output_tokens[i]))
+        return changes
+
+    def get_mutation_positions(self, batch_index: int = 0) -> list[int]:
+        """Get indices of tokens that were mutated.
+
+        Args:
+            batch_index: Which batch item to analyze (0 for single strings).
+
+        Returns:
+            List of token positions where original != corrupted.
+            Only includes positions where both tokens exist.
+        """
+        input_batches, output_batches = self._token_batches()
+        if batch_index >= len(input_batches):
+            return []
+
+        input_tokens = input_batches[batch_index]
+        output_tokens = output_batches[batch_index]
+
+        positions: list[int] = []
+        for i in range(min(len(input_tokens), len(output_tokens))):
+            if input_tokens[i] != output_tokens[i]:
+                positions.append(i)
+        return positions
+
+    def get_token_alignment(self, batch_index: int = 0) -> list[dict[str, object]]:
+        """Get detailed token-by-token comparison with alignment info.
+
+        Args:
+            batch_index: Which batch item to analyze (0 for single strings).
+
+        Returns:
+            List of alignment entries, each containing:
+            - index: Token position
+            - original: Original token (empty string if added)
+            - corrupted: Corrupted token (empty string if removed)
+            - changed: Whether the token changed
+            - op: Operation type ('=' unchanged, '!' modified, '+' added, '-' removed)
+        """
+        input_batches, output_batches = self._token_batches()
+        if batch_index >= len(input_batches):
+            return []
+
+        input_tokens = input_batches[batch_index]
+        output_tokens = output_batches[batch_index]
+
+        alignment: list[dict[str, object]] = []
+        max_len = max(len(input_tokens), len(output_tokens))
+
+        for i in range(max_len):
+            orig = input_tokens[i] if i < len(input_tokens) else ""
+            corr = output_tokens[i] if i < len(output_tokens) else ""
+
+            if i >= len(input_tokens):
+                op = "+"
+                changed = True
+            elif i >= len(output_tokens):
+                op = "-"
+                changed = True
+            elif orig == corr:
+                op = "="
+                changed = False
+            else:
+                op = "!"
+                changed = True
+
+            alignment.append(
+                {
+                    "index": i,
+                    "original": orig,
+                    "corrupted": corr,
+                    "changed": changed,
+                    "op": op,
+                }
             )
-            lines.extend(f"   {line}" for line in nested.splitlines())
-        return "\n".join(lines)
+
+        return alignment
 
 
 # ---------------------------------------------------------------------------
@@ -304,6 +384,48 @@ class Attack:
         else:
             self.metrics = dict(metrics)
 
+        # Validate custom metrics have correct signature
+        self._validate_metrics()
+
+    def _validate_metrics(self) -> None:
+        """Validate that metric functions have correct signatures.
+
+        Uses signature inspection to avoid executing metrics (which may have
+        side effects).
+
+        Raises:
+            ValueError: If a metric function has an invalid signature.
+        """
+        for name, func in self.metrics.items():
+            if not callable(func):
+                raise ValueError(f"Metric '{name}' is not callable")
+
+            try:
+                sig = inspect.signature(func)
+                params = list(sig.parameters.values())
+
+                # Count required positional parameters (no default, not *args/**kwargs)
+                positional_params = [
+                    p
+                    for p in params
+                    if p.kind
+                    in (
+                        inspect.Parameter.POSITIONAL_ONLY,
+                        inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                    )
+                    and p.default is inspect.Parameter.empty
+                ]
+
+                if len(positional_params) < 2:
+                    raise ValueError(
+                        f"Metric '{name}' must accept at least 2 positional arguments "
+                        f"(original_tokens, corrupted_tokens), found {len(positional_params)}"
+                    )
+            except (ValueError, TypeError) as e:
+                if "Metric" in str(e):
+                    raise
+                raise ValueError(f"Metric '{name}' has invalid signature: {e}") from e
+
     def run(self, text: str | Transcript | Sequence[str]) -> AttackResult:
         """Apply corruptions and calculate metrics.
 
@@ -340,74 +462,32 @@ class Attack:
 
         return AttackResult(**fields)  # type: ignore[arg-type]
 
-    def compare(
+    def run_batch(
         self,
-        text: str | Transcript | Sequence[str],
+        texts: Sequence[str | Transcript],
         *,
-        tokenizers: Sequence[str | Tokenizer],
-        include_self: bool = True,
-    ) -> MultiAttackResult:
-        """Run the attack across multiple tokenizers for comparison.
-
-        The same corruption is applied once, then tokenized with each
-        tokenizer to compare token-level impacts.
+        progress_callback: Callable[[list[AttackResult]], None] | None = None,
+    ) -> list[AttackResult]:
+        """Run attack on multiple texts, returning results in order.
 
         Args:
-            text: Input text to corrupt and compare.
-            tokenizers: Additional tokenizer names/instances to compare.
-            include_self: Whether to include this Attack's tokenizer.
+            texts: List of inputs to process.
+            progress_callback: Optional callback called after each result,
+                receiving the list of results so far.
 
         Returns:
-            MultiAttackResult with results for each tokenizer.
-
-        Raises:
-            ValueError: If no tokenizers would be compared.
+            List of AttackResult objects in input order.
         """
-        # Pure: plan the comparison
-        comparison_plan = plan_comparison(tokenizers, include_self=include_self)
-
-        results: dict[str, AttackResult] = {}
-        order: list[str] = []
-        seen: set[str] = set()
-
-        def record(result: AttackResult) -> None:
-            if result.tokenizer_info in seen:
-                return
-            seen.add(result.tokenizer_info)
-            order.append(result.tokenizer_info)
-            results[result.tokenizer_info] = result
-
-        runner_seed = self.glitchlings.seed
-        transcript_target = getattr(self.glitchlings, "transcript_target", None)
-
-        # Include self if requested
-        if comparison_plan.include_self:
-            baseline = Attack(
-                self.glitchlings,
-                tokenizer=self.tokenizer,
-                metrics=self.metrics,
-                seed=runner_seed,
-                transcript_target=transcript_target,
-            ).run(text)
-            record(baseline)
-
-        # Run with each comparison tokenizer
-        for spec in comparison_plan.tokenizer_specs:
-            resolved_tokenizer = resolve_tokenizer(spec)
-            comparator = Attack(
-                self.glitchlings,
-                tokenizer=resolved_tokenizer,
-                metrics=self.metrics,
-                seed=runner_seed,
-                transcript_target=transcript_target,
-            )
-            record(comparator.run(text))
-
-        return MultiAttackResult(results=results, order=order)
+        results: list[AttackResult] = []
+        for text in texts:
+            result = self.run(text)
+            results.append(result)
+            if progress_callback is not None:
+                progress_callback(results)
+        return results
 
 
 __all__ = [
     "Attack",
     "AttackResult",
-    "MultiAttackResult",
 ]

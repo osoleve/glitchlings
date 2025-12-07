@@ -125,7 +125,7 @@ def plan_attack(text: str | Transcript | Sequence[str]) -> AttackPlan:
         )
 
     if is_transcript_like(text):
-        contents = extract_transcript_contents_pure(text)  # type: ignore[arg-type]
+        contents = extract_transcript_contents(text)  # type: ignore[arg-type]
         return AttackPlan(
             input_type="transcript",
             original_contents=contents,
@@ -143,7 +143,7 @@ def plan_attack(text: str | Transcript | Sequence[str]) -> AttackPlan:
     raise TypeError(message)
 
 
-def extract_transcript_contents_pure(transcript: Sequence[Mapping[str, Any]]) -> list[str]:
+def extract_transcript_contents(transcript: Sequence[Mapping[str, Any]]) -> list[str]:
     """Extract content strings from a transcript (pure version).
 
     Args:
@@ -286,6 +286,96 @@ def _format_metrics_for_batch(
 
 
 # ---------------------------------------------------------------------------
+# Batch Adapter (Pure)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True, slots=True)
+class BatchAdapter:
+    """Adapter that normalizes all inputs to batch format internally.
+
+    This adapter wraps single strings as batches of size 1, allowing
+    uniform processing throughout the attack pipeline. It tracks whether
+    to unwrap results back to single format at output time.
+
+    Attributes:
+        contents: List of content strings (always a list, even for single).
+        unwrap_single: True if the original input was a single string.
+        input_type: Original input type ("string", "batch", "transcript").
+    """
+
+    contents: list[str]
+    unwrap_single: bool
+    input_type: str
+
+    @classmethod
+    def from_plan(cls, plan: "AttackPlan") -> "BatchAdapter":
+        """Create a BatchAdapter from an AttackPlan.
+
+        Args:
+            plan: The attack execution plan.
+
+        Returns:
+            BatchAdapter configured for the plan's input type.
+        """
+        return cls(
+            contents=plan.original_contents,
+            unwrap_single=plan.input_type == "string",
+            input_type=plan.input_type,
+        )
+
+    def unwrap_tokens(
+        self,
+        tokens: list[list[str]],
+    ) -> list[str] | list[list[str]]:
+        """Unwrap batched tokens to match original input format.
+
+        Args:
+            tokens: Batched token lists (2D).
+
+        Returns:
+            1D list for single input, 2D list for batch input.
+        """
+        if self.unwrap_single and tokens:
+            return tokens[0]
+        return tokens
+
+    def unwrap_token_ids(
+        self,
+        token_ids: list[list[int]],
+    ) -> list[int] | list[list[int]]:
+        """Unwrap batched token IDs to match original input format.
+
+        Args:
+            token_ids: Batched token ID lists (2D).
+
+        Returns:
+            1D list for single input, 2D list for batch input.
+        """
+        if self.unwrap_single and token_ids:
+            return token_ids[0]
+        return token_ids
+
+    def unwrap_metrics(
+        self,
+        metrics: dict[str, list[float]],
+    ) -> dict[str, float | list[float]]:
+        """Unwrap batched metrics to match original input format.
+
+        Args:
+            metrics: Batched metrics (values are lists).
+
+        Returns:
+            Scalar metrics for single input, list metrics for batch.
+        """
+        if self.unwrap_single:
+            return {name: values[0] if values else 0.0 for name, values in metrics.items()}
+        # Explicitly construct new dict to satisfy type checker (dict invariance)
+        result: dict[str, float | list[float]] = {name: values for name, values in metrics.items()}
+        return result
+
+
+# ---------------------------------------------------------------------------
 # Result Assembly (Pure)
 # ---------------------------------------------------------------------------
 
@@ -294,13 +384,17 @@ def _format_metrics_for_batch(
 class EncodedData:
     """Encoded token data for result assembly.
 
+    Tokens and IDs are always stored in batch format (2D lists)
+    internally. Use BatchAdapter.unwrap_* methods to convert to
+    the appropriate output format.
+
     Attributes:
-        tokens: Token strings (flat or batched).
-        token_ids: Token IDs (flat or batched).
+        tokens: Token strings as batched 2D list.
+        token_ids: Token IDs as batched 2D list.
     """
 
-    tokens: list[str] | list[list[str]]
-    token_ids: list[int] | list[list[int]]
+    tokens: list[list[str]]
+    token_ids: list[list[int]]
 
 
 def assemble_single_result_fields(
@@ -408,6 +502,46 @@ def assemble_empty_result_fields(
     }
 
 
+def assemble_result_fields(
+    *,
+    adapter: BatchAdapter,
+    original: str | Transcript | Sequence[str],
+    corrupted: str | Transcript | Sequence[str],
+    input_encoded: EncodedData,
+    output_encoded: EncodedData,
+    tokenizer_info: str,
+    metrics: dict[str, list[float]],
+) -> dict[str, object]:
+    """Assemble AttackResult fields using batch adapter for uniform handling.
+
+    This function uses the BatchAdapter to handle both single and batch
+    inputs uniformly. Internally, all data is processed as batches, then
+    unwrapped appropriately based on the original input type.
+
+    Args:
+        adapter: BatchAdapter tracking input type.
+        original: Original input container.
+        corrupted: Corrupted output container.
+        input_encoded: Encoded original tokens (always batched internally).
+        output_encoded: Encoded corrupted tokens (always batched internally).
+        tokenizer_info: Tokenizer description.
+        metrics: Computed metrics (always batched as lists internally).
+
+    Returns:
+        Dictionary suitable for AttackResult construction.
+    """
+    return {
+        "original": original,
+        "corrupted": corrupted,
+        "input_tokens": adapter.unwrap_tokens(input_encoded.tokens),
+        "output_tokens": adapter.unwrap_tokens(output_encoded.tokens),
+        "input_token_ids": adapter.unwrap_token_ids(input_encoded.token_ids),
+        "output_token_ids": adapter.unwrap_token_ids(output_encoded.token_ids),
+        "tokenizer_info": tokenizer_info,
+        "metrics": adapter.unwrap_metrics(metrics),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Token Count Helpers (Pure)
 # ---------------------------------------------------------------------------
@@ -452,58 +586,6 @@ def format_token_count_delta(input_count: int, output_count: int) -> str:
     return f"{input_count} -> {output_count} ({delta:+d})"
 
 
-# ---------------------------------------------------------------------------
-# Comparison Planning
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class ComparisonPlan:
-    """Plan for comparing multiple tokenizers.
-
-    Attributes:
-        tokenizer_specs: List of tokenizer specifications to compare.
-        include_self: Whether to include the base tokenizer.
-    """
-
-    tokenizer_specs: tuple[Any, ...]
-    include_self: bool
-
-    @property
-    def total_comparisons(self) -> int:
-        """Total number of tokenizers to compare."""
-        count = len(self.tokenizer_specs)
-        if self.include_self:
-            count += 1
-        return count
-
-
-def plan_comparison(
-    tokenizer_specs: Sequence[Any],
-    *,
-    include_self: bool = True,
-) -> ComparisonPlan:
-    """Create a plan for tokenizer comparison.
-
-    Args:
-        tokenizer_specs: Tokenizer names or instances to compare.
-        include_self: Whether to include the base tokenizer.
-
-    Returns:
-        ComparisonPlan for the comparison.
-
-    Raises:
-        ValueError: If no tokenizers would be compared.
-    """
-    if not tokenizer_specs and not include_self:
-        raise ValueError("At least one tokenizer must be provided for comparison.")
-
-    return ComparisonPlan(
-        tokenizer_specs=tuple(tokenizer_specs),
-        include_self=include_self,
-    )
-
-
 __all__ = [
     # Type guards
     "is_string_batch",
@@ -511,20 +593,20 @@ __all__ = [
     # Attack planning
     "AttackPlan",
     "plan_attack",
-    "extract_transcript_contents_pure",
+    "extract_transcript_contents",
     # Result planning
     "MetricPlan",
     "ResultPlan",
     "plan_result",
+    # Batch adapter
+    "BatchAdapter",
     # Result assembly
     "EncodedData",
+    "assemble_result_fields",
     "assemble_single_result_fields",
     "assemble_batch_result_fields",
     "assemble_empty_result_fields",
     # Token counts
     "compute_token_counts",
     "format_token_count_delta",
-    # Comparison planning
-    "ComparisonPlan",
-    "plan_comparison",
 ]

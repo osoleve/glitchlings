@@ -7,7 +7,7 @@ Pure functions tested:
 - zoo/transforms.py: Text tokenization and transformation utilities
 - zoo/validation.py: Parameter validation and normalization
 - zoo/rng.py: Seed derivation (the pure subset)
-- attack/compose.py: Result assembly functions
+- attack/core_planning.py: Result assembly and formatting functions
 - attack/metrics_dispatch.py: Batch detection logic
 """
 
@@ -20,13 +20,19 @@ import pytest
 from hypothesis import assume, given
 from hypothesis import strategies as st
 
-from glitchlings.attack.compose import (
-    build_empty_metrics,
+from glitchlings.attack.core_planning import (
+    _format_metrics_for_batch as format_metrics_for_batch,
+    _format_metrics_for_single as format_metrics_for_single,
     extract_transcript_contents,
-    format_metrics_for_batch,
-    format_metrics_for_single,
 )
 from glitchlings.attack.metrics_dispatch import is_batch, validate_batch_consistency
+
+
+def build_empty_metrics(metric_names: list[str]) -> dict[str, list[float]]:
+    """Create empty metric results for empty transcript input."""
+    return {name: [] for name in metric_names}
+
+
 from glitchlings.zoo.rng import SEED_MASK, derive_seed
 
 # ---------------------------------------------------------------------------
