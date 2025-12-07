@@ -291,14 +291,14 @@ Compares multiple corruption strategies on the same text with the same tokenizer
 ### Basic Usage
 
 ```python
-from glitchlings import Typogre, Mim1c, Ekkokin, compare_glitchlings
+from glitchlings import Typogre, Mim1c, Wherewolf, compare_glitchlings
 
 result = compare_glitchlings(
     "Hello world",
     [
         ("typogre", Typogre(rate=0.05)),
         ("confusables", Mim1c(rate=0.05)),
-        ("homophones", Ekkokin(rate=0.05)),
+        ("homophones", Wherewolf(rate=0.05)),
     ],
     tokenizer="o200k_base",
 )
@@ -325,7 +325,7 @@ Different glitchlings affect metrics differently:
 |-----------------|----------------|
 | **Typogre** (typos) | Moderate NED, high MSI (fragments tokens) |
 | **Mim1c** (Unicode) | Low NED if confusables map to same tokens, otherwise high |
-| **Ekkokin** (homophones) | Variable—depends on tokenizer vocabulary |
+| **Wherewolf** (homophones) | Variable—depends on tokenizer vocabulary |
 | **Rushmore** (word shuffle) | High NED, low SR (reordering destroys sequence) |
 
 ```python
@@ -397,7 +397,7 @@ The tools work well together for comprehensive analysis:
 
 ```python
 from glitchlings import (
-    Typogre, Mim1c, Ekkokin,
+    Typogre, Mim1c, Wherewolf,
     SeedSweep, GridSearch,
     compare_glitchlings, compare_tokenizers,
 )
@@ -410,7 +410,7 @@ glitch_comparison = compare_glitchlings(
     [
         ("typogre", Typogre(rate=0.1)),
         ("mim1c", Mim1c(rate=0.1)),
-        ("ekkokin", Ekkokin(rate=0.1)),
+        ("wherewolf", Wherewolf(rate=0.1)),
     ],
     tokenizer="cl100k_base",
 )

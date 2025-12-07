@@ -1,7 +1,7 @@
 import pytest
 
 from glitchlings import (
-    ekkokin,
+    wherewolf,
     hokey,
     mim1c,
     redactyl,
@@ -28,7 +28,7 @@ from glitchlings.zoo.scannequin import Scannequin
         pytest.param(scannequin, "type", id="scannequin"),
         pytest.param(zeedub, "type", id="zeedub"),
         pytest.param(hokey, "type", id="hokey"),
-        pytest.param(ekkokin, "type", id="ekkokin"),
+        pytest.param(wherewolf, "type", id="wherewolf"),
     ],
 )
 def test_all_glitchlings_emit_pipeline_descriptors(glitchling, required_field):

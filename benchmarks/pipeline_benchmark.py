@@ -187,8 +187,8 @@ def _mim1c_only_descriptors() -> list[Descriptor]:
     return [{"name": "Mim1c", "operation": {"type": "mimic", "rate": 0.05}}]
 
 
-def _ekkokin_only_descriptors() -> list[Descriptor]:
-    return [{"name": "Ekkokin", "operation": {"type": "ekkokin", "rate": 0.05}}]
+def _wherewolf_only_descriptors() -> list[Descriptor]:
+    return [{"name": "Wherewolf", "operation": {"type": "wherewolf", "rate": 0.05}}]
 
 
 def _hokey_only_descriptors() -> list[Descriptor]:
@@ -269,7 +269,7 @@ SCENARIOS: dict[str, Callable[[], list[Descriptor]]] = {
     "scannequin_only": _scannequin_only_descriptors,
     "zeedub_only": _zeedub_only_descriptors,
     "mim1c_only": _mim1c_only_descriptors,
-    "ekkokin_only": _ekkokin_only_descriptors,
+    "wherewolf_only": _wherewolf_only_descriptors,
     "hokey_only": _hokey_only_descriptors,
     "jargoyle_only": _jargoyle_only_descriptors,
     # Pedant evolution scenarios
@@ -294,7 +294,7 @@ INDIVIDUAL_GLITCHLING_SCENARIOS = {
     "scannequin_only",
     "zeedub_only",
     "mim1c_only",
-    "ekkokin_only",
+    "wherewolf_only",
     "hokey_only",
     "jargoyle_only",
     "pedant_whomst",
@@ -317,7 +317,7 @@ INDIVIDUAL_DISPLAY_NAMES = {
     "scannequin_only": "Scannequin",
     "zeedub_only": "Zeedub",
     "mim1c_only": "Mim1c",
-    "ekkokin_only": "Ekkokin",
+    "wherewolf_only": "Wherewolf",
     "hokey_only": "Hokey",
     "jargoyle_only": "Jargoyle",
     "pedant_whomst": "Whomst",
@@ -333,7 +333,7 @@ INDIVIDUAL_DISPLAY_NAMES = {
 # Grouped display order for individual glitchlings
 INDIVIDUAL_GROUPS: list[tuple[str, list[str]]] = [
     ("Character-Level Mutations", ["typogre_only", "mim1c_only", "zeedub_only", "scannequin_only"]),
-    ("Word-Level Operations", ["redactyl_only", "ekkokin_only", "hokey_only", "jargoyle_only"]),
+    ("Word-Level Operations", ["redactyl_only", "wherewolf_only", "hokey_only", "jargoyle_only"]),
     ("Rushmore Variants", ["rushmore_delete", "rushmore_duplicate", "rushmore_swap"]),
     (
         "Pedant Evolutions",

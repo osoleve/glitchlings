@@ -18,7 +18,6 @@ from .conf import AttackConfig, build_gaggle, load_attack_config
 from .util import SAMPLE_TEXT
 from .util.transcripts import TranscriptTarget
 from .zoo import (
-    Ekkokin,
     Gaggle,
     Glitchling,
     Hokey,
@@ -30,8 +29,8 @@ from .zoo import (
     RushmoreMode,
     Scannequin,
     Typogre,
+    Wherewolf,
     Zeedub,
-    ekkokin,
     hokey,
     jargoyle,
     mim1c,
@@ -42,6 +41,7 @@ from .zoo import (
     scannequin,
     summon,
     typogre,
+    wherewolf,
     zeedub,
 )
 
@@ -71,8 +71,8 @@ __all__ = [
     "mim1c",
     "Jargoyle",
     "jargoyle",
-    "Ekkokin",
-    "ekkokin",
+    "Wherewolf",
+    "wherewolf",
     "Hokey",
     "hokey",
     "Pedant",

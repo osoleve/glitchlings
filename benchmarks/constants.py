@@ -107,11 +107,11 @@ OPERATION_MODULES: Dict[str, str] = {
     "typo": "Typogre",
     "hokey": "Hokey",
     "pedant": "Pedant",
-    "ekkokin": "Ekkokin",
+    "wherewolf": "Wherewolf",
     "rushmore_combo": "Rushmore",
     "homoglyph": "Mim1c",
     "synonym": "Jargoyle",
-    "homophone": "Ekkokin",
+    "homophone": "Wherewolf",
 }
 
 
@@ -262,7 +262,7 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "scannequin_only": "Scannequin-only benchmark for OCR confusion injection.",
     "zeedub_only": "Zeedub-only benchmark for zero-width character injection.",
     "mim1c_only": "Mim1c-only benchmark for homoglyph substitution.",
-    "ekkokin_only": "Ekkokin-only benchmark for homophone substitution.",
+    "wherewolf_only": "Wherewolf-only benchmark for homophone substitution.",
     "hokey_only": "Hokey-only benchmark for expressive lengthening.",
     "jargoyle_only": "Jargoyle-only benchmark for dictionary-based synonym substitution.",
     # Pedant evolution scenarios

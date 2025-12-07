@@ -101,7 +101,7 @@ class TestMim1cValidation:
             normalise_mim1c_banned(123)
 
 
-class TestEkkokinValidation:
+class TestWherewolfValidation:
     """Tests for homophone normalization."""
 
     def test_normalise_homophone_group_basic(self) -> None:

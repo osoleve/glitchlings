@@ -71,10 +71,10 @@ pub fn ocr_automaton() -> &'static AhoCorasick {
     &OCR_AUTOMATON
 }
 
-/// Parsed homophone sets for the Ekkokin glitchling.
-pub static EKKOKIN_HOMOPHONE_SETS: Lazy<Vec<Vec<String>>> = Lazy::new(|| {
+/// Parsed homophone sets for the Wherewolf glitchling.
+pub static WHEREWOLF_HOMOPHONE_SETS: Lazy<Vec<Vec<String>>> = Lazy::new(|| {
     serde_json::from_str(RAW_EKKOKIN_HOMOPHONES)
-        .expect("Ekkokin homophone table should be valid JSON")
+        .expect("Wherewolf homophone table should be valid JSON")
 });
 
 /// Returns the pre-sorted OCR confusion table.
@@ -83,9 +83,9 @@ pub fn confusion_table() -> &'static [(&'static str, &'static [&'static str])] {
     OCR_CONFUSION_TABLE.as_slice()
 }
 
-/// Returns the parsed homophone sets backing the Ekkokin glitchling.
-pub fn ekkokin_homophone_sets() -> &'static [Vec<String>] {
-    EKKOKIN_HOMOPHONE_SETS.as_slice()
+/// Returns the parsed homophone sets backing the Wherewolf glitchling.
+pub fn wherewolf_homophone_sets() -> &'static [Vec<String>] {
+    WHEREWOLF_HOMOPHONE_SETS.as_slice()
 }
 
 /// Returns the Apostrofae replacement pairs keyed by the straight glyph.

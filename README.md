@@ -71,13 +71,13 @@ print(auggie(SAMPLE_TEXT))
 **You're more than welcome to summon them directly, if you're feeling brave:**
 
 ```python
-from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Ekkokin
+from glitchlings import Gaggle, SAMPLE_TEXT, Typogre, Mim1c, Wherewolf
 
 gaggle = Gaggle(
     [
         Typogre(rate=0.015),
         Mim1c(rate=0.01),
-        Ekkokin(rate=0.02),
+        Wherewolf(rate=0.02),
     ],
     seed=404
 )
@@ -135,7 +135,10 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 # Pipe text straight into the CLI for an on-the-fly corruption.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
-# Emit a structured Attack report with tokens, token IDs, and metrics.
+# Emit an Attack summary with metrics and counts.
+glitchlings --attack json --sample
+
+# Emit a full Attack report with tokens, token IDs, and metrics.
 glitchlings --report json --sample
 ```
 
@@ -205,11 +208,11 @@ _Watch your step around here._
 
 > _**Invisible Ink.**_ Zeedub slips zero-width codepoints between non-space character pairs, forcing models to reason about text whose visible form masks hidden glyphs.
 
-### Ekkokin
+### Wherewolf
 
 _Did you hear what I heard?_
 
-> _**Echo Chamber.**_ Ekkokin swaps words with curated homophones so the text still sounds right while the spelling drifts. Groups are normalised to prevent duplicates and casing is preserved when substitutions fire.
+> _**Echo Chamber.**_ Wherewolf swaps words with curated homophones so the text still sounds right while the spelling drifts. Groups are normalised to prevent duplicates and casing is preserved when substitutions fire.
 
 ### Jargoyle
 

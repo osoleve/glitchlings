@@ -1199,13 +1199,13 @@ def compare_glitchlings(
     which corruption strategy has the most impact for a specific tokenizer.
 
     Example:
-        >>> from glitchlings import Typogre, Mim1c, Ekkokin
+        >>> from glitchlings import Typogre, Mim1c, Wherewolf
         >>> result = compare_glitchlings(
         ...     "Hello world",
         ...     [
         ...         ("typogre", Typogre(rate=0.05)),
         ...         ("mim1c", Mim1c(rate=0.05)),
-        ...         ("ekkokin", Ekkokin(rate=0.05)),
+        ...         ("wherewolf", Wherewolf(rate=0.05)),
         ...     ],
         ...     tokenizer="o200k_base",
         ... )

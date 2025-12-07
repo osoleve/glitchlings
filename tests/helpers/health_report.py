@@ -80,7 +80,7 @@ class TestAnalyzer(ast.NodeVisitor):
             "jargoyle",
             "scannequin",
             "zeedub",
-            "ekkokin",
+            "wherewolf",
             "hokey",
             "spectroll",
             "pedant",

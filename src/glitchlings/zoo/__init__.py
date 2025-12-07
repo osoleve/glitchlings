@@ -4,7 +4,6 @@ import ast
 from typing import Any
 
 from .core import Gaggle, Glitchling, plan_glitchlings
-from .ekkokin import Ekkokin, ekkokin
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
 from .mim1c import Mim1c, mim1c
@@ -13,6 +12,7 @@ from .redactyl import Redactyl, redactyl
 from .rushmore import Rushmore, RushmoreMode, rushmore
 from .scannequin import Scannequin, scannequin
 from .typogre import Typogre, typogre
+from .wherewolf import Wherewolf, wherewolf
 from .zeedub import Zeedub, zeedub
 
 __all__ = [
@@ -22,8 +22,8 @@ __all__ = [
     "mim1c",
     "Jargoyle",
     "jargoyle",
-    "Ekkokin",
-    "ekkokin",
+    "Wherewolf",
+    "wherewolf",
     "Hokey",
     "hokey",
     "Rushmore",
@@ -51,7 +51,7 @@ _BUILTIN_GLITCHLING_LIST: list[Glitchling] = [
     typogre,
     hokey,
     mim1c,
-    ekkokin,
+    wherewolf,
     pedant,
     jargoyle,
     rushmore,
@@ -66,7 +66,7 @@ BUILTIN_GLITCHLINGS: dict[str, Glitchling] = {
 
 _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     typogre.name.lower(): Typogre,
-    ekkokin.name.lower(): Ekkokin,
+    wherewolf.name.lower(): Wherewolf,
     hokey.name.lower(): Hokey,
     mim1c.name.lower(): Mim1c,
     pedant.name.lower(): Pedant,
@@ -77,7 +77,7 @@ _BUILTIN_GLITCHLING_TYPES: dict[str, type[Glitchling]] = {
     zeedub.name.lower(): Zeedub,
 }
 
-DEFAULT_GLITCHLING_NAMES: list[str] = list(BUILTIN_GLITCHLINGS.keys())
+DEFAULT_GLITCHLING_NAMES: list[str] = ["typogre", "scannequin"]
 
 
 def parse_glitchling_spec(specification: str) -> Glitchling:

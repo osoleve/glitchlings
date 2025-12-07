@@ -11,7 +11,7 @@ from functools import partial
 import pytest
 
 from glitchlings import (
-    ekkokin,
+    wherewolf,
     hokey,
     jargoyle,
     mim1c,
@@ -42,7 +42,7 @@ from tests.helpers.assertions import assert_deterministic
         pytest.param(scannequin, {"seed": 42, "rate": 0.03}, id="scannequin"),
         pytest.param(zeedub, {"seed": 42, "rate": 0.03}, id="zeedub"),
         pytest.param(hokey, {"seed": 42, "rate": 0.6}, id="hokey"),
-        pytest.param(ekkokin, {"seed": 42, "rate": 0.05}, id="ekkokin"),
+        pytest.param(wherewolf, {"seed": 42, "rate": 0.05}, id="wherewolf"),
     ],
 )
 def test_glitchling_is_deterministic(glitchling, params, sample_text):

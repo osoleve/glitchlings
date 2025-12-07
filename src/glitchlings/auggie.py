@@ -6,7 +6,6 @@ from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
 from .zoo.core import Gaggle, Glitchling
-from .zoo.ekkokin import Ekkokin
 from .zoo.hokey import Hokey
 from .zoo.jargoyle import (
     DEFAULT_LEXEMES,
@@ -21,6 +20,7 @@ from .zoo.redactyl import FULL_BLOCK, Redactyl
 from .zoo.rushmore import Rushmore, RushmoreMode
 from .zoo.scannequin import Scannequin
 from .zoo.typogre import Typogre
+from .zoo.wherewolf import Wherewolf
 from .zoo.zeedub import Zeedub
 
 
@@ -126,9 +126,9 @@ class Auggie(Gaggle):
         rate: float | None = None,
         seed: int | None = None,
     ) -> "Auggie":
-        """Add :class:`Ekkokin` to swap words for homophones."""
+        """Add :class:`Wherewolf` to swap words for homophones."""
 
-        return self._enqueue(Ekkokin(rate=rate, seed=seed))
+        return self._enqueue(Wherewolf(rate=rate, seed=seed))
 
     def pedantry(
         self,

@@ -7,8 +7,8 @@ import random
 from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 
 from glitchlings.assets import load_homophone_groups
-from glitchlings.constants import DEFAULT_EKKOKIN_RATE, DEFAULT_EKKOKIN_WEIGHTING
-from glitchlings.internal.rust_ffi import ekkokin_homophones_rust, resolve_seed
+from glitchlings.constants import DEFAULT_WHEREWOLF_RATE, DEFAULT_WHEREWOLF_WEIGHTING
+from glitchlings.internal.rust_ffi import resolve_seed, wherewolf_homophones_rust
 
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -63,19 +63,19 @@ def substitute_homophones(
 ) -> str:
     """Replace words in ``text`` with curated homophones."""
 
-    effective_rate = DEFAULT_EKKOKIN_RATE if rate is None else rate
+    effective_rate = DEFAULT_WHEREWOLF_RATE if rate is None else rate
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
 
-    return ekkokin_homophones_rust(
+    return wherewolf_homophones_rust(
         text,
         clamped_rate,
-        DEFAULT_EKKOKIN_WEIGHTING,
+        DEFAULT_WHEREWOLF_WEIGHTING,
         resolve_seed(seed, rng),
     )
 
 
-class Ekkokin(_GlitchlingBase):
+class Wherewolf(_GlitchlingBase):
     """Glitchling that swaps words for curated homophones."""
 
     flavor = "Homophonic idiolectician. There leased favourite flavour? Orange."
@@ -87,9 +87,9 @@ class Ekkokin(_GlitchlingBase):
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:
-        effective_rate = DEFAULT_EKKOKIN_RATE if rate is None else rate
+        effective_rate = DEFAULT_WHEREWOLF_RATE if rate is None else rate
         super().__init__(
-            name="Ekkokin",
+            name="Wherewolf",
             corruption_function=substitute_homophones,
             scope=AttackWave.WORD,
             order=AttackOrder.EARLY,
@@ -102,19 +102,19 @@ class Ekkokin(_GlitchlingBase):
 
 def _build_pipeline_descriptor(glitch: _GlitchlingBase) -> dict[str, object]:
     rate_value = glitch.kwargs.get("rate")
-    rate = DEFAULT_EKKOKIN_RATE if rate_value is None else float(rate_value)
+    rate = DEFAULT_WHEREWOLF_RATE if rate_value is None else float(rate_value)
     return {
-        "type": "ekkokin",
+        "type": "wherewolf",
         "rate": rate,
-        "weighting": DEFAULT_EKKOKIN_WEIGHTING,
+        "weighting": DEFAULT_WHEREWOLF_WEIGHTING,
     }
 
 
-ekkokin = Ekkokin()
+wherewolf = Wherewolf()
 
 
 __all__ = [
-    "Ekkokin",
-    "ekkokin",
+    "Wherewolf",
+    "wherewolf",
     "substitute_homophones",
 ]

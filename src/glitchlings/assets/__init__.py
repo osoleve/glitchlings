@@ -120,7 +120,7 @@ def hash_asset(name: str) -> str:
 
 @cache
 def load_homophone_groups(name: str = "ekkokin_homophones.json") -> tuple[tuple[str, ...], ...]:
-    """Return the curated homophone sets bundled for the Ekkokin glitchling."""
+    """Return the curated homophone sets bundled for the Wherewolf glitchling."""
 
     data: list[list[str]] = load_json(name)
     return tuple(tuple(group) for group in data)

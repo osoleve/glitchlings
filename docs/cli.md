@@ -26,7 +26,7 @@ echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
    Typogre — scope: Character, order: early
      Hokey — scope: Character, order: first
      Mim1c — scope: Character, order: last
-   Ekkokin — scope: Word, order: early
+ Wherewolf — scope: Word, order: early
     Pedant — scope: Word, order: late
   Jargoyle — scope: Word, order: normal
   Rushmore — scope: Word, order: normal
@@ -39,8 +39,8 @@ Scannequin — scope: Character, order: late
 
 ```text
 usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG] [--report [{json,yaml,yml}]]
-                   [text ...]
+                   [--list] [-c CONFIG] [--attack [{json,yaml,yml}]]
+                   [--report [{json,yaml,yml}]] [text ...]
 
 Summon glitchlings to corrupt text. Provide input text as an argument, via
 --file, or pipe it on stdin.
@@ -66,8 +66,10 @@ options:
   --list                List available glitchlings and exit.
   -c CONFIG, --config CONFIG
                         Load glitchlings from a YAML configuration file.
-  --report [{json,yaml,yml}], --attack [{json,yaml,yml}]
-                        Output a structured Attack report (default: json). Use
-                        --attack as an alias. Includes tokens, token IDs,
-                        metrics, and counts.
+  --attack [{json,yaml,yml}]
+                        Output an Attack summary (default: json). Includes
+                        metrics and counts without full token lists.
+  --report [{json,yaml,yml}]
+                        Output a full Attack report (default: json). Includes
+                        tokens, token IDs, metrics, and counts.
 ```
