@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib
-from typing import Any, Protocol, cast
+from enum import Enum
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 from .metrics_dispatch import TokenBatch, TokenSequence, is_batch, validate_batch_consistency
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class Metric(Protocol):
@@ -93,9 +97,53 @@ def subsequence_retention(
     )
 
 
+# ---------------------------------------------------------------------------
+# MetricName Enum
+# ---------------------------------------------------------------------------
+
+
+class MetricName(str, Enum):
+    """Built-in metric names.
+
+    Use these instead of string literals to avoid typos and enable IDE completion.
+
+    Example:
+        >>> attack = Attack(Typogre(), metrics={MetricName.NED: normalized_edit_distance})
+        >>> # or get all defaults:
+        >>> attack = Attack(Typogre(), metrics=MetricName.defaults())
+    """
+
+    JSD = "jensen_shannon_divergence"
+    NED = "normalized_edit_distance"
+    SR = "subsequence_retention"
+
+    @property
+    def func(self) -> "Callable[..., float | list[float]]":
+        """Get the metric function for this name."""
+        return _METRIC_FUNCTIONS[self]
+
+    @classmethod
+    def defaults(cls) -> dict[str, "Callable[..., float | list[float]]"]:
+        """Get all built-in metrics as a dictionary.
+
+        Returns:
+            Dictionary mapping metric names to functions.
+        """
+        return {m.value: m.func for m in cls}
+
+
+# Mapping from enum to function - populated after functions are defined
+_METRIC_FUNCTIONS: dict[MetricName, "Callable[..., float | list[float]]"] = {
+    MetricName.JSD: jensen_shannon_divergence,
+    MetricName.NED: normalized_edit_distance,
+    MetricName.SR: subsequence_retention,
+}
+
+
 __all__ = [
     "Metric",
     "BatchMetric",
+    "MetricName",
     "TokenBatch",
     "TokenSequence",
     "jensen_shannon_divergence",

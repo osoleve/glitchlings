@@ -285,6 +285,24 @@ class SeedSweepResult:
                 row = [seed] + [seed_metrics.get(m, "") for m in metric_names]
                 writer.writerow(row)
 
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with seeds as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        return pd.DataFrame(self.per_seed_metrics).T
+
 
 class SeedSweep:
     """Sweep across multiple seeds to collect aggregate metrics (impure).
@@ -563,6 +581,28 @@ class GridSearchResult:
                 param_values = [point.params.get(p, "") for p in param_names]
                 metric_values = [point.metrics.get(m, "") for m in metric_names]
                 writer.writerow(param_values + metric_values)
+
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with parameters and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        rows = []
+        for point in self.points:
+            row = {**point.params, **point.metrics}
+            rows.append(row)
+        return pd.DataFrame(rows)
 
 
 class GridSearch:
@@ -932,6 +972,267 @@ class TokenizerComparison:
         )
 
 
+# ---------------------------------------------------------------------------
+# GlitchlingComparison: Compare Multiple Glitchlings
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class GlitchlingComparisonEntry:
+    """Results for a single glitchling in a comparison (pure data class).
+
+    Attributes:
+        name: Identifier for the glitchling.
+        glitchling: The glitchling instance used.
+        result: Full AttackResult for this glitchling.
+        metrics: Extracted scalar metrics.
+    """
+
+    name: str
+    glitchling: "Corruptor"
+    result: AttackResult
+    metrics: dict[str, float]
+
+
+@dataclass
+class GlitchlingComparisonResult:
+    """Results from comparing multiple glitchlings (pure data class).
+
+    Attributes:
+        text: The input text that was corrupted.
+        tokenizer_info: Description of the tokenizer used.
+        entries: List of results per glitchling.
+    """
+
+    text: str
+    tokenizer_info: str
+    entries: list[GlitchlingComparisonEntry]
+
+    @property
+    def metric_comparison(self) -> dict[str, dict[str, float]]:
+        """Get metrics organized by metric name -> glitchling name -> value."""
+        if not self.entries:
+            return {}
+
+        metric_names = list(self.entries[0].metrics.keys())
+        comparison: dict[str, dict[str, float]] = {}
+        for metric_name in metric_names:
+            comparison[metric_name] = {
+                entry.name: entry.metrics.get(metric_name, 0.0) for entry in self.entries
+            }
+        return comparison
+
+    def rank_by(
+        self,
+        metric_name: str,
+        *,
+        minimize: bool = True,
+    ) -> list[GlitchlingComparisonEntry]:
+        """Rank glitchlings by a specific metric.
+
+        Args:
+            metric_name: Metric to rank by.
+            minimize: If True, lower is better.
+
+        Returns:
+            Entries sorted by the metric.
+        """
+        return sorted(
+            self.entries,
+            key=lambda e: e.metrics.get(metric_name, float("inf")),
+            reverse=not minimize,
+        )
+
+    def summary(self, *, show_corrupted: bool = True) -> str:
+        """Generate a human-readable summary (pure formatting)."""
+        lines: list[str] = [
+            "╭─ Glitchling Comparison ─────────────────────────────────╮",
+            f"│ Tokenizer: {self.tokenizer_info:<45} │",
+            f"│ Input: {self.text[:47]:<47} │"
+            if len(self.text) <= 47
+            else f"│ Input: {self.text[:44]}... │",
+            "├──────────────────────────────────────────────────────────┤",
+        ]
+
+        # Metric comparison table
+        if self.entries:
+            metric_names = list(self.entries[0].metrics.keys())
+
+            # Header
+            header = "│ Glitchling"
+            for name in metric_names:
+                short_name = name[:10] if len(name) > 10 else name
+                header += f" │ {short_name:>10}"
+            header += " │"
+            lines.append(header)
+            lines.append("├" + "─" * 58 + "┤")
+
+            # Rows
+            for entry in self.entries:
+                row = f"│ {entry.name:<10}"
+                for metric_name in metric_names:
+                    val = entry.metrics.get(metric_name, 0.0)
+                    row += f" │ {val:>10.4f}"
+                row += " │"
+                lines.append(row)
+
+        if show_corrupted and self.entries:
+            lines.append("├──────────────────────────────────────────────────────────┤")
+            lines.append("│ Corrupted Outputs:                                       │")
+            for entry in self.entries:
+                corrupted = str(entry.result.corrupted)
+                if len(corrupted) > 45:
+                    corrupted = corrupted[:42] + "..."
+                lines.append(f"│   {entry.name}: {corrupted:<43} │")
+
+        lines.append("╰──────────────────────────────────────────────────────────╯")
+        return "\n".join(lines)
+
+    def to_report(self) -> dict[str, object]:
+        """Convert to JSON-serializable dictionary (pure)."""
+        return {
+            "text": self.text,
+            "tokenizer": self.tokenizer_info,
+            "entries": [
+                {
+                    "name": e.name,
+                    "corrupted": e.result.corrupted,
+                    "metrics": e.metrics,
+                }
+                for e in self.entries
+            ],
+            "metric_comparison": self.metric_comparison,
+        }
+
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with glitchling names as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        data = {entry.name: entry.metrics for entry in self.entries}
+        return pd.DataFrame(data).T
+
+
+def compare_glitchlings(
+    text: str,
+    glitchlings: Sequence[tuple[str, "Corruptor"]],
+    *,
+    tokenizer: str | Tokenizer | None = None,
+    metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
+    seed: int | None = None,
+) -> GlitchlingComparisonResult:
+    """Compare multiple glitchlings on the same text with the same tokenizer.
+
+    Holds the tokenizer fixed and varies the glitchlings - useful for finding
+    which corruption strategy has the most impact for a specific tokenizer.
+
+    Example:
+        >>> from glitchlings import Typogre, Mim1c, Ekkokin
+        >>> result = compare_glitchlings(
+        ...     "Hello world",
+        ...     [
+        ...         ("typogre", Typogre(rate=0.05)),
+        ...         ("mim1c", Mim1c(rate=0.05)),
+        ...         ("ekkokin", Ekkokin(rate=0.05)),
+        ...     ],
+        ...     tokenizer="o200k_base",
+        ... )
+        >>> print(result.summary())
+        >>> best = result.rank_by("normalized_edit_distance", minimize=False)[0]
+        >>> print(f"Most disruptive: {best.name}")
+
+    Args:
+        text: Input text to corrupt.
+        glitchlings: List of (name, glitchling) pairs to compare.
+        tokenizer: Tokenizer to use (same for all glitchlings).
+        metrics: Custom metrics (defaults to Attack defaults).
+        seed: Seed for reproducibility.
+
+    Returns:
+        GlitchlingComparisonResult with all entries.
+    """
+    resolved_tokenizer = resolve_tokenizer(tokenizer)
+    tokenizer_info = describe_tokenizer(resolved_tokenizer, tokenizer)
+
+    entries: list[GlitchlingComparisonEntry] = []
+    for name, glitchling in glitchlings:
+        attack = Attack(
+            glitchling,
+            tokenizer=resolved_tokenizer,
+            metrics=metrics,
+            seed=seed,
+        )
+        result = attack.run(text)
+        metrics_dict = extract_scalar_metrics(result.metrics)
+
+        entries.append(
+            GlitchlingComparisonEntry(
+                name=name,
+                glitchling=glitchling,
+                result=result,
+                metrics=metrics_dict,
+            )
+        )
+
+    return GlitchlingComparisonResult(
+        text=text,
+        tokenizer_info=tokenizer_info,
+        entries=entries,
+    )
+
+
+def compare_tokenizers(
+    text: str,
+    glitchling: "Corruptor | str | Sequence[str | Corruptor]",
+    tokenizers: Sequence[str | Tokenizer],
+    *,
+    metrics: Mapping[str, Callable[..., float | list[float]]] | None = None,
+    seed: int | None = None,
+) -> "TokenizerComparisonResult":
+    """Compare multiple tokenizers on the same corrupted text.
+
+    Holds the glitchling fixed and varies the tokenizers - useful for finding
+    which tokenizer is most affected by a specific corruption strategy.
+
+    Example:
+        >>> from glitchlings import Typogre
+        >>> result = compare_tokenizers(
+        ...     "Hello world",
+        ...     Typogre(rate=0.1),
+        ...     tokenizers=["o200k_base", "cl100k_base"],
+        ... )
+        >>> print(result.summary())
+
+    Args:
+        text: Input text to corrupt.
+        glitchling: Glitchling to apply (same corruption for all tokenizers).
+        tokenizers: List of tokenizer names/instances to compare.
+        metrics: Custom metrics (defaults to Attack defaults).
+        seed: Seed for reproducibility.
+
+    Returns:
+        TokenizerComparisonResult with all entries.
+    """
+    comparison = TokenizerComparison(
+        glitchling,
+        tokenizers=tokenizers,
+        metrics=metrics,
+        seed=seed,
+    )
+    return comparison.run(text)
+
+
 __all__ = [
     # Pure statistical helpers
     "compute_aggregate_stats",
@@ -951,4 +1252,9 @@ __all__ = [
     "TokenizerComparison",
     "TokenizerComparisonResult",
     "TokenizerComparisonEntry",
+    # Comparison functions
+    "compare_glitchlings",
+    "compare_tokenizers",
+    "GlitchlingComparisonResult",
+    "GlitchlingComparisonEntry",
 ]

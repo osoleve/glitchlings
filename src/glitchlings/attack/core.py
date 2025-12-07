@@ -30,7 +30,6 @@ from .core_execution import (
 )
 from .core_planning import (
     plan_attack,
-    plan_comparison,
     plan_result,
 )
 from .encode import describe_tokenizer
@@ -318,43 +317,6 @@ class AttackResult:
         return alignment
 
 
-@dataclass
-class MultiAttackResult:
-    """Results from comparing multiple tokenizers.
-
-    Attributes:
-        results: Mapping from tokenizer name to AttackResult.
-        order: Ordered list of tokenizer names.
-    """
-
-    results: dict[str, AttackResult]
-    order: list[str]
-
-    @property
-    def primary(self) -> AttackResult:
-        """Get the primary (first) result."""
-        return self.results[self.order[0]]
-
-    def to_report(self) -> dict[str, object]:
-        """Convert to a JSON-serializable dictionary."""
-        return {
-            "tokenizers": list(self.order),
-            "results": {name: self.results[name].to_report() for name in self.order},
-        }
-
-    def summary(self, *, max_rows: int = 6, max_token_length: int = 24) -> str:
-        """Generate a human-readable comparison summary."""
-        lines: list[str] = []
-        for index, name in enumerate(self.order, start=1):
-            lines.append(f"{index}. {name}")
-            nested = self.results[name].summary(
-                max_rows=max_rows,
-                max_token_length=max_token_length,
-            )
-            lines.extend(f"   {line}" for line in nested.splitlines())
-        return "\n".join(lines)
-
-
 # ---------------------------------------------------------------------------
 # Attack Orchestrator
 # ---------------------------------------------------------------------------
@@ -505,74 +467,8 @@ class Attack:
                 progress_callback(results)
         return results
 
-    def compare(
-        self,
-        text: str | Transcript | Sequence[str],
-        *,
-        tokenizers: Sequence[str | Tokenizer],
-        include_self: bool = True,
-    ) -> MultiAttackResult:
-        """Run the attack across multiple tokenizers for comparison.
-
-        The same corruption is applied once, then tokenized with each
-        tokenizer to compare token-level impacts.
-
-        Args:
-            text: Input text to corrupt and compare.
-            tokenizers: Additional tokenizer names/instances to compare.
-            include_self: Whether to include this Attack's tokenizer.
-
-        Returns:
-            MultiAttackResult with results for each tokenizer.
-
-        Raises:
-            ValueError: If no tokenizers would be compared.
-        """
-        # Pure: plan the comparison
-        comparison_plan = plan_comparison(tokenizers, include_self=include_self)
-
-        results: dict[str, AttackResult] = {}
-        order: list[str] = []
-        seen: set[str] = set()
-
-        def record(result: AttackResult) -> None:
-            if result.tokenizer_info in seen:
-                return
-            seen.add(result.tokenizer_info)
-            order.append(result.tokenizer_info)
-            results[result.tokenizer_info] = result
-
-        runner_seed = self.glitchlings.seed
-        transcript_target = getattr(self.glitchlings, "transcript_target", None)
-
-        # Include self if requested
-        if comparison_plan.include_self:
-            baseline = Attack(
-                self.glitchlings,
-                tokenizer=self.tokenizer,
-                metrics=self.metrics,
-                seed=runner_seed,
-                transcript_target=transcript_target,
-            ).run(text)
-            record(baseline)
-
-        # Run with each comparison tokenizer
-        for spec in comparison_plan.tokenizer_specs:
-            resolved_tokenizer = resolve_tokenizer(spec)
-            comparator = Attack(
-                self.glitchlings,
-                tokenizer=resolved_tokenizer,
-                metrics=self.metrics,
-                seed=runner_seed,
-                transcript_target=transcript_target,
-            )
-            record(comparator.run(text))
-
-        return MultiAttackResult(results=results, order=order)
-
 
 __all__ = [
     "Attack",
     "AttackResult",
-    "MultiAttackResult",
 ]

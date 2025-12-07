@@ -23,6 +23,8 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 """
 
 from .analysis import (
+    GlitchlingComparisonEntry,
+    GlitchlingComparisonResult,
     GridSearch,
     GridSearchPoint,
     GridSearchResult,
@@ -31,13 +33,15 @@ from .analysis import (
     TokenizerComparison,
     TokenizerComparisonEntry,
     TokenizerComparisonResult,
+    compare_glitchlings,
+    compare_tokenizers,
     compute_aggregate_stats,
     extract_scalar_metrics,
     format_stats_summary,
     generate_param_combinations,
     rank_grid_points,
 )
-from .core import Attack, AttackResult, MultiAttackResult
+from .core import Attack, AttackResult
 from .core_execution import (
     execute_attack,
     execute_corruption,
@@ -67,6 +71,7 @@ from .core_planning import (
 )
 from .encode import describe_tokenizer, encode_batch, encode_single
 from .metrics import (
+    MetricName,
     jensen_shannon_divergence,
     normalized_edit_distance,
     subsequence_retention,
@@ -78,10 +83,10 @@ __all__ = [
     # Core orchestration
     "Attack",
     "AttackResult",
-    "MultiAttackResult",
     "Tokenizer",
     "list_available_tokenizers",
     # Metrics
+    "MetricName",
     "jensen_shannon_divergence",
     "normalized_edit_distance",
     "subsequence_retention",
@@ -94,6 +99,11 @@ __all__ = [
     "TokenizerComparison",
     "TokenizerComparisonResult",
     "TokenizerComparisonEntry",
+    # Comparison functions
+    "compare_glitchlings",
+    "compare_tokenizers",
+    "GlitchlingComparisonEntry",
+    "GlitchlingComparisonResult",
     # Analysis pure helpers
     "compute_aggregate_stats",
     "format_stats_summary",

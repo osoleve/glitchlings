@@ -283,7 +283,9 @@ def test_attack_result_summary_includes_metrics():
     assert "normalized_edit_distance" in summary
 
 
-def test_attack_compare_runs_multiple_tokenizers():
+def test_compare_tokenizers_runs_multiple_tokenizers():
+    from glitchlings.attack import compare_tokenizers
+
     class LettersTokenizer:
         name = "letters"
 
@@ -304,10 +306,15 @@ def test_attack_compare_runs_multiple_tokenizers():
         def decode(self, tokens: Sequence[str]) -> str:
             return " ".join(tokens)
 
-    attack = Attack([MockGlitchling()], tokenizer=WordsTokenizer())
-    comparison = attack.compare("hello world", tokenizers=[LettersTokenizer()])
+    glitchling = MockGlitchling()
+    comparison = compare_tokenizers(
+        "hello world",
+        glitchling,
+        tokenizers=[WordsTokenizer(), LettersTokenizer()],
+    )
 
-    assert comparison.order[0] == "words"
-    assert set(comparison.results.keys()) == {"words", "letters"}
-    assert comparison.results["letters"].tokenizer_info == "letters"
+    tokenizer_names = [e.tokenizer_name for e in comparison.entries]
+    assert "words" in tokenizer_names
+    assert "letters" in tokenizer_names
+    assert len(comparison.entries) == 2
     assert "words" in comparison.summary()
