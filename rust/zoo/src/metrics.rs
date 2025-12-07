@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::max;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
@@ -230,4 +230,181 @@ fn guard_equal_batches(inputs: usize, outputs: usize) -> PyResult<()> {
         )));
     }
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Entropy Delta
+// ---------------------------------------------------------------------------
+
+#[pyfunction]
+pub fn entropy_delta(
+    _py: Python<'_>,
+    input_tokens: Vec<Bound<'_, PyString>>,
+    output_tokens: Vec<Bound<'_, PyString>>,
+) -> PyResult<f64> {
+    let inputs = extract_str_refs(&input_tokens)?;
+    let outputs = extract_str_refs(&output_tokens)?;
+    Ok(compute_entropy_delta(&inputs, &outputs))
+}
+
+#[pyfunction]
+pub fn batch_entropy_delta(
+    _py: Python<'_>,
+    inputs: Vec<Vec<Bound<'_, PyString>>>,
+    outputs: Vec<Vec<Bound<'_, PyString>>>,
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(inputs.len(), outputs.len())?;
+
+    let input_refs = extract_batch_str_refs(&inputs)?;
+    let output_refs = extract_batch_str_refs(&outputs)?;
+
+    Ok(input_refs
+        .iter()
+        .zip(output_refs.iter())
+        .map(|(input, output)| compute_entropy_delta(input, output))
+        .collect())
+}
+
+fn shannon_entropy(tokens: &[Cow<str>]) -> f64 {
+    if tokens.is_empty() {
+        return 0.0;
+    }
+
+    let mut counts: HashMap<&str, usize> = HashMap::new();
+    for token in tokens {
+        *counts.entry(token.as_ref()).or_insert(0) += 1;
+    }
+
+    let total = tokens.len() as f64;
+    let mut entropy = 0.0;
+    for &count in counts.values() {
+        if count > 0 {
+            let p = count as f64 / total;
+            entropy -= p * p.log2();
+        }
+    }
+    entropy
+}
+
+fn compute_entropy_delta(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+    let h_orig = shannon_entropy(tokens1);
+    let h_corr = shannon_entropy(tokens2);
+    let delta = h_corr - h_orig;
+
+    // Collect combined vocabulary
+    let mut vocab: HashSet<&str> = HashSet::new();
+    for token in tokens1 {
+        vocab.insert(token.as_ref());
+    }
+    for token in tokens2 {
+        vocab.insert(token.as_ref());
+    }
+
+    if vocab.is_empty() {
+        return 0.0;
+    }
+
+    let max_entropy = if vocab.len() > 1 {
+        (vocab.len() as f64).log2()
+    } else {
+        1.0
+    };
+
+    if max_entropy > 0.0 {
+        delta / max_entropy
+    } else {
+        0.0
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Merge-Split Index
+// ---------------------------------------------------------------------------
+
+#[pyfunction]
+pub fn merge_split_index(
+    _py: Python<'_>,
+    input_tokens: Vec<Bound<'_, PyString>>,
+    output_tokens: Vec<Bound<'_, PyString>>,
+) -> PyResult<f64> {
+    let inputs = extract_str_refs(&input_tokens)?;
+    let outputs = extract_str_refs(&output_tokens)?;
+    Ok(compute_merge_split_index(&inputs, &outputs))
+}
+
+#[pyfunction]
+pub fn batch_merge_split_index(
+    _py: Python<'_>,
+    inputs: Vec<Vec<Bound<'_, PyString>>>,
+    outputs: Vec<Vec<Bound<'_, PyString>>>,
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(inputs.len(), outputs.len())?;
+
+    let input_refs = extract_batch_str_refs(&inputs)?;
+    let output_refs = extract_batch_str_refs(&outputs)?;
+
+    Ok(input_refs
+        .iter()
+        .zip(output_refs.iter())
+        .map(|(input, output)| compute_merge_split_index(input, output))
+        .collect())
+}
+
+fn lcs_length(a: &[Cow<str>], b: &[Cow<str>]) -> usize {
+    let m = a.len();
+    let n = b.len();
+
+    if m == 0 || n == 0 {
+        return 0;
+    }
+
+    // Space-optimized LCS using two rows
+    let mut prev = vec![0usize; n + 1];
+    let mut curr = vec![0usize; n + 1];
+
+    for i in 1..=m {
+        for j in 1..=n {
+            if a[i - 1] == b[j - 1] {
+                curr[j] = prev[j - 1] + 1;
+            } else {
+                curr[j] = max(prev[j], curr[j - 1]);
+            }
+        }
+        std::mem::swap(&mut prev, &mut curr);
+        curr.fill(0);
+    }
+
+    prev[n]
+}
+
+fn compute_merge_split_index(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+    let m = tokens1.len();
+    let n = tokens2.len();
+
+    if m == 0 && n == 0 {
+        return 0.0;
+    }
+    if m == 0 || n == 0 {
+        return 1.0; // Complete transformation
+    }
+
+    // Find preserved tokens via LCS
+    let lcs_len = lcs_length(tokens1, tokens2);
+
+    // Tokens that changed: those not in LCS
+    let orig_changed = m - lcs_len; // tokens that were removed/split
+    let corr_changed = n - lcs_len; // tokens that were added/merged
+
+    // Merge/split events are indicated by the DIFFERENCE in changed tokens:
+    // - If orig_changed > corr_changed: merges occurred (k→1)
+    // - If corr_changed > orig_changed: splits occurred (1→k)
+    // - If orig_changed == corr_changed: substitutions only (no restructuring)
+    let merge_split_events = if orig_changed > corr_changed {
+        orig_changed - corr_changed
+    } else {
+        corr_changed - orig_changed
+    };
+
+    let max_len = max(m, n);
+    merge_split_events as f64 / max_len as f64
 }

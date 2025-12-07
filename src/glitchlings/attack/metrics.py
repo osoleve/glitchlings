@@ -33,9 +33,13 @@ except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
 _single_jsd = cast(Metric, getattr(_rust, "jensen_shannon_divergence"))
 _single_ned = cast(Metric, getattr(_rust, "normalized_edit_distance"))
 _single_sr = cast(Metric, getattr(_rust, "subsequence_retention"))
+_single_ed = cast(Metric, getattr(_rust, "entropy_delta"))
+_single_msi = cast(Metric, getattr(_rust, "merge_split_index"))
 _batch_jsd = cast(BatchMetric, getattr(_rust, "batch_jensen_shannon_divergence"))
 _batch_ned = cast(BatchMetric, getattr(_rust, "batch_normalized_edit_distance"))
 _batch_sr = cast(BatchMetric, getattr(_rust, "batch_subsequence_retention"))
+_batch_ed = cast(BatchMetric, getattr(_rust, "batch_entropy_delta"))
+_batch_msi = cast(BatchMetric, getattr(_rust, "batch_merge_split_index"))
 
 
 def _dispatch_metric(
@@ -97,6 +101,62 @@ def subsequence_retention(
     )
 
 
+def entropy_delta(
+    original_tokens: TokenSequence | TokenBatch,
+    corrupted_tokens: TokenSequence | TokenBatch,
+) -> float | list[float]:
+    """Compute normalized entropy delta between original and corrupted tokens.
+
+    Measures the change in token distribution entropy:
+    ΔH = H(corrupted) - H(original), normalized to [-1, 1].
+
+    Positive values indicate the corrupted text has higher entropy
+    (more uniform/diverse token distribution). Negative values indicate
+    lower entropy (more concentrated distribution).
+
+    Args:
+        original_tokens: Original token sequence(s).
+        corrupted_tokens: Corrupted token sequence(s).
+
+    Returns:
+        Normalized entropy delta in [-1, 1], or list for batches.
+    """
+    return _dispatch_metric(
+        original_tokens,
+        corrupted_tokens,
+        single=_single_ed,
+        batch=_batch_ed,
+        name="entropy_delta",
+    )
+
+
+def merge_split_index(
+    original_tokens: TokenSequence | TokenBatch,
+    corrupted_tokens: TokenSequence | TokenBatch,
+) -> float | list[float]:
+    """Compute merge-split index measuring subword restructuring.
+
+    Estimates 1→k (split) and k→1 (merge) token events from alignment.
+    Higher values indicate more dramatic tokenization changes.
+
+    MSI = (splits + merges) / max(m, n) ∈ [0, 1]
+
+    Args:
+        original_tokens: Original token sequence(s).
+        corrupted_tokens: Corrupted token sequence(s).
+
+    Returns:
+        Merge-split index in [0, 1], or list for batches.
+    """
+    return _dispatch_metric(
+        original_tokens,
+        corrupted_tokens,
+        single=_single_msi,
+        batch=_batch_msi,
+        name="merge_split_index",
+    )
+
+
 # ---------------------------------------------------------------------------
 # MetricName Enum
 # ---------------------------------------------------------------------------
@@ -116,6 +176,8 @@ class MetricName(str, Enum):
     JSD = "jensen_shannon_divergence"
     NED = "normalized_edit_distance"
     SR = "subsequence_retention"
+    HD = "entropy_delta"
+    MSI = "merge_split_index"
 
     @property
     def func(self) -> "Callable[..., float | list[float]]":
@@ -137,6 +199,8 @@ _METRIC_FUNCTIONS: dict[MetricName, "Callable[..., float | list[float]]"] = {
     MetricName.JSD: jensen_shannon_divergence,
     MetricName.NED: normalized_edit_distance,
     MetricName.SR: subsequence_retention,
+    MetricName.HD: entropy_delta,
+    MetricName.MSI: merge_split_index,
 }
 
 
@@ -149,4 +213,6 @@ __all__ = [
     "jensen_shannon_divergence",
     "normalized_edit_distance",
     "subsequence_retention",
+    "entropy_delta",
+    "merge_split_index",
 ]

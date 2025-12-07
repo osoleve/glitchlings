@@ -37,7 +37,9 @@ from .core_planning import (
 from .encode import encode_batch
 from .metrics import (
     Metric,
+    entropy_delta,
     jensen_shannon_divergence,
+    merge_split_index,
     normalized_edit_distance,
     subsequence_retention,
 )
@@ -62,6 +64,8 @@ def get_default_metrics() -> dict[str, Metric]:
         "jensen_shannon_divergence": jensen_shannon_divergence,
         "normalized_edit_distance": normalized_edit_distance,
         "subsequence_retention": subsequence_retention,
+        "entropy_delta": entropy_delta,
+        "merge_split_index": merge_split_index,
     }
 
 

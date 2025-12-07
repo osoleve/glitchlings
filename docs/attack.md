@@ -155,11 +155,13 @@ attack = Attack(Typogre(), metrics=MetricName.defaults())
 
 Available metrics:
 
-| Enum | Value |
-|------|-------|
-| `MetricName.JSD` | `jensen_shannon_divergence` |
-| `MetricName.NED` | `normalized_edit_distance` |
-| `MetricName.SR` | `subsequence_retention` |
+| Enum | Value | Description |
+|------|-------|-------------|
+| `MetricName.JSD` | `jensen_shannon_divergence` | Token distribution divergence |
+| `MetricName.NED` | `normalized_edit_distance` | Edit distance normalized to [0,1] |
+| `MetricName.SR` | `subsequence_retention` | Fraction of tokens preserved |
+| `MetricName.HD` | `entropy_delta` | Change in token entropy [-1,1] |
+| `MetricName.MSI` | `merge_split_index` | Subword merge/split events [0,1] |
 
 ## Token-level analysis
 
@@ -279,10 +281,15 @@ By default, Attack uses a lightweight `tiktoken` encoder:
 
 ## Metrics and performance
 
-The default metrics run inside the compiled Rust extension for speed:
+The default metrics include three Rust-accelerated metrics and two Python metrics:
 
-- **Jensen-Shannon divergence** (`jensen_shannon_divergence`)
-- **Normalized edit distance** (`normalized_edit_distance`)
-- **Subsequence retention** (`subsequence_retention`)
+**Rust-accelerated (fast):**
+- **Jensen-Shannon divergence** (`jensen_shannon_divergence`) - Distribution similarity
+- **Normalized edit distance** (`normalized_edit_distance`) - Token-level changes
+- **Subsequence retention** (`subsequence_retention`) - Preserved tokens
+
+**Python (pure):**
+- **Entropy delta** (`entropy_delta`) - Change in token distribution entropy, normalized to [-1, 1]
+- **Merge-split index** (`merge_split_index`) - Measures subword restructuring (1→k splits and k→1 merges)
 
 Custom metrics can be supplied; they should accept two token sequences or two batches of token sequences and return either a float or a list of floats.

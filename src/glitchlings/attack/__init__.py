@@ -70,7 +70,9 @@ from .core_planning import (
 from .encode import describe_tokenizer, encode_batch, encode_single
 from .metrics import (
     MetricName,
+    entropy_delta,
     jensen_shannon_divergence,
+    merge_split_index,
     normalized_edit_distance,
     subsequence_retention,
 )
@@ -88,6 +90,8 @@ __all__ = [
     "jensen_shannon_divergence",
     "normalized_edit_distance",
     "subsequence_retention",
+    "entropy_delta",
+    "merge_split_index",
     # Analysis tools (impure orchestrators)
     "SeedSweep",
     "SeedSweepResult",
