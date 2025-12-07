@@ -472,6 +472,7 @@ $$\text{preserved} = \text{LCS}(A, B)$$
 Tokens that changed in each sequence:
 
 $$\text{changed}_A = |A| - \text{preserved}$$
+
 $$\text{changed}_B = |B| - \text{preserved}$$
 
 Merge/split events are estimated by the difference (since pure substitutions affect both equally):
