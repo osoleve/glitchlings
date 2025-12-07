@@ -281,14 +281,12 @@ By default, Attack uses a lightweight `tiktoken` encoder:
 
 ## Metrics and performance
 
-The default metrics include three Rust-accelerated metrics and two Python metrics:
+The default metrics include five Rust-accelerated metrics:
 
 **Rust-accelerated (fast):**
 - **Jensen-Shannon divergence** (`jensen_shannon_divergence`) - Distribution similarity
 - **Normalized edit distance** (`normalized_edit_distance`) - Token-level changes
 - **Subsequence retention** (`subsequence_retention`) - Preserved tokens
-
-**Python (pure):**
 - **Entropy delta** (`entropy_delta`) - Change in token distribution entropy, normalized to [-1, 1]
 - **Merge-split index** (`merge_split_index`) - Measures subword restructuring (1→k splits and k→1 merges)
 
