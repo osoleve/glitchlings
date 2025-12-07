@@ -181,8 +181,7 @@ def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
 
         available = list_available_tokenizers()
         raise ValueError(
-            f"Could not resolve tokenizer: {tokenizer!r}. "
-            f"Available: {', '.join(available)}"
+            f"Could not resolve tokenizer: {tokenizer!r}. Available: {', '.join(available)}"
         )
 
     # Check if it is a HuggingFace tokenizer object

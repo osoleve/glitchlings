@@ -369,14 +369,9 @@ class BatchAdapter:
             Scalar metrics for single input, list metrics for batch.
         """
         if self.unwrap_single:
-            return {
-                name: values[0] if values else 0.0
-                for name, values in metrics.items()
-            }
+            return {name: values[0] if values else 0.0 for name, values in metrics.items()}
         # Explicitly construct new dict to satisfy type checker (dict invariance)
-        result: dict[str, float | list[float]] = {
-            name: values for name, values in metrics.items()
-        }
+        result: dict[str, float | list[float]] = {name: values for name, values in metrics.items()}
         return result
 
 
