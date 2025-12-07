@@ -53,7 +53,6 @@ from .core_execution import (
 from .core_planning import (
     AttackPlan,
     BatchAdapter,
-    ComparisonPlan,
     EncodedData,
     ResultPlan,
     assemble_batch_result_fields,
@@ -66,7 +65,6 @@ from .core_planning import (
     is_string_batch,
     is_transcript_like,
     plan_attack,
-    plan_comparison,
     plan_result,
 )
 from .encode import describe_tokenizer, encode_batch, encode_single
@@ -114,11 +112,9 @@ __all__ = [
     "AttackPlan",
     "BatchAdapter",
     "ResultPlan",
-    "ComparisonPlan",
     "EncodedData",
     "plan_attack",
     "plan_result",
-    "plan_comparison",
     "is_string_batch",
     "is_transcript_like",
     "assemble_result_fields",

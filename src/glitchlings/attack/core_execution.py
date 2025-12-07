@@ -148,14 +148,19 @@ def execute_corruption(
         for entry in original_batch:
             corrupted = gaggle.corrupt(entry)
             if not isinstance(corrupted, str):
-                raise TypeError("Attack expected string output for batch items.")
+                raise TypeError(
+                    f"Attack expected str output for batch items, got {type(corrupted).__name__}"
+                )
             corrupted_batch.append(corrupted)
         return corrupted_batch, corrupted_batch
 
     if plan.input_type == "transcript":
         corrupted_transcript = gaggle.corrupt(cast(Transcript, original_container))
         if not is_transcript(corrupted_transcript):
-            raise ValueError("Attack expected transcript output for transcript input.")
+            raise ValueError(
+                f"Attack expected transcript output for transcript input, "
+                f"got {type(corrupted_transcript).__name__}"
+            )
         corrupted_contents = extract_transcript_contents(
             cast(Sequence[Mapping[str, Any]], corrupted_transcript)
         )
@@ -164,7 +169,9 @@ def execute_corruption(
     # Single string
     corrupted = gaggle.corrupt(cast(str, original_container))
     if not isinstance(corrupted, str):
-        raise TypeError("Attack expected string output for string input.")
+        raise TypeError(
+            f"Attack expected str output for string input, got {type(corrupted).__name__}"
+        )
     return corrupted, [corrupted]
 
 

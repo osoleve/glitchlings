@@ -586,58 +586,6 @@ def format_token_count_delta(input_count: int, output_count: int) -> str:
     return f"{input_count} -> {output_count} ({delta:+d})"
 
 
-# ---------------------------------------------------------------------------
-# Comparison Planning
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True, slots=True)
-class ComparisonPlan:
-    """Plan for comparing multiple tokenizers.
-
-    Attributes:
-        tokenizer_specs: List of tokenizer specifications to compare.
-        include_self: Whether to include the base tokenizer.
-    """
-
-    tokenizer_specs: tuple[Any, ...]
-    include_self: bool
-
-    @property
-    def total_comparisons(self) -> int:
-        """Total number of tokenizers to compare."""
-        count = len(self.tokenizer_specs)
-        if self.include_self:
-            count += 1
-        return count
-
-
-def plan_comparison(
-    tokenizer_specs: Sequence[Any],
-    *,
-    include_self: bool = True,
-) -> ComparisonPlan:
-    """Create a plan for tokenizer comparison.
-
-    Args:
-        tokenizer_specs: Tokenizer names or instances to compare.
-        include_self: Whether to include the base tokenizer.
-
-    Returns:
-        ComparisonPlan for the comparison.
-
-    Raises:
-        ValueError: If no tokenizers would be compared.
-    """
-    if not tokenizer_specs and not include_self:
-        raise ValueError("At least one tokenizer must be provided for comparison.")
-
-    return ComparisonPlan(
-        tokenizer_specs=tuple(tokenizer_specs),
-        include_self=include_self,
-    )
-
-
 __all__ = [
     # Type guards
     "is_string_batch",
@@ -661,7 +609,4 @@ __all__ = [
     # Token counts
     "compute_token_counts",
     "format_token_count_delta",
-    # Comparison planning
-    "ComparisonPlan",
-    "plan_comparison",
 ]

@@ -844,6 +844,46 @@ class TokenizerComparisonResult:
             "metric_comparison": self.metric_comparison,
         }
 
+    def to_dataframe(self) -> "Any":
+        """Convert to pandas DataFrame (requires pandas).
+
+        Returns:
+            DataFrame with tokenizer names as index and metrics as columns.
+
+        Raises:
+            ImportError: If pandas is not installed.
+        """
+        try:
+            import pandas as pd
+        except ImportError as e:
+            raise ImportError(
+                "pandas is required for to_dataframe(). Install with: pip install pandas"
+            ) from e
+
+        data = {entry.tokenizer_name: entry.metrics for entry in self.entries}
+        return pd.DataFrame(data).T
+
+    def export_csv(self, path: str) -> None:
+        """Export comparison results to CSV.
+
+        Args:
+            path: Output file path.
+        """
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not self.entries:
+                return
+
+            # Header: tokenizer_name, metric1, metric2, ...
+            metric_names = list(self.entries[0].metrics.keys())
+            writer.writerow(["tokenizer"] + metric_names)
+
+            for entry in self.entries:
+                row = [entry.tokenizer_name] + [entry.metrics.get(m, 0.0) for m in metric_names]
+                writer.writerow(row)
+
 
 def _extract_output_tokens(
     result: AttackResult,
@@ -1122,6 +1162,27 @@ class GlitchlingComparisonResult:
 
         data = {entry.name: entry.metrics for entry in self.entries}
         return pd.DataFrame(data).T
+
+    def export_csv(self, path: str) -> None:
+        """Export comparison results to CSV.
+
+        Args:
+            path: Output file path.
+        """
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not self.entries:
+                return
+
+            # Header: glitchling_name, metric1, metric2, ...
+            metric_names = list(self.entries[0].metrics.keys())
+            writer.writerow(["glitchling"] + metric_names)
+
+            for entry in self.entries:
+                row = [entry.name] + [entry.metrics.get(m, 0.0) for m in metric_names]
+                writer.writerow(row)
 
 
 def compare_glitchlings(
