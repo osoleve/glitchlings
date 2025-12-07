@@ -11,26 +11,26 @@
    CSS Variables / Color Palette - Vector Phosphor Colors
    ============================================================= */
 :root {
-  /* Classic vector green phosphor (P1 phosphor) */
-  --vector-green: #33ff33;
-  --vector-green-dim: #1a8c1a;
-  --vector-green-bright: #66ff66;
-  --vector-green-glow: rgba(51, 255, 51, 0.6);
-  
-  /* Alternative amber phosphor (P3 phosphor) */
-  --vector-amber: #ffaa00;
-  --vector-amber-dim: #996600;
-  --vector-amber-glow: rgba(255, 170, 0, 0.5);
-  
-  /* Display background - deep CRT black */
-  --vector-black: #0a0a0a;
-  --vector-dark: #0f0f0f;
-  --vector-darker: #050505;
-  
-  /* Accent colors for highlights */
-  --vector-cyan: #00ffff;
-  --vector-magenta: #ff00ff;
-  --vector-red: #ff3333;
+  /* Softened vector green phosphor - easier on the eyes */
+  --vector-green: #7ed67e;
+  --vector-green-dim: #4a9e4a;
+  --vector-green-bright: #a8e6a8;
+  --vector-green-glow: rgba(126, 214, 126, 0.4);
+
+  /* Alternative amber phosphor (P3 phosphor) - warmer tone */
+  --vector-amber: #f5c563;
+  --vector-amber-dim: #b8944a;
+  --vector-amber-glow: rgba(245, 197, 99, 0.35);
+
+  /* Display background - softer dark */
+  --vector-black: #0d1117;
+  --vector-dark: #161b22;
+  --vector-darker: #010409;
+
+  /* Accent colors - slightly muted for comfort */
+  --vector-cyan: #58d4f0;
+  --vector-magenta: #d670d6;
+  --vector-red: #f07178;
   
   /* Material theme overrides */
   --md-primary-fg-color: var(--vector-green);
@@ -333,7 +333,7 @@ body,
   padding: 2rem;
 }
 
-/* Scanline overlay */
+/* Scanline overlay - subtle for readability */
 .md-content::before {
   content: '';
   position: fixed;
@@ -345,12 +345,12 @@ body,
   background: repeating-linear-gradient(
     0deg,
     transparent 0px,
-    transparent 2px,
-    var(--scanline-color) 2px,
+    transparent 3px,
+    var(--scanline-color) 3px,
     var(--scanline-color) 4px
   );
   z-index: 9999;
-  opacity: 0.4;
+  opacity: 0.15;
 }
 
 /* Vignette effect */
@@ -935,4 +935,81 @@ mark {
   background: radial-gradient(ellipse at center, transparent 0%, var(--vector-black) 70%);
   pointer-events: none;
   z-index: -1;
+}
+
+/* =============================================================
+   MathJax Styling - Vector Math Display
+   ============================================================= */
+
+/* Math containers */
+.arithmatex {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* Inline math */
+.arithmatex > .MathJax {
+  color: var(--vector-cyan) !important;
+}
+
+/* Display math blocks */
+.md-typeset .arithmatex.display {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: var(--vector-darker);
+  border: 1px solid var(--vector-green-dim);
+  border-left: 3px solid var(--vector-cyan);
+  border-radius: 0;
+}
+
+/* MathJax SVG and HTML output */
+mjx-container {
+  color: var(--vector-cyan) !important;
+}
+
+mjx-container[jax="SVG"] svg {
+  color: var(--vector-cyan) !important;
+}
+
+mjx-container[display="true"] {
+  display: block !important;
+  text-align: center;
+  margin: 1rem 0;
+}
+
+/* Math text elements */
+mjx-mi, mjx-mn, mjx-mo, mjx-mtext {
+  color: inherit !important;
+}
+
+/* Fractions and special elements */
+mjx-mfrac {
+  color: var(--vector-cyan) !important;
+}
+
+/* Subscripts and superscripts */
+mjx-msub, mjx-msup, mjx-msubsup {
+  color: inherit !important;
+}
+
+/* Math operators - slightly brighter */
+mjx-mo {
+  color: var(--vector-green-bright) !important;
+}
+
+/* Matrix/table constructs */
+mjx-mtable {
+  color: var(--vector-cyan) !important;
+}
+
+/* Error styling */
+mjx-merror {
+  color: var(--vector-red) !important;
+  background: rgba(240, 113, 120, 0.1) !important;
+  border: 1px solid var(--vector-red);
+}
+
+/* Cases and piecewise functions */
+.MathJax .mjx-cases {
+  border-left: 2px solid var(--vector-cyan);
 }
