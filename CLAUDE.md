@@ -242,9 +242,9 @@ glitchlings --help                    # Full CLI help
 glitchlings -g typogre "text"         # Apply single glitchling
 glitchlings -g "Typogre(rate=0.05)" "text"  # With parameters
 glitchlings --config chaos.yaml "text"     # From config file
-glitchlings --file input.txt --diff        # File input with diff
-glitchlings --attack json --sample         # Summary with metrics
-glitchlings --report json --sample         # Full report with tokens
+glitchlings --input-file input.txt --diff  # File input with diff
+glitchlings --attack --sample              # Summary with metrics
+glitchlings --report --sample              # Full report with tokens
 ```
 
 ## Test Structure

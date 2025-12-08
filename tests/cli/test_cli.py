@@ -103,7 +103,7 @@ def test_run_cli_reads_text_from_file(tmp_path, capsys):
     file_path = tmp_path / "input.txt"
     file_path.write_text(input_text, encoding="utf-8")
     parser = build_parser()
-    args = parser.parse_args(["--file", str(file_path)])
+    args = parser.parse_args(["--input-file", str(file_path)])
     exit_code = run_cli(args, parser)
     captured = capsys.readouterr()
     assert exit_code == 0
@@ -115,7 +115,7 @@ def test_run_cli_reads_text_from_file(tmp_path, capsys):
 def test_read_text_reports_missing_file(tmp_path, capsys):
     parser = build_parser()
     missing = tmp_path / "missing.txt"
-    args = parser.parse_args(["--file", str(missing)])
+    args = parser.parse_args(["--input-file", str(missing)])
     with pytest.raises(SystemExit):
         read_text(args, parser)
     captured = capsys.readouterr()
@@ -249,7 +249,7 @@ def test_run_cli_report_outputs_json(monkeypatch, capsys):
 
     monkeypatch.setattr("sys.stdin", DummyStdin())
 
-    exit_code = invoke_cli(["--report", "json", "--sample"])
+    exit_code = invoke_cli(["--report", "--format", "json", "--sample"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
@@ -258,6 +258,7 @@ def test_run_cli_report_outputs_json(monkeypatch, capsys):
     assert payload["metrics"]
     assert payload["token_counts"]["input"]["total"] >= 0
     assert payload["token_counts"]["output"]["total"] >= 0
+    assert "summary" not in payload  # summary should not be included
 
 
 def test_run_cli_report_outputs_yaml(monkeypatch, capsys):
@@ -270,22 +271,69 @@ def test_run_cli_report_outputs_yaml(monkeypatch, capsys):
 
     monkeypatch.setattr("sys.stdin", DummyStdin())
 
-    exit_code = invoke_cli(["--report", "yaml", "--sample"])
+    exit_code = invoke_cli(["--report", "--format", "yaml", "--sample"])
     captured = capsys.readouterr()
 
     assert exit_code == 0
     payload = yaml.safe_load(captured.out)
     assert "metrics" in payload
-    assert "summary" in payload
+    assert "summary" not in payload  # summary should not be included
     assert payload["token_counts"]["input"]["per_sample"]
 
 
 def test_run_cli_rejects_report_with_diff(capsys):
     parser = build_parser()
-    args = parser.parse_args(["--diff", "--report", "json", "payload"])
+    args = parser.parse_args(["--diff", "--report", "payload"])
 
     with pytest.raises(SystemExit):
         run_cli(args, parser)
 
     captured = capsys.readouterr()
     assert "--report/--attack" in captured.err
+
+
+def test_run_cli_attack_with_tokenizer(monkeypatch, capsys):
+    # Skip if tiktoken is not installed
+    tiktoken = pytest.importorskip("tiktoken")
+
+    class DummyStdin:
+        def isatty(self):
+            return True
+
+        def read(self):
+            raise AssertionError("stdin should not be read when running with --sample")
+
+    monkeypatch.setattr("sys.stdin", DummyStdin())
+
+    exit_code = invoke_cli(["--attack", "--tokenizer", "cl100k_base", "--sample"])
+    captured = capsys.readouterr()
+
+    assert exit_code == 0
+    payload = json.loads(captured.out)
+    assert "cl100k_base" in payload["tokenizer"]
+    assert payload["metrics"]
+
+
+def test_run_cli_output_file(tmp_path, capsys):
+    output_path = tmp_path / "output.txt"
+    parser = build_parser()
+    args = parser.parse_args(["--output-file", str(output_path), "Hello world"])
+    exit_code = run_cli(args, parser)
+
+    assert exit_code == 0
+    assert output_path.exists()
+    content = output_path.read_text(encoding="utf-8")
+    assert content  # Should have some content
+    captured = capsys.readouterr()
+    assert captured.out == ""  # Nothing should be printed to stdout
+
+
+def test_run_cli_tokenizer_requires_attack_or_report(capsys):
+    parser = build_parser()
+    args = parser.parse_args(["--tokenizer", "cl100k_base", "Hello"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "--tokenizer requires --attack or --report" in captured.err

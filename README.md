@@ -127,7 +127,7 @@ glitchlings --list
 glitchlings --help
  
 # Run Typogre against the contents of a file and inspect the diff.
-glitchlings -g typogre --file documents/report.txt --diff
+glitchlings -g typogre --input-file documents/report.txt --diff
 
 # Configure glitchlings inline by passing keyword arguments.
 glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
@@ -136,10 +136,10 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 # Emit an Attack summary with metrics and counts.
-glitchlings --attack json --sample
+glitchlings --attack --sample
 
 # Emit a full Attack report with tokens, token IDs, and metrics.
-glitchlings --report json --sample
+glitchlings --report --sample
 ```
 
 ## Configuration Files

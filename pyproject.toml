@@ -73,7 +73,7 @@ all = [
     "tiktoken>=0.3.0",
     "tokenizers>=0.13.0",
 ]
-attack = ["tiktoken>=0.3.0", "tokenizers>=0.13.0"]
+tok = ["tiktoken>=0.3.0", "tokenizers>=0.13.0"]
 gutenberg = ["py-gutenberg==1.0.0"]
 hf = ["datasets>=4.0.0"]
 lightning = ["pytorch_lightning>=2.0.0"]

@@ -121,7 +121,7 @@ Prefer not to touch Python? The `glitchlings` CLI exposes the same functionality
 glitchlings --list
 
 # Glitch an entire file with Typogre and inspect the unified diff.
-glitchlings -g typogre --file documents/report.txt --diff
+glitchlings -g typogre --input-file documents/report.txt --diff
 
 # Configure glitchlings inline with keyword arguments.
 glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
@@ -130,10 +130,10 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
 # Emit an Attack summary with metrics and counts (JSON by default).
-glitchlings --attack json --sample
+glitchlings --attack --sample
 
 # Emit a full Attack report with tokens, token IDs, metrics, and counts.
-glitchlings --report json --sample
+glitchlings --report --sample
 ```
 
 Append `--diff` to render a unified diff comparing the original and corrupted outputs. Combine it with `--color=always` in terminals that support ANSI colours to highlight changes more clearly. Pass glitchling parameters with `-g "Name(arg=value, ...)"` to mirror the Python API without writing code.
