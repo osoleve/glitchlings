@@ -11,13 +11,19 @@ changes.
 glitchlings --list
 
 # Glitch an entire file with Typogre and inspect the unified diff.
-glitchlings -g typogre --file documents/report.txt --diff
+glitchlings -g typogre --input-file documents/report.txt --diff
 
 # Configure glitchlings inline with keyword arguments.
 glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text through Mim1c for on-the-fly homoglyph swaps.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
+
+# Run an attack analysis with a specific tokenizer and output format.
+glitchlings --attack --tokenizer cl100k_base --format yaml --sample
+
+# Generate a full report and save to a file.
+glitchlings --report -t gpt-4 -o report.json "Test input text"
 ```
 
 ## Built-in glitchlings
@@ -38,12 +44,12 @@ Scannequin — scope: Character, order: late
 ## Help overview
 
 ```text
-usage: glitchlings [-h] [-g SPEC] [-s SEED] [-f FILE] [--sample] [--diff]
-                   [--list] [-c CONFIG] [--attack [{json,yaml,yml}]]
-                   [--report [{json,yaml,yml}]] [text ...]
+usage: glitchlings [-h] [-g SPEC] [-s SEED] [-i INPUT_FILE] [-o OUTPUT_FILE]
+                   [--sample] [--diff] [--list] [-c CONFIG] [--attack]
+                   [--report] [-f {json,yaml,yml}] [-t TOKENIZER] [text ...]
 
 Summon glitchlings to corrupt text. Provide input text as an argument, via
---file, or pipe it on stdin.
+--input-file, or pipe it on stdin.
 
 positional arguments:
   text                  Text to corrupt. If omitted, stdin is used or --sample
@@ -57,8 +63,11 @@ options:
                         all built-ins.
   -s SEED, --seed SEED  Seed controlling deterministic corruption order
                         (default: 151).
-  -f FILE, --file FILE  Read input text from a file instead of the command
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Read input text from a file instead of the command
                         line argument.
+  -o OUTPUT_FILE, --output-file OUTPUT_FILE
+                        Write output to a file instead of stdout.
   --sample              Use the included SAMPLE_TEXT when no other input is
                         provided.
   --diff                Show a unified diff between the original and corrupted
@@ -66,10 +75,14 @@ options:
   --list                List available glitchlings and exit.
   -c CONFIG, --config CONFIG
                         Load glitchlings from a YAML configuration file.
-  --attack [{json,yaml,yml}]
-                        Output an Attack summary (default: json). Includes
-                        metrics and counts without full token lists.
-  --report [{json,yaml,yml}]
-                        Output a full Attack report (default: json). Includes
-                        tokens, token IDs, metrics, and counts.
+  --attack              Output an Attack summary. Includes metrics and counts
+                        without full token lists.
+  --report              Output a full Attack report. Includes tokens, token
+                        IDs, metrics, and counts.
+  -f {json,yaml,yml}, --format {json,yaml,yml}
+                        Output format for --attack or --report (default: json).
+  -t TOKENIZER, --tokenizer TOKENIZER
+                        Tokenizer to use for --attack or --report. Checks
+                        tiktoken first, then HuggingFace tokenizers library.
+                        Examples: cl100k_base, gpt-4, bert-base-uncased.
 ```

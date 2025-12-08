@@ -258,11 +258,20 @@ grid_result.export_csv("grid_results.csv", include_params=True)
 
 ## CLI reports
 
-Prefer to stay in the terminal? The `glitchlings` CLI exposes the same report via `--report` (alias `--attack`):
+Prefer to stay in the terminal? The `glitchlings` CLI exposes the same report via `--report` and `--attack`:
 
 ```bash
-glitchlings --report json --sample
-glitchlings --report yaml "Corrupt me"
+# Output attack summary (metrics and counts) as JSON (default)
+glitchlings --attack --sample
+
+# Output full report as YAML
+glitchlings --report --format yaml "Corrupt me"
+
+# Specify a tokenizer for the report
+glitchlings --attack --tokenizer cl100k_base --sample
+
+# Save report to a file
+glitchlings --report -t gpt-4 -o report.json "Corrupt me"
 ```
 
 ## Choosing a tokenizer

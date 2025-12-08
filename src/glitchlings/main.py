@@ -42,7 +42,7 @@ def build_parser(
     parser = argparse.ArgumentParser(
         description=(
             "Summon glitchlings to corrupt text. Provide input text as an argument, "
-            "via --file, or pipe it on stdin."
+            "via --input-file, or pipe it on stdin."
         ),
         exit_on_error=exit_on_error,
     )
@@ -71,10 +71,18 @@ def build_parser(
         help="Seed controlling deterministic corruption order (default: 151).",
     )
     parser.add_argument(
-        "-f",
-        "--file",
+        "-i",
+        "--input-file",
+        dest="input_file",
         type=Path,
         help="Read input text from a file instead of the command line argument.",
+    )
+    parser.add_argument(
+        "-o",
+        "--output-file",
+        dest="output_file",
+        type=Path,
+        help="Write output to a file instead of stdout.",
     )
     parser.add_argument(
         "--sample",
@@ -99,24 +107,30 @@ def build_parser(
     )
     parser.add_argument(
         "--attack",
-        dest="attack_format",
-        nargs="?",
-        const="json",
-        choices=["json", "yaml", "yml"],
-        help=(
-            "Output an Attack summary (default: json). "
-            "Includes metrics and counts without full token lists."
-        ),
+        action="store_true",
+        help=("Output an Attack summary. Includes metrics and counts without full token lists."),
     )
     parser.add_argument(
         "--report",
-        dest="report_format",
-        nargs="?",
-        const="json",
+        action="store_true",
+        help=("Output a full Attack report. Includes tokens, token IDs, metrics, and counts."),
+    )
+    parser.add_argument(
+        "-f",
+        "--format",
+        dest="output_format",
         choices=["json", "yaml", "yml"],
+        default="json",
+        help="Output format for --attack or --report (default: json).",
+    )
+    parser.add_argument(
+        "-t",
+        "--tokenizer",
+        dest="tokenizer",
         help=(
-            "Output a full Attack report (default: json). "
-            "Includes tokens, token IDs, metrics, and counts."
+            "Tokenizer to use for --attack or --report. "
+            "Checks tiktoken first, then HuggingFace tokenizers library. "
+            "Examples: cl100k_base, gpt-4, bert-base-uncased."
         ),
     )
 
@@ -147,7 +161,7 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
         SystemExit: Raised indirectly via ``parser.error`` on failure.
 
     """
-    file_path = cast(Path | None, getattr(args, "file", None))
+    file_path = cast(Path | None, getattr(args, "input_file", None))
     if file_path is not None:
         try:
             return file_path.read_text(encoding="utf-8")
@@ -171,7 +185,7 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
         return SAMPLE_TEXT
 
     parser.error(
-        "No input text provided. Supply text as an argument, use --file, pipe input, or "
+        "No input text provided. Supply text as an argument, use --input-file, pipe input, or "
         "pass --sample."
     )
     raise AssertionError("parser.error should exit")
@@ -273,6 +287,14 @@ def _format_report_json(payload: dict[str, Any]) -> str:
     return raw
 
 
+def _write_output(content: str, output_file: Path | None) -> None:
+    """Write content to output file or stdout."""
+    if output_file is not None:
+        output_file.write_text(content, encoding="utf-8")
+    else:
+        print(content, end="" if content.endswith("\n") else "\n")
+
+
 def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     """Execute the CLI workflow using the provided arguments.
 
@@ -288,21 +310,30 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         list_glitchlings()
         return 0
 
-    attack_format = cast(str | None, getattr(args, "attack_format", None))
-    report_format = cast(str | None, getattr(args, "report_format", None))
+    wants_attack = bool(getattr(args, "attack", False))
+    wants_report = bool(getattr(args, "report", False))
 
-    if attack_format and report_format:
+    if wants_attack and wants_report:
         parser.error("Cannot combine --attack with --report. Use one or the other.")
         raise AssertionError("parser.error should exit")
 
-    output_format = attack_format or report_format
-    if output_format and args.diff:
+    wants_metrics = wants_attack or wants_report
+    if wants_metrics and args.diff:
         parser.error("--diff cannot be combined with --report/--attack output.")
         raise AssertionError("parser.error should exit")
 
-    normalized_output_format = None
-    if output_format:
-        normalized_output_format = "yaml" if output_format == "yml" else output_format
+    # Normalize output format
+    output_format = cast(str, args.output_format)
+    normalized_format = "yaml" if output_format == "yml" else output_format
+
+    # Get output file path
+    output_file = cast(Path | None, getattr(args, "output_file", None))
+
+    # Validate tokenizer is only used with --attack or --report
+    tokenizer_spec = cast(str | None, getattr(args, "tokenizer", None))
+    if tokenizer_spec and not wants_metrics:
+        parser.error("--tokenizer requires --attack or --report.")
+        raise AssertionError("parser.error should exit")
 
     text = read_text(args, parser)
     gaggle = summon_glitchlings(
@@ -312,12 +343,12 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         config_path=args.config,
     )
 
-    if normalized_output_format:
+    if wants_metrics:
         attack_seed = args.seed if args.seed is not None else getattr(gaggle, "seed", None)
-        attack = Attack(gaggle, seed=attack_seed)
+        attack = Attack(gaggle, tokenizer=tokenizer_spec, seed=attack_seed)
         result = attack.run(text)
 
-        if attack_format:
+        if wants_attack:
             # --attack: output summary only (metrics and counts, no token lists)
             full_report = result.to_report()
             payload = {
@@ -332,19 +363,20 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
                 }
             }
         else:
-            # --report: output full report
+            # --report: output full report (no summary)
             payload = result.to_report()
-            payload["summary"] = result.summary()
 
-        if normalized_output_format == "json":
-            if attack_format:
+        if normalized_format == "json":
+            if wants_attack:
                 # Summary is a dict, format with standard indentation
-                print(json.dumps(payload, indent=2))
+                output_content = json.dumps(payload, indent=2)
             else:
                 # Full report - use compact token formatting
-                print(_format_report_json(payload))
+                output_content = _format_report_json(payload)
         else:
-            print(yaml.safe_dump(payload, sort_keys=False))
+            output_content = yaml.safe_dump(payload, sort_keys=False)
+
+        _write_output(output_content, output_file)
         return 0
 
     corrupted = gaggle.corrupt(text)
@@ -355,7 +387,7 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.diff:
         show_diff(text, corrupted)
     else:
-        print(corrupted)
+        _write_output(corrupted, output_file)
 
     return 0
 
