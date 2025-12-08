@@ -337,3 +337,26 @@ def test_run_cli_tokenizer_requires_attack_or_report(capsys):
 
     captured = capsys.readouterr()
     assert "--tokenizer requires --attack or --report" in captured.err
+
+
+def test_run_cli_format_requires_attack_or_report(capsys):
+    parser = build_parser()
+    args = parser.parse_args(["--format", "yaml", "Hello"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "--format requires --attack or --report" in captured.err
+
+
+def test_run_cli_diff_cannot_combine_with_output_file(tmp_path, capsys):
+    output_path = tmp_path / "output.txt"
+    parser = build_parser()
+    args = parser.parse_args(["--diff", "--output-file", str(output_path), "Hello"])
+
+    with pytest.raises(SystemExit):
+        run_cli(args, parser)
+
+    captured = capsys.readouterr()
+    assert "--diff cannot be combined with --output-file" in captured.err
