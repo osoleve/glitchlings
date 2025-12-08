@@ -173,7 +173,7 @@ def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
                     try:
                         tiktoken.encoding_for_model(tokenizer)
                         return TiktokenTokenizer(tokenizer)
-                    except ValueError:
+                    except (ValueError, KeyError):
                         pass
             except ImportError:
                 pass

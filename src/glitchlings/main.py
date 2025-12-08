@@ -322,12 +322,22 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         parser.error("--diff cannot be combined with --report/--attack output.")
         raise AssertionError("parser.error should exit")
 
+    # Get output file path
+    output_file = cast(Path | None, getattr(args, "output_file", None))
+
+    # Validate --diff and --output-file are not combined
+    if args.diff and output_file:
+        parser.error("--diff cannot be combined with --output-file.")
+        raise AssertionError("parser.error should exit")
+
     # Normalize output format
     output_format = cast(str, args.output_format)
     normalized_format = "yaml" if output_format == "yml" else output_format
 
-    # Get output file path
-    output_file = cast(Path | None, getattr(args, "output_file", None))
+    # Validate --format is only used with --attack or --report
+    if output_format != "json" and not wants_metrics:
+        parser.error("--format requires --attack or --report.")
+        raise AssertionError("parser.error should exit")
 
     # Validate tokenizer is only used with --attack or --report
     tokenizer_spec = cast(str | None, getattr(args, "tokenizer", None))
