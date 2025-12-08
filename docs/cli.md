@@ -1,8 +1,8 @@
 # Command Line Interface
 
 The `glitchlings` CLI mirrors the Python API for corruption, configuration files, and dataset
-helpers. Regenerate this page with `python -m glitchlings.dev.docs` whenever the CLI contract
-changes.
+helpers.   
+_(page built with `python -m glitchlings.dev.docs`)_
 
 ## Quick commands
 
