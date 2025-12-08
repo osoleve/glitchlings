@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 core_module = importlib.import_module("glitchlings.zoo.core")
-ekkokin_module = importlib.import_module("glitchlings.zoo.ekkokin")
+wherewolf_module = importlib.import_module("glitchlings.zoo.wherewolf")
 glitchlings_package = importlib.import_module("glitchlings")
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -37,21 +37,21 @@ TRACKED_WORDS = {"allowed", "write", "heir"}
 HOMOPHONE_SETS = {word: homophones_for(word) for word in TRACKED_WORDS}
 
 
-def test_ekkokin_exports_word_level_glitchling() -> None:
-    glitch = ekkokin_module.Ekkokin(seed=1337)
+def test_wherewolf_exports_word_level_glitchling() -> None:
+    glitch = wherewolf_module.Wherewolf(seed=1337)
 
     assert glitch.level is core_module.AttackWave.WORD
     assert glitch.order is core_module.AttackOrder.EARLY
 
-    assert ekkokin_module.ekkokin.level is core_module.AttackWave.WORD
-    assert ekkokin_module.ekkokin.order is core_module.AttackOrder.EARLY
+    assert wherewolf_module.wherewolf.level is core_module.AttackWave.WORD
+    assert wherewolf_module.wherewolf.order is core_module.AttackOrder.EARLY
 
-    assert hasattr(glitchlings_package, "Ekkokin")
-    assert hasattr(glitchlings_package, "ekkokin")
+    assert hasattr(glitchlings_package, "Wherewolf")
+    assert hasattr(glitchlings_package, "wherewolf")
 
     descriptor = glitch.pipeline_operation()
     assert descriptor == {
-        "type": "ekkokin",
+        "type": "wherewolf",
         "rate": pytest.approx(glitch.kwargs["rate"]),
         "weighting": "flat",
     }
@@ -64,10 +64,10 @@ def test_reference_homophones_include_word(word: str) -> None:
     assert len(homophones) >= 2
 
 
-def test_ekkokin_replaces_words_with_homophones() -> None:
+def test_wherewolf_replaces_words_with_homophones() -> None:
     text = "Allowed writers write about the heir."
 
-    glitch = ekkokin_module.Ekkokin(rate=1.0, seed=404)
+    glitch = wherewolf_module.Wherewolf(rate=1.0, seed=404)
     glitch.reset_rng(404)
 
     result = glitch(text)
@@ -98,7 +98,7 @@ def test_ekkokin_replaces_words_with_homophones() -> None:
 
 @pytest.mark.parametrize("source", ["allowed", "Allowed", "ALLOWED"])
 def test_substitute_homophones_preserves_source_casing(source: str) -> None:
-    result = ekkokin_module.substitute_homophones(source, rate=1.0, rng=random.Random(17))
+    result = wherewolf_module.substitute_homophones(source, rate=1.0, rng=random.Random(17))
 
     assert result != source
     alternatives = {candidate for candidate in HOMOPHONE_SETS["allowed"] if candidate != "allowed"}

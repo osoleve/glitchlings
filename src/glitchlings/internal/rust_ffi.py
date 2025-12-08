@@ -54,7 +54,7 @@ __all__ = [
     "redact_words_rust",
     "jargoyle_drift_rust",
     "list_lexeme_dictionaries_rust",
-    "ekkokin_homophones_rust",
+    "wherewolf_homophones_rust",
     # Grammar operations
     "pedant_rust",
 ]
@@ -444,7 +444,7 @@ def list_lexeme_dictionaries_rust() -> list[str]:
     return cast(list[str], fn())
 
 
-def ekkokin_homophones_rust(
+def wherewolf_homophones_rust(
     text: str,
     rate: float,
     weighting: str,
@@ -461,7 +461,7 @@ def ekkokin_homophones_rust(
     Returns:
         Text with homophone substitutions.
     """
-    fn = get_rust_operation("ekkokin_homophones")
+    fn = get_rust_operation("wherewolf_homophones")
     return cast(str, fn(text, rate, weighting, seed))
 
 

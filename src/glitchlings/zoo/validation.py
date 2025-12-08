@@ -135,7 +135,7 @@ def normalise_mim1c_banned(value: object) -> tuple[str, ...] | None:
 
 
 # ---------------------------------------------------------------------------
-# Ekkokin Validation
+# Wherewolf Validation
 # ---------------------------------------------------------------------------
 
 
@@ -456,7 +456,7 @@ __all__ = [
     # Mim1c
     "normalise_mim1c_classes",
     "normalise_mim1c_banned",
-    # Ekkokin
+    # Wherewolf
     "normalise_homophone_group",
     "build_homophone_lookup",
     # Rushmore

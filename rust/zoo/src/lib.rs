@@ -1,4 +1,4 @@
-mod ekkokin;
+mod wherewolf;
 mod glitch_ops;
 mod hokey;
 mod jargoyle;
@@ -20,7 +20,7 @@ use rand::Rng;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use ekkokin::{EkkokinOp, HomophoneWeighting};
+use wherewolf::{WherewolfOp, HomophoneWeighting};
 pub use glitch_ops::{
     DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
@@ -287,7 +287,7 @@ enum PyGlitchOperation {
         word_length_threshold: usize,
         base_p: f64,
     },
-    Ekkokin {
+    Wherewolf {
         rate: f64,
         weighting: String,
     },
@@ -435,11 +435,11 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     rate,
                 })
             }
-            "ekkokin" => {
-                let rate = extract_required_field(dict, "ekkokin operation", "rate")?;
+            "wherewolf" => {
+                let rate = extract_required_field(dict, "wherewolf operation", "rate")?;
                 let weighting = extract_optional_field(dict, "weighting")?
                     .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
-                Ok(PyGlitchOperation::Ekkokin { rate, weighting })
+                Ok(PyGlitchOperation::Wherewolf { rate, weighting })
             }
             "pedant" => {
                 let stone = extract_required_field(dict, "pedant operation", "stone")?;
@@ -546,11 +546,11 @@ impl PyGlitchOperation {
                 mode,
                 rate,
             } => GlitchOperation::Jargoyle(JargoyleOp::new(&lexemes, mode, rate)),
-            PyGlitchOperation::Ekkokin { rate, weighting } => {
+            PyGlitchOperation::Wherewolf { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
                     PyValueError::new_err(format!("unsupported weighting: {weighting}"))
                 })?;
-                GlitchOperation::Ekkokin(EkkokinOp { rate, weighting })
+                GlitchOperation::Wherewolf(WherewolfOp { rate, weighting })
             }
             PyGlitchOperation::Pedant { stone } => {
                 let op = PedantOp::new(seed as i128, &stone)?;
@@ -619,7 +619,7 @@ fn swap_adjacent_words(text: &str, rate: f64, seed: Option<u64>) -> PyResult<Str
 }
 
 #[pyfunction(signature = (text, rate, weighting, seed=None))]
-fn ekkokin_homophones(
+fn wherewolf_homophones(
     text: &str,
     rate: f64,
     weighting: &str,
@@ -627,7 +627,7 @@ fn ekkokin_homophones(
 ) -> PyResult<String> {
     let weighting = HomophoneWeighting::try_from_str(weighting)
         .ok_or_else(|| PyValueError::new_err(format!("unsupported weighting: {weighting}")))?;
-    let op = EkkokinOp { rate, weighting };
+    let op = WherewolfOp { rate, weighting };
     apply_operation(text, op, seed).map_err(glitch_ops::GlitchOpError::into_pyerr)
 }
 
@@ -714,7 +714,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(mim1c::swap_homoglyphs, m)?)?;
-    m.add_function(wrap_pyfunction!(ekkokin_homophones, m)?)?;
+    m.add_function(wrap_pyfunction!(wherewolf_homophones, m)?)?;
     m.add_function(wrap_pyfunction!(pedant_operation, m)?)?;
     m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;

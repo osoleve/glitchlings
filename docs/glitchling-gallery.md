@@ -12,7 +12,7 @@ One morning, when Gregor Samsa woke from troubled dreams, he found himself trans
 
 All examples use a base seed of `404` with per-glitchling offsets to keep results deterministic across runs.
 
-## Ekkokin
+## Wherewolf
 
 ### 1% corruption
 

@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 
 use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
-use crate::resources::{ekkokin_homophone_sets, is_whitespace_only, split_affixes};
+use crate::resources::{wherewolf_homophone_sets, is_whitespace_only, split_affixes};
 use crate::text_buffer::TextBuffer;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -26,7 +26,7 @@ impl HomophoneWeighting {
 }
 
 #[derive(Debug, Clone)]
-pub struct EkkokinOp {
+pub struct WherewolfOp {
     pub rate: f64,
     pub weighting: HomophoneWeighting,
 }
@@ -34,7 +34,7 @@ pub struct EkkokinOp {
 static HOMOPHONE_LOOKUP: Lazy<HashMap<String, Vec<String>>> = Lazy::new(|| {
     let mut mapping: HashMap<String, Vec<String>> = HashMap::new();
 
-    for group in ekkokin_homophone_sets() {
+    for group in wherewolf_homophone_sets() {
         let mut seen: HashSet<String> = HashSet::new();
         let mut normalised: Vec<String> = Vec::new();
         for word in group {
@@ -143,7 +143,7 @@ fn choose_alternative(
     }
 }
 
-impl GlitchOp for EkkokinOp {
+impl GlitchOp for WherewolfOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
         if buffer.word_count() == 0 {
             return Ok(());

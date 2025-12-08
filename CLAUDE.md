@@ -54,7 +54,7 @@ src/glitchlings/
 │   ├── rng.py           # Seed/RNG helpers (pure)
 │   ├── typogre.py       # Character-level typos
 │   ├── mim1c.py         # Unicode confusables
-│   ├── ekkokin.py       # Homophone substitution
+│   ├── wherewolf.py     # Homophone substitution
 │   ├── hokey.py         # Word stretching
 │   ├── jargoyle.py      # Synonym replacement
 │   ├── rushmore.py      # Word drop/dup/swap
@@ -112,7 +112,7 @@ from glitchlings import Glitchling, Gaggle, Auggie
 
 # All glitchlings
 from glitchlings import (
-    Typogre, Mim1c, Ekkokin, Hokey, Jargoyle,
+    Typogre, Mim1c, Wherewolf, Hokey, Jargoyle,
     Rushmore, Redactyl, Scannequin, Zeedub, Pedant
 )
 
@@ -243,7 +243,8 @@ glitchlings -g typogre "text"         # Apply single glitchling
 glitchlings -g "Typogre(rate=0.05)" "text"  # With parameters
 glitchlings --config chaos.yaml "text"     # From config file
 glitchlings --file input.txt --diff        # File input with diff
-glitchlings --report json --sample         # Structured report
+glitchlings --attack json --sample         # Summary with metrics
+glitchlings --report json --sample         # Full report with tokens
 ```
 
 ## Test Structure

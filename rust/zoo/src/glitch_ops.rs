@@ -3,7 +3,7 @@ use pyo3::PyErr;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 
-use crate::ekkokin::EkkokinOp;
+use crate::wherewolf::WherewolfOp;
 use crate::jargoyle::JargoyleOp;
 use crate::mim1c::Mim1cOp;
 use crate::pedant::PedantOp;
@@ -1626,7 +1626,7 @@ pub enum GlitchOperation {
     Jargoyle(JargoyleOp),
     QuotePairs(QuotePairsOp),
     Hokey(crate::hokey::HokeyOp),
-    Ekkokin(EkkokinOp),
+    Wherewolf(WherewolfOp),
     Pedant(PedantOp),
 }
 
@@ -1645,7 +1645,7 @@ impl GlitchOp for GlitchOperation {
             GlitchOperation::Jargoyle(op) => op.apply(buffer, rng),
             GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
             GlitchOperation::Hokey(op) => op.apply(buffer, rng),
-            GlitchOperation::Ekkokin(op) => op.apply(buffer, rng),
+            GlitchOperation::Wherewolf(op) => op.apply(buffer, rng),
             GlitchOperation::Pedant(op) => op.apply(buffer, rng),
         }
     }

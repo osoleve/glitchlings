@@ -18,7 +18,7 @@ Welcome to the Glitchlings field manual! This guide explains how to install the 
    - [Rushmore](glitchlings/rushmore.md)
    - [Redactyl](glitchlings/redactyl.md)
    - [Jargoyle](glitchlings/jargoyle.md)
-   - [Ekkokin](glitchlings/ekkokin.md)
+   - [Wherewolf](glitchlings/wherewolf.md)
    - [Pedant](glitchlings/pedant.md)
    - [Scannequin](glitchlings/scannequin.md)
    - [Zeedub](glitchlings/zeedub.md)
@@ -129,7 +129,10 @@ glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 # Pipe text through Mim1c for on-the-fly homoglyph swaps.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
 
-# Emit an Attack report with metrics, token counts, and tokens (JSON by default).
+# Emit an Attack summary with metrics and counts (JSON by default).
+glitchlings --attack json --sample
+
+# Emit a full Attack report with tokens, token IDs, metrics, and counts.
 glitchlings --report json --sample
 ```
 
@@ -162,7 +165,7 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Rushmore](glitchlings/rushmore.md) - targeted deletions, reduplications, and swaps with configurable attack modes.
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - dictionary-driven synonym substitutions for domain drift.
-- [Ekkokin](glitchlings/ekkokin.md) - curated homophone swaps that preserve casing and cadence.
+- [Wherewolf](glitchlings/wherewolf.md) - curated homophone swaps that preserve casing and cadence.
 - [Pedant](glitchlings/pedant.md) - grammar evolutions driven by themed stones (Whomst, Fewerling, Commama, Kiloa, and more).
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.

@@ -5,10 +5,11 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import re
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
 import yaml
 
@@ -97,14 +98,24 @@ def build_parser(
         help="Load glitchlings from a YAML configuration file.",
     )
     parser.add_argument(
-        "--report",
         "--attack",
+        dest="attack_format",
+        nargs="?",
+        const="json",
+        choices=["json", "yaml", "yml"],
+        help=(
+            "Output an Attack summary (default: json). "
+            "Includes metrics and counts without full token lists."
+        ),
+    )
+    parser.add_argument(
+        "--report",
         dest="report_format",
         nargs="?",
         const="json",
         choices=["json", "yaml", "yml"],
         help=(
-            "Output a structured Attack report (default: json). Use --attack as an alias. "
+            "Output a full Attack report (default: json). "
             "Includes tokens, token IDs, metrics, and counts."
         ),
     )
@@ -227,6 +238,41 @@ def show_diff(original: str, corrupted: str) -> None:
         print("No changes detected.")
 
 
+def _format_report_json(payload: dict[str, Any]) -> str:
+    """Format a report payload as JSON with compact token arrays.
+
+    Token lists are formatted on a single line for readability, while
+    other structures retain standard indented formatting.
+    """
+    # Keys whose values should be formatted compactly (single line)
+    compact_keys = {
+        "input_tokens",
+        "output_tokens",
+        "input_token_ids",
+        "output_token_ids",
+    }
+
+    # First, serialize with standard formatting
+    raw = json.dumps(payload, indent=2)
+
+    # Then compact token arrays: find multi-line arrays for compact_keys
+    for key in compact_keys:
+        # Pattern matches: "key": [\n    items...\n  ]
+        # and replaces with: "key": [items...]
+        pattern = rf'("{key}":\s*)\[\s*\n((?:\s+.*?\n)*?)\s*\]'
+
+        def compact_array(match: re.Match[str]) -> str:
+            prefix = match.group(1)
+            content = match.group(2)
+            # Extract items from the multi-line content
+            items = re.findall(r"(?:^\s+)(.+?)(?:,?\s*$)", content, re.MULTILINE)
+            return f"{prefix}[{', '.join(items)}]"
+
+        raw = re.sub(pattern, compact_array, raw)
+
+    return raw
+
+
 def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     """Execute the CLI workflow using the provided arguments.
 
@@ -242,14 +288,21 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         list_glitchlings()
         return 0
 
+    attack_format = cast(str | None, getattr(args, "attack_format", None))
     report_format = cast(str | None, getattr(args, "report_format", None))
-    if report_format and args.diff:
+
+    if attack_format and report_format:
+        parser.error("Cannot combine --attack with --report. Use one or the other.")
+        raise AssertionError("parser.error should exit")
+
+    output_format = attack_format or report_format
+    if output_format and args.diff:
         parser.error("--diff cannot be combined with --report/--attack output.")
         raise AssertionError("parser.error should exit")
 
-    normalized_report_format = None
-    if report_format:
-        normalized_report_format = "yaml" if report_format == "yml" else report_format
+    normalized_output_format = None
+    if output_format:
+        normalized_output_format = "yaml" if output_format == "yml" else output_format
 
     text = read_text(args, parser)
     gaggle = summon_glitchlings(
@@ -259,15 +312,37 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         config_path=args.config,
     )
 
-    if normalized_report_format:
+    if normalized_output_format:
         attack_seed = args.seed if args.seed is not None else getattr(gaggle, "seed", None)
         attack = Attack(gaggle, seed=attack_seed)
         result = attack.run(text)
-        payload = result.to_report()
-        payload["summary"] = result.summary()
 
-        if normalized_report_format == "json":
-            print(json.dumps(payload, indent=2))
+        if attack_format:
+            # --attack: output summary only (metrics and counts, no token lists)
+            full_report = result.to_report()
+            payload = {
+                k: v
+                for k, v in full_report.items()
+                if k
+                not in {
+                    "input_tokens",
+                    "output_tokens",
+                    "input_token_ids",
+                    "output_token_ids",
+                }
+            }
+        else:
+            # --report: output full report
+            payload = result.to_report()
+            payload["summary"] = result.summary()
+
+        if normalized_output_format == "json":
+            if attack_format:
+                # Summary is a dict, format with standard indentation
+                print(json.dumps(payload, indent=2))
+            else:
+                # Full report - use compact token formatting
+                print(_format_report_json(payload))
         else:
             print(yaml.safe_dump(payload, sort_keys=False))
         return 0

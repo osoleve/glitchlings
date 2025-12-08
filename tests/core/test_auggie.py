@@ -7,7 +7,7 @@ from hypothesis import strategies as st
 from glitchlings.auggie import Auggie
 from glitchlings.util import KEYNEIGHBORS
 from glitchlings.zoo import (
-    Ekkokin,
+    Wherewolf,
     Gaggle,
     Glitchling,
     Hokey,
@@ -75,7 +75,7 @@ def _available_glitchling_cases() -> list[tuple[str, type[Glitchling], dict[str,
         ),
         (
             "homophone",
-            Ekkokin,
+            Wherewolf,
             {
                 "rate": 0.04,
                 "seed": 29,

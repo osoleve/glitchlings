@@ -116,14 +116,14 @@ This applies the same corruption once, then tokenizes with each tokenizer to com
 Use `compare_glitchlings()` to find which corruption strategy has the most impact for a specific tokenizer:
 
 ```python
-from glitchlings import Typogre, Mim1c, Ekkokin, compare_glitchlings
+from glitchlings import Typogre, Mim1c, Wherewolf, compare_glitchlings
 
 result = compare_glitchlings(
     "Hello world",
     [
         ("typogre", Typogre(rate=0.05)),
         ("confusables", Mim1c(rate=0.05)),
-        ("homophones", Ekkokin(rate=0.05)),
+        ("homophones", Wherewolf(rate=0.05)),
     ],
     tokenizer="o200k_base",
 )

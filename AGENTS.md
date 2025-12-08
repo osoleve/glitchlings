@@ -32,7 +32,7 @@ After completing a task, always:
   - `core.py` houses `Glitchling`/`Gaggle`, dataset helpers, transcript targeting, and pipeline caching.
   - `core_planning.py` (pure) builds execution plans and normalises pipeline descriptors; `core_execution.py` dispatches plans through the Rust pipeline or Python fallbacks.
   - `corrupt_dispatch.py` (pure) resolves transcript targets and assembles corruption results; `rng.py` handles seed derivation.
-  - Glitchlings: Typogre, Hokey, Mim1c, Ekkokin, Pedant (`zoo/pedant/`), Jargoyle, Rushmore (duplication/adjacent swap/zero-width), Redactyl, Scannequin, Zeedub.
+  - Glitchlings: Typogre, Hokey, Mim1c, Wherewolf, Pedant (`zoo/pedant/`), Jargoyle, Rushmore (duplication/adjacent swap/zero-width), Redactyl, Scannequin, Zeedub.
 - **`src/glitchlings/util/`** - Shared helpers including `SAMPLE_TEXT`, keyboard neighbour and shift maps, transcript helpers, adapters, and diff utilities.
 - **`src/glitchlings/assets/`** - Bundled data (homoglyphs, homophones, Hokey assets, OCR confusions, pipeline assets) plus lexeme dictionaries under `lexemes/` (synonyms, colors, corporate, academic, cyberpunk, lovecraftian).
 - **`src/glitchlings/conf/`** - Configuration schema, dataclasses, and loaders for YAML attack configs.
