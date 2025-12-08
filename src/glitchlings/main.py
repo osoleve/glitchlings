@@ -318,8 +318,19 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         result = attack.run(text)
 
         if attack_format:
-            # --attack: output summary only
-            payload = result.summary()
+            # --attack: output summary only (metrics and counts, no token lists)
+            full_report = result.to_report()
+            payload = {
+                k: v
+                for k, v in full_report.items()
+                if k
+                not in {
+                    "input_tokens",
+                    "output_tokens",
+                    "input_token_ids",
+                    "output_token_ids",
+                }
+            }
         else:
             # --report: output full report
             payload = result.to_report()
