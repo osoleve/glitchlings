@@ -14,20 +14,20 @@ Typogre simulates fat-finger typing errors by swapping or duplicating characters
 
 ## Motor Coordination Weighting
 
-Typogre supports biomechanically-informed error weights derived from the [Aalto 136M Keystrokes dataset](https://userinterfaces.aalto.fi/136Mkeystrokes/). Research on 168,000 typists shows that typing errors aren't uniformly distributed across key transitions—error rates vary based on finger and hand coordination.
+Typogre supports biomechanically-informed error weights derived from the [Aalto 136M Keystrokes dataset](https://userinterfaces.aalto.fi/136Mkeystrokes/). Typos aren't just distributed geometrically by keyboard layout, they're also distributed by whether they occur when using the same finger twice, the same hand twice, or switching hands between keys.
 
 ### Weighting Modes
 
 | Mode | Description | Use Case |
 |------|-------------|----------|
 | `uniform` | All keyboard neighbors equally likely (default) | Original behavior, maximum chaos |
-| `wet_ink` | Cross-hand errors slip through; same-finger errors are caught | Simulates hastily typed text with no proofreading |
-| `hastily_edited` | Same-finger errors occur most often | Simulates raw typing before autocorrect/proofreading |
+| `wet_ink` | Cross-hand errors slip through; same-finger errors are caught | Simulates errors participants didn't catch |
+| `hastily_edited` | Same-finger errors occur most often | Simulates errors participants fixed mid-stream |
 
 ### How It Works
 
 - **Same-finger transitions** (e.g., 'e' → 'd', both left middle finger): Errors feel "wrong" and are often caught
-- **Same-hand transitions** (e.g., 'e' → 'f', same hand, different fingers): Moderate error detection
+- **Same-hand transitions** (e.g., 'e' → 'f', same hand, different fingers): Lower error detection
 - **Cross-hand transitions** (e.g., 'e' → 'j', alternating hands): Errors feel "normal" and slip through
 
 ### Example
