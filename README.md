@@ -181,6 +181,8 @@ For maintainability reasons, all `Glitchling` have consented to be given nicknam
 _What a nice word, would be a shame if something happened to it._
 
 > _**Fatfinger.**_ Typogre introduces character-level errors (duplicating, dropping, adding, or swapping) based on the layout of a keyboard (QWERTY by default, with Dvorak and Colemak variants built-in).
+>
+> Typogre supports **motor coordination weighting** based on biomechanical research from the Aalto 136M Keystrokes dataset. Use `motor_weighting="wet_ink"` for uncorrected errors (cross-hand typos slip through) or `motor_weighting="hastily_edited"` for raw typing patterns before correction.
 
 ### Mim1c
 
@@ -255,3 +257,10 @@ If you're trying to add a new glitchling and can't seem to make it deterministic
 2. Ensure you sort collections before shuffling or sampling.
 3. Make sure indices are chosen from a stable reference (e.g., original text) when applying length‑changing edits.
 4. Make sure there are enough sort keys to maintain stability.
+
+## References
+
+Glitchlings incorporates research from the following sources:
+
+- **Aalto 136M Keystrokes Dataset** — Motor coordination weights for Typogre's biomechanically-informed error sampling:
+  > Dhakal, V., Feit, A. M., Kristensson, P. O., & Oulasvirta, A. (2018). Observations on Typing from 136 Million Keystrokes. *Proceedings of the 2018 CHI Conference on Human Factors in Computing Systems (CHI '18)*, Article 646. https://doi.org/10.1145/3173574.3174220
