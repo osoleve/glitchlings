@@ -1,6 +1,6 @@
 use _zoo_rust::{
-    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, ReduplicateWordsOp,
-    SwapAdjacentWordsOp, TextBuffer, TypoOp,
+    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, MotorWeighting,
+    ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer, TypoOp,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use pprof::criterion::{Output, PProfProfiler};
@@ -272,6 +272,8 @@ fn bench_typo(c: &mut Criterion) {
                     let op = TypoOp {
                         rate: 0.1, // 10% of chars (high load)
                         layout: layout.clone(),
+                        shift_slip: None,
+                        motor_weighting: MotorWeighting::Uniform,
                     };
 
                     let _ = op.apply(&mut buffer, &mut rng);

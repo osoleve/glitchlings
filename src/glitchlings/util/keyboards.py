@@ -18,6 +18,11 @@ __all__ = [
     "SHIFT_MAPS",
     "KeyNeighborMap",
     "build_keyboard_neighbor_map",
+    # Motor coordination types
+    "FingerAssignment",
+    "FINGER_MAP",
+    "MOTOR_WEIGHTS",
+    "classify_transition",
 ]
 
 # Type alias for keyboard neighbor maps
@@ -354,3 +359,116 @@ class ShiftMapsAccessor:
 
 
 SHIFT_MAPS: ShiftMapsAccessor = ShiftMapsAccessor()
+
+
+# ---------------------------------------------------------------------------
+# Motor Coordination Types
+# ---------------------------------------------------------------------------
+# Based on the Aalto 136M Keystrokes dataset
+# Dhakal et al. (2018). Observations on Typing from 136 Million Keystrokes. CHI '18.
+# https://doi.org/10.1145/3173574.3174220
+
+# Finger assignment: (hand, finger)
+# hand: 0=left, 1=right, 2=thumb/space
+# finger: 0=pinky, 1=ring, 2=middle, 3=index, 4=thumb
+FingerAssignment = tuple[int, int]
+
+# fmt: off
+FINGER_MAP: dict[str, FingerAssignment] = {
+    # Left pinky (hand=0, finger=0)
+    '`': (0, 0), '1': (0, 0), 'q': (0, 0), 'a': (0, 0), 'z': (0, 0),
+    '~': (0, 0), '!': (0, 0), 'Q': (0, 0), 'A': (0, 0), 'Z': (0, 0),
+    # Left ring (hand=0, finger=1)
+    '2': (0, 1), 'w': (0, 1), 's': (0, 1), 'x': (0, 1),
+    '@': (0, 1), 'W': (0, 1), 'S': (0, 1), 'X': (0, 1),
+    # Left middle (hand=0, finger=2)
+    '3': (0, 2), 'e': (0, 2), 'd': (0, 2), 'c': (0, 2),
+    '#': (0, 2), 'E': (0, 2), 'D': (0, 2), 'C': (0, 2),
+    # Left index - two columns (hand=0, finger=3)
+    '4': (0, 3), 'r': (0, 3), 'f': (0, 3), 'v': (0, 3),
+    '5': (0, 3), 't': (0, 3), 'g': (0, 3), 'b': (0, 3),
+    '$': (0, 3), 'R': (0, 3), 'F': (0, 3), 'V': (0, 3),
+    '%': (0, 3), 'T': (0, 3), 'G': (0, 3), 'B': (0, 3),
+    # Right index - two columns (hand=1, finger=3)
+    '6': (1, 3), 'y': (1, 3), 'h': (1, 3), 'n': (1, 3),
+    '7': (1, 3), 'u': (1, 3), 'j': (1, 3), 'm': (1, 3),
+    '^': (1, 3), 'Y': (1, 3), 'H': (1, 3), 'N': (1, 3),
+    '&': (1, 3), 'U': (1, 3), 'J': (1, 3), 'M': (1, 3),
+    # Right middle (hand=1, finger=2)
+    '8': (1, 2), 'i': (1, 2), 'k': (1, 2), ',': (1, 2),
+    '*': (1, 2), 'I': (1, 2), 'K': (1, 2), '<': (1, 2),
+    # Right ring (hand=1, finger=1)
+    '9': (1, 1), 'o': (1, 1), 'l': (1, 1), '.': (1, 1),
+    '(': (1, 1), 'O': (1, 1), 'L': (1, 1), '>': (1, 1),
+    # Right pinky (hand=1, finger=0)
+    '0': (1, 0), 'p': (1, 0), ';': (1, 0), '/': (1, 0),
+    '-': (1, 0), '[': (1, 0), "'": (1, 0),
+    ')': (1, 0), 'P': (1, 0), ':': (1, 0), '?': (1, 0),
+    '_': (1, 0), '{': (1, 0), '"': (1, 0),
+    '=': (1, 0), ']': (1, 0), '\\': (1, 0),
+    '+': (1, 0), '}': (1, 0), '|': (1, 0),
+    # Space - thumb (hand=2, finger=4)
+    ' ': (2, 4),
+}
+# fmt: on
+
+# Motor coordination weights derived from Aalto 136M Keystrokes dataset
+# Keys: transition type -> weight multiplier
+# Values normalized so cross_hand = 1.0 (baseline)
+MOTOR_WEIGHTS: dict[str, dict[str, float]] = {
+    # "Wet ink" - uncorrected errors (errors that survive to final output)
+    # Same-finger errors are caught/corrected, cross-hand errors slip through
+    "wet_ink": {
+        "same_finger": 0.858,
+        "same_hand": 0.965,
+        "cross_hand": 1.0,
+    },
+    # "Hastily edited" - raw error distribution before correction
+    # Same-finger errors occur most often but are easy to detect
+    "hastily_edited": {
+        "same_finger": 3.031,
+        "same_hand": 1.101,
+        "cross_hand": 1.0,
+    },
+    # Uniform weighting - all transitions equal (original behavior)
+    "uniform": {
+        "same_finger": 1.0,
+        "same_hand": 1.0,
+        "cross_hand": 1.0,
+    },
+}
+
+
+def classify_transition(prev_char: str, curr_char: str) -> str:
+    """Classify the motor coordination required for a key transition.
+
+    Args:
+        prev_char: The previous character typed.
+        curr_char: The current character being typed.
+
+    Returns:
+        One of: 'same_finger', 'same_hand', 'cross_hand', 'space', or 'unknown'.
+    """
+    prev = FINGER_MAP.get(prev_char)
+    curr = FINGER_MAP.get(curr_char)
+
+    if prev is None or curr is None:
+        return "unknown"
+
+    prev_hand, prev_finger = prev
+    curr_hand, curr_finger = curr
+
+    # Space transitions (thumb) get their own category
+    if prev_hand == 2 or curr_hand == 2:
+        return "space"
+
+    # Cross-hand transition
+    if prev_hand != curr_hand:
+        return "cross_hand"
+
+    # Same-finger transition (same hand, same finger)
+    if prev_finger == curr_finger:
+        return "same_finger"
+
+    # Same-hand transition (same hand, different finger)
+    return "same_hand"

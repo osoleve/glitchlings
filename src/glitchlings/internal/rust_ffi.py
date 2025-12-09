@@ -181,6 +181,7 @@ def fatfinger_rust(
     shift_slip_rate: float | None = None,
     shift_slip_exit_rate: float | None = None,
     shift_map: Mapping[str, str] | None = None,
+    motor_weighting: str | None = None,
 ) -> str:
     """Introduce keyboard typos via Rust.
 
@@ -192,6 +193,8 @@ def fatfinger_rust(
         shift_slip_rate: Probability of entering a shifted burst before fat-fingering.
         shift_slip_exit_rate: Probability of releasing shift during a burst.
         shift_map: Mapping of unshifted -> shifted keys for the active layout.
+        motor_weighting: Weighting mode for error sampling ('uniform', 'wet_ink',
+            'hastily_edited').
 
     Returns:
         Text with simulated typing errors.
@@ -199,7 +202,16 @@ def fatfinger_rust(
     fn = get_rust_operation("fatfinger")
     return cast(
         str,
-        fn(text, rate, layout, seed, shift_slip_rate, shift_slip_exit_rate, shift_map),
+        fn(
+            text,
+            rate,
+            layout,
+            seed,
+            shift_slip_rate,
+            shift_slip_exit_rate,
+            shift_map,
+            motor_weighting,
+        ),
     )
 
 
