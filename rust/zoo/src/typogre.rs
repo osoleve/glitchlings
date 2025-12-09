@@ -5,7 +5,7 @@ use pyo3::Bound;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use crate::glitch_ops::ShiftSlipConfig;
+use crate::glitch_ops::{MotorWeighting, ShiftSlipConfig};
 
 type CachedLayouts = HashMap<usize, Arc<HashMap<String, Vec<String>>>>;
 type CachedShiftMaps = HashMap<usize, Arc<HashMap<String, String>>>;
@@ -92,7 +92,7 @@ pub(crate) fn build_shift_slip_config(
     )))
 }
 
-#[pyfunction(signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None))]
+#[pyfunction(signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None, motor_weighting=None))]
 pub(crate) fn fatfinger(
     text: &str,
     max_change_rate: f64,
@@ -101,6 +101,7 @@ pub(crate) fn fatfinger(
     shift_slip_rate: Option<f64>,
     shift_slip_exit_rate: Option<f64>,
     shift_map: Option<&Bound<'_, PyDict>>,
+    motor_weighting: Option<&str>,
 ) -> PyResult<String> {
     if text.is_empty() {
         return Ok(String::new());
@@ -116,10 +117,17 @@ pub(crate) fn fatfinger(
         shift_slip_exit_rate,
         shift_map,
     )?;
+
+    let motor_weighting = match motor_weighting {
+        Some(s) => MotorWeighting::from_str(s).unwrap_or_default(),
+        None => MotorWeighting::default(),
+    };
+
     let op = crate::glitch_ops::TypoOp {
         rate: max_change_rate,
         layout: (*layout_map).clone(),
         shift_slip,
+        motor_weighting,
     };
 
     crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)

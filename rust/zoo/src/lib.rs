@@ -22,9 +22,9 @@ use std::sync::{Arc, OnceLock, RwLock};
 
 use wherewolf::{WherewolfOp, HomophoneWeighting};
 pub use glitch_ops::{
-    DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, OcrArtifactsOp,
-    QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode, RushmoreComboOp,
-    ShiftSlipConfig, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
+    DeleteRandomWordsOp, GlitchOp, GlitchOpError, GlitchOperation, GlitchRng, MotorWeighting,
+    OcrArtifactsOp, QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, RushmoreComboMode,
+    RushmoreComboOp, ShiftSlipConfig, SwapAdjacentWordsOp, TypoOp, ZeroWidthOp,
 };
 pub use hokey::HokeyOp;
 use jargoyle::{JargoyleMode, JargoyleOp};
@@ -264,6 +264,7 @@ enum PyGlitchOperation {
         rate: f64,
         layout: Arc<Layout>,
         shift_slip: Option<ShiftSlipConfig>,
+        motor_weighting: MotorWeighting,
     },
     Mimic {
         rate: f64,
@@ -399,11 +400,18 @@ impl<'py> FromPyObject<'py> for PyGlitchOperation {
                     shift_slip_exit_rate,
                     shift_map,
                 )?;
+                let motor_weighting_str: Option<String> =
+                    extract_optional_field(dict, "motor_weighting")?;
+                let motor_weighting = motor_weighting_str
+                    .as_deref()
+                    .and_then(MotorWeighting::from_str)
+                    .unwrap_or_default();
 
                 Ok(PyGlitchOperation::Typo {
                     rate,
                     layout,
                     shift_slip,
+                    motor_weighting,
                 })
             }
             "mimic" => {
@@ -524,6 +532,7 @@ impl PyGlitchOperation {
                 rate,
                 layout,
                 shift_slip,
+                motor_weighting,
             } => {
                 let layout_map: HashMap<String, Vec<String>> =
                     layout.as_ref().iter().cloned().collect();
@@ -531,6 +540,7 @@ impl PyGlitchOperation {
                     rate,
                     layout: layout_map,
                     shift_slip,
+                    motor_weighting,
                 })
             }
             PyGlitchOperation::Mimic {

@@ -1,10 +1,14 @@
 from .keyboards import (
+    FINGER_MAP,
     KEYNEIGHBORS,
+    MOTOR_WEIGHTS,
     SHIFT_MAPS,
+    FingerAssignment,
     KeyboardLayouts,
     KeyNeighbors,
     ShiftMap,
     ShiftMaps,
+    classify_transition,
 )
 
 __all__ = [
@@ -15,6 +19,11 @@ __all__ = [
     "KeyNeighbors",
     "KEYNEIGHBORS",
     "SHIFT_MAPS",
+    # Motor coordination
+    "FingerAssignment",
+    "FINGER_MAP",
+    "MOTOR_WEIGHTS",
+    "classify_transition",
 ]
 
 SAMPLE_TEXT = (
