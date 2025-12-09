@@ -1080,6 +1080,53 @@ fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
     TransitionType::SameHand
 }
 
+/// Actions that TypoOp can perform during corruption.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+enum TypoAction {
+    /// Swap current character with the next one
+    SwapAdjacent = 0,
+    /// Delete a character
+    Delete = 1,
+    /// Insert a keyboard neighbor before the current character
+    InsertNeighbor = 2,
+    /// Replace current character with a keyboard neighbor
+    ReplaceNeighbor = 3,
+    /// Remove a space from a separator segment
+    RemoveSpace = 4,
+    /// Insert a space into a word segment
+    InsertSpace = 5,
+    /// Collapse adjacent duplicate characters
+    CollapseDuplicate = 6,
+    /// Duplicate a character
+    RepeatChar = 7,
+}
+
+impl TypoAction {
+    const COUNT: usize = 8;
+
+    fn from_index(idx: usize) -> Self {
+        match idx {
+            0 => Self::SwapAdjacent,
+            1 => Self::Delete,
+            2 => Self::InsertNeighbor,
+            3 => Self::ReplaceNeighbor,
+            4 => Self::RemoveSpace,
+            5 => Self::InsertSpace,
+            6 => Self::CollapseDuplicate,
+            7 => Self::RepeatChar,
+            _ => Self::SwapAdjacent, // Fallback (shouldn't happen)
+        }
+    }
+
+    fn is_char_level(self) -> bool {
+        matches!(
+            self,
+            Self::SwapAdjacent | Self::Delete | Self::InsertNeighbor | Self::ReplaceNeighbor
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TypoOp {
     pub rate: f64,
@@ -1201,10 +1248,12 @@ impl TypoOp {
     }
 
     fn neighbors_for_char(&self, ch: char) -> Option<&[String]> {
-        let key: String = ch.to_lowercase().collect();
-        self.layout
-            .get(key.as_str())
-            .map(|values| values.as_slice())
+        // Avoid allocation: ASCII lowercase is a single char, non-ASCII falls back to string
+        let lower = ch.to_ascii_lowercase();
+        // Try single-char key first (common case for ASCII)
+        let mut buf = [0u8; 4];
+        let key = lower.encode_utf8(&mut buf);
+        self.layout.get(key).map(|values| values.as_slice())
     }
 
     /// Select a neighbor using motor coordination weights.
@@ -1396,7 +1445,6 @@ impl GlitchOp for TypoOp {
         // Track modified segment characters to avoid repeated String parsing
         let mut segment_chars: HashMap<usize, Vec<char>> = HashMap::new();
 
-        const TOTAL_ACTIONS: usize = 8;
         let mut scratch = SmallVec::<[char; 4]>::new();
 
         // Pre-calculate segment indices to avoid O(N) scan inside the loop
@@ -1417,91 +1465,89 @@ impl GlitchOp for TypoOp {
             .collect();
 
         for _ in 0..max_changes {
-            let action_idx = rng.rand_index(TOTAL_ACTIONS)?;
+            let action = TypoAction::from_index(rng.rand_index(TypoAction::COUNT)?);
 
-            match action_idx {
-                0..=3 => {
-                    // Character-level operations within Word segments only
-                    if word_indices.is_empty() {
-                        continue;
-                    }
+            if action.is_char_level() {
+                // Character-level operations within Word segments only
+                if word_indices.is_empty() {
+                    continue;
+                }
 
-                    // Pick a random word segment
-                    let choice = rng.rand_index(word_indices.len())?;
-                    let seg_idx = word_indices[choice];
-                    let segment = &buffer.segments()[seg_idx];
+                // Pick a random word segment
+                let choice = rng.rand_index(word_indices.len())?;
+                let seg_idx = word_indices[choice];
+                let segment = &buffer.segments()[seg_idx];
 
-                    // Get mutable chars for this segment
-                    let chars = segment_chars
-                        .entry(seg_idx)
-                        .or_insert_with(|| segment.text().chars().collect());
+                // Get mutable chars for this segment
+                let chars = segment_chars
+                    .entry(seg_idx)
+                    .or_insert_with(|| segment.text().chars().collect());
 
-                    // Try to find an eligible index within this segment
-                    if let Some(idx) = Self::draw_eligible_index(rng, chars, 16)? {
-                        match action_idx {
-                            0 => {
-                                // Swap with next char
-                                if idx + 1 < chars.len() {
-                                    chars.swap(idx, idx + 1);
-                                }
+                // Try to find an eligible index within this segment
+                if let Some(idx) = Self::draw_eligible_index(rng, chars, 16)? {
+                    match action {
+                        TypoAction::SwapAdjacent => {
+                            if idx + 1 < chars.len() {
+                                chars.swap(idx, idx + 1);
                             }
-                            1 => {
-                                // Delete char
-                                if idx < chars.len() {
-                                    chars.remove(idx);
-                                }
-                            }
-                            2 => {
-                                // Insert keyboard neighbor before char
-                                if idx < chars.len() {
-                                    let ch = chars[idx];
-                                    scratch.clear();
-                                    match self.neighbors_for_char(ch) {
-                                        Some(neighbors) if !neighbors.is_empty() => {
-                                            // Use previous char for transition weighting
-                                            // (idx > 0 guaranteed by eligible_idx)
-                                            let prev_char = chars[idx - 1];
-                                            let choice =
-                                                self.select_weighted_neighbor(prev_char, neighbors, rng)?;
-                                            scratch.extend(neighbors[choice].chars());
-                                        }
-                                        _ => {
-                                            // Maintain deterministic RNG advancement when no replacements are available.
-                                            rng.rand_index(1)?;
-                                            scratch.push(ch);
-                                        }
-                                    }
-                                    if !scratch.is_empty() {
-                                        chars.splice(idx..idx, scratch.iter().copied());
-                                    }
-                                }
-                            }
-                            3 => {
-                                // Replace with keyboard neighbor
-                                if idx < chars.len() {
-                                    if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
-                                        if !neighbors.is_empty() {
-                                            // Use previous char for transition weighting
-                                            // (idx > 0 guaranteed by eligible_idx)
-                                            let prev_char = chars[idx - 1];
-                                            let choice =
-                                                self.select_weighted_neighbor(prev_char, neighbors, rng)?;
-                                            scratch.clear();
-                                            scratch.extend(neighbors[choice].chars());
-                                            if !scratch.is_empty() {
-                                                chars.splice(idx..idx + 1, scratch.iter().copied());
-                                            }
-                                        } else {
-                                            rng.rand_index(1)?;
-                                        }
-                                    }
-                                }
-                            }
-                            _ => {}
                         }
+                        TypoAction::Delete => {
+                            if idx < chars.len() {
+                                chars.remove(idx);
+                            }
+                        }
+                        TypoAction::InsertNeighbor => {
+                            if idx < chars.len() {
+                                let ch = chars[idx];
+                                scratch.clear();
+                                match self.neighbors_for_char(ch) {
+                                    Some(neighbors) if !neighbors.is_empty() => {
+                                        // Use previous char for transition weighting
+                                        // (idx > 0 guaranteed by eligible_idx)
+                                        let prev_char = chars[idx - 1];
+                                        let choice =
+                                            self.select_weighted_neighbor(prev_char, neighbors, rng)?;
+                                        scratch.extend(neighbors[choice].chars());
+                                    }
+                                    _ => {
+                                        // Maintain deterministic RNG advancement when no replacements are available.
+                                        rng.rand_index(1)?;
+                                        scratch.push(ch);
+                                    }
+                                }
+                                if !scratch.is_empty() {
+                                    chars.splice(idx..idx, scratch.iter().copied());
+                                }
+                            }
+                        }
+                        TypoAction::ReplaceNeighbor => {
+                            if idx < chars.len() {
+                                if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
+                                    if !neighbors.is_empty() {
+                                        // Use previous char for transition weighting
+                                        // (idx > 0 guaranteed by eligible_idx)
+                                        let prev_char = chars[idx - 1];
+                                        let choice =
+                                            self.select_weighted_neighbor(prev_char, neighbors, rng)?;
+                                        scratch.clear();
+                                        scratch.extend(neighbors[choice].chars());
+                                        if !scratch.is_empty() {
+                                            chars.splice(idx..idx + 1, scratch.iter().copied());
+                                        }
+                                    } else {
+                                        rng.rand_index(1)?;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {}
                     }
                 }
-                4 => {
+                continue;
+            }
+
+            match action {
+                TypoAction::RemoveSpace => {
                     // Remove space from Separator segments
                     if sep_indices.is_empty() {
                         continue;
@@ -1517,7 +1563,7 @@ impl GlitchOp for TypoOp {
 
                     Self::remove_space(rng, chars)?;
                 }
-                5 => {
+                TypoAction::InsertSpace => {
                     // Insert space into a Word segment (splitting it)
                     if word_indices.is_empty() {
                         continue;
@@ -1533,7 +1579,7 @@ impl GlitchOp for TypoOp {
 
                     Self::insert_space(rng, chars)?;
                 }
-                6 => {
+                TypoAction::CollapseDuplicate => {
                     // Collapse duplicate within Word segments
                     if word_indices.is_empty() {
                         continue;
@@ -1549,7 +1595,7 @@ impl GlitchOp for TypoOp {
 
                     Self::collapse_duplicate(rng, chars)?;
                 }
-                7 => {
+                TypoAction::RepeatChar => {
                     // Repeat char within Word segments
                     if word_indices.is_empty() {
                         continue;
@@ -1565,7 +1611,8 @@ impl GlitchOp for TypoOp {
 
                     Self::repeat_char(rng, chars)?;
                 }
-                _ => unreachable!("action index out of range"),
+                // Character-level actions already handled above
+                _ => {}
             }
         }
 
