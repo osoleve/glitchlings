@@ -264,3 +264,8 @@ Glitchlings incorporates research from the following sources:
 
 - **Aalto 136M Keystrokes Dataset** — Motor coordination weights for Typogre's biomechanically-informed error sampling:
   > Dhakal, V., Feit, A. M., Kristensson, P. O., & Oulasvirta, A. (2018). Observations on Typing from 136 Million Keystrokes. *Proceedings of the 2018 CHI Conference on Human Factors in Computing Systems (CHI '18)*, Article 646. https://doi.org/10.1145/3173574.3174220
+
+- **Expressive Lengthening Research** — Linguistic foundations for Hokey's stretchability scoring and site selection:
+  > Brody, S., & Diakopoulos, N. (2011). Cooooooooooooooollllllllllllll!!!!!!!!!!!!!!: Using Word Lengthening to Detect Sentiment in Microtext. *Proceedings of the 2011 Conference on Empirical Methods in Natural Language Processing (EMNLP '11)*, 562–570. https://aclanthology.org/D11-1052
+
+  > Gray, B., Bruxvoort, C., Beigman Klebanov, B., & Leong, B. (2020). Expressive Lengthening in Social Media. *Proceedings of the 12th Language Resources and Evaluation Conference (LREC 2020)*, 4517–4523. https://aclanthology.org/2020.lrec-1.556
