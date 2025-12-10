@@ -15,21 +15,39 @@ _TOKENIZER_CACHE: dict[str, "Tokenizer"] = {}
 _TOKENIZER_CACHE_LOCK = threading.Lock()
 _TOKENIZER_CACHE_MAX_SIZE = 16
 
+# Sentinel for default tokenizer cache key (avoids collision with user names)
+_DEFAULT_TOKENIZER_KEY = object()
 
-def _get_cached_tokenizer(key: str) -> "Tokenizer | None":
-    """Thread-safe lookup of cached tokenizer."""
+
+def _get_cache_key(key: str | object) -> str:
+    """Convert cache key to string, handling sentinel."""
+    return "__default__" if key is _DEFAULT_TOKENIZER_KEY else str(key)
+
+
+def _get_cached_tokenizer(key: str | object) -> "Tokenizer | None":
+    """Thread-safe lookup of cached tokenizer with LRU refresh."""
+    cache_key = _get_cache_key(key)
     with _TOKENIZER_CACHE_LOCK:
-        return _TOKENIZER_CACHE.get(key)
+        if cache_key in _TOKENIZER_CACHE:
+            # Move to end to mark as recently used (true LRU)
+            tokenizer = _TOKENIZER_CACHE.pop(cache_key)
+            _TOKENIZER_CACHE[cache_key] = tokenizer
+            return tokenizer
+        return None
 
 
-def _cache_tokenizer(key: str, tokenizer: "Tokenizer") -> "Tokenizer":
+def _cache_tokenizer(key: str | object, tokenizer: "Tokenizer") -> "Tokenizer":
     """Thread-safe caching of tokenizer with LRU eviction."""
+    cache_key = _get_cache_key(key)
     with _TOKENIZER_CACHE_LOCK:
-        # Simple LRU: remove oldest entry if at capacity
-        if len(_TOKENIZER_CACHE) >= _TOKENIZER_CACHE_MAX_SIZE and key not in _TOKENIZER_CACHE:
+        # Remove if already exists (will re-add at end)
+        if cache_key in _TOKENIZER_CACHE:
+            del _TOKENIZER_CACHE[cache_key]
+        # Evict oldest if at capacity
+        elif len(_TOKENIZER_CACHE) >= _TOKENIZER_CACHE_MAX_SIZE:
             oldest_key = next(iter(_TOKENIZER_CACHE))
             del _TOKENIZER_CACHE[oldest_key]
-        _TOKENIZER_CACHE[key] = tokenizer
+        _TOKENIZER_CACHE[cache_key] = tokenizer
         return tokenizer
 
 
@@ -281,16 +299,14 @@ def _resolve_string_tokenizer(tokenizer: str) -> Tokenizer:
 
 def _resolve_default_tokenizer(*, use_cache: bool = True) -> Tokenizer:
     """Resolve the default tokenizer with optional caching."""
-    cache_key = "__default__"
-
     if use_cache:
-        cached = _get_cached_tokenizer(cache_key)
+        cached = _get_cached_tokenizer(_DEFAULT_TOKENIZER_KEY)
         if cached is not None:
             return cached
 
     resolved = _default_tokenizer()
     if use_cache:
-        return _cache_tokenizer(cache_key, resolved)
+        return _cache_tokenizer(_DEFAULT_TOKENIZER_KEY, resolved)
     return resolved
 
 

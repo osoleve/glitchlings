@@ -66,14 +66,18 @@ class TokenWindow:
 
 
 class StreamingTokens:
-    """Iterator for streaming token access with windowed processing.
+    """Iterator for windowed access to token sequences.
 
-    Allows processing large token sequences in fixed-size windows to
-    prevent OOM on very large inputs. Tokens are loaded lazily per window.
+    Provides fixed-size window iteration over token sequences, useful for
+    processing large results in chunks without copying the entire sequence.
+
+    Note: This class provides windowed *access* to an existing token list,
+    not lazy loading. The full token list must already be in memory. For
+    true memory savings during tokenization, process texts in smaller batches.
 
     Attributes:
         window_size: Number of tokens per window.
-        total_tokens: Total number of tokens (if known).
+        total_tokens: Total number of tokens.
     """
 
     def __init__(
@@ -83,11 +87,11 @@ class StreamingTokens:
         *,
         window_size: int = 10000,
     ):
-        """Initialize streaming token access.
+        """Initialize windowed token access.
 
         Args:
-            tokens: Full token list (will be windowed during iteration).
-            token_ids: Full token ID list.
+            tokens: Full token list to provide windowed access to.
+            token_ids: Full token ID list (must match tokens length).
             window_size: Number of tokens per window. Defaults to 10000.
         """
         self._tokens = tokens
@@ -600,18 +604,21 @@ class Attack:
         *,
         window_size: int = 10000,
     ) -> "StreamingAttackResult":
-        """Run attack and return a streaming result for large token sets.
+        """Run attack and return result with windowed token access.
 
-        This method returns a StreamingAttackResult that provides windowed
-        access to tokens, preventing OOM when processing very large texts.
+        Returns a StreamingAttackResult that provides windowed iteration
+        over tokens, useful for chunk-based processing of results.
+
+        Note: This does not reduce memory usage during tokenization. For
+        memory-efficient processing of many texts, use run_stream() instead.
 
         Args:
             text: Input text, transcript, or batch of strings to corrupt.
-            window_size: Number of tokens per window when streaming.
+            window_size: Number of tokens per window during iteration.
                 Defaults to 10000.
 
         Returns:
-            StreamingAttackResult with windowed token access.
+            StreamingAttackResult with windowed token iteration.
         """
         result = self.run(text)
         return StreamingAttackResult.from_attack_result(result, window_size=window_size)
@@ -624,18 +631,22 @@ class Attack:
 
 @dataclass
 class StreamingAttackResult:
-    """Attack result with streaming token access for large datasets.
+    """Attack result with windowed token access for chunk-based processing.
 
-    This class wraps an AttackResult and provides windowed access to tokens,
-    allowing processing of very large token sequences without loading them
-    all into memory at once.
+    Wraps an AttackResult and provides windowed iteration over tokens,
+    useful for processing results in fixed-size chunks (e.g., for batched
+    metric computation or memory-bounded downstream processing).
+
+    Note: Tokens are still stored in memory. This class provides windowed
+    *access*, not lazy loading. For true memory savings with very large
+    texts, process inputs in smaller batches using Attack.run_stream().
 
     Attributes:
         original: Original input text/transcript/batch.
         corrupted: Corrupted output.
         tokenizer_info: Description of the tokenizer used.
         metrics: Computed metric values.
-        window_size: Number of tokens per streaming window.
+        window_size: Number of tokens per window iteration.
     """
 
     original: str | Transcript | Sequence[str]
@@ -725,14 +736,19 @@ class StreamingAttackResult:
     ) -> Generator[tuple[TokenWindow, TokenWindow], None, None]:
         """Stream paired windows of input and output tokens.
 
-        Yields windows of (input_tokens, output_tokens) for aligned comparison.
-        Useful for computing streaming metrics or processing large diffs.
+        Yields aligned (input_window, output_window) pairs for comparison.
+        Windows are paired by index, so the first input window pairs with
+        the first output window, etc.
+
+        Note: If input and output have different token counts, iteration
+        stops at the shorter sequence (like zip). Use stream_input_tokens()
+        and stream_output_tokens() separately if you need all windows.
 
         Args:
             batch_index: Which batch item to stream (0 for single strings).
 
         Yields:
-            Tuples of (input_window, output_window).
+            Tuples of (input_window, output_window) aligned by window index.
         """
         input_stream = self.stream_input_tokens(batch_index)
         output_stream = self.stream_output_tokens(batch_index)
