@@ -6,7 +6,7 @@ use pyo3::Bound;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::text_buffer::TextBuffer;
 
 const RAW_HOMOGLYPHS: &str = include_str!(concat!(env!("OUT_DIR"), "/mim1c_homoglyphs.json"));
@@ -86,13 +86,13 @@ impl ClassSelection {
 }
 
 #[derive(Debug, Clone)]
-pub struct Mim1cOp {
+pub struct HomoglyphOp {
     rate: f64,
     classes: ClassSelection,
     banned: Vec<String>,
 }
 
-impl Mim1cOp {
+impl HomoglyphOp {
     pub fn new(rate: f64, classes: ClassSelection, banned: Vec<String>) -> Self {
         Self {
             rate,
@@ -102,8 +102,8 @@ impl Mim1cOp {
     }
 }
 
-impl GlitchOp for Mim1cOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for HomoglyphOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let segments = buffer.segments();
         if segments.is_empty() {
             return Ok(());
@@ -292,8 +292,8 @@ pub(crate) fn swap_homoglyphs(
     let rate = rate.unwrap_or(0.02);
     let classes = parse_class_selection(classes)?;
     let banned = parse_banned_characters(banned_characters)?;
-    let op = Mim1cOp::new(rate, classes, banned);
-    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+    let op = HomoglyphOp::new(rate, classes, banned);
+    crate::apply_operation(text, op, seed).map_err(crate::operations::OperationError::into_pyerr)
 }
 
 #[cfg(test)]
@@ -312,12 +312,12 @@ mod tests {
         }
     }
 
-    impl GlitchRng for ScriptedRng {
-        fn random(&mut self) -> Result<f64, GlitchOpError> {
+    impl OperationRng for ScriptedRng {
+        fn random(&mut self) -> Result<f64, OperationError> {
             unreachable!("random should not be called in scripted tests")
         }
 
-        fn rand_index(&mut self, upper: usize) -> Result<usize, GlitchOpError> {
+        fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError> {
             let value = self
                 .picks
                 .get(self.position)
@@ -332,7 +332,7 @@ mod tests {
             &mut self,
             _population: usize,
             _k: usize,
-        ) -> Result<Vec<usize>, GlitchOpError> {
+        ) -> Result<Vec<usize>, OperationError> {
             unreachable!("sample_indices should not be called in scripted tests")
         }
     }
@@ -341,7 +341,7 @@ mod tests {
     fn replaces_expected_characters() {
         let mut buffer = TextBuffer::from_owned("hello".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(42);
-        let op = Mim1cOp::new(1.0, ClassSelection::Default, Vec::new());
+        let op = HomoglyphOp::new(1.0, ClassSelection::Default, Vec::new());
         op.apply(&mut buffer, &mut rng)
             .expect("mim1c operation succeeds");
         assert_ne!(buffer.to_string(), "hello");
@@ -358,7 +358,7 @@ mod tests {
         let original = "oooo";
         let mut buffer = TextBuffer::from_owned(original.to_string(), &[], &[]);
         let mut rng = ScriptedRng::new(vec![2, 0]);
-        let op = Mim1cOp::new(0.3, ClassSelection::All, Vec::new());
+        let op = HomoglyphOp::new(0.3, ClassSelection::All, Vec::new());
         op.apply(&mut buffer, &mut rng)
             .expect("mim1c operation succeeds");
 

@@ -16,7 +16,7 @@
 //! - "literal": First entry in each word's alternatives (deterministic mapping)
 //! - "drift": Random selection from alternatives (probabilistic)
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 use once_cell::sync::Lazy;
@@ -197,8 +197,8 @@ fn literal_replacement<'a>(dict: &'a LexemeDict, word: &str) -> Option<&'a str> 
 fn drift_replacement<'a>(
     dict: &'a LexemeDict,
     word: &str,
-    rng: &mut dyn GlitchRng,
-) -> Result<Option<&'a str>, GlitchOpError> {
+    rng: &mut dyn OperationRng,
+) -> Result<Option<&'a str>, OperationError> {
     if let Some(alternatives) = dict.get(&word.to_lowercase()) {
         if alternatives.is_empty() {
             return Ok(None);
@@ -311,8 +311,8 @@ fn transform_text(
     dict_name: &str,
     mode: JargoyleMode,
     rate: f64,
-    mut rng: Option<&mut dyn GlitchRng>,
-) -> Result<String, GlitchOpError> {
+    mut rng: Option<&mut dyn OperationRng>,
+) -> Result<String, OperationError> {
     if text.is_empty() {
         return Ok(String::new());
     }
@@ -421,13 +421,13 @@ fn transform_text(
 
 /// Jargoyle pipeline operation for the Gaggle system.
 #[derive(Debug, Clone)]
-pub struct JargoyleOp {
+pub struct LexemeSubstitutionOp {
     pub lexemes: String,
     pub mode: JargoyleMode,
     pub rate: f64,
 }
 
-impl JargoyleOp {
+impl LexemeSubstitutionOp {
     pub fn new(lexemes: &str, mode: JargoyleMode, rate: f64) -> Self {
         Self {
             lexemes: lexemes.to_string(),
@@ -437,8 +437,8 @@ impl JargoyleOp {
     }
 }
 
-impl GlitchOp for JargoyleOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for LexemeSubstitutionOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         // For the pipeline, we operate on the full text
         let text = buffer.to_string();
         let transformed = transform_text(&text, &self.lexemes, self.mode, self.rate, Some(rng))?;

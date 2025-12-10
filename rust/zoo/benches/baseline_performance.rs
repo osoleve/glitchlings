@@ -1,5 +1,5 @@
 use _zoo_rust::{
-    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, MotorWeighting,
+    DeleteRandomWordsOp, DeterministicRng, TextOperation, Operation, MotorWeighting,
     ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer, TypoOp,
 };
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
@@ -46,17 +46,17 @@ fn generate_test_text(target_chars: usize) -> String {
 }
 
 /// Typical operation mix that represents common usage
-fn create_typical_pipeline() -> Vec<GlitchOperation> {
+fn create_typical_pipeline() -> Vec<Operation> {
     vec![
-        GlitchOperation::Reduplicate(ReduplicateWordsOp {
+        Operation::Reduplicate(ReduplicateWordsOp {
             rate: 0.05,
             unweighted: false,
         }),
-        GlitchOperation::Delete(DeleteRandomWordsOp {
+        Operation::Delete(DeleteRandomWordsOp {
             rate: 0.03,
             unweighted: false,
         }),
-        GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.04 }),
+        Operation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.04 }),
     ]
 }
 

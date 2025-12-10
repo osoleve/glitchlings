@@ -6,7 +6,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::sync::OnceLock;
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::text_buffer::TextBuffer;
 
 static TOKEN_REGEX: OnceLock<Regex> = OnceLock::new();
@@ -138,7 +138,7 @@ struct StretchSite {
 }
 
 #[derive(Debug, Clone)]
-pub struct HokeyOp {
+pub struct WordStretchOp {
     pub rate: f64,
     pub extension_min: i32,
     pub extension_max: i32,
@@ -146,7 +146,7 @@ pub struct HokeyOp {
     pub base_p: f64,
 }
 
-impl HokeyOp {
+impl WordStretchOp {
     fn tokenise<'a>(&self, text: &'a str) -> Vec<TokenInfo<'a>> {
         let regex = token_regex();
         let mut tokens = Vec::new();
@@ -496,8 +496,8 @@ impl HokeyOp {
         candidates: &[StretchCandidate],
         tokens: &[TokenInfo<'_>],
         rate: f64,
-        rng: &mut dyn GlitchRng,
-    ) -> Result<Vec<usize>, GlitchOpError> {
+        rng: &mut dyn OperationRng,
+    ) -> Result<Vec<usize>, OperationError> {
         if candidates.is_empty() || rate <= 0.0 {
             return Ok(Vec::new());
         }
@@ -646,11 +646,11 @@ impl HokeyOp {
 
     fn sample_length(
         &self,
-        rng: &mut dyn GlitchRng,
+        rng: &mut dyn OperationRng,
         intensity: f64,
         minimum: i32,
         maximum: i32,
-    ) -> Result<i32, GlitchOpError> {
+    ) -> Result<i32, OperationError> {
         let min_extra = minimum.max(0);
         let max_extra = maximum.max(min_extra);
         if max_extra == 0 {
@@ -674,8 +674,8 @@ impl HokeyOp {
     }
 }
 
-impl GlitchOp for HokeyOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for WordStretchOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let text = buffer.to_string();
         if text.is_empty() {
             return Ok(());
@@ -865,14 +865,14 @@ pub fn hokey(
     base_p: f64,
     seed: Option<u64>,
 ) -> PyResult<String> {
-    let op = HokeyOp {
+    let op = WordStretchOp {
         rate,
         extension_min,
         extension_max,
         word_length_threshold,
         base_p,
     };
-    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+    crate::apply_operation(text, op, seed).map_err(crate::operations::OperationError::into_pyerr)
 }
 
 #[cfg(test)]
@@ -881,8 +881,8 @@ mod tests {
     use crate::rng::DeterministicRng;
     use crate::text_buffer::TextBuffer;
 
-    fn default_op() -> HokeyOp {
-        HokeyOp {
+    fn default_op() -> WordStretchOp {
+        WordStretchOp {
             rate: 0.3,
             extension_min: 2,
             extension_max: 5,
@@ -1187,7 +1187,7 @@ mod tests {
 
     #[test]
     fn hokey_stretches_high_scoring_words() {
-        let op = HokeyOp {
+        let op = WordStretchOp {
             rate: 1.0,
             extension_min: 2,
             extension_max: 5,
@@ -1205,7 +1205,7 @@ mod tests {
 
     #[test]
     fn hokey_respects_zero_rate() {
-        let op = HokeyOp {
+        let op = WordStretchOp {
             rate: 0.0,
             extension_min: 2,
             extension_max: 5,
@@ -1230,7 +1230,7 @@ mod tests {
 
     #[test]
     fn hokey_is_deterministic() {
-        let op = HokeyOp {
+        let op = WordStretchOp {
             rate: 0.5,
             extension_min: 2,
             extension_max: 5,
@@ -1252,7 +1252,7 @@ mod tests {
 
     #[test]
     fn hokey_respects_word_length_threshold() {
-        let op = HokeyOp {
+        let op = WordStretchOp {
             rate: 1.0,
             extension_min: 2,
             extension_max: 5,
@@ -1278,7 +1278,7 @@ mod tests {
 
     #[test]
     fn hokey_handles_utf8_correctly() {
-        let op = HokeyOp {
+        let op = WordStretchOp {
             rate: 1.0,
             extension_min: 2,
             extension_max: 3,

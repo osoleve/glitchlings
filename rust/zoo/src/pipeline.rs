@@ -5,22 +5,22 @@ use pyo3::prelude::*;
 use pyo3::PyErr;
 use regex::Regex;
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchOperation};
+use crate::operations::{TextOperation, OperationError, Operation};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 
-/// Descriptor describing a glitchling to run as part of the pipeline.
+/// Descriptor describing an operation to run as part of the pipeline.
 #[derive(Debug, Clone)]
-pub struct GlitchDescriptor {
+pub struct OperationDescriptor {
     pub name: String,
     pub seed: u64,
-    pub operation: GlitchOperation,
+    pub operation: Operation,
 }
 
 /// Errors emitted by the pipeline executor.
 #[derive(Debug)]
 pub enum PipelineError {
-    OperationFailure { name: String, source: GlitchOpError },
+    OperationFailure { name: String, source: OperationError },
     InvalidPattern { pattern: String, message: String },
 }
 
@@ -40,7 +40,7 @@ impl PipelineError {
 #[pyclass(module = "_zoo_rust")]
 pub struct Pipeline {
     _master_seed: i128,
-    descriptors: Vec<GlitchDescriptor>,
+    descriptors: Vec<OperationDescriptor>,
     include_only_patterns: Vec<Regex>,
     exclude_patterns: Vec<Regex>,
 }
@@ -48,7 +48,7 @@ pub struct Pipeline {
 impl Pipeline {
     pub fn new(
         master_seed: i128,
-        descriptors: Vec<GlitchDescriptor>,
+        descriptors: Vec<OperationDescriptor>,
         include_only_patterns: Vec<Regex>,
         exclude_patterns: Vec<Regex>,
     ) -> Self {
@@ -62,7 +62,7 @@ impl Pipeline {
 
     pub fn compile(
         master_seed: i128,
-        descriptors: Vec<GlitchDescriptor>,
+        descriptors: Vec<OperationDescriptor>,
         include_only_patterns: Vec<String>,
         exclude_patterns: Vec<String>,
     ) -> Result<Self, PipelineError> {
@@ -71,7 +71,7 @@ impl Pipeline {
         Ok(Self::new(master_seed, descriptors, include, exclude))
     }
 
-    pub fn descriptors(&self) -> &[GlitchDescriptor] {
+    pub fn descriptors(&self) -> &[OperationDescriptor] {
         &self.descriptors
     }
 
@@ -205,10 +205,10 @@ fn int_to_bytes(value: i128) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::{
-        derive_seed, plan_gaggle, GagglePlanEntry, GagglePlanInput, GlitchDescriptor, Pipeline,
+        derive_seed, plan_gaggle, GagglePlanEntry, GagglePlanInput, OperationDescriptor, Pipeline,
     };
-    use crate::glitch_ops::{
-        DeleteRandomWordsOp, GlitchOperation, OcrArtifactsOp, RedactWordsOp, ReduplicateWordsOp,
+    use crate::operations::{
+        DeleteRandomWordsOp, Operation, OcrArtifactsOp, RedactWordsOp, ReduplicateWordsOp,
         SwapAdjacentWordsOp,
     };
 
@@ -225,18 +225,18 @@ mod tests {
     fn pipeline_applies_operations_in_order() {
         let master_seed = 151i128;
         let descriptors = vec![
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Rushmore-Duplicate".to_string(),
                 seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
-                operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
+                operation: Operation::Reduplicate(ReduplicateWordsOp {
                     rate: 1.0,
                     unweighted: false,
                 }),
             },
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Redactyl".to_string(),
                 seed: derive_seed(master_seed, "Redactyl", 1),
-                operation: GlitchOperation::Redact(RedactWordsOp {
+                operation: Operation::Redact(RedactWordsOp {
                     replacement_char: "█".to_string(),
                     rate: 0.5,
                     merge_adjacent: false,
@@ -253,10 +253,10 @@ mod tests {
     #[test]
     fn pipeline_is_deterministic() {
         let master_seed = 999i128;
-        let descriptors = vec![GlitchDescriptor {
+        let descriptors = vec![OperationDescriptor {
             name: "Rushmore-Duplicate".to_string(),
             seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
-            operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
+            operation: Operation::Reduplicate(ReduplicateWordsOp {
                 rate: 0.5,
                 unweighted: false,
             }),
@@ -272,36 +272,36 @@ mod tests {
     fn pipeline_matches_python_reference_sequence() {
         let master_seed = 404i128;
         let descriptors = vec![
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Rushmore-Duplicate".to_string(),
                 seed: derive_seed(master_seed, "Rushmore-Duplicate", 0),
-                operation: GlitchOperation::Reduplicate(ReduplicateWordsOp {
+                operation: Operation::Reduplicate(ReduplicateWordsOp {
                     rate: 0.4,
                     unweighted: false,
                 }),
             },
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Rushmore".to_string(),
                 seed: derive_seed(master_seed, "Rushmore", 1),
-                operation: GlitchOperation::Delete(DeleteRandomWordsOp {
+                operation: Operation::Delete(DeleteRandomWordsOp {
                     rate: 0.3,
                     unweighted: false,
                 }),
             },
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Redactyl".to_string(),
                 seed: derive_seed(master_seed, "Redactyl", 2),
-                operation: GlitchOperation::Redact(RedactWordsOp {
+                operation: Operation::Redact(RedactWordsOp {
                     replacement_char: "█".to_string(),
                     rate: 0.6,
                     merge_adjacent: true,
                     unweighted: false,
                 }),
             },
-            GlitchDescriptor {
+            OperationDescriptor {
                 name: "Scannequin".to_string(),
                 seed: derive_seed(master_seed, "Scannequin", 3),
-                operation: GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.25 }),
+                operation: Operation::Ocr(OcrArtifactsOp { rate: 0.25 }),
             },
         ];
         let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
@@ -313,10 +313,10 @@ mod tests {
     #[test]
     fn pipeline_swaps_adjacent_words() {
         let master_seed = 2025i128;
-        let descriptors = vec![GlitchDescriptor {
+        let descriptors = vec![OperationDescriptor {
             name: "Rushmore-Swap".to_string(),
             seed: derive_seed(master_seed, "Rushmore-Swap", 0),
-            operation: GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 1.0 }),
+            operation: Operation::SwapAdjacent(SwapAdjacentWordsOp { rate: 1.0 }),
         }];
         let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let output = pipeline

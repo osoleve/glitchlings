@@ -22,9 +22,9 @@ pub(crate) fn inject_zero_widths(
         return Ok(text.to_string());
     }
 
-    let op = crate::glitch_ops::ZeroWidthOp {
+    let op = crate::operations::ZeroWidthOp {
         rate,
         characters: palette,
     };
-    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+    crate::apply_operation(text, op, seed).map_err(crate::operations::OperationError::into_pyerr)
 }

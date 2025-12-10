@@ -5,7 +5,7 @@ use pyo3::Bound;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock, RwLock};
 
-use crate::glitch_ops::{MotorWeighting, ShiftSlipConfig};
+use crate::operations::{MotorWeighting, ShiftSlipConfig};
 
 type CachedLayouts = HashMap<usize, Arc<HashMap<String, Vec<String>>>>;
 type CachedShiftMaps = HashMap<usize, Arc<HashMap<String, String>>>;
@@ -123,14 +123,14 @@ pub(crate) fn fatfinger(
         None => MotorWeighting::default(),
     };
 
-    let op = crate::glitch_ops::TypoOp {
+    let op = crate::operations::TypoOp {
         rate: max_change_rate,
         layout: (*layout_map).clone(),
         shift_slip,
         motor_weighting,
     };
 
-    crate::apply_operation(text, op, seed).map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+    crate::apply_operation(text, op, seed).map_err(crate::operations::OperationError::into_pyerr)
 }
 
 #[pyfunction(signature = (text, enter_rate, exit_rate, shift_map, seed=None))]
@@ -150,5 +150,5 @@ pub(crate) fn slip_modifier(
     let mut rng = crate::DeterministicRng::new(crate::resolve_seed(seed));
     config
         .apply(text, &mut rng)
-        .map_err(crate::glitch_ops::GlitchOpError::into_pyerr)
+        .map_err(crate::operations::OperationError::into_pyerr)
 }
