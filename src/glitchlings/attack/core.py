@@ -14,8 +14,8 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 from __future__ import annotations
 
 import inspect
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Generator, Iterator, Mapping, Sequence
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
@@ -36,6 +36,90 @@ from .core_planning import (
 from .encode import describe_tokenizer
 from .metrics import Metric
 from .tokenization import Tokenizer, resolve_tokenizer
+
+# ---------------------------------------------------------------------------
+# Streaming Token Iterator
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class TokenWindow:
+    """A window of tokens for streaming processing.
+
+    Represents a chunk of tokens that can be processed without loading
+    the entire token sequence into memory.
+
+    Attributes:
+        tokens: Token strings in this window.
+        token_ids: Token IDs in this window.
+        start_index: Starting index of this window in the full sequence.
+        is_last: Whether this is the final window.
+    """
+
+    tokens: list[str]
+    token_ids: list[int]
+    start_index: int
+    is_last: bool
+
+    def __len__(self) -> int:
+        return len(self.tokens)
+
+
+class StreamingTokens:
+    """Iterator for streaming token access with windowed processing.
+
+    Allows processing large token sequences in fixed-size windows to
+    prevent OOM on very large inputs. Tokens are loaded lazily per window.
+
+    Attributes:
+        window_size: Number of tokens per window.
+        total_tokens: Total number of tokens (if known).
+    """
+
+    def __init__(
+        self,
+        tokens: list[str],
+        token_ids: list[int],
+        *,
+        window_size: int = 10000,
+    ):
+        """Initialize streaming token access.
+
+        Args:
+            tokens: Full token list (will be windowed during iteration).
+            token_ids: Full token ID list.
+            window_size: Number of tokens per window. Defaults to 10000.
+        """
+        self._tokens = tokens
+        self._token_ids = token_ids
+        self.window_size = window_size
+        self.total_tokens = len(tokens)
+
+    def __iter__(self) -> Iterator[TokenWindow]:
+        """Iterate over token windows."""
+        for start in range(0, self.total_tokens, self.window_size):
+            end = min(start + self.window_size, self.total_tokens)
+            yield TokenWindow(
+                tokens=self._tokens[start:end],
+                token_ids=self._token_ids[start:end],
+                start_index=start,
+                is_last=(end >= self.total_tokens),
+            )
+
+    def __len__(self) -> int:
+        """Return total number of tokens."""
+        return self.total_tokens
+
+    @property
+    def all_tokens(self) -> list[str]:
+        """Get all tokens (materializes full list)."""
+        return self._tokens
+
+    @property
+    def all_token_ids(self) -> list[int]:
+        """Get all token IDs (materializes full list)."""
+        return self._token_ids
+
 
 # ---------------------------------------------------------------------------
 # Result Data Classes
@@ -486,8 +570,217 @@ class Attack:
                 progress_callback(results)
         return results
 
+    def run_stream(
+        self,
+        texts: Iterator[str | Transcript] | Sequence[str | Transcript],
+    ) -> Generator[AttackResult, None, None]:
+        """Stream attack results as they are computed.
+
+        Unlike run_batch(), this method yields results immediately as each
+        text is processed, allowing for memory-efficient processing of large
+        datasets without holding all results in memory.
+
+        Args:
+            texts: Iterator or sequence of inputs to process.
+
+        Yields:
+            AttackResult objects as they are computed.
+
+        Example:
+            >>> attack = Attack(Typogre(rate=0.05))
+            >>> for result in attack.run_stream(large_text_iterator):
+            ...     process_result(result)  # Process each result immediately
+        """
+        for text in texts:
+            yield self.run(text)
+
+    def run_streaming_result(
+        self,
+        text: str | Transcript | Sequence[str],
+        *,
+        window_size: int = 10000,
+    ) -> "StreamingAttackResult":
+        """Run attack and return a streaming result for large token sets.
+
+        This method returns a StreamingAttackResult that provides windowed
+        access to tokens, preventing OOM when processing very large texts.
+
+        Args:
+            text: Input text, transcript, or batch of strings to corrupt.
+            window_size: Number of tokens per window when streaming.
+                Defaults to 10000.
+
+        Returns:
+            StreamingAttackResult with windowed token access.
+        """
+        result = self.run(text)
+        return StreamingAttackResult.from_attack_result(result, window_size=window_size)
+
+
+# ---------------------------------------------------------------------------
+# Streaming Attack Result
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class StreamingAttackResult:
+    """Attack result with streaming token access for large datasets.
+
+    This class wraps an AttackResult and provides windowed access to tokens,
+    allowing processing of very large token sequences without loading them
+    all into memory at once.
+
+    Attributes:
+        original: Original input text/transcript/batch.
+        corrupted: Corrupted output.
+        tokenizer_info: Description of the tokenizer used.
+        metrics: Computed metric values.
+        window_size: Number of tokens per streaming window.
+    """
+
+    original: str | Transcript | Sequence[str]
+    corrupted: str | Transcript | Sequence[str]
+    tokenizer_info: str
+    metrics: dict[str, float | list[float]]
+    window_size: int = field(default=10000)
+    _input_tokens: list[str] | list[list[str]] = field(default_factory=list, repr=False)
+    _output_tokens: list[str] | list[list[str]] = field(default_factory=list, repr=False)
+    _input_token_ids: list[int] | list[list[int]] = field(default_factory=list, repr=False)
+    _output_token_ids: list[int] | list[list[int]] = field(default_factory=list, repr=False)
+
+    @classmethod
+    def from_attack_result(
+        cls,
+        result: AttackResult,
+        *,
+        window_size: int = 10000,
+    ) -> "StreamingAttackResult":
+        """Create a StreamingAttackResult from an AttackResult.
+
+        Args:
+            result: The AttackResult to wrap.
+            window_size: Number of tokens per window.
+
+        Returns:
+            StreamingAttackResult with windowed token access.
+        """
+        return cls(
+            original=result.original,
+            corrupted=result.corrupted,
+            tokenizer_info=result.tokenizer_info,
+            metrics=result.metrics,
+            window_size=window_size,
+            _input_tokens=result.input_tokens,
+            _output_tokens=result.output_tokens,
+            _input_token_ids=result.input_token_ids,
+            _output_token_ids=result.output_token_ids,
+        )
+
+    def _is_batched(self) -> bool:
+        """Check if tokens represent a batch."""
+        tokens = self._input_tokens
+        if tokens and isinstance(tokens[0], list):
+            return True
+        return isinstance(self.original, list) or isinstance(self.corrupted, list)
+
+    def stream_input_tokens(self, batch_index: int = 0) -> StreamingTokens:
+        """Get streaming access to input tokens.
+
+        Args:
+            batch_index: Which batch item to stream (0 for single strings).
+
+        Returns:
+            StreamingTokens iterator for windowed access.
+        """
+        if self._is_batched():
+            tokens = cast(list[list[str]], self._input_tokens)[batch_index]
+            token_ids = cast(list[list[int]], self._input_token_ids)[batch_index]
+        else:
+            tokens = cast(list[str], self._input_tokens)
+            token_ids = cast(list[int], self._input_token_ids)
+
+        return StreamingTokens(tokens, token_ids, window_size=self.window_size)
+
+    def stream_output_tokens(self, batch_index: int = 0) -> StreamingTokens:
+        """Get streaming access to output tokens.
+
+        Args:
+            batch_index: Which batch item to stream (0 for single strings).
+
+        Returns:
+            StreamingTokens iterator for windowed access.
+        """
+        if self._is_batched():
+            tokens = cast(list[list[str]], self._output_tokens)[batch_index]
+            token_ids = cast(list[list[int]], self._output_token_ids)[batch_index]
+        else:
+            tokens = cast(list[str], self._output_tokens)
+            token_ids = cast(list[int], self._output_token_ids)
+
+        return StreamingTokens(tokens, token_ids, window_size=self.window_size)
+
+    def stream_token_pairs(
+        self,
+        batch_index: int = 0,
+    ) -> Generator[tuple[TokenWindow, TokenWindow], None, None]:
+        """Stream paired windows of input and output tokens.
+
+        Yields windows of (input_tokens, output_tokens) for aligned comparison.
+        Useful for computing streaming metrics or processing large diffs.
+
+        Args:
+            batch_index: Which batch item to stream (0 for single strings).
+
+        Yields:
+            Tuples of (input_window, output_window).
+        """
+        input_stream = self.stream_input_tokens(batch_index)
+        output_stream = self.stream_output_tokens(batch_index)
+
+        for input_window, output_window in zip(input_stream, output_stream):
+            yield input_window, output_window
+
+    def get_token_count(self, batch_index: int = 0) -> tuple[int, int]:
+        """Get token counts without materializing full lists.
+
+        Args:
+            batch_index: Which batch item to count (0 for single strings).
+
+        Returns:
+            Tuple of (input_token_count, output_token_count).
+        """
+        input_stream = self.stream_input_tokens(batch_index)
+        output_stream = self.stream_output_tokens(batch_index)
+        return len(input_stream), len(output_stream)
+
+    def to_attack_result(self) -> AttackResult:
+        """Convert back to a standard AttackResult.
+
+        Warning: This materializes all tokens in memory.
+
+        Returns:
+            AttackResult with all tokens loaded.
+        """
+        return AttackResult(
+            original=self.original,
+            corrupted=self.corrupted,
+            input_tokens=self._input_tokens,
+            output_tokens=self._output_tokens,
+            input_token_ids=self._input_token_ids,
+            output_token_ids=self._output_token_ids,
+            tokenizer_info=self.tokenizer_info,
+            metrics=self.metrics,
+        )
+
+    def get_metric(self, name: str) -> float | list[float] | None:
+        """Get a specific metric value by name."""
+        return self.metrics.get(name)
+
 
 __all__ = [
     "Attack",
     "AttackResult",
+    "StreamingAttackResult",
+    "StreamingTokens",
+    "TokenWindow",
 ]

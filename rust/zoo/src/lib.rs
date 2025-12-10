@@ -753,6 +753,16 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(metrics::batch_entropy_delta, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::merge_split_index, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_merge_split_index, m)?)?;
+    // Tokenizer metrics
+    m.add_function(wrap_pyfunction!(metrics::compression_ratio, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_compression_ratio, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::characters_per_token, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_characters_per_token, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::token_entropy, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_token_entropy, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::vocabulary_utilization, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::unknown_token_rate, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_unknown_token_rate, m)?)?;
     m.add("Pipeline", _py.get_type::<Pipeline>())?;
     Ok(())
 }

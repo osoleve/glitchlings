@@ -41,7 +41,7 @@ from .analysis import (
     generate_param_combinations,
     rank_grid_points,
 )
-from .core import Attack, AttackResult
+from .core import Attack, AttackResult, StreamingAttackResult, StreamingTokens, TokenWindow
 from .core_execution import (
     execute_attack,
     execute_corruption,
@@ -77,13 +77,36 @@ from .metrics import (
     subsequence_retention,
 )
 from .metrics_dispatch import TokenBatch, TokenSequence, is_batch, validate_batch_consistency
-from .tokenization import Tokenizer, list_available_tokenizers
+from .tokenization import (
+    Tokenizer,
+    clear_tokenizer_cache,
+    get_tokenizer_cache_info,
+    list_available_tokenizers,
+)
+from .tokenizer_metrics import (
+    DEFAULT_UNKNOWN_MARKERS,
+    analyze_tokenizer,
+    batch_characters_per_token,
+    batch_compression_ratio,
+    batch_token_entropy,
+    batch_unknown_token_rate,
+    characters_per_token,
+    compression_ratio,
+    token_entropy,
+    unknown_token_rate,
+    vocabulary_utilization,
+)
 
 __all__ = [
     # Core orchestration
     "Attack",
     "AttackResult",
+    "StreamingAttackResult",
+    "StreamingTokens",
+    "TokenWindow",
     "Tokenizer",
+    "clear_tokenizer_cache",
+    "get_tokenizer_cache_info",
     "list_available_tokenizers",
     # Metrics
     "MetricName",
@@ -144,4 +167,16 @@ __all__ = [
     "TokenSequence",
     "is_batch",
     "validate_batch_consistency",
+    # Tokenizer metrics (pure)
+    "compression_ratio",
+    "batch_compression_ratio",
+    "characters_per_token",
+    "batch_characters_per_token",
+    "token_entropy",
+    "batch_token_entropy",
+    "vocabulary_utilization",
+    "unknown_token_rate",
+    "batch_unknown_token_rate",
+    "analyze_tokenizer",
+    "DEFAULT_UNKNOWN_MARKERS",
 ]

@@ -1,10 +1,64 @@
 from __future__ import annotations
 
 import importlib.util
+import threading
 import zlib
 from typing import Any, Protocol, Sequence
 
 DEFAULT_TIKTOKEN_ENCODINGS = ("o200k_base", "cl100k_base")
+
+# ---------------------------------------------------------------------------
+# Tokenizer Cache
+# ---------------------------------------------------------------------------
+
+_TOKENIZER_CACHE: dict[str, "Tokenizer"] = {}
+_TOKENIZER_CACHE_LOCK = threading.Lock()
+_TOKENIZER_CACHE_MAX_SIZE = 16
+
+
+def _get_cached_tokenizer(key: str) -> "Tokenizer | None":
+    """Thread-safe lookup of cached tokenizer."""
+    with _TOKENIZER_CACHE_LOCK:
+        return _TOKENIZER_CACHE.get(key)
+
+
+def _cache_tokenizer(key: str, tokenizer: "Tokenizer") -> "Tokenizer":
+    """Thread-safe caching of tokenizer with LRU eviction."""
+    with _TOKENIZER_CACHE_LOCK:
+        # Simple LRU: remove oldest entry if at capacity
+        if len(_TOKENIZER_CACHE) >= _TOKENIZER_CACHE_MAX_SIZE and key not in _TOKENIZER_CACHE:
+            oldest_key = next(iter(_TOKENIZER_CACHE))
+            del _TOKENIZER_CACHE[oldest_key]
+        _TOKENIZER_CACHE[key] = tokenizer
+        return tokenizer
+
+
+def clear_tokenizer_cache() -> int:
+    """Clear the tokenizer cache and return the number of entries cleared.
+
+    Useful for testing or when memory is constrained.
+
+    Returns:
+        Number of cached tokenizers that were cleared.
+    """
+    with _TOKENIZER_CACHE_LOCK:
+        count = len(_TOKENIZER_CACHE)
+        _TOKENIZER_CACHE.clear()
+        return count
+
+
+def get_tokenizer_cache_info() -> dict[str, Any]:
+    """Get information about the tokenizer cache.
+
+    Returns:
+        Dictionary with cache stats: size, max_size, cached_keys.
+    """
+    with _TOKENIZER_CACHE_LOCK:
+        return {
+            "size": len(_TOKENIZER_CACHE),
+            "max_size": _TOKENIZER_CACHE_MAX_SIZE,
+            "cached_keys": list(_TOKENIZER_CACHE.keys()),
+        }
 
 
 class Tokenizer(Protocol):
@@ -142,14 +196,23 @@ def list_available_tokenizers() -> list[str]:
     return available
 
 
-def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
+def resolve_tokenizer(
+    tokenizer: str | Tokenizer | None,
+    *,
+    use_cache: bool = True,
+) -> Tokenizer:
     """Resolve a tokenizer specification to a Tokenizer instance.
+
+    Tokenizers resolved from string specifications are cached by default for
+    efficient reuse across multiple Attack instances.
 
     Args:
         tokenizer: One of:
             - None: Use default tokenizer (tiktoken o200k_base, or whitespace)
             - str: Tokenizer name (tiktoken encoding, model name, or HF tokenizer)
             - Tokenizer: Pass through as-is
+        use_cache: Whether to use the tokenizer cache for string specs.
+            Defaults to True. Set to False to always create fresh instances.
 
     Returns:
         A Tokenizer instance.
@@ -158,38 +221,20 @@ def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
         ValueError: If string tokenizer cannot be resolved.
     """
     if tokenizer is None:
-        return _default_tokenizer()
+        # Default tokenizer resolution is also cached
+        return _resolve_default_tokenizer(use_cache=use_cache)
 
     if isinstance(tokenizer, str):
-        if importlib.util.find_spec("tiktoken"):
-            import tiktoken
+        # Check cache first
+        if use_cache:
+            cached = _get_cached_tokenizer(tokenizer)
+            if cached is not None:
+                return cached
 
-            try:
-                # Check if valid tiktoken encoding/model
-                try:
-                    tiktoken.get_encoding(tokenizer)
-                    return TiktokenTokenizer(tokenizer)
-                except ValueError:
-                    try:
-                        tiktoken.encoding_for_model(tokenizer)
-                        return TiktokenTokenizer(tokenizer)
-                    except (ValueError, KeyError):
-                        pass
-            except ImportError:
-                pass
-
-        if importlib.util.find_spec("tokenizers"):
-            from tokenizers import Tokenizer
-
-            try:
-                return HuggingFaceTokenizerWrapper(Tokenizer.from_pretrained(tokenizer))
-            except Exception:
-                pass
-
-        available = list_available_tokenizers()
-        raise ValueError(
-            f"Could not resolve tokenizer: {tokenizer!r}. Available: {', '.join(available)}"
-        )
+        resolved = _resolve_string_tokenizer(tokenizer)
+        if use_cache:
+            return _cache_tokenizer(tokenizer, resolved)
+        return resolved
 
     # Check if it is a HuggingFace tokenizer object
     if importlib.util.find_spec("tokenizers"):
@@ -199,6 +244,54 @@ def resolve_tokenizer(tokenizer: str | Tokenizer | None) -> Tokenizer:
             return HuggingFaceTokenizerWrapper(tokenizer)
 
     return tokenizer
+
+
+def _resolve_string_tokenizer(tokenizer: str) -> Tokenizer:
+    """Resolve a string tokenizer specification (no caching)."""
+    if importlib.util.find_spec("tiktoken"):
+        import tiktoken
+
+        try:
+            # Check if valid tiktoken encoding/model
+            try:
+                tiktoken.get_encoding(tokenizer)
+                return TiktokenTokenizer(tokenizer)
+            except ValueError:
+                try:
+                    tiktoken.encoding_for_model(tokenizer)
+                    return TiktokenTokenizer(tokenizer)
+                except (ValueError, KeyError):
+                    pass
+        except ImportError:
+            pass
+
+    if importlib.util.find_spec("tokenizers"):
+        from tokenizers import Tokenizer
+
+        try:
+            return HuggingFaceTokenizerWrapper(Tokenizer.from_pretrained(tokenizer))
+        except Exception:
+            pass
+
+    available = list_available_tokenizers()
+    raise ValueError(
+        f"Could not resolve tokenizer: {tokenizer!r}. Available: {', '.join(available)}"
+    )
+
+
+def _resolve_default_tokenizer(*, use_cache: bool = True) -> Tokenizer:
+    """Resolve the default tokenizer with optional caching."""
+    cache_key = "__default__"
+
+    if use_cache:
+        cached = _get_cached_tokenizer(cache_key)
+        if cached is not None:
+            return cached
+
+    resolved = _default_tokenizer()
+    if use_cache:
+        return _cache_tokenizer(cache_key, resolved)
+    return resolved
 
 
 def _default_tokenizer() -> Tokenizer:
@@ -222,6 +315,8 @@ __all__ = [
     "TiktokenTokenizer",
     "Tokenizer",
     "WhitespaceTokenizer",
+    "clear_tokenizer_cache",
+    "get_tokenizer_cache_info",
     "list_available_tokenizers",
     "resolve_tokenizer",
 ]

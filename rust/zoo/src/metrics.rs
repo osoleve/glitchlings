@@ -408,3 +408,260 @@ fn compute_merge_split_index(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 
     let max_len = max(m, n);
     merge_split_events as f64 / max_len as f64
 }
+
+// ---------------------------------------------------------------------------
+// Tokenizer Metrics (for analyzing tokenizer behavior)
+// ---------------------------------------------------------------------------
+
+/// Compute compression ratio: bytes per token.
+/// Lower values indicate more compact encoding.
+#[pyfunction]
+pub fn compression_ratio(
+    _py: Python<'_>,
+    text: &str,
+    tokens: Vec<Bound<'_, PyString>>,
+) -> PyResult<f64> {
+    if text.is_empty() {
+        return Ok(0.0);
+    }
+
+    let token_count = tokens.len();
+    if token_count == 0 {
+        return Ok(f64::INFINITY);
+    }
+
+    let byte_count = text.len(); // UTF-8 byte count
+    Ok(byte_count as f64 / token_count as f64)
+}
+
+/// Compute batch compression ratios.
+#[pyfunction]
+pub fn batch_compression_ratio(
+    _py: Python<'_>,
+    texts: Vec<String>,
+    token_batches: Vec<Vec<Bound<'_, PyString>>>,
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(texts.len(), token_batches.len())?;
+
+    Ok(texts
+        .iter()
+        .zip(token_batches.iter())
+        .map(|(text, tokens)| {
+            if text.is_empty() {
+                0.0
+            } else if tokens.is_empty() {
+                f64::INFINITY
+            } else {
+                text.len() as f64 / tokens.len() as f64
+            }
+        })
+        .collect())
+}
+
+/// Compute characters per token ratio.
+/// Higher values mean fewer tokens needed.
+#[pyfunction]
+pub fn characters_per_token(
+    _py: Python<'_>,
+    text: &str,
+    tokens: Vec<Bound<'_, PyString>>,
+) -> PyResult<f64> {
+    if text.is_empty() {
+        return Ok(0.0);
+    }
+
+    let token_count = tokens.len();
+    if token_count == 0 {
+        return Ok(f64::INFINITY);
+    }
+
+    let char_count = text.chars().count();
+    Ok(char_count as f64 / token_count as f64)
+}
+
+/// Compute batch characters per token ratios.
+#[pyfunction]
+pub fn batch_characters_per_token(
+    _py: Python<'_>,
+    texts: Vec<String>,
+    token_batches: Vec<Vec<Bound<'_, PyString>>>,
+) -> PyResult<Vec<f64>> {
+    guard_equal_batches(texts.len(), token_batches.len())?;
+
+    Ok(texts
+        .iter()
+        .zip(token_batches.iter())
+        .map(|(text, tokens)| {
+            if text.is_empty() {
+                0.0
+            } else if tokens.is_empty() {
+                f64::INFINITY
+            } else {
+                text.chars().count() as f64 / tokens.len() as f64
+            }
+        })
+        .collect())
+}
+
+/// Compute Shannon entropy of token distribution.
+/// Higher entropy means more uniform token usage (less repetition).
+#[pyfunction]
+pub fn token_entropy(
+    _py: Python<'_>,
+    tokens: Vec<Bound<'_, PyString>>,
+) -> PyResult<f64> {
+    let token_refs = extract_str_refs(&tokens)?;
+    Ok(shannon_entropy(&token_refs))
+}
+
+/// Compute batch token entropies.
+#[pyfunction]
+pub fn batch_token_entropy(
+    _py: Python<'_>,
+    token_batches: Vec<Vec<Bound<'_, PyString>>>,
+) -> PyResult<Vec<f64>> {
+    let batch_refs = extract_batch_str_refs(&token_batches)?;
+    Ok(batch_refs.iter().map(|tokens| shannon_entropy(tokens)).collect())
+}
+
+/// Result type for vocabulary utilization analysis.
+#[derive(Clone)]
+pub struct VocabUtilization {
+    unique_ratio: f64,
+    repetition_rate: f64,
+    max_id: f64,
+    id_spread: f64,
+}
+
+impl<'py> pyo3::IntoPyObject<'py> for VocabUtilization {
+    type Target = pyo3::types::PyDict;
+    type Output = Bound<'py, Self::Target>;
+    type Error = pyo3::PyErr;
+
+    fn into_pyobject(self, py: Python<'py>) -> Result<Self::Output, Self::Error> {
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("unique_ratio", self.unique_ratio)?;
+        dict.set_item("repetition_rate", self.repetition_rate)?;
+        dict.set_item("max_id", self.max_id)?;
+        dict.set_item("id_spread", self.id_spread)?;
+        Ok(dict)
+    }
+}
+
+/// Analyze vocabulary usage patterns.
+/// Returns a dictionary with:
+/// - unique_ratio: fraction of tokens that are unique
+/// - repetition_rate: 1 - unique_ratio
+/// - max_id: highest token ID used
+/// - id_spread: standard deviation of IDs
+#[pyfunction]
+pub fn vocabulary_utilization(
+    _py: Python<'_>,
+    tokens: Vec<Bound<'_, PyString>>,
+    token_ids: Vec<i64>,
+) -> PyResult<VocabUtilization> {
+    if tokens.is_empty() {
+        return Ok(VocabUtilization {
+            unique_ratio: 0.0,
+            repetition_rate: 0.0,
+            max_id: 0.0,
+            id_spread: 0.0,
+        });
+    }
+
+    // Count unique tokens
+    let token_refs = extract_str_refs(&tokens)?;
+    let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+    let unique_count = unique_set.len();
+    let unique_ratio = unique_count as f64 / tokens.len() as f64;
+
+    // ID statistics
+    let max_id = *token_ids.iter().max().unwrap_or(&0);
+    let mean_id: f64 = token_ids.iter().map(|&id| id as f64).sum::<f64>() / token_ids.len() as f64;
+    let variance: f64 = token_ids
+        .iter()
+        .map(|&id| {
+            let diff = id as f64 - mean_id;
+            diff * diff
+        })
+        .sum::<f64>()
+        / token_ids.len() as f64;
+    let id_spread = variance.sqrt();
+
+    Ok(VocabUtilization {
+        unique_ratio,
+        repetition_rate: 1.0 - unique_ratio,
+        max_id: max_id as f64,
+        id_spread,
+    })
+}
+
+/// Default unknown token markers.
+const DEFAULT_UNKNOWN_MARKERS: &[&str] = &["[UNK]", "<unk>", "�", "\u{FFFD}"];
+
+/// Compute unknown token rate.
+/// Fraction of tokens that appear to be unknown/fallback tokens.
+#[pyfunction]
+#[pyo3(signature = (tokens, unknown_markers=None))]
+pub fn unknown_token_rate(
+    _py: Python<'_>,
+    tokens: Vec<Bound<'_, PyString>>,
+    unknown_markers: Option<Vec<String>>,
+) -> PyResult<f64> {
+    if tokens.is_empty() {
+        return Ok(0.0);
+    }
+
+    let token_refs = extract_str_refs(&tokens)?;
+
+    // Build marker set from provided markers or defaults
+    let marker_set: HashSet<&str> = match &unknown_markers {
+        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
+    };
+
+    let unknown_count = token_refs
+        .iter()
+        .filter(|token| {
+            let t = token.as_ref();
+            marker_set.contains(t) || t.starts_with("<0x")
+        })
+        .count();
+
+    Ok(unknown_count as f64 / token_refs.len() as f64)
+}
+
+/// Compute batch unknown token rates.
+#[pyfunction]
+#[pyo3(signature = (token_batches, unknown_markers=None))]
+pub fn batch_unknown_token_rate(
+    _py: Python<'_>,
+    token_batches: Vec<Vec<Bound<'_, PyString>>>,
+    unknown_markers: Option<Vec<String>>,
+) -> PyResult<Vec<f64>> {
+    // Build marker set from provided markers or defaults
+    let marker_set: HashSet<&str> = match &unknown_markers {
+        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
+    };
+
+    let batch_refs = extract_batch_str_refs(&token_batches)?;
+
+    Ok(batch_refs
+        .iter()
+        .map(|token_refs| {
+            if token_refs.is_empty() {
+                0.0
+            } else {
+                let unknown_count = token_refs
+                    .iter()
+                    .filter(|token| {
+                        let t = token.as_ref();
+                        marker_set.contains(t) || t.starts_with("<0x")
+                    })
+                    .count();
+                unknown_count as f64 / token_refs.len() as f64
+            }
+        })
+        .collect())
+}
