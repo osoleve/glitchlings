@@ -761,6 +761,7 @@ fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(metrics::token_entropy, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_token_entropy, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::vocabulary_utilization, m)?)?;
+    m.add_function(wrap_pyfunction!(metrics::batch_vocabulary_utilization, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::unknown_token_rate, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::batch_unknown_token_rate, m)?)?;
     m.add("Pipeline", _py.get_type::<Pipeline>())?;

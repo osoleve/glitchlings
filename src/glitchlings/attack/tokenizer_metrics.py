@@ -1,16 +1,11 @@
 """Tokenizer analysis metrics for evaluating tokenizer behavior.
 
-This module provides pure functions for analyzing how a tokenizer encodes text.
+This module provides functions for analyzing how a tokenizer encodes text.
 Unlike the corruption metrics in metrics.py which compare before/after token
 sequences, these metrics evaluate the tokenizer's encoding of a single text.
 
 These metrics are implemented in Rust for performance. The functions here
 provide a Python API with documentation and type hints.
-
-Pure guarantees:
-- No import side effects beyond stdlib
-- No file IO or network calls
-- Deterministic output for given inputs
 
 Example:
     >>> from glitchlings.attack.tokenizer_metrics import compression_ratio
@@ -24,31 +19,24 @@ Example:
 
 from __future__ import annotations
 
-import importlib
-from typing import TYPE_CHECKING, Any, Sequence, cast
+from typing import TYPE_CHECKING, Sequence, cast
+
+from ..internal.rust import get_rust_operation
 
 if TYPE_CHECKING:
     from .tokenization import Tokenizer
 
-# Load Rust extension
-try:
-    _rust: Any = importlib.import_module("glitchlings._zoo_rust")
-except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
-    raise ImportError(
-        "Could not import compiled Rust extension. "
-        "Please ensure the project is installed with the Rust extension built."
-    ) from exc
-
-# Rust function references
-_compression_ratio = getattr(_rust, "compression_ratio")
-_batch_compression_ratio = getattr(_rust, "batch_compression_ratio")
-_characters_per_token = getattr(_rust, "characters_per_token")
-_batch_characters_per_token = getattr(_rust, "batch_characters_per_token")
-_token_entropy = getattr(_rust, "token_entropy")
-_batch_token_entropy = getattr(_rust, "batch_token_entropy")
-_vocabulary_utilization = getattr(_rust, "vocabulary_utilization")
-_unknown_token_rate = getattr(_rust, "unknown_token_rate")
-_batch_unknown_token_rate = getattr(_rust, "batch_unknown_token_rate")
+# Rust function references (loaded on first use via get_rust_operation)
+_compression_ratio = get_rust_operation("compression_ratio")
+_batch_compression_ratio = get_rust_operation("batch_compression_ratio")
+_characters_per_token = get_rust_operation("characters_per_token")
+_batch_characters_per_token = get_rust_operation("batch_characters_per_token")
+_token_entropy = get_rust_operation("token_entropy")
+_batch_token_entropy = get_rust_operation("batch_token_entropy")
+_vocabulary_utilization = get_rust_operation("vocabulary_utilization")
+_batch_vocabulary_utilization = get_rust_operation("batch_vocabulary_utilization")
+_unknown_token_rate = get_rust_operation("unknown_token_rate")
+_batch_unknown_token_rate = get_rust_operation("batch_unknown_token_rate")
 
 
 # ---------------------------------------------------------------------------
@@ -206,6 +194,30 @@ def vocabulary_utilization(
     return dict(result)
 
 
+def batch_vocabulary_utilization(
+    token_batches: Sequence[Sequence[str]],
+    token_id_batches: Sequence[Sequence[int]],
+) -> list[dict[str, float]]:
+    """Analyze vocabulary usage patterns for a batch of token sequences.
+
+    Args:
+        token_batches: Token string sequences from encoding multiple texts.
+        token_id_batches: Corresponding token ID sequences.
+
+    Returns:
+        List of dictionaries, each with:
+        - unique_ratio: fraction of tokens that are unique
+        - repetition_rate: 1 - unique_ratio
+        - max_id: highest token ID used
+        - id_spread: stddev of IDs
+    """
+    results = _batch_vocabulary_utilization(
+        [list(tokens) for tokens in token_batches],
+        [list(ids) for ids in token_id_batches],
+    )
+    return [dict(r) for r in results]
+
+
 # ---------------------------------------------------------------------------
 # Unknown Token Detection
 # ---------------------------------------------------------------------------
@@ -351,6 +363,7 @@ __all__ = [
     "token_entropy",
     "batch_token_entropy",
     "vocabulary_utilization",
+    "batch_vocabulary_utilization",
     "unknown_token_rate",
     "batch_unknown_token_rate",
     # Convenience

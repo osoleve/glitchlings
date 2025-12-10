@@ -596,6 +596,59 @@ pub fn vocabulary_utilization(
     })
 }
 
+/// Compute batch vocabulary utilization.
+#[pyfunction]
+pub fn batch_vocabulary_utilization(
+    _py: Python<'_>,
+    token_batches: Vec<Vec<Bound<'_, PyString>>>,
+    token_id_batches: Vec<Vec<i64>>,
+) -> PyResult<Vec<VocabUtilization>> {
+    guard_equal_batches(token_batches.len(), token_id_batches.len())?;
+
+    let mut results = Vec::with_capacity(token_batches.len());
+
+    for (tokens, token_ids) in token_batches.iter().zip(token_id_batches.iter()) {
+        if tokens.is_empty() {
+            results.push(VocabUtilization {
+                unique_ratio: 0.0,
+                repetition_rate: 0.0,
+                max_id: 0.0,
+                id_spread: 0.0,
+            });
+            continue;
+        }
+
+        // Count unique tokens
+        let token_refs = extract_str_refs(tokens)?;
+        let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+        let unique_count = unique_set.len();
+        let unique_ratio = unique_count as f64 / tokens.len() as f64;
+
+        // ID statistics
+        let max_id = *token_ids.iter().max().unwrap_or(&0);
+        let mean_id: f64 =
+            token_ids.iter().map(|&id| id as f64).sum::<f64>() / token_ids.len() as f64;
+        let variance: f64 = token_ids
+            .iter()
+            .map(|&id| {
+                let diff = id as f64 - mean_id;
+                diff * diff
+            })
+            .sum::<f64>()
+            / token_ids.len() as f64;
+        let id_spread = variance.sqrt();
+
+        results.push(VocabUtilization {
+            unique_ratio,
+            repetition_rate: 1.0 - unique_ratio,
+            max_id: max_id as f64,
+            id_spread,
+        });
+    }
+
+    Ok(results)
+}
+
 /// Default unknown token markers.
 const DEFAULT_UNKNOWN_MARKERS: &[&str] = &["[UNK]", "<unk>", "�", "\u{FFFD}"];
 
