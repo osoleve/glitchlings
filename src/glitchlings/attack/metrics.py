@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import importlib
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
+from ..internal.rust import get_rust_operation
 from .metrics_dispatch import TokenBatch, TokenSequence, is_batch, validate_batch_consistency
 
 if TYPE_CHECKING:
@@ -22,24 +22,17 @@ class BatchMetric(Protocol):
     def __call__(self, inputs: TokenBatch, outputs: TokenBatch) -> list[float]: ...
 
 
-try:
-    _rust: Any = importlib.import_module("glitchlings._zoo_rust")
-except ModuleNotFoundError as exc:  # pragma: no cover - runtime guard
-    raise ImportError(
-        "Could not import compiled Rust extension. "
-        "Please ensure the project is installed with the Rust extension built."
-    ) from exc
-
-_single_jsd = cast(Metric, getattr(_rust, "jensen_shannon_divergence"))
-_single_ned = cast(Metric, getattr(_rust, "normalized_edit_distance"))
-_single_sr = cast(Metric, getattr(_rust, "subsequence_retention"))
-_single_ed = cast(Metric, getattr(_rust, "entropy_delta"))
-_single_msi = cast(Metric, getattr(_rust, "merge_split_index"))
-_batch_jsd = cast(BatchMetric, getattr(_rust, "batch_jensen_shannon_divergence"))
-_batch_ned = cast(BatchMetric, getattr(_rust, "batch_normalized_edit_distance"))
-_batch_sr = cast(BatchMetric, getattr(_rust, "batch_subsequence_retention"))
-_batch_ed = cast(BatchMetric, getattr(_rust, "batch_entropy_delta"))
-_batch_msi = cast(BatchMetric, getattr(_rust, "batch_merge_split_index"))
+# Rust function references (loaded on first use via get_rust_operation)
+_single_jsd = cast(Metric, get_rust_operation("jensen_shannon_divergence"))
+_single_ned = cast(Metric, get_rust_operation("normalized_edit_distance"))
+_single_sr = cast(Metric, get_rust_operation("subsequence_retention"))
+_single_ed = cast(Metric, get_rust_operation("entropy_delta"))
+_single_msi = cast(Metric, get_rust_operation("merge_split_index"))
+_batch_jsd = cast(BatchMetric, get_rust_operation("batch_jensen_shannon_divergence"))
+_batch_ned = cast(BatchMetric, get_rust_operation("batch_normalized_edit_distance"))
+_batch_sr = cast(BatchMetric, get_rust_operation("batch_subsequence_retention"))
+_batch_ed = cast(BatchMetric, get_rust_operation("batch_entropy_delta"))
+_batch_msi = cast(BatchMetric, get_rust_operation("batch_merge_split_index"))
 
 
 def _dispatch_metric(

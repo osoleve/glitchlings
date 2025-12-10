@@ -282,6 +282,192 @@ By default, Attack uses a lightweight `tiktoken` encoder:
 - Falls back to `cl100k_base`, then to a whitespace tokenizer if tiktoken is unavailable.
 - Pass a name (e.g., `"gpt2"`), a `tiktoken.Encoding`, a Hugging Face `tokenizers.Tokenizer`, or a custom object implementing `encode`/`decode`.
 
+### Tokenizer caching
+
+Resolved tokenizers are cached automatically for efficient reuse across multiple `Attack` instances. The cache holds up to 16 tokenizers with LRU eviction.
+
+```python
+from glitchlings.attack import (
+    clear_tokenizer_cache,
+    get_tokenizer_cache_info,
+)
+
+# Check cache state
+info = get_tokenizer_cache_info()
+print(f"Cached: {info['size']} / {info['max_size']}")
+print(f"Keys: {info['cached_keys']}")
+
+# Clear cache (useful for testing or memory constraints)
+cleared = clear_tokenizer_cache()
+print(f"Cleared {cleared} cached tokenizers")
+```
+
+To bypass the cache for a specific resolution:
+
+```python
+from glitchlings.attack.tokenization import resolve_tokenizer
+
+# Force fresh tokenizer instance
+tokenizer = resolve_tokenizer("cl100k_base", use_cache=False)
+```
+
+## Streaming and large datasets
+
+For processing many texts or very large token sequences, the attack module provides streaming capabilities.
+
+### Processing many texts with run_stream
+
+Use `run_stream()` to process an iterator of texts without holding all results in memory:
+
+```python
+from glitchlings import Typogre
+from glitchlings.attack import Attack
+
+attack = Attack(Typogre(rate=0.05))
+
+# Process texts one at a time
+def load_texts():
+    for line in open("large_corpus.txt"):
+        yield line.strip()
+
+for result in attack.run_stream(load_texts()):
+    # Process each result immediately
+    print(f"NED: {result.metrics['normalized_edit_distance']:.4f}")
+```
+
+### Windowed token access with StreamingAttackResult
+
+For results with very large token sequences, use `run_streaming_result()` to get windowed access:
+
+```python
+result = attack.run_streaming_result(very_long_text, window_size=5000)
+
+# Iterate over token windows without loading all at once
+for window in result.stream_input_tokens():
+    print(f"Window {window.start_index}: {len(window.tokens)} tokens")
+    if window.is_last:
+        print("Processing final window")
+
+# Get token counts without full materialization
+input_count, output_count = result.get_token_count()
+print(f"Tokens: {input_count} -> {output_count}")
+
+# Stream paired input/output windows for comparison
+for input_window, output_window in result.stream_token_pairs():
+    # Process aligned windows
+    pass
+```
+
+**Note:** `StreamingAttackResult` provides windowed *access* to tokens, not lazy loading. The tokens are still stored in memory after the attack runs. For true memory savings with many texts, use `run_stream()` to process texts one at a time.
+
+### Lightweight results without tokens
+
+When you only need metrics and don't need the actual token lists, use `include_tokens=False` for reduced memory usage:
+
+```python
+# Lightweight result - metrics only, no tokens stored
+result = attack.run(text, include_tokens=False)
+print(result.metrics)  # Full metrics computed
+print(result.input_tokens)  # [] - empty list
+print(result.output_tokens)  # [] - empty list
+
+# Also works with batch and streaming
+results = attack.run_batch(texts, include_tokens=False)
+for result in attack.run_stream(texts, include_tokens=False):
+    print(result.metrics["normalized_edit_distance"])
+```
+
+**Note:** Metrics are still computed from the tokens internally—only the storage of tokens in the result is skipped. This is useful when processing many texts where you only need aggregate statistics.
+
+## Tokenizer analysis metrics
+
+Beyond corruption metrics, the attack module provides metrics for analyzing tokenizer behavior:
+
+```python
+from glitchlings.attack import (
+    compression_ratio,
+    characters_per_token,
+    token_entropy,
+    vocabulary_utilization,
+    unknown_token_rate,
+    analyze_tokenizer,
+)
+from glitchlings.attack.tokenization import resolve_tokenizer
+
+tokenizer = resolve_tokenizer("cl100k_base")
+text = "Hello, world! This is a test."
+tokens, token_ids = tokenizer.encode(text)
+```
+
+### Available metrics
+
+| Metric | Description | Interpretation |
+|--------|-------------|----------------|
+| `compression_ratio` | UTF-8 bytes per token | Lower = more compact encoding |
+| `characters_per_token` | Characters per token | Higher = fewer tokens needed |
+| `token_entropy` | Shannon entropy of token distribution | Higher = more uniform usage |
+| `vocabulary_utilization` | Unique ratio, repetition rate, ID spread | Vocabulary coverage analysis |
+| `unknown_token_rate` | Fraction of OOV/fallback tokens | Higher = poor domain coverage |
+
+### Individual metrics
+
+```python
+# Encoding efficiency
+print(f"Bytes/token: {compression_ratio(text, tokens):.2f}")
+print(f"Chars/token: {characters_per_token(text, tokens):.2f}")
+
+# Token distribution
+print(f"Entropy: {token_entropy(tokens):.4f} bits")
+
+# Vocabulary usage
+stats = vocabulary_utilization(tokens, token_ids)
+print(f"Unique ratio: {stats['unique_ratio']:.2%}")
+print(f"Max token ID: {stats['max_id']:.0f}")
+print(f"ID spread: {stats['id_spread']:.2f}")
+
+# Unknown token detection
+unk_rate = unknown_token_rate(tokens)
+if unk_rate > 0.05:
+    print(f"Warning: {unk_rate:.1%} unknown tokens")
+```
+
+### Comprehensive analysis
+
+Use `analyze_tokenizer()` for all metrics at once:
+
+```python
+stats = analyze_tokenizer(text, tokenizer)
+for key, value in stats.items():
+    print(f"{key}: {value:.4f}")
+```
+
+Returns a dictionary with: `compression_ratio`, `characters_per_token`, `token_entropy`, `unknown_token_rate`, `unique_ratio`, `repetition_rate`, `max_id`, `id_spread`, and `token_count`.
+
+### Batch processing
+
+All tokenizer metrics have batch variants for efficient bulk analysis:
+
+```python
+from glitchlings.attack import (
+    batch_compression_ratio,
+    batch_token_entropy,
+    batch_vocabulary_utilization,
+)
+
+texts = ["Hello world", "Goodbye world", "Testing 123"]
+batch_data = [tokenizer.encode(t) for t in texts]
+token_batches = [d[0] for d in batch_data]
+id_batches = [d[1] for d in batch_data]
+
+# Batch metrics
+ratios = batch_compression_ratio(texts, token_batches)
+entropies = batch_token_entropy(token_batches)
+vocab_stats = batch_vocabulary_utilization(token_batches, id_batches)
+
+for i, text in enumerate(texts):
+    print(f"{text}: ratio={ratios[i]:.2f}, entropy={entropies[i]:.4f}")
+```
+
 ## Determinism
 
 - Default seeds align with the rest of the library (`DEFAULT_ATTACK_SEED = 151`).

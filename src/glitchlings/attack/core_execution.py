@@ -251,6 +251,8 @@ def execute_attack(
     plan: AttackPlan,
     result_plan: ResultPlan,
     original_container: str | Transcript | Sequence[str],
+    *,
+    include_tokens: bool = True,
 ) -> dict[str, object]:
     """Execute a complete attack and return result fields.
 
@@ -268,6 +270,9 @@ def execute_attack(
         plan: Attack execution plan.
         result_plan: Result assembly plan.
         original_container: Original input container.
+        include_tokens: Whether to include tokens in the result. If False,
+            tokens are computed for metrics but not stored in the result.
+            Defaults to True.
 
     Returns:
         Dictionary of fields for AttackResult construction.
@@ -297,6 +302,12 @@ def execute_attack(
         input_encoded.tokens,
         output_encoded.tokens,
     )
+
+    # If not including tokens, use empty EncodedData for result assembly
+    if not include_tokens:
+        empty_encoded = EncodedData(tokens=[], token_ids=[])
+        input_encoded = empty_encoded
+        output_encoded = empty_encoded
 
     # Assemble result (adapter handles unwrapping for single inputs)
     return assemble_result_fields(
