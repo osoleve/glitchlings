@@ -514,7 +514,12 @@ class Attack:
                     raise
                 raise ValueError(f"Metric '{name}' has invalid signature: {e}") from e
 
-    def run(self, text: str | Transcript | Sequence[str]) -> AttackResult:
+    def run(
+        self,
+        text: str | Transcript | Sequence[str],
+        *,
+        include_tokens: bool = True,
+    ) -> AttackResult:
         """Apply corruptions and calculate metrics.
 
         Supports single strings, batches of strings, and chat transcripts.
@@ -523,6 +528,10 @@ class Attack:
 
         Args:
             text: Input text, transcript, or batch of strings to corrupt.
+            include_tokens: Whether to include tokens in the result. Set to
+                False for a lightweight result with only metrics. Tokens are
+                still computed internally for metrics but not stored in the
+                result. Defaults to True.
 
         Returns:
             AttackResult containing original, corrupted, tokens, and metrics.
@@ -546,6 +555,7 @@ class Attack:
             attack_plan,
             result_plan,
             text,
+            include_tokens=include_tokens,
         )
 
         return AttackResult(**fields)  # type: ignore[arg-type]
@@ -554,12 +564,15 @@ class Attack:
         self,
         texts: Sequence[str | Transcript],
         *,
+        include_tokens: bool = True,
         progress_callback: Callable[[list[AttackResult]], None] | None = None,
     ) -> list[AttackResult]:
         """Run attack on multiple texts, returning results in order.
 
         Args:
             texts: List of inputs to process.
+            include_tokens: Whether to include tokens in results. Set to
+                False for lightweight results with only metrics. Defaults to True.
             progress_callback: Optional callback called after each result,
                 receiving the list of results so far.
 
@@ -568,7 +581,7 @@ class Attack:
         """
         results: list[AttackResult] = []
         for text in texts:
-            result = self.run(text)
+            result = self.run(text, include_tokens=include_tokens)
             results.append(result)
             if progress_callback is not None:
                 progress_callback(results)
@@ -577,6 +590,8 @@ class Attack:
     def run_stream(
         self,
         texts: Iterator[str | Transcript] | Sequence[str | Transcript],
+        *,
+        include_tokens: bool = True,
     ) -> Generator[AttackResult, None, None]:
         """Stream attack results as they are computed.
 
@@ -586,6 +601,8 @@ class Attack:
 
         Args:
             texts: Iterator or sequence of inputs to process.
+            include_tokens: Whether to include tokens in results. Set to
+                False for lightweight results with only metrics. Defaults to True.
 
         Yields:
             AttackResult objects as they are computed.
@@ -596,7 +613,7 @@ class Attack:
             ...     process_result(result)  # Process each result immediately
         """
         for text in texts:
-            yield self.run(text)
+            yield self.run(text, include_tokens=include_tokens)
 
     def run_streaming_result(
         self,

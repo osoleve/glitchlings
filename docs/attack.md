@@ -360,6 +360,25 @@ for input_window, output_window in result.stream_token_pairs():
 
 **Note:** `StreamingAttackResult` provides windowed *access* to tokens, not lazy loading. The tokens are still stored in memory after the attack runs. For true memory savings with many texts, use `run_stream()` to process texts one at a time.
 
+### Lightweight results without tokens
+
+When you only need metrics and don't need the actual token lists, use `include_tokens=False` for reduced memory usage:
+
+```python
+# Lightweight result - metrics only, no tokens stored
+result = attack.run(text, include_tokens=False)
+print(result.metrics)  # Full metrics computed
+print(result.input_tokens)  # [] - empty list
+print(result.output_tokens)  # [] - empty list
+
+# Also works with batch and streaming
+results = attack.run_batch(texts, include_tokens=False)
+for result in attack.run_stream(texts, include_tokens=False):
+    print(result.metrics["normalized_edit_distance"])
+```
+
+**Note:** Metrics are still computed from the tokens internally—only the storage of tokens in the result is skipped. This is useful when processing many texts where you only need aggregate statistics.
+
 ## Tokenizer analysis metrics
 
 Beyond corruption metrics, the attack module provides metrics for analyzing tokenizer behavior:
