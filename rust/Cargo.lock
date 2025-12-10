@@ -201,6 +201,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
+name = "corruption_engine"
+version = "0.1.0"
+dependencies = [
+ "aho-corasick",
+ "base64",
+ "blake2",
+ "criterion",
+ "flate2",
+ "once_cell",
+ "pprof",
+ "pyo3",
+ "pyo3-build-config",
+ "rand",
+ "regex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "smallvec",
+]
+
+[[package]]
 name = "cpp_demangle"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1323,25 +1344,4 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "zoo_rust"
-version = "0.1.0"
-dependencies = [
- "aho-corasick",
- "base64",
- "blake2",
- "criterion",
- "flate2",
- "once_cell",
- "pprof",
- "pyo3",
- "pyo3-build-config",
- "rand",
- "regex",
- "serde",
- "serde_json",
- "sha2",
- "smallvec",
 ]

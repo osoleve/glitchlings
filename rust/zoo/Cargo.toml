@@ -1,12 +1,12 @@
 [package]
-name = "zoo_rust"
+name = "corruption_engine"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.87.0"
 build = "build.rs"
 
 [lib]
-name = "_zoo_rust"
+name = "_corruption_engine"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
@@ -26,7 +26,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
 
 [package.metadata.maturin]
-module-name = "glitchlings._zoo_rust"
+module-name = "glitchlings._corruption_engine"
 
 [build-dependencies]
 pyo3-build-config = { workspace = true }

@@ -449,9 +449,9 @@ impl TextOperation for LexemeSubstitutionOp {
     }
 }
 
-/// Python-exposed function for Jargoyle word drift.
-#[pyfunction(signature = (text, lexemes, mode, rate, seed=None))]
-pub(crate) fn jargoyle_drift(
+/// Python-exposed function for lexeme substitution (word drift).
+#[pyfunction(name = "substitute_lexeme", signature = (text, lexemes, mode, rate, seed=None))]
+pub(crate) fn substitute_lexeme(
     text: &str,
     lexemes: &str,
     mode: &str,

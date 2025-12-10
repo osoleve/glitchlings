@@ -37,7 +37,7 @@ impl PipelineError {
 
 /// Deterministic glitchling pipeline mirroring the Python orchestrator contract.
 #[derive(Debug, Clone)]
-#[pyclass(module = "_zoo_rust")]
+#[pyclass(module = "_corruption_engine")]
 pub struct Pipeline {
     _master_seed: i128,
     descriptors: Vec<OperationDescriptor>,

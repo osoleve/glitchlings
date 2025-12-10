@@ -92,8 +92,8 @@ pub(crate) fn build_shift_slip_config(
     )))
 }
 
-#[pyfunction(signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None, motor_weighting=None))]
-pub(crate) fn fatfinger(
+#[pyfunction(name = "keyboard_typo", signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None, motor_weighting=None))]
+pub(crate) fn keyboard_typo(
     text: &str,
     max_change_rate: f64,
     layout: &Bound<'_, PyDict>,

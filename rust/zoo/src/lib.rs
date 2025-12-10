@@ -39,13 +39,13 @@ fn resolve_seed(seed: Option<u64>) -> u64 {
 }
 
 #[derive(Debug)]
-struct PyGlitchDescriptor {
+struct PyOperationDescriptor {
     name: String,
     seed: u64,
-    operation: PyOperation,
+    operation: PyOperationConfig,
 }
 
-impl<'py> FromPyObject<'py> for PyGlitchDescriptor {
+impl<'py> FromPyObject<'py> for PyOperationDescriptor {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         let dict = obj.downcast::<PyDict>()?;
         let name = extract_required_field_with_field_suffix(dict, "descriptor", "name")?;
@@ -145,14 +145,14 @@ fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Layout>> {
 }
 
 fn build_operation_descriptors(
-    descriptors: Vec<PyGlitchDescriptor>,
+    descriptors: Vec<PyOperationDescriptor>,
 ) -> PyResult<Vec<OperationDescriptor>> {
     descriptors
         .into_iter()
         .map(|descriptor| {
             let operation = descriptor
                 .operation
-                .into_glitch_operation(descriptor.seed)?;
+                .into_operation(descriptor.seed)?;
             Ok(OperationDescriptor {
                 name: descriptor.name,
                 seed: descriptor.seed,
@@ -163,7 +163,7 @@ fn build_operation_descriptors(
 }
 
 fn build_pipeline_from_py(
-    descriptors: Vec<PyGlitchDescriptor>,
+    descriptors: Vec<PyOperationDescriptor>,
     master_seed: i128,
     include_only_patterns: Option<Vec<String>>,
     exclude_patterns: Option<Vec<String>>,
@@ -180,7 +180,7 @@ impl Pipeline {
     #[new]
     #[pyo3(signature = (descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
     fn py_new(
-        descriptors: Vec<PyGlitchDescriptor>,
+        descriptors: Vec<PyOperationDescriptor>,
         master_seed: i128,
         include_only_patterns: Option<Vec<String>>,
         exclude_patterns: Option<Vec<String>>,
@@ -200,13 +200,13 @@ impl Pipeline {
 }
 
 #[derive(Debug)]
-struct PyGagglePlanInput {
+struct PyPlanInput {
     name: String,
     scope: i32,
     order: i32,
 }
 
-impl<'py> FromPyObject<'py> for PyGagglePlanInput {
+impl<'py> FromPyObject<'py> for PyPlanInput {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         if let Ok(dict) = obj.downcast::<PyDict>() {
             let name: String =
@@ -233,7 +233,7 @@ impl<'py> FromPyObject<'py> for PyGagglePlanInput {
 }
 
 #[derive(Debug)]
-enum PyOperation {
+enum PyOperationConfig {
     Reduplicate {
         rate: f64,
         unweighted: bool,
@@ -297,7 +297,7 @@ enum PyOperation {
     },
 }
 
-impl<'py> FromPyObject<'py> for PyOperation {
+impl<'py> FromPyObject<'py> for PyOperationConfig {
     fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
         let dict = obj.downcast::<PyDict>()?;
         let op_type: String = extract_required_field_with_field_suffix(dict, "operation", "type")?;
@@ -305,16 +305,16 @@ impl<'py> FromPyObject<'py> for PyOperation {
             "reduplicate" => {
                 let rate = extract_required_field(dict, "reduplicate operation", "rate")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperation::Reduplicate { rate, unweighted })
+                Ok(PyOperationConfig::Reduplicate { rate, unweighted })
             }
             "delete" => {
                 let rate = extract_required_field(dict, "delete operation", "rate")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperation::Delete { rate, unweighted })
+                Ok(PyOperationConfig::Delete { rate, unweighted })
             }
             "swap_adjacent" => {
                 let rate = extract_required_field(dict, "swap_adjacent operation", "rate")?;
-                Ok(PyOperation::SwapAdjacent { rate })
+                Ok(PyOperationConfig::SwapAdjacent { rate })
             }
             "rushmore_combo" => {
                 let modes: Vec<String> =
@@ -353,7 +353,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                     })
                     .transpose()?;
 
-                Ok(PyOperation::RushmoreCombo {
+                Ok(PyOperationConfig::RushmoreCombo {
                     modes,
                     delete,
                     duplicate,
@@ -367,7 +367,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                 let merge_adjacent =
                     extract_required_field(dict, "redact operation", "merge_adjacent")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperation::Redact {
+                Ok(PyOperationConfig::Redact {
                     replacement_char,
                     rate,
                     merge_adjacent,
@@ -376,7 +376,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
             }
             "ocr" => {
                 let rate = extract_required_field(dict, "ocr operation", "rate")?;
-                Ok(PyOperation::Ocr { rate })
+                Ok(PyOperationConfig::Ocr { rate })
             }
             "typo" => {
                 let rate =
@@ -407,7 +407,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                     .and_then(MotorWeighting::from_str)
                     .unwrap_or_default();
 
-                Ok(PyOperation::Typo {
+                Ok(PyOperationConfig::Typo {
                     rate,
                     layout,
                     shift_slip,
@@ -419,7 +419,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                     extract_required_field_with_field_suffix(dict, "mimic operation", "rate")?;
                 let classes = homoglyphs::parse_class_selection(dict.get_item("classes")?)?;
                 let banned = homoglyphs::parse_banned_characters(dict.get_item("banned_characters")?)?;
-                Ok(PyOperation::Mimic {
+                Ok(PyOperationConfig::Mimic {
                     rate,
                     classes,
                     banned,
@@ -428,7 +428,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
             "zwj" => {
                 let rate = extract_required_field_with_field_suffix(dict, "zwj operation", "rate")?;
                 let characters = extract_optional_field(dict, "characters")?.unwrap_or_default();
-                Ok(PyOperation::ZeroWidth { rate, characters })
+                Ok(PyOperationConfig::ZeroWidth { rate, characters })
             }
             "jargoyle" => {
                 let lexemes = extract_optional_field(dict, "lexemes")?
@@ -437,7 +437,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                     extract_optional_field(dict, "mode")?.unwrap_or_else(|| "drift".to_string());
                 let parsed_mode = JargoyleMode::parse(&mode).map_err(PyValueError::new_err)?;
                 let rate = extract_required_field(dict, "jargoyle operation", "rate")?;
-                Ok(PyOperation::Jargoyle {
+                Ok(PyOperationConfig::Jargoyle {
                     lexemes,
                     mode: parsed_mode,
                     rate,
@@ -447,13 +447,13 @@ impl<'py> FromPyObject<'py> for PyOperation {
                 let rate = extract_required_field(dict, "wherewolf operation", "rate")?;
                 let weighting = extract_optional_field(dict, "weighting")?
                     .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
-                Ok(PyOperation::Wherewolf { rate, weighting })
+                Ok(PyOperationConfig::Wherewolf { rate, weighting })
             }
             "pedant" => {
                 let stone = extract_required_field(dict, "pedant operation", "stone")?;
-                Ok(PyOperation::Pedant { stone })
+                Ok(PyOperationConfig::Pedant { stone })
             }
-            "apostrofae" | "quote_pairs" => Ok(PyOperation::QuotePairs),
+            "apostrofae" | "quote_pairs" => Ok(PyOperationConfig::QuotePairs),
             "hokey" => {
                 let rate = extract_required_field(dict, "hokey operation", "rate")?;
                 let extension_min =
@@ -463,7 +463,7 @@ impl<'py> FromPyObject<'py> for PyOperation {
                 let word_length_threshold =
                     extract_required_field(dict, "hokey operation", "word_length_threshold")?;
                 let base_p = extract_optional_field(dict, "base_p")?.unwrap_or(0.45);
-                Ok(PyOperation::Hokey {
+                Ok(PyOperationConfig::Hokey {
                     rate,
                     extension_min,
                     extension_max,
@@ -478,19 +478,19 @@ impl<'py> FromPyObject<'py> for PyOperation {
     }
 }
 
-impl PyOperation {
-    fn into_glitch_operation(self, seed: u64) -> PyResult<Operation> {
+impl PyOperationConfig {
+    fn into_operation(self, seed: u64) -> PyResult<Operation> {
         let operation = match self {
-            PyOperation::Reduplicate { rate, unweighted } => {
+            PyOperationConfig::Reduplicate { rate, unweighted } => {
                 Operation::Reduplicate(operations::ReduplicateWordsOp { rate, unweighted })
             }
-            PyOperation::Delete { rate, unweighted } => {
+            PyOperationConfig::Delete { rate, unweighted } => {
                 Operation::Delete(operations::DeleteRandomWordsOp { rate, unweighted })
             }
-            PyOperation::SwapAdjacent { rate } => {
+            PyOperationConfig::SwapAdjacent { rate } => {
                 Operation::SwapAdjacent(operations::SwapAdjacentWordsOp { rate })
             }
-            PyOperation::RushmoreCombo {
+            PyOperationConfig::RushmoreCombo {
                 modes,
                 delete,
                 duplicate,
@@ -514,7 +514,7 @@ impl PyOperation {
                     swap,
                 ))
             }
-            PyOperation::Redact {
+            PyOperationConfig::Redact {
                 replacement_char,
                 rate,
                 merge_adjacent,
@@ -525,10 +525,10 @@ impl PyOperation {
                 merge_adjacent,
                 unweighted,
             }),
-            PyOperation::Ocr { rate } => {
+            PyOperationConfig::Ocr { rate } => {
                 Operation::Ocr(operations::OcrArtifactsOp { rate })
             }
-            PyOperation::Typo {
+            PyOperationConfig::Typo {
                 rate,
                 layout,
                 shift_slip,
@@ -543,31 +543,31 @@ impl PyOperation {
                     motor_weighting,
                 })
             }
-            PyOperation::Mimic {
+            PyOperationConfig::Mimic {
                 rate,
                 classes,
                 banned,
             } => Operation::Mimic(HomoglyphOp::new(rate, classes, banned)),
-            PyOperation::ZeroWidth { rate, characters } => {
+            PyOperationConfig::ZeroWidth { rate, characters } => {
                 Operation::ZeroWidth(operations::ZeroWidthOp { rate, characters })
             }
-            PyOperation::Jargoyle {
+            PyOperationConfig::Jargoyle {
                 lexemes,
                 mode,
                 rate,
             } => Operation::Jargoyle(LexemeSubstitutionOp::new(&lexemes, mode, rate)),
-            PyOperation::Wherewolf { rate, weighting } => {
+            PyOperationConfig::Wherewolf { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
                     PyValueError::new_err(format!("unsupported weighting: {weighting}"))
                 })?;
                 Operation::Wherewolf(HomophoneOp { rate, weighting })
             }
-            PyOperation::Pedant { stone } => {
+            PyOperationConfig::Pedant { stone } => {
                 let op = GrammarRuleOp::new(seed as i128, &stone)?;
                 Operation::Pedant(op)
             }
-            PyOperation::QuotePairs => Operation::QuotePairs(operations::QuotePairsOp),
-            PyOperation::Hokey {
+            PyOperationConfig::QuotePairs => Operation::QuotePairs(operations::QuotePairsOp),
+            PyOperationConfig::Hokey {
                 rate,
                 extension_min,
                 extension_max,
@@ -628,8 +628,8 @@ fn swap_adjacent_words(text: &str, rate: f64, seed: Option<u64>) -> PyResult<Str
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
 
-#[pyfunction(signature = (text, rate, weighting, seed=None))]
-fn wherewolf_homophones(
+#[pyfunction(name = "substitute_homophones", signature = (text, rate, weighting, seed=None))]
+fn substitute_homophones(
     text: &str,
     rate: f64,
     weighting: &str,
@@ -641,14 +641,14 @@ fn wherewolf_homophones(
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
 
-#[pyfunction(name = "pedant", signature = (text, stone, seed))]
-fn pedant_operation(text: &str, stone: &str, seed: i128) -> PyResult<String> {
+#[pyfunction(name = "apply_grammar_rule", signature = (text, stone, seed))]
+fn apply_grammar_rule(text: &str, stone: &str, seed: i128) -> PyResult<String> {
     let op = GrammarRuleOp::new(seed, stone)?;
     apply_operation(text, op, None).map_err(operations::OperationError::into_pyerr)
 }
 
-#[pyfunction(signature = (text, seed=None))]
-fn apostrofae(text: &str, seed: Option<u64>) -> PyResult<String> {
+#[pyfunction(name = "normalize_quote_pairs", signature = (text, seed=None))]
+fn normalize_quote_pairs(text: &str, seed: Option<u64>) -> PyResult<String> {
     let op = QuotePairsOp;
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
@@ -677,9 +677,9 @@ fn redact_words(
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
 
-#[pyfunction]
-fn plan_glitchlings(
-    glitchlings: Vec<PyGagglePlanInput>,
+#[pyfunction(name = "plan_operations")]
+fn plan_operations(
+    glitchlings: Vec<PyPlanInput>,
     master_seed: i128,
 ) -> PyResult<Vec<(usize, u64)>> {
     let plan = pipeline::plan_gaggle(
@@ -701,10 +701,10 @@ fn plan_glitchlings(
         .collect())
 }
 
-#[pyfunction(signature = (text, descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
-fn compose_glitchlings(
+#[pyfunction(name = "compose_operations", signature = (text, descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
+fn compose_operations(
     text: &str,
-    descriptors: Vec<PyGlitchDescriptor>,
+    descriptors: Vec<PyOperationDescriptor>,
     master_seed: i128,
     include_only_patterns: Option<Vec<String>>,
     exclude_patterns: Option<Vec<String>>,
@@ -719,24 +719,24 @@ fn compose_glitchlings(
 }
 
 #[pymodule]
-fn _zoo_rust(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn _corruption_engine(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(reduplicate_words, m)?)?;
     m.add_function(wrap_pyfunction!(delete_random_words, m)?)?;
     m.add_function(wrap_pyfunction!(swap_adjacent_words, m)?)?;
     m.add_function(wrap_pyfunction!(homoglyphs::swap_homoglyphs, m)?)?;
-    m.add_function(wrap_pyfunction!(wherewolf_homophones, m)?)?;
-    m.add_function(wrap_pyfunction!(pedant_operation, m)?)?;
-    m.add_function(wrap_pyfunction!(apostrofae, m)?)?;
+    m.add_function(wrap_pyfunction!(substitute_homophones, m)?)?;
+    m.add_function(wrap_pyfunction!(apply_grammar_rule, m)?)?;
+    m.add_function(wrap_pyfunction!(normalize_quote_pairs, m)?)?;
     m.add_function(wrap_pyfunction!(ocr_artifacts, m)?)?;
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
-    m.add_function(wrap_pyfunction!(lexeme_substitution::jargoyle_drift, m)?)?;
+    m.add_function(wrap_pyfunction!(lexeme_substitution::substitute_lexeme, m)?)?;
     m.add_function(wrap_pyfunction!(lexeme_substitution::list_lexeme_dictionaries, m)?)?;
-    m.add_function(wrap_pyfunction!(plan_glitchlings, m)?)?;
-    m.add_function(wrap_pyfunction!(compose_glitchlings, m)?)?;
-    m.add_function(wrap_pyfunction!(keyboard_typos::fatfinger, m)?)?;
+    m.add_function(wrap_pyfunction!(plan_operations, m)?)?;
+    m.add_function(wrap_pyfunction!(compose_operations, m)?)?;
+    m.add_function(wrap_pyfunction!(keyboard_typos::keyboard_typo, m)?)?;
     m.add_function(wrap_pyfunction!(keyboard_typos::slip_modifier, m)?)?;
     m.add_function(wrap_pyfunction!(zero_width::inject_zero_widths, m)?)?;
-    m.add_function(wrap_pyfunction!(word_stretching::hokey, m)?)?;
+    m.add_function(wrap_pyfunction!(word_stretching::stretch_word, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::jensen_shannon_divergence, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::normalized_edit_distance, m)?)?;
     m.add_function(wrap_pyfunction!(metrics::subsequence_retention, m)?)?;

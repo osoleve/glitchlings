@@ -281,7 +281,7 @@ pub fn parse_banned_characters(value: Option<Bound<'_, PyAny>>) -> PyResult<Vec<
     ))
 }
 
-#[pyfunction(name = "mim1c", signature = (text, rate=None, classes=None, banned_characters=None, seed=None))]
+#[pyfunction(name = "swap_homoglyphs", signature = (text, rate=None, classes=None, banned_characters=None, seed=None))]
 pub(crate) fn swap_homoglyphs(
     text: &str,
     rate: Option<f64>,

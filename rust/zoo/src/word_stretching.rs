@@ -854,9 +854,9 @@ fn contains_vowel(chars: &[char]) -> bool {
     chars.iter().any(|&c| is_vowel(c))
 }
 
-/// Python wrapper for the Hokey operation.
-#[pyfunction(signature = (text, rate, extension_min, extension_max, word_length_threshold, base_p, seed=None))]
-pub fn hokey(
+/// Python wrapper for the word stretching operation.
+#[pyfunction(name = "stretch_word", signature = (text, rate, extension_min, extension_max, word_length_threshold, base_p, seed=None))]
+pub fn stretch_word(
     text: &str,
     rate: f64,
     extension_min: i32,

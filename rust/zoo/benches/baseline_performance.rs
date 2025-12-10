@@ -1,4 +1,4 @@
-use _zoo_rust::{
+use _corruption_engine::{
     DeleteRandomWordsOp, DeterministicRng, TextOperation, Operation, MotorWeighting,
     ReduplicateWordsOp, SwapAdjacentWordsOp, TextBuffer, TypoOp,
 };

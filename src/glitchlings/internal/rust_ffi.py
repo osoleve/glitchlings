@@ -36,26 +36,35 @@ __all__ = [
     # Seed resolution (re-exported from rust.py)
     "resolve_seed",
     # Orchestration operations
-    "plan_glitchlings_rust",
-    "compose_glitchlings_rust",
+    "plan_operations_rust",
+    "compose_operations_rust",
     "build_pipeline_rust",
     "RustPipeline",
     # Character-level operations
-    "fatfinger_rust",
+    "keyboard_typo_rust",
     "slip_modifier_rust",
-    "mim1c_rust",
+    "swap_homoglyphs_rust",
     "ocr_artifacts_rust",
     "inject_zero_widths_rust",
-    "hokey_rust",
+    "stretch_word_rust",
     # Word-level operations
     "delete_random_words_rust",
     "reduplicate_words_rust",
     "swap_adjacent_words_rust",
     "redact_words_rust",
-    "jargoyle_drift_rust",
+    "substitute_lexeme_rust",
     "list_lexeme_dictionaries_rust",
-    "wherewolf_homophones_rust",
+    "substitute_homophones_rust",
     # Grammar operations
+    "apply_grammar_rule_rust",
+    # Backward compatibility aliases
+    "plan_glitchlings_rust",
+    "compose_glitchlings_rust",
+    "fatfinger_rust",
+    "mim1c_rust",
+    "hokey_rust",
+    "jargoyle_drift_rust",
+    "wherewolf_homophones_rust",
     "pedant_rust",
 ]
 
@@ -104,25 +113,29 @@ class RustPipeline:
 # ---------------------------------------------------------------------------
 
 
-def plan_glitchlings_rust(
+def plan_operations_rust(
     specs: Sequence[Mapping[str, Any]],
     master_seed: int,
 ) -> PlanResult:
     """Invoke Rust orchestration planner.
 
     Args:
-        specs: Sequence of glitchling specifications with name/scope/order.
+        specs: Sequence of operation specifications with name/scope/order.
         master_seed: Master seed for deterministic ordering.
 
     Returns:
         List of (index, derived_seed) tuples defining execution order.
     """
-    plan_fn = get_rust_operation("plan_glitchlings")
+    plan_fn = get_rust_operation("plan_operations")
     plan = plan_fn(specs, int(master_seed))
     return [(int(index), int(seed)) for index, seed in plan]
 
 
-def compose_glitchlings_rust(
+# Backward compatibility alias
+plan_glitchlings_rust = plan_operations_rust
+
+
+def compose_operations_rust(
     text: str,
     descriptors: Sequence[PipelineDescriptor],
     master_seed: int,
@@ -130,11 +143,11 @@ def compose_glitchlings_rust(
     include_only_patterns: Sequence[str] | None = None,
     exclude_patterns: Sequence[str] | None = None,
 ) -> str:
-    """Execute a sequence of glitchlings through the Rust pipeline.
+    """Execute a sequence of operations through the Rust pipeline.
 
     Args:
         text: Input text to transform.
-        descriptors: Pipeline descriptors for each glitchling.
+        descriptors: Pipeline descriptors for each operation.
         master_seed: Master seed for determinism.
         include_only_patterns: Regex patterns limiting mutations to matching spans.
         exclude_patterns: Regex patterns that should not be modified.
@@ -149,6 +162,10 @@ def compose_glitchlings_rust(
         exclude_patterns=exclude_patterns,
     )
     return pipeline.run(text)
+
+
+# Backward compatibility alias
+compose_glitchlings_rust = compose_operations_rust
 
 
 def build_pipeline_rust(
@@ -172,7 +189,7 @@ def build_pipeline_rust(
 # ---------------------------------------------------------------------------
 
 
-def fatfinger_rust(
+def keyboard_typo_rust(
     text: str,
     rate: float,
     layout: Mapping[str, Sequence[str]],
@@ -199,7 +216,7 @@ def fatfinger_rust(
     Returns:
         Text with simulated typing errors.
     """
-    fn = get_rust_operation("fatfinger")
+    fn = get_rust_operation("keyboard_typo")
     return cast(
         str,
         fn(
@@ -213,6 +230,10 @@ def fatfinger_rust(
             motor_weighting,
         ),
     )
+
+
+# Backward compatibility alias
+fatfinger_rust = keyboard_typo_rust
 
 
 def slip_modifier_rust(
@@ -238,7 +259,7 @@ def slip_modifier_rust(
     return cast(str, fn(text, enter_rate, exit_rate, shift_map, seed))
 
 
-def mim1c_rust(
+def swap_homoglyphs_rust(
     text: str,
     rate: float,
     classes: list[str] | Literal["all"] | None,
@@ -257,8 +278,12 @@ def mim1c_rust(
     Returns:
         Text with homoglyph substitutions.
     """
-    fn = get_rust_operation("mim1c")
+    fn = get_rust_operation("swap_homoglyphs")
     return cast(str, fn(text, rate, classes, banned, seed))
+
+
+# Backward compatibility alias
+mim1c_rust = swap_homoglyphs_rust
 
 
 def ocr_artifacts_rust(
@@ -301,7 +326,7 @@ def inject_zero_widths_rust(
     return cast(str, fn(text, rate, characters, seed))
 
 
-def hokey_rust(
+def stretch_word_rust(
     text: str,
     rate: float,
     extension_min: int,
@@ -324,11 +349,15 @@ def hokey_rust(
     Returns:
         Text with extended expressive segments.
     """
-    fn = get_rust_operation("hokey")
+    fn = get_rust_operation("stretch_word")
     return cast(
         str,
         fn(text, rate, extension_min, extension_max, word_length_threshold, base_p, seed),
     )
+
+
+# Backward compatibility alias
+hokey_rust = stretch_word_rust
 
 
 # ---------------------------------------------------------------------------
@@ -422,28 +451,32 @@ def redact_words_rust(
     return cast(str, fn(text, replacement, rate, merge, unweighted, seed))
 
 
-def jargoyle_drift_rust(
+def substitute_lexeme_rust(
     text: str,
     lexemes: str,
     mode: str,
     rate: float,
     seed: int | None,
 ) -> str:
-    """Apply Jargoyle dictionary-based word drift via Rust.
+    """Apply dictionary-based word substitution via Rust.
 
     Args:
         text: Input text.
         lexemes: Name of the dictionary to use (colors, synonyms, corporate, academic, cyberpunk,
             lovecraftian, or any custom dictionary discovered in the lexemes directory).
-        mode: Drift mode ("literal" or "drift").
+        mode: Substitution mode ("literal" or "drift").
         rate: Probability of transforming each matching word.
         seed: Deterministic seed (only used for "drift" mode).
 
     Returns:
         Text with word substitutions applied.
     """
-    fn = get_rust_operation("jargoyle_drift")
+    fn = get_rust_operation("substitute_lexeme")
     return cast(str, fn(text, lexemes, mode, rate, seed))
+
+
+# Backward compatibility alias
+jargoyle_drift_rust = substitute_lexeme_rust
 
 
 def list_lexeme_dictionaries_rust() -> list[str]:
@@ -456,7 +489,7 @@ def list_lexeme_dictionaries_rust() -> list[str]:
     return cast(list[str], fn())
 
 
-def wherewolf_homophones_rust(
+def substitute_homophones_rust(
     text: str,
     rate: float,
     weighting: str,
@@ -473,8 +506,12 @@ def wherewolf_homophones_rust(
     Returns:
         Text with homophone substitutions.
     """
-    fn = get_rust_operation("wherewolf_homophones")
+    fn = get_rust_operation("substitute_homophones")
     return cast(str, fn(text, rate, weighting, seed))
+
+
+# Backward compatibility alias
+wherewolf_homophones_rust = substitute_homophones_rust
 
 
 # ---------------------------------------------------------------------------
@@ -482,21 +519,25 @@ def wherewolf_homophones_rust(
 # ---------------------------------------------------------------------------
 
 
-def pedant_rust(
+def apply_grammar_rule_rust(
     text: str,
     *,
     stone: str,
     seed: int,
 ) -> str:
-    """Apply pedant grammar transformation via Rust.
+    """Apply grammar rule transformation via Rust.
 
     Args:
         text: Input text.
-        stone: Pedant stone label defining transformation type.
+        stone: Grammar rule label defining transformation type.
         seed: Deterministic seed.
 
     Returns:
         Text with grammar transformation applied.
     """
-    fn = get_rust_operation("pedant")
+    fn = get_rust_operation("apply_grammar_rule")
     return cast(str, fn(text, stone=stone, seed=seed))
+
+
+# Backward compatibility alias
+pedant_rust = apply_grammar_rule_rust

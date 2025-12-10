@@ -9,7 +9,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Callable, Mapping, MutableMapping, cast
 
-_EXTENSION_STEM = "_zoo_rust"
+_EXTENSION_STEM = "_corruption_engine"
 
 
 class RustExtensionImportError(RuntimeError):
@@ -35,7 +35,7 @@ def _iter_extension_candidates() -> tuple[Path, ...]:
 def _existing_compiled_module() -> ModuleType | None:
     """Return a previously loaded compiled module if one is present."""
 
-    for name in ("glitchlings._zoo_rust", "_zoo_rust"):
+    for name in ("glitchlings._corruption_engine", "_corruption_engine"):
         module = sys.modules.get(name)
         if module is None:
             continue
@@ -59,7 +59,7 @@ def _load_extension_from_disk() -> ModuleType:
 
     searched = ", ".join(str(path) for path in candidates) or "<unavailable>"
     message = (
-        "glitchlings._zoo_rust failed to import. Rebuild the project with "
+        "glitchlings._corruption_engine failed to import. Rebuild the project with"
         "`pip install .` or `maturin develop` so the compiled extension is available "
         f"(searched: {searched})."
     )
@@ -74,8 +74,8 @@ def load_rust_module() -> ModuleType:
         return existing
 
     module = _load_extension_from_disk()
-    sys.modules.setdefault("glitchlings._zoo_rust", module)
-    sys.modules.setdefault("_zoo_rust", module)
+    sys.modules.setdefault("glitchlings._corruption_engine", module)
+    sys.modules.setdefault("_corruption_engine", module)
     return module
 
 
@@ -96,7 +96,7 @@ def _get_rust_module() -> ModuleType:
 
 def _build_missing_operation_error(name: str) -> RuntimeError:
     message = (
-        "Rust operation '{name}' is not exported by glitchlings._zoo_rust. "
+        "Rust operation '{name}' is not exported by glitchlings._corruption_engine."
         "Rebuild the project to refresh the compiled extension."
     )
     return RuntimeError(message.format(name=name))
@@ -113,7 +113,7 @@ def resolve_seed(seed: int | None, rng: random.Random | None) -> int:
 
 
 def get_rust_operation(operation_name: str) -> Callable[..., Any]:
-    """Return a callable exported by :mod:`glitchlings._zoo_rust`.
+    """Return a callable exported by :mod:`glitchlings._corruption_engine`.
 
     Parameters
     ----------

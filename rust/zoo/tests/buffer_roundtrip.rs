@@ -4,7 +4,7 @@
 /// 1. Each op can be applied to a TextBuffer without panicking
 /// 2. The resulting buffer is in a valid state (can be converted to string)
 /// 3. The buffer can be re-parsed from its string representation without loss
-use _zoo_rust::{
+use _corruption_engine::{
     DeleteRandomWordsOp, DeterministicRng, MotorWeighting, TextOperation, Operation, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp, TextBuffer,
     TypoOp, ZeroWidthOp,
