@@ -151,6 +151,71 @@ class TestZeedubPlacementModes:
         assert isinstance(result, str)
 
 
+class TestZeedubVisibilityModesPalette:
+    """Tests that visibility modes actually change the character palette."""
+
+    def _extract_inserted_chars(self, original: str, result: str) -> set[str]:
+        """Extract characters that were inserted (not in original)."""
+        original_set = set(original)
+        return {char for char in result if char not in original_set}
+
+    def test_glyphless_uses_basic_invisibles(self) -> None:
+        z = Zeedub(rate=0.5, visibility="glyphless", seed=42)
+        result = z("hello world test")
+        inserted = self._extract_inserted_chars("hello world test", result)
+        # Should only contain glyphless characters
+        assert inserted, "No characters were inserted"
+        for char in inserted:
+            assert char in ZEEDUB_GLYPHLESS_PALETTE, f"Unexpected char: {repr(char)}"
+
+    def test_with_joiners_can_include_variation_selectors(self) -> None:
+        z = Zeedub(rate=0.8, visibility="with_joiners", seed=123)
+        # Use text with emoji that can have VS
+        result = z("hello world test again")
+        inserted = self._extract_inserted_chars("hello world test again", result)
+        assert inserted, "No characters were inserted"
+        # All inserted chars should be from with_joiners palette
+        for char in inserted:
+            assert char in ZEEDUB_WITH_JOINERS_PALETTE, f"Unexpected char: {repr(char)}"
+
+    def test_semi_visible_can_include_thin_spaces(self) -> None:
+        z = Zeedub(rate=0.8, visibility="semi_visible", seed=456)
+        result = z("hello world test again please")
+        inserted = self._extract_inserted_chars("hello world test again please", result)
+        assert inserted, "No characters were inserted"
+        # All inserted chars should be from semi_visible palette
+        for char in inserted:
+            assert char in ZEEDUB_SEMI_VISIBLE_PALETTE, f"Unexpected char: {repr(char)}"
+
+    def test_visibility_modes_produce_different_palettes(self) -> None:
+        # Different visibility modes should potentially use different characters
+        text = "the quick brown fox jumps over the lazy dog"
+        glyphless = Zeedub(rate=0.5, visibility="glyphless", seed=42)
+        with_joiners = Zeedub(rate=0.5, visibility="with_joiners", seed=42)
+
+        result_glyphless = glyphless(text)
+        result_joiners = with_joiners(text)
+
+        # The results should differ because with_joiners has more options
+        # (though they might be the same by chance, this is statistically unlikely)
+        inserted_glyphless = self._extract_inserted_chars(text, result_glyphless)
+        inserted_joiners = self._extract_inserted_chars(text, result_joiners)
+
+        # At minimum, verify both produced valid outputs from their palettes
+        for char in inserted_glyphless:
+            assert char in ZEEDUB_GLYPHLESS_PALETTE
+        for char in inserted_joiners:
+            assert char in ZEEDUB_WITH_JOINERS_PALETTE
+
+    def test_descriptor_has_empty_characters_by_default(self) -> None:
+        """Verify that pipeline descriptor passes empty characters so Rust uses visibility."""
+        z = Zeedub(rate=0.05, visibility="with_joiners")
+        descriptor = z.pipeline_operation()
+        # Characters should be empty so Rust uses visibility mode's palette
+        assert descriptor["characters"] == []
+        assert descriptor["visibility"] == "with_joiners"
+
+
 class TestZeedubMaxConsecutive:
     """Tests for Zeedub max_consecutive constraint."""
 

@@ -44,9 +44,10 @@ def insert_zero_widths(
         rate: Probability of injection at each eligible position.
         seed: Deterministic seed.
         rng: Optional random.Random instance for seed derivation.
-        characters: Custom palette of zero-width characters.
+        characters: Custom palette of zero-width characters. If None or empty,
+            the palette is auto-populated from the visibility mode.
         visibility: Visibility mode ('glyphless', 'with_joiners', 'semi_visible').
-            When characters is empty, auto-populates palette from this mode.
+            Controls which characters are used when characters is not provided.
         placement: Placement mode ('random', 'grapheme_boundary', 'script_aware').
         max_consecutive: Maximum consecutive insertions (0 for unlimited, default 4).
 
@@ -55,11 +56,11 @@ def insert_zero_widths(
     """
     effective_rate = DEFAULT_ZEEDUB_RATE if rate is None else rate
 
-    palette: Sequence[str] = (
-        tuple(characters) if characters is not None else ZEEDUB_DEFAULT_ZERO_WIDTHS
-    )
+    # Pass empty list when characters is None to let Rust use visibility mode's palette
+    cleaned_palette: list[str] = []
+    if characters is not None:
+        cleaned_palette = [char for char in characters if char]
 
-    cleaned_palette = tuple(char for char in palette if char)
     if not text:
         return text
 
@@ -71,7 +72,7 @@ def insert_zero_widths(
     return inject_zero_widths_rust(
         text,
         clamped_rate,
-        list(cleaned_palette),
+        cleaned_palette,
         seed_value,
         visibility=visibility,
         placement=placement,
@@ -135,12 +136,11 @@ class Zeedub(Glitchling):
     def pipeline_operation(self) -> PipelineOperationPayload:
         rate = float(self.kwargs.get("rate", DEFAULT_ZEEDUB_RATE))
 
+        # Pass empty list when characters is None to let Rust use visibility mode's palette
         raw_characters = self.kwargs.get("characters")
-        palette = (
-            tuple(ZEEDUB_DEFAULT_ZERO_WIDTHS)
-            if raw_characters is None
-            else tuple(str(char) for char in raw_characters if char)
-        )
+        palette: list[str] = []
+        if raw_characters is not None:
+            palette = [str(char) for char in raw_characters if char]
 
         visibility = str(self.kwargs.get("visibility", DEFAULT_ZEEDUB_VISIBILITY))
         placement = str(self.kwargs.get("placement", DEFAULT_ZEEDUB_PLACEMENT))
@@ -151,7 +151,7 @@ class Zeedub(Glitchling):
             {
                 "type": "zwj",
                 "rate": rate,
-                "characters": list(palette),
+                "characters": palette,
                 "visibility": visibility,
                 "placement": placement,
                 "max_consecutive": max_consecutive,

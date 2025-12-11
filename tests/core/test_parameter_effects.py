@@ -142,10 +142,11 @@ def test_zeedub_pipeline_descriptor_defaults():
     instance = zeedub.clone()
     instance.set_param("rate", 0.05)
     descriptor = instance.pipeline_operation()
+    # characters is empty by default; Rust uses visibility mode's palette
     assert descriptor == {
         "type": "zwj",
         "rate": 0.05,
-        "characters": list(_DEFAULT_ZERO_WIDTH_CHARACTERS),
+        "characters": [],
         "visibility": "glyphless",
         "placement": "random",
         "max_consecutive": 4,
