@@ -60,6 +60,11 @@ RUSHMORE_DEFAULT_RATES = {
 # Mim1c Unicode script class defaults
 MIM1C_DEFAULT_CLASSES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
+# Mim1c homoglyph mode defaults
+# Available modes: "single_script", "mixed_script", "compatibility", "aggressive"
+DEFAULT_MIM1C_MODE = "mixed_script"
+DEFAULT_MIM1C_MAX_CONSECUTIVE = 3
+
 # Zeedub zero-width character palettes by visibility mode
 ZEEDUB_DEFAULT_ZERO_WIDTHS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE
@@ -124,6 +129,8 @@ __all__ = [
     "DEFAULT_ZEEDUB_PLACEMENT",
     "DEFAULT_ZEEDUB_MAX_CONSECUTIVE",
     "MIM1C_DEFAULT_CLASSES",
+    "DEFAULT_MIM1C_MODE",
+    "DEFAULT_MIM1C_MAX_CONSECUTIVE",
     "RUSHMORE_DEFAULT_RATES",
     "ZEEDUB_DEFAULT_ZERO_WIDTHS",
     "ZEEDUB_GLYPHLESS_PALETTE",

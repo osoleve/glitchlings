@@ -189,6 +189,16 @@ _What a nice word, would be a shame if something happened to it._
 _Wait, was that...?_
 
 > _**Confusion.**_ Mim1c replaces non-space characters with Unicode Confusables, characters that are distinct but would not usually confuse a human reader.
+>
+> **Substitution Modes:**
+> - `single_script` (safest): Only same-script confusables (Latin→Latin variants)
+> - `mixed_script` (default): Allow cross-script substitutions (Latin↔Cyrillic↔Greek)
+> - `compatibility`: Include fullwidth, math alphanumerics, enclosed forms
+> - `aggressive`: All confusable types combined
+>
+> **Locality Control:** Caps consecutive substitutions at 3 by default to prevent "ransom note" effect. Set `max_consecutive=0` to disable.
+>
+> **Script Affinity:** In mixed_script mode, substitutions are weighted by visual plausibility (Latin↔Cyrillic: 0.9, Latin↔Greek: 0.8).
 
 ### Hokey
 
@@ -299,3 +309,8 @@ Glitchlings incorporates research from the following sources:
 
 - **Unicode Security Considerations** — Default_Ignorable handling and safety constraints informing Zeedub's visibility classification and max_consecutive limits:
   > The Unicode Consortium. (2014). Unicode Technical Report #36: Unicode Security Considerations. https://www.unicode.org/reports/tr36/
+
+- **Unicode Confusables** — Script-aware confusable character mappings for Mim1c's substitution modes and script classification:
+  > The Unicode Consortium. (2024). Unicode Technical Standard #39: Unicode Security Mechanisms. https://www.unicode.org/reports/tr39/
+
+  > The Unicode Consortium. (2024). Confusables Data File. https://www.unicode.org/Public/security/latest/confusables.txt

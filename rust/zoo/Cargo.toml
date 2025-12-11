@@ -21,6 +21,7 @@ sha2 = "0.10"
 rand = { workspace = true }
 aho-corasick = "1"
 unicode-segmentation = "1.10"
+unicode-script = "0.5"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

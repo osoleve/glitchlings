@@ -5,11 +5,172 @@ use pyo3::types::{PyAny, PySequence, PyString};
 use pyo3::Bound;
 use serde::Deserialize;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use unicode_script::{Script, UnicodeScript};
 
 use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::text_buffer::TextBuffer;
 
 const RAW_HOMOGLYPHS: &str = include_str!(concat!(env!("OUT_DIR"), "/mim1c_homoglyphs.json"));
+
+/// Classification of confusable character pairs based on Unicode Technical Standard #39.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ConfusableType {
+    /// Both source and target characters belong to the same script.
+    SingleScript,
+    /// Source and target characters belong to different scripts (e.g., Latin↔Cyrillic↔Greek).
+    MixedScript,
+    /// Target is a compatibility variant (fullwidth, math alphanumerics, etc.).
+    Compatibility,
+}
+
+/// Substitution mode controlling which confusable types are allowed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HomoglyphMode {
+    /// Only same-script confusables (safest option).
+    SingleScript,
+    /// Allow cross-script substitutions (Latin↔Cyrillic↔Greek) - default for visual similarity.
+    #[default]
+    MixedScript,
+    /// Include Unicode compatibility variants (fullwidth, math alphanumerics).
+    Compatibility,
+    /// All confusable types allowed (most aggressive).
+    Aggressive,
+}
+
+impl HomoglyphMode {
+    /// Parse a mode string into HomoglyphMode.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().replace('-', "_").as_str() {
+            "single_script" | "singlescript" | "single" => Some(HomoglyphMode::SingleScript),
+            "mixed_script" | "mixedscript" | "mixed" => Some(HomoglyphMode::MixedScript),
+            "compatibility" | "compat" => Some(HomoglyphMode::Compatibility),
+            "aggressive" | "all" => Some(HomoglyphMode::Aggressive),
+            _ => None,
+        }
+    }
+
+    /// Check if this mode allows a given confusable type.
+    fn allows(&self, confusable_type: ConfusableType) -> bool {
+        match self {
+            HomoglyphMode::SingleScript => confusable_type == ConfusableType::SingleScript,
+            HomoglyphMode::MixedScript => matches!(
+                confusable_type,
+                ConfusableType::SingleScript | ConfusableType::MixedScript
+            ),
+            HomoglyphMode::Compatibility => matches!(
+                confusable_type,
+                ConfusableType::SingleScript | ConfusableType::Compatibility
+            ),
+            HomoglyphMode::Aggressive => true,
+        }
+    }
+}
+
+/// Script affinity weights for weighted selection in MixedScript mode.
+/// Higher values indicate more visually plausible substitutions.
+fn script_affinity(from: Script, to: Script) -> f64 {
+    if from == to {
+        return 1.0;
+    }
+    match (from, to) {
+        // Latin ↔ Cyrillic is very visually similar
+        (Script::Latin, Script::Cyrillic) | (Script::Cyrillic, Script::Latin) => 0.9,
+        // Latin ↔ Greek is also quite similar
+        (Script::Latin, Script::Greek) | (Script::Greek, Script::Latin) => 0.8,
+        // Cyrillic ↔ Greek
+        (Script::Cyrillic, Script::Greek) | (Script::Greek, Script::Cyrillic) => 0.7,
+        // Common script includes fullwidth, math, etc.
+        (Script::Latin, Script::Common) | (Script::Common, Script::Latin) => 0.7,
+        (Script::Cyrillic, Script::Common) | (Script::Common, Script::Cyrillic) => 0.6,
+        (Script::Greek, Script::Common) | (Script::Common, Script::Greek) => 0.6,
+        // Other transitions are less plausible
+        _ => 0.3,
+    }
+}
+
+/// Determine the confusable type based on source and target characters.
+fn classify_confusable(source: char, target: char, target_alias: &str) -> ConfusableType {
+    // Check for compatibility variants first (fullwidth, math alphanumerics)
+    let target_codepoint = target as u32;
+
+    // Fullwidth ASCII variants (U+FF01-U+FF5E)
+    if (0xFF01..=0xFF5E).contains(&target_codepoint) {
+        return ConfusableType::Compatibility;
+    }
+
+    // Mathematical Alphanumeric Symbols (U+1D400-U+1D7FF)
+    if (0x1D400..=0x1D7FF).contains(&target_codepoint) {
+        return ConfusableType::Compatibility;
+    }
+
+    // Enclosed Alphanumerics (U+2460-U+24FF) and Enclosed CJK Letters (U+3200-U+32FF)
+    if (0x2460..=0x24FF).contains(&target_codepoint) || (0x3200..=0x32FF).contains(&target_codepoint) {
+        return ConfusableType::Compatibility;
+    }
+
+    // Check script-based classification
+    let source_script = source.script();
+    let target_script = target.script();
+
+    // If same script or one is Common/Inherited, consider it SingleScript
+    if source_script == target_script
+        || target_script == Script::Common
+        || target_script == Script::Inherited
+    {
+        // But check if the alias indicates a different script
+        let alias_upper = target_alias.to_uppercase();
+        if alias_is_same_script(&alias_upper, source_script) {
+            return ConfusableType::SingleScript;
+        }
+        // If alias indicates different script, it's mixed
+        if is_known_script_alias(&alias_upper) && !alias_is_same_script(&alias_upper, source_script) {
+            return ConfusableType::MixedScript;
+        }
+        return ConfusableType::SingleScript;
+    }
+
+    // Different scripts
+    ConfusableType::MixedScript
+}
+
+/// Check if an alias string indicates the same script as the given script.
+fn alias_is_same_script(alias: &str, script: Script) -> bool {
+    match script {
+        Script::Latin => alias == "LATIN",
+        Script::Cyrillic => alias == "CYRILLIC",
+        Script::Greek => alias == "GREEK",
+        Script::Common => alias == "COMMON",
+        Script::Arabic => alias == "ARABIC",
+        Script::Hebrew => alias == "HEBREW",
+        Script::Han => alias == "HAN" || alias == "CJK",
+        Script::Hiragana => alias == "HIRAGANA",
+        Script::Katakana => alias == "KATAKANA",
+        Script::Hangul => alias == "HANGUL",
+        Script::Devanagari => alias == "DEVANAGARI",
+        Script::Bengali => alias == "BENGALI",
+        Script::Tamil => alias == "TAMIL",
+        Script::Thai => alias == "THAI",
+        Script::Georgian => alias == "GEORGIAN",
+        Script::Armenian => alias == "ARMENIAN",
+        Script::Coptic => alias == "COPTIC",
+        Script::Ethiopic => alias == "ETHIOPIC",
+        Script::Cherokee => alias == "CHEROKEE",
+        Script::Runic => alias == "RUNIC",
+        Script::Ogham => alias == "OGHAM",
+        _ => false,
+    }
+}
+
+/// Check if an alias is a known script name.
+fn is_known_script_alias(alias: &str) -> bool {
+    matches!(
+        alias,
+        "LATIN" | "CYRILLIC" | "GREEK" | "COMMON" | "ARABIC" | "HEBREW" | "HAN" | "CJK"
+        | "HIRAGANA" | "KATAKANA" | "HANGUL" | "DEVANAGARI" | "BENGALI" | "TAMIL"
+        | "THAI" | "GEORGIAN" | "ARMENIAN" | "COPTIC" | "ETHIOPIC" | "CHEROKEE"
+        | "RUNIC" | "OGHAM" | "INHERITED"
+    )
+}
 
 #[derive(Debug, Clone, Deserialize)]
 struct RawHomoglyphEntry {
@@ -85,11 +246,16 @@ impl ClassSelection {
     }
 }
 
+/// Default maximum consecutive substitutions for locality control.
+const DEFAULT_MAX_CONSECUTIVE: usize = 3;
+
 #[derive(Debug, Clone)]
 pub struct HomoglyphOp {
     rate: f64,
     classes: ClassSelection,
     banned: Vec<String>,
+    mode: HomoglyphMode,
+    max_consecutive: usize,
 }
 
 impl HomoglyphOp {
@@ -98,6 +264,24 @@ impl HomoglyphOp {
             rate,
             classes,
             banned,
+            mode: HomoglyphMode::default(),
+            max_consecutive: DEFAULT_MAX_CONSECUTIVE,
+        }
+    }
+
+    pub fn with_mode(
+        rate: f64,
+        classes: ClassSelection,
+        banned: Vec<String>,
+        mode: HomoglyphMode,
+        max_consecutive: usize,
+    ) -> Self {
+        Self {
+            rate,
+            classes,
+            banned,
+            mode,
+            max_consecutive,
         }
     }
 }
@@ -110,14 +294,16 @@ impl TextOperation for HomoglyphOp {
         }
 
         // Collect all replaceable characters across all segments
-        // Track (segment_index, char_offset_in_segment, char)
-        let mut targets: Vec<(usize, usize, char)> = Vec::new();
+        // Track (segment_index, char_offset_in_segment, char, char_position_in_segment)
+        let mut targets: Vec<(usize, usize, char, usize)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
+            let mut char_pos = 0usize;
             for (byte_offset, ch) in segment.text().char_indices() {
                 if ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(&ch) {
-                    targets.push((seg_idx, byte_offset, ch));
+                    targets.push((seg_idx, byte_offset, ch, char_pos));
                 }
+                char_pos += 1;
             }
         }
 
@@ -142,26 +328,42 @@ impl TextOperation for HomoglyphOp {
         }
 
         // Select characters to replace
-        let mut replacements: Vec<(usize, usize, char)> = Vec::new();
+        let mut replacements: Vec<(usize, usize, char, usize)> = Vec::new();
         let mut available = targets.len();
         let requested = (targets.len() as f64 * rate).trunc() as usize;
         let mut attempts = 0usize;
 
         while attempts < requested && available > 0 {
             let idx = rng.rand_index(available)?;
-            let (seg_idx, char_offset, ch) = targets.swap_remove(idx);
+            let (seg_idx, char_offset, ch, char_pos) = targets.swap_remove(idx);
             available -= 1;
 
             let Some(options) = HOMOGLYPH_TABLE.get(&ch) else {
                 continue;
             };
 
-            let mut filtered: Vec<&HomoglyphEntry> = options
+            // Filter by class selection, banned characters, mode, and confusable type
+            let filtered: Vec<(&HomoglyphEntry, ConfusableType)> = options
                 .iter()
-                .filter(|entry| {
-                    self.classes.allows(&entry.alias)
-                        && !banned.contains(&entry.glyph.to_string())
-                        && entry.glyph != ch
+                .filter_map(|entry| {
+                    // Must be allowed by class selection
+                    if !self.classes.allows(&entry.alias) {
+                        return None;
+                    }
+                    // Must not be banned
+                    if banned.contains(&entry.glyph.to_string()) {
+                        return None;
+                    }
+                    // Must be different from source
+                    if entry.glyph == ch {
+                        return None;
+                    }
+                    // Classify and check mode
+                    let confusable_type = classify_confusable(ch, entry.glyph, &entry.alias);
+                    if !self.mode.allows(confusable_type) {
+                        return None;
+                    }
+                    Some((entry, confusable_type))
                 })
                 .collect();
 
@@ -169,8 +371,14 @@ impl TextOperation for HomoglyphOp {
                 continue;
             }
 
-            let choice = rng.rand_index(filtered.len())?;
-            replacements.push((seg_idx, char_offset, filtered.remove(choice).glyph));
+            // Select replacement with weighted selection based on script affinity
+            let replacement_glyph = if filtered.len() == 1 {
+                filtered[0].0.glyph
+            } else {
+                self.select_with_affinity(ch, &filtered, rng)?
+            };
+
+            replacements.push((seg_idx, char_offset, replacement_glyph, char_pos));
             attempts += 1;
         }
 
@@ -178,9 +386,46 @@ impl TextOperation for HomoglyphOp {
             return Ok(());
         }
 
+        // Apply locality constraint (max_consecutive)
+        // Sort by segment then by char position to identify consecutive runs
+        replacements.sort_by_key(|(seg_idx, _, _, char_pos)| (*seg_idx, *char_pos));
+
+        let mut filtered_replacements: Vec<(usize, usize, char)> = Vec::new();
+        let mut consecutive_count = 0usize;
+        let mut last_seg_idx: Option<usize> = None;
+        let mut last_char_pos: Option<usize> = None;
+
+        for (seg_idx, char_offset, replacement_char, char_pos) in replacements {
+            // Check if this is consecutive with the previous replacement
+            let is_consecutive = match (last_seg_idx, last_char_pos) {
+                (Some(last_seg), Some(last_pos)) => {
+                    seg_idx == last_seg && char_pos == last_pos + 1
+                }
+                _ => false,
+            };
+
+            if is_consecutive {
+                consecutive_count += 1;
+            } else {
+                consecutive_count = 1;
+            }
+
+            // Only include if within max_consecutive limit (0 means unlimited)
+            if self.max_consecutive == 0 || consecutive_count <= self.max_consecutive {
+                filtered_replacements.push((seg_idx, char_offset, replacement_char));
+            }
+
+            last_seg_idx = Some(seg_idx);
+            last_char_pos = Some(char_pos);
+        }
+
+        if filtered_replacements.is_empty() {
+            return Ok(());
+        }
+
         // Group replacements by segment
         let mut by_segment: HashMap<usize, Vec<(usize, char)>> = HashMap::new();
-        for (seg_idx, char_offset, replacement_char) in replacements {
+        for (seg_idx, char_offset, replacement_char) in filtered_replacements {
             by_segment
                 .entry(seg_idx)
                 .or_default()
@@ -218,6 +463,45 @@ impl TextOperation for HomoglyphOp {
 
         buffer.reindex_if_needed();
         Ok(())
+    }
+}
+
+impl HomoglyphOp {
+    /// Select a replacement glyph using weighted selection based on script affinity.
+    fn select_with_affinity(
+        &self,
+        source: char,
+        candidates: &[(&HomoglyphEntry, ConfusableType)],
+        rng: &mut dyn OperationRng,
+    ) -> Result<char, OperationError> {
+        let source_script = source.script();
+
+        // Calculate weights based on script affinity
+        let weights: Vec<f64> = candidates
+            .iter()
+            .map(|(entry, _)| script_affinity(source_script, entry.glyph.script()))
+            .collect();
+
+        let total_weight: f64 = weights.iter().sum();
+        if total_weight <= 0.0 {
+            // Fall back to uniform selection
+            let idx = rng.rand_index(candidates.len())?;
+            return Ok(candidates[idx].0.glyph);
+        }
+
+        // Weighted random selection
+        let threshold = rng.random()? * total_weight;
+        let mut cumulative = 0.0;
+
+        for (idx, weight) in weights.iter().enumerate() {
+            cumulative += weight;
+            if cumulative >= threshold {
+                return Ok(candidates[idx].0.glyph);
+            }
+        }
+
+        // Fallback to last candidate (shouldn't normally reach here)
+        Ok(candidates.last().unwrap().0.glyph)
     }
 }
 
@@ -281,18 +565,30 @@ pub fn parse_banned_characters(value: Option<Bound<'_, PyAny>>) -> PyResult<Vec<
     ))
 }
 
-#[pyfunction(name = "swap_homoglyphs", signature = (text, rate=None, classes=None, banned_characters=None, seed=None))]
+/// Parse mode string into HomoglyphMode, returning None for invalid input.
+pub fn parse_homoglyph_mode(value: Option<&str>) -> HomoglyphMode {
+    match value {
+        Some(s) => HomoglyphMode::from_str(s).unwrap_or_default(),
+        None => HomoglyphMode::default(),
+    }
+}
+
+#[pyfunction(name = "swap_homoglyphs", signature = (text, rate=None, classes=None, banned_characters=None, seed=None, mode=None, max_consecutive=None))]
 pub(crate) fn swap_homoglyphs(
     text: &str,
     rate: Option<f64>,
     classes: Option<Bound<'_, PyAny>>,
     banned_characters: Option<Bound<'_, PyAny>>,
     seed: Option<u64>,
+    mode: Option<&str>,
+    max_consecutive: Option<usize>,
 ) -> PyResult<String> {
     let rate = rate.unwrap_or(0.02);
     let classes = parse_class_selection(classes)?;
     let banned = parse_banned_characters(banned_characters)?;
-    let op = HomoglyphOp::new(rate, classes, banned);
+    let mode = parse_homoglyph_mode(mode);
+    let max_consecutive = max_consecutive.unwrap_or(DEFAULT_MAX_CONSECUTIVE);
+    let op = HomoglyphOp::with_mode(rate, classes, banned, mode, max_consecutive);
     crate::apply_operation(text, op, seed).map_err(crate::operations::OperationError::into_pyerr)
 }
 
