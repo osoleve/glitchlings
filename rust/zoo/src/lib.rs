@@ -284,6 +284,9 @@ enum PyOperationConfig {
     ZeroWidth {
         rate: f64,
         characters: Vec<String>,
+        visibility: String,
+        placement: String,
+        max_consecutive: usize,
     },
     Jargoyle {
         lexemes: String,
@@ -457,7 +460,19 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
             "zwj" => {
                 let rate = extract_required_field_with_field_suffix(dict, "zwj operation", "rate")?;
                 let characters = extract_optional_field(dict, "characters")?.unwrap_or_default();
-                Ok(PyOperationConfig::ZeroWidth { rate, characters })
+                let visibility: String = extract_optional_field(dict, "visibility")?
+                    .unwrap_or_else(|| "glyphless".to_string());
+                let placement: String = extract_optional_field(dict, "placement")?
+                    .unwrap_or_else(|| "random".to_string());
+                let max_consecutive: usize = extract_optional_field(dict, "max_consecutive")?
+                    .unwrap_or(4);
+                Ok(PyOperationConfig::ZeroWidth {
+                    rate,
+                    characters,
+                    visibility,
+                    placement,
+                    max_consecutive,
+                })
             }
             "jargoyle" => {
                 let lexemes = extract_optional_field(dict, "lexemes")?
@@ -595,8 +610,24 @@ impl PyOperationConfig {
                 classes,
                 banned,
             } => Operation::Mimic(HomoglyphOp::new(rate, classes, banned)),
-            PyOperationConfig::ZeroWidth { rate, characters } => {
-                Operation::ZeroWidth(operations::ZeroWidthOp { rate, characters })
+            PyOperationConfig::ZeroWidth {
+                rate,
+                characters,
+                visibility,
+                placement,
+                max_consecutive,
+            } => {
+                let visibility_mode = operations::VisibilityMode::from_str(&visibility)
+                    .unwrap_or_default();
+                let placement_mode = operations::PlacementMode::from_str(&placement)
+                    .unwrap_or_default();
+                Operation::ZeroWidth(operations::ZeroWidthOp::with_options(
+                    rate,
+                    characters,
+                    visibility_mode,
+                    placement_mode,
+                    max_consecutive,
+                ))
             }
             PyOperationConfig::Jargoyle {
                 lexemes,

@@ -60,13 +60,41 @@ RUSHMORE_DEFAULT_RATES = {
 # Mim1c Unicode script class defaults
 MIM1C_DEFAULT_CLASSES: tuple[str, ...] = ("LATIN", "GREEK", "CYRILLIC", "COMMON")
 
-# Zeedub zero-width character palette
+# Zeedub zero-width character palettes by visibility mode
 ZEEDUB_DEFAULT_ZERO_WIDTHS: tuple[str, ...] = (
     "\u200b",  # ZERO WIDTH SPACE
     "\u200c",  # ZERO WIDTH NON-JOINER
     "\u200d",  # ZERO WIDTH JOINER
     "\ufeff",  # BYTE ORDER MARK (zero-width no-break space)
 )
+
+# Glyphless mode palette (true invisibles only)
+ZEEDUB_GLYPHLESS_PALETTE: tuple[str, ...] = (
+    "\u200b",  # ZERO WIDTH SPACE
+    "\u200c",  # ZERO WIDTH NON-JOINER
+    "\u200d",  # ZERO WIDTH JOINER
+    "\ufeff",  # BYTE ORDER MARK
+    "\u2060",  # WORD JOINER
+    "\u034f",  # COMBINING GRAPHEME JOINER
+)
+
+# With joiners palette (includes variation selectors VS1-VS16)
+ZEEDUB_WITH_JOINERS_PALETTE: tuple[str, ...] = ZEEDUB_GLYPHLESS_PALETTE + tuple(
+    chr(c)
+    for c in range(0xFE00, 0xFE10)  # VS1-VS16
+)
+
+# Semi-visible palette (includes thin spaces)
+ZEEDUB_SEMI_VISIBLE_PALETTE: tuple[str, ...] = ZEEDUB_WITH_JOINERS_PALETTE + (
+    "\u200a",  # HAIR SPACE
+    "\u2009",  # THIN SPACE
+    "\u202f",  # NARROW NO-BREAK SPACE
+)
+
+# Zeedub defaults
+DEFAULT_ZEEDUB_VISIBILITY = "glyphless"
+DEFAULT_ZEEDUB_PLACEMENT = "random"
+DEFAULT_ZEEDUB_MAX_CONSECUTIVE = 4
 
 __all__ = [
     "DEFAULT_ATTACK_SEED",
@@ -92,7 +120,13 @@ __all__ = [
     "DEFAULT_TYPOGRE_MOTOR_WEIGHTING",
     "DEFAULT_TYPOGRE_RATE",
     "DEFAULT_ZEEDUB_RATE",
+    "DEFAULT_ZEEDUB_VISIBILITY",
+    "DEFAULT_ZEEDUB_PLACEMENT",
+    "DEFAULT_ZEEDUB_MAX_CONSECUTIVE",
     "MIM1C_DEFAULT_CLASSES",
     "RUSHMORE_DEFAULT_RATES",
     "ZEEDUB_DEFAULT_ZERO_WIDTHS",
+    "ZEEDUB_GLYPHLESS_PALETTE",
+    "ZEEDUB_WITH_JOINERS_PALETTE",
+    "ZEEDUB_SEMI_VISIBLE_PALETTE",
 ]

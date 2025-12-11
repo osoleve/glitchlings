@@ -1089,32 +1089,258 @@ impl TextOperation for OcrArtifactsOp {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Zero-Width Character Classification and Modes
+// ---------------------------------------------------------------------------
+
+/// Classification of zero-width Unicode characters by their rendering behavior.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZeroWidthClass {
+    /// True invisible, no glyph, no width (ZWSP, BOM)
+    Glyphless,
+    /// Affects shaping/joining but invisible (ZWNJ, ZWJ)
+    JoinControl,
+    /// Affects line breaking but invisible (WJ, CGJ)
+    BreakControl,
+    /// Changes presentation (emoji vs text) (VS1-VS16)
+    VariationSelector,
+    /// Tiny but technically visible width (hair space, thin space, narrow NBSP)
+    SemiVisible,
+}
+
+/// Classify a character into its zero-width class, if applicable.
+pub fn classify_zero_width(c: char) -> Option<ZeroWidthClass> {
+    match c {
+        '\u{200B}' | '\u{FEFF}' => Some(ZeroWidthClass::Glyphless),
+        '\u{200C}' | '\u{200D}' => Some(ZeroWidthClass::JoinControl),
+        '\u{2060}' | '\u{034F}' => Some(ZeroWidthClass::BreakControl),
+        '\u{FE00}'..='\u{FE0F}' => Some(ZeroWidthClass::VariationSelector),
+        '\u{200A}' | '\u{2009}' | '\u{202F}' => Some(ZeroWidthClass::SemiVisible),
+        _ => None,
+    }
+}
+
+/// Visibility mode controlling which zero-width characters are included in the palette.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum VisibilityMode {
+    /// Only true invisibles (ZWSP, ZWNJ, ZWJ, WJ, CGJ, BOM)
+    #[default]
+    Glyphless,
+    /// Glyphless + variation selectors (VS1-VS16)
+    WithJoiners,
+    /// All of the above + hair/thin spaces
+    SemiVisible,
+}
+
+impl VisibilityMode {
+    /// Parse visibility mode from string.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "glyphless" => Some(Self::Glyphless),
+            "with_joiners" => Some(Self::WithJoiners),
+            "semi_visible" => Some(Self::SemiVisible),
+            _ => None,
+        }
+    }
+
+    /// Get the default character palette for this visibility mode.
+    pub fn default_palette(&self) -> Vec<String> {
+        match self {
+            Self::Glyphless => vec![
+                "\u{200B}".to_string(), // ZERO WIDTH SPACE
+                "\u{200C}".to_string(), // ZERO WIDTH NON-JOINER
+                "\u{200D}".to_string(), // ZERO WIDTH JOINER
+                "\u{FEFF}".to_string(), // BYTE ORDER MARK
+                "\u{2060}".to_string(), // WORD JOINER
+                "\u{034F}".to_string(), // COMBINING GRAPHEME JOINER
+            ],
+            Self::WithJoiners => {
+                let mut palette = Self::Glyphless.default_palette();
+                // Add variation selectors VS1-VS16
+                for vs in '\u{FE00}'..='\u{FE0F}' {
+                    palette.push(vs.to_string());
+                }
+                palette
+            }
+            Self::SemiVisible => {
+                let mut palette = Self::WithJoiners.default_palette();
+                palette.push("\u{200A}".to_string()); // HAIR SPACE
+                palette.push("\u{2009}".to_string()); // THIN SPACE
+                palette.push("\u{202F}".to_string()); // NARROW NO-BREAK SPACE
+                palette
+            }
+        }
+    }
+}
+
+/// Placement mode controlling where zero-width characters are inserted.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PlacementMode {
+    /// Insert between any adjacent non-whitespace characters (current behavior)
+    #[default]
+    Random,
+    /// Only insert at grapheme cluster boundaries (safer for rendering)
+    GraphemeBoundary,
+    /// Context-sensitive: ZWJ/ZWNJ only where linguistically meaningful
+    ScriptAware,
+}
+
+impl PlacementMode {
+    /// Parse placement mode from string.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_lowercase().as_str() {
+            "random" => Some(Self::Random),
+            "grapheme_boundary" => Some(Self::GraphemeBoundary),
+            "script_aware" => Some(Self::ScriptAware),
+            _ => None,
+        }
+    }
+}
+
+/// Check if a character is from a script where joiners are linguistically meaningful.
+fn is_joiner_meaningful_script(c: char) -> bool {
+    // Arabic script range
+    let is_arabic = ('\u{0600}'..='\u{06FF}').contains(&c)
+        || ('\u{0750}'..='\u{077F}').contains(&c)
+        || ('\u{08A0}'..='\u{08FF}').contains(&c);
+
+    // Devanagari
+    let is_devanagari = ('\u{0900}'..='\u{097F}').contains(&c);
+
+    // Bengali
+    let is_bengali = ('\u{0980}'..='\u{09FF}').contains(&c);
+
+    // Other Indic scripts
+    let is_indic = ('\u{0A00}'..='\u{0D7F}').contains(&c);
+
+    // Common emoji ranges (Extended_Pictographic approximation)
+    let is_emoji = ('\u{1F300}'..='\u{1F9FF}').contains(&c)
+        || ('\u{2600}'..='\u{26FF}').contains(&c)
+        || ('\u{2700}'..='\u{27BF}').contains(&c)
+        || ('\u{1F600}'..='\u{1F64F}').contains(&c);
+
+    is_arabic || is_devanagari || is_bengali || is_indic || is_emoji
+}
+
+/// Check if a character is a valid base for a variation selector.
+fn is_valid_vs_base(c: char) -> bool {
+    // Emoji (Extended_Pictographic approximation)
+    let is_emoji = ('\u{1F300}'..='\u{1F9FF}').contains(&c)
+        || ('\u{2600}'..='\u{26FF}').contains(&c)
+        || ('\u{2700}'..='\u{27BF}').contains(&c)
+        || ('\u{1F600}'..='\u{1F64F}').contains(&c)
+        || ('\u{231A}'..='\u{23FF}').contains(&c);
+
+    // CJK Ideographs
+    let is_cjk = ('\u{4E00}'..='\u{9FFF}').contains(&c)
+        || ('\u{3400}'..='\u{4DBF}').contains(&c)
+        || ('\u{F900}'..='\u{FAFF}').contains(&c);
+
+    // Mathematical symbols
+    let is_math = ('\u{2200}'..='\u{22FF}').contains(&c);
+
+    is_emoji || is_cjk || is_math
+}
+
+/// Check if a character is a variation selector.
+fn is_variation_selector(c: char) -> bool {
+    ('\u{FE00}'..='\u{FE0F}').contains(&c)
+}
+
 #[derive(Debug, Clone)]
 pub struct ZeroWidthOp {
     pub rate: f64,
     pub characters: Vec<String>,
+    pub visibility_mode: VisibilityMode,
+    pub placement_mode: PlacementMode,
+    pub max_consecutive: usize,
 }
 
-impl TextOperation for ZeroWidthOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
-        let palette: Vec<String> = self
+impl ZeroWidthOp {
+    /// Create a new ZeroWidthOp with default settings.
+    pub fn new(rate: f64, characters: Vec<String>) -> Self {
+        Self {
+            rate,
+            characters,
+            visibility_mode: VisibilityMode::default(),
+            placement_mode: PlacementMode::default(),
+            max_consecutive: 4,
+        }
+    }
+
+    /// Create with all settings.
+    pub fn with_options(
+        rate: f64,
+        characters: Vec<String>,
+        visibility_mode: VisibilityMode,
+        placement_mode: PlacementMode,
+        max_consecutive: usize,
+    ) -> Self {
+        Self {
+            rate,
+            characters,
+            visibility_mode,
+            placement_mode,
+            max_consecutive,
+        }
+    }
+
+    /// Get the effective palette, auto-populating from visibility mode if empty.
+    fn effective_palette(&self) -> Vec<String> {
+        let filtered: Vec<String> = self
             .characters
             .iter()
             .filter(|value| !value.is_empty())
             .cloned()
             .collect();
-        if palette.is_empty() {
-            return Ok(());
-        }
 
-        let segments = buffer.segments();
-        if segments.is_empty() {
-            return Ok(());
+        if filtered.is_empty() {
+            self.visibility_mode.default_palette()
+        } else {
+            filtered
         }
+    }
 
-        // Collect insertion positions across all segments
-        // Track (segment_index, char_index_in_segment) for each insertion point
-        let mut positions: Vec<(usize, usize)> = Vec::new();
+    /// Check if a character from the palette is a joiner (ZWJ or ZWNJ).
+    fn is_joiner_char(c: &str) -> bool {
+        matches!(c, "\u{200C}" | "\u{200D}")
+    }
+
+    /// Collect insertion positions based on placement mode.
+    fn collect_positions(
+        &self,
+        segments: &[TextSegment],
+        palette: &[String],
+    ) -> Vec<(usize, usize, Vec<usize>)> {
+        // Returns: (segment_index, char_index, valid_palette_indices)
+        use unicode_segmentation::UnicodeSegmentation;
+
+        let mut positions: Vec<(usize, usize, Vec<usize>)> = Vec::new();
+
+        // Pre-compute which palette entries are variation selectors
+        let vs_indices: Vec<usize> = palette
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| s.chars().next().map_or(false, is_variation_selector))
+            .map(|(i, _)| i)
+            .collect();
+
+        let joiner_indices: Vec<usize> = palette
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| Self::is_joiner_char(s))
+            .map(|(i, _)| i)
+            .collect();
+
+        let non_vs_non_joiner_indices: Vec<usize> = palette
+            .iter()
+            .enumerate()
+            .filter(|(_, s)| {
+                !s.chars().next().map_or(false, is_variation_selector)
+                    && !Self::is_joiner_char(s)
+            })
+            .map(|(i, _)| i)
+            .collect();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
             if !segment.is_mutable() {
@@ -1127,13 +1353,155 @@ impl TextOperation for ZeroWidthOp {
                 continue;
             }
 
-            for char_idx in 0..(chars.len() - 1) {
-                if !chars[char_idx].is_whitespace() && !chars[char_idx + 1].is_whitespace() {
-                    // Mark position after char_idx (before char_idx + 1)
-                    positions.push((seg_idx, char_idx + 1));
+            match self.placement_mode {
+                PlacementMode::Random => {
+                    // Original behavior: between any adjacent non-whitespace characters
+                    for char_idx in 0..(chars.len() - 1) {
+                        if !chars[char_idx].is_whitespace() && !chars[char_idx + 1].is_whitespace()
+                        {
+                            let mut valid_indices: Vec<usize> =
+                                (0..palette.len()).collect();
+
+                            // Filter VS to only valid bases
+                            if !vs_indices.is_empty() && !is_valid_vs_base(chars[char_idx]) {
+                                valid_indices.retain(|i| !vs_indices.contains(i));
+                            }
+
+                            if !valid_indices.is_empty() {
+                                positions.push((seg_idx, char_idx + 1, valid_indices));
+                            }
+                        }
+                    }
+                }
+                PlacementMode::GraphemeBoundary => {
+                    // Only at grapheme cluster boundaries
+                    let graphemes: Vec<&str> = text.graphemes(true).collect();
+                    if graphemes.len() < 2 {
+                        continue;
+                    }
+
+                    let mut byte_offset = 0;
+                    let mut char_offset = 0;
+
+                    for (g_idx, grapheme) in graphemes.iter().enumerate() {
+                        let grapheme_char_len = grapheme.chars().count();
+
+                        // Position after this grapheme (before the next one)
+                        if g_idx > 0 && g_idx < graphemes.len() {
+                            // Check both adjacent graphemes for whitespace
+                            let prev_grapheme = graphemes[g_idx - 1];
+                            let is_prev_ws = prev_grapheme.chars().all(|c| c.is_whitespace());
+                            let is_curr_ws = grapheme.chars().all(|c| c.is_whitespace());
+
+                            if !is_prev_ws && !is_curr_ws {
+                                let prev_char = prev_grapheme.chars().last().unwrap_or(' ');
+                                let mut valid_indices: Vec<usize> =
+                                    (0..palette.len()).collect();
+
+                                // Filter VS to only valid bases
+                                if !vs_indices.is_empty() && !is_valid_vs_base(prev_char) {
+                                    valid_indices.retain(|i| !vs_indices.contains(i));
+                                }
+
+                                if !valid_indices.is_empty() {
+                                    positions.push((seg_idx, char_offset, valid_indices));
+                                }
+                            }
+                        }
+
+                        byte_offset += grapheme.len();
+                        char_offset += grapheme_char_len;
+                    }
+                }
+                PlacementMode::ScriptAware => {
+                    // ZWJ/ZWNJ only where linguistically meaningful
+                    for char_idx in 0..(chars.len() - 1) {
+                        if !chars[char_idx].is_whitespace() && !chars[char_idx + 1].is_whitespace()
+                        {
+                            let prev_char = chars[char_idx];
+                            let next_char = chars[char_idx + 1];
+
+                            let joiner_meaningful = is_joiner_meaningful_script(prev_char)
+                                || is_joiner_meaningful_script(next_char);
+
+                            let mut valid_indices: Vec<usize> = Vec::new();
+
+                            // Always allow non-joiner, non-VS characters
+                            valid_indices.extend(&non_vs_non_joiner_indices);
+
+                            // Allow joiners only if meaningful
+                            if joiner_meaningful {
+                                valid_indices.extend(&joiner_indices);
+                            }
+
+                            // Filter VS to only valid bases
+                            if is_valid_vs_base(prev_char) {
+                                valid_indices.extend(&vs_indices);
+                            }
+
+                            valid_indices.sort_unstable();
+                            valid_indices.dedup();
+
+                            if !valid_indices.is_empty() {
+                                positions.push((seg_idx, char_idx + 1, valid_indices));
+                            }
+                        }
+                    }
                 }
             }
         }
+
+        positions
+    }
+
+    /// Enforce max_consecutive constraint on insertions.
+    fn enforce_max_consecutive(
+        &self,
+        insertions: &mut Vec<(usize, usize, String)>,
+    ) {
+        if self.max_consecutive == 0 {
+            return; // No limit
+        }
+
+        // Sort by (segment, position)
+        insertions.sort_by_key(|(seg, pos, _)| (*seg, *pos));
+
+        let mut consecutive_count = 0;
+        let mut last_seg = usize::MAX;
+        let mut last_pos = usize::MAX;
+
+        insertions.retain(|(seg, pos, _)| {
+            if *seg == last_seg && *pos == last_pos + 1 {
+                consecutive_count += 1;
+            } else {
+                consecutive_count = 1;
+            }
+            last_seg = *seg;
+            last_pos = *pos;
+
+            consecutive_count <= self.max_consecutive
+        });
+    }
+}
+
+impl TextOperation for ZeroWidthOp {
+    fn apply(
+        &self,
+        buffer: &mut TextBuffer,
+        rng: &mut dyn OperationRng,
+    ) -> Result<(), OperationError> {
+        let palette = self.effective_palette();
+        if palette.is_empty() {
+            return Ok(());
+        }
+
+        let segments = buffer.segments();
+        if segments.is_empty() {
+            return Ok(());
+        }
+
+        // Collect insertion positions based on placement mode
+        let positions = self.collect_positions(&segments, &palette);
 
         if positions.is_empty() {
             return Ok(());
@@ -1168,9 +1536,18 @@ impl TextOperation for ZeroWidthOp {
         // Collect (seg_idx, char_idx, zero_width_char) for selected positions
         let mut insertions: Vec<(usize, usize, String)> = Vec::new();
         for sample_idx in index_samples {
-            let (seg_idx, char_idx) = positions[sample_idx];
-            let palette_idx = rng.rand_index(palette.len())?;
+            let (seg_idx, char_idx, ref valid_palette_indices) = positions[sample_idx];
+            // Pick from valid palette entries only
+            let palette_choice = rng.rand_index(valid_palette_indices.len())?;
+            let palette_idx = valid_palette_indices[palette_choice];
             insertions.push((seg_idx, char_idx, palette[palette_idx].clone()));
+        }
+
+        // Enforce max_consecutive constraint
+        self.enforce_max_consecutive(&mut insertions);
+
+        if insertions.is_empty() {
+            return Ok(());
         }
 
         // Group insertions by segment

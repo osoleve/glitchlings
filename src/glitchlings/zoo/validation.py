@@ -365,6 +365,24 @@ def get_keyboard_layout_or_default(
 # Zeedub Validation
 # ---------------------------------------------------------------------------
 
+# Valid visibility mode values
+_ZEEDUB_VISIBILITY_MODES: frozenset[str] = frozenset(
+    {
+        "glyphless",
+        "with_joiners",
+        "semi_visible",
+    }
+)
+
+# Valid placement mode values
+_ZEEDUB_PLACEMENT_MODES: frozenset[str] = frozenset(
+    {
+        "random",
+        "grapheme_boundary",
+        "script_aware",
+    }
+)
+
 
 def normalize_zero_width_palette(
     characters: Sequence[str] | None,
@@ -381,6 +399,78 @@ def normalize_zero_width_palette(
     """
     palette: Sequence[str] = tuple(characters) if characters is not None else default
     return tuple(char for char in palette if char)
+
+
+def normalize_zeedub_visibility(
+    visibility: str | None,
+    default: str = "glyphless",
+) -> str:
+    """Normalize Zeedub visibility mode.
+
+    Args:
+        visibility: User-provided visibility mode, or None for default.
+        default: Default visibility mode.
+
+    Returns:
+        Normalized visibility mode string.
+
+    Raises:
+        ValueError: If visibility mode is not recognized.
+    """
+    if visibility is None:
+        return default
+    mode = visibility.lower()
+    if mode not in _ZEEDUB_VISIBILITY_MODES:
+        raise ValueError(
+            f"Invalid visibility mode '{visibility}'. "
+            f"Expected one of: {', '.join(sorted(_ZEEDUB_VISIBILITY_MODES))}"
+        )
+    return mode
+
+
+def normalize_zeedub_placement(
+    placement: str | None,
+    default: str = "random",
+) -> str:
+    """Normalize Zeedub placement mode.
+
+    Args:
+        placement: User-provided placement mode, or None for default.
+        default: Default placement mode.
+
+    Returns:
+        Normalized placement mode string.
+
+    Raises:
+        ValueError: If placement mode is not recognized.
+    """
+    if placement is None:
+        return default
+    mode = placement.lower()
+    if mode not in _ZEEDUB_PLACEMENT_MODES:
+        raise ValueError(
+            f"Invalid placement mode '{placement}'. "
+            f"Expected one of: {', '.join(sorted(_ZEEDUB_PLACEMENT_MODES))}"
+        )
+    return mode
+
+
+def normalize_zeedub_max_consecutive(
+    max_consecutive: int | None,
+    default: int = 4,
+) -> int:
+    """Normalize Zeedub max_consecutive constraint.
+
+    Args:
+        max_consecutive: User-provided limit, or None for default.
+        default: Default max_consecutive value.
+
+    Returns:
+        Normalized max_consecutive value (non-negative).
+    """
+    if max_consecutive is None:
+        return default
+    return max(0, int(max_consecutive))
 
 
 # ---------------------------------------------------------------------------
@@ -469,6 +559,9 @@ __all__ = [
     "get_keyboard_layout_or_default",
     # Zeedub
     "normalize_zero_width_palette",
+    "normalize_zeedub_visibility",
+    "normalize_zeedub_placement",
+    "normalize_zeedub_max_consecutive",
     # Redactyl
     "normalize_replacement_char",
     # Flags and helpers
