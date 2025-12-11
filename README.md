@@ -209,6 +209,18 @@ _How can a computer need reading glasses?_
 _Watch your step around here._
 
 > _**Invisible Ink.**_ Zeedub slips zero-width codepoints between non-space character pairs, forcing models to reason about text whose visible form masks hidden glyphs.
+>
+> **Placement Modes:**
+> - `random` (default): Insert between any adjacent non-whitespace characters
+> - `grapheme_boundary`: Only insert at grapheme cluster boundaries (safer for rendering)
+> - `script_aware`: ZWJ/ZWNJ only where linguistically meaningful (Arabic, Indic scripts, emoji)
+>
+> **Visibility Modes:**
+> - `glyphless` (default): True invisibles only (ZWSP, ZWNJ, ZWJ, WJ, CGJ, BOM)
+> - `with_joiners`: Adds variation selectors VS1–VS16
+> - `semi_visible`: Adds hair space, thin space, narrow NBSP
+>
+> **Safety:** Caps consecutive insertions at 4 by default to prevent pathological sequences. Set `max_consecutive=0` to disable.
 
 ### Wherewolf
 
@@ -281,3 +293,9 @@ Glitchlings incorporates research from the following sources:
   > Rice, S. V., Jenkins, F. R., & Nartker, T. A. (1995). The Fourth Annual Test of OCR Accuracy. Technical Report 95-04, Information Science Research Institute, University of Nevada, Las Vegas. https://tesseract-ocr.github.io/docs/AT-1995.pdf
 
   > Lucas, S. M., Panaretos, A., Sosa, L., Tang, A., Wong, S., & Young, R. (2005). ICDAR 2003 Robust Reading Competitions: Entries, Results, and Future Directions. *International Journal on Document Analysis and Recognition*, 7(2–3), 105–122. https://doi.org/10.1007/s10032-004-0134-3
+
+- **Unicode Text Segmentation** — Grapheme cluster boundary rules for Zeedub's `grapheme_boundary` placement mode:
+  > The Unicode Consortium. (2024). Unicode Standard Annex #29: Unicode Text Segmentation. https://www.unicode.org/reports/tr29/
+
+- **Unicode Security Considerations** — Default_Ignorable handling and safety constraints informing Zeedub's visibility classification and max_consecutive limits:
+  > The Unicode Consortium. (2014). Unicode Technical Report #36: Unicode Security Considerations. https://www.unicode.org/reports/tr36/
