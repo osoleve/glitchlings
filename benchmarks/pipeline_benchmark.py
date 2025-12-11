@@ -566,7 +566,7 @@ def collect_benchmark_results(
     for label, text in samples:
 
         def runtime_subject(text: str = text) -> str:
-            return zoo_rust.compose_glitchlings(
+            return zoo_rust.compose_operations(
                 text,
                 _seeded_descriptors(MASTER_SEED, descriptor_template),
                 MASTER_SEED,
