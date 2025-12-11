@@ -145,7 +145,7 @@ class NormalizedPlanSpec:
         if isinstance(entry, GlitchlingProtocol):
             return cls.from_glitchling(entry)
         if not isinstance(entry, Mapping):
-            message = "plan_glitchlings expects Glitchling instances or mapping specifications"
+            message = "Expected Glitchling instances or mapping specifications"
             raise TypeError(message)
         return cls.from_mapping(entry)
 

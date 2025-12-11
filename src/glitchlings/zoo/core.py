@@ -7,7 +7,7 @@ from enum import IntEnum, auto
 from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, cast
 
-from glitchlings.internal.rust_ffi import build_pipeline_rust, plan_glitchlings_rust
+from glitchlings.internal.rust_ffi import build_pipeline_rust, plan_operations_rust
 
 from ..compat.loaders import get_datasets_dataset, require_datasets
 from ..compat.types import Dataset as DatasetProtocol
@@ -38,11 +38,11 @@ _DatasetsDataset = get_datasets_dataset()
 _is_transcript = is_transcript
 
 
-def plan_glitchlings(
+def plan_operations(
     entries: Sequence[_PlanEntry],
     master_seed: int | None,
 ) -> list[tuple[int, int]]:
-    """Normalize glitchling instances or specs and compute an orchestration plan.
+    """Normalize operation entries and compute an orchestration plan.
 
     Notes
     -----
@@ -54,7 +54,7 @@ def plan_glitchlings(
 
     normalized_specs = [spec.as_mapping() for spec in normalize_plan_entries(entries)]
     master_seed_int = int(master_seed)
-    return plan_glitchlings_rust(list(normalized_specs), master_seed_int)
+    return plan_operations_rust(list(normalized_specs), master_seed_int)
 
 
 if TYPE_CHECKING:  # pragma: no cover - typing only
@@ -480,7 +480,7 @@ class Gaggle(Glitchling):
 
     def sort_glitchlings(self) -> None:
         """Sort glitchlings by wave then order to produce application order."""
-        plan = plan_glitchlings(self._clones_by_index, self.seed)
+        plan = plan_operations(self._clones_by_index, self.seed)
         self._plan = plan
 
         self.glitchlings = {level: [] for level in AttackWave}
@@ -672,7 +672,7 @@ __all__ = [
     "Glitchling",
     "Gaggle",
     # Planning functions
-    "plan_glitchlings",
+    "plan_operations",
     "PipelineOperationPayload",
     "PipelineDescriptor",
 ]

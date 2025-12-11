@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-from glitchlings.internal.rust_ffi import compose_glitchlings_rust
+from glitchlings.internal.rust_ffi import compose_operations_rust
 
 if TYPE_CHECKING:
     from .core_planning import ExecutionPlan, PipelineDescriptor
@@ -65,7 +65,7 @@ def execute_plan(
                 exclude_patterns=exclude_patterns,
             )
         descriptors = list(plan.steps[0].descriptors)
-        return compose_glitchlings_rust(
+        return compose_operations_rust(
             text,
             descriptors,
             master_seed,
@@ -80,7 +80,7 @@ def execute_plan(
         if step.is_pipeline_step:
             # Execute the batch through the Rust pipeline
             descriptors = list(step.descriptors)
-            result = compose_glitchlings_rust(
+            result = compose_operations_rust(
                 result,
                 descriptors,
                 master_seed,
@@ -105,7 +105,7 @@ def execute_descriptors(
 ) -> str:
     """Execute a list of pipeline descriptors through Rust.
 
-    This is a thin wrapper over compose_glitchlings_rust for cases
+    This is a thin wrapper over compose_operations_rust for cases
     where the caller has already constructed descriptors directly.
 
     Args:
@@ -124,7 +124,7 @@ def execute_descriptors(
             exclude_patterns=exclude_patterns,
         )
 
-    return compose_glitchlings_rust(
+    return compose_operations_rust(
         text,
         descriptors,
         master_seed,

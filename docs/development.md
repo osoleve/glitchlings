@@ -204,7 +204,7 @@ def validate_rate(rate: float | None) -> float:
 # In typogre.py (uses boundary layer, trusts result)
 def fatfinger(text: str, rate: float, ...) -> str:
     # rate is already validated - just use it
-    return _fatfinger_rust(
+    return keyboard_typo_rust(
         text,
         rate,
         layout,

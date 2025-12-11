@@ -121,7 +121,7 @@ class TestNormalizedPlanSpec:
         assert spec.name == "EntryMap"
 
     def test_from_entry_invalid_type_raises(self) -> None:
-        with pytest.raises(TypeError, match="expects Glitchling instances"):
+        with pytest.raises(TypeError, match="Expected Glitchling instances"):
             NormalizedPlanSpec.from_entry("not_a_glitchling")  # type: ignore[arg-type]
 
     def test_as_mapping(self) -> None:

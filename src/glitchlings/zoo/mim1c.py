@@ -7,7 +7,7 @@ from collections.abc import Collection, Iterable
 from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
-from glitchlings.internal.rust_ffi import mim1c_rust, resolve_seed
+from glitchlings.internal.rust_ffi import resolve_seed, swap_homoglyphs_rust
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
@@ -73,7 +73,7 @@ def swap_homoglyphs(
         payload_classes = _serialise_classes(normalised_classes)
     payload_banned = _serialise_banned(normalised_banned)
 
-    return mim1c_rust(
+    return swap_homoglyphs_rust(
         text,
         effective_rate,
         payload_classes,

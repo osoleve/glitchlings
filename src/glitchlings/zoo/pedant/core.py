@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Dict, Type
 
-from glitchlings.internal.rust_ffi import pedant_rust
+from glitchlings.internal.rust_ffi import apply_grammar_rule_rust
 
 from ..core import Gaggle
 from .stones import PedantStone
@@ -18,7 +18,7 @@ def apply_pedant(
 ) -> str:
     """Apply a pedant transformation via the Rust extension."""
 
-    return pedant_rust(
+    return apply_grammar_rule_rust(
         text,
         stone=stone.label,
         seed=int(seed),

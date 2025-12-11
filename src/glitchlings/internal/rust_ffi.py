@@ -16,11 +16,11 @@ which are stateful operations. By centralizing all FFI here:
 **Usage Pattern:**
 
     # In a glitchling module (e.g., typogre.py)
-    from glitchlings.internal.rust_ffi import fatfinger_rust
+    from glitchlings.internal.rust_ffi import keyboard_typo_rust
 
     def fatfinger(text: str, rate: float, ...) -> str:
         # ... validation and setup ...
-        return fatfinger_rust(text, rate, layout, seed)
+        return keyboard_typo_rust(text, rate, layout, seed)
 
 See AGENTS.md "Functional Purity Architecture" for full details.
 """
@@ -57,15 +57,6 @@ __all__ = [
     "substitute_homophones_rust",
     # Grammar operations
     "apply_grammar_rule_rust",
-    # Backward compatibility aliases
-    "plan_glitchlings_rust",
-    "compose_glitchlings_rust",
-    "fatfinger_rust",
-    "mim1c_rust",
-    "hokey_rust",
-    "jargoyle_drift_rust",
-    "wherewolf_homophones_rust",
-    "pedant_rust",
 ]
 
 
@@ -131,10 +122,6 @@ def plan_operations_rust(
     return [(int(index), int(seed)) for index, seed in plan]
 
 
-# Backward compatibility alias
-plan_glitchlings_rust = plan_operations_rust
-
-
 def compose_operations_rust(
     text: str,
     descriptors: Sequence[PipelineDescriptor],
@@ -162,10 +149,6 @@ def compose_operations_rust(
         exclude_patterns=exclude_patterns,
     )
     return pipeline.run(text)
-
-
-# Backward compatibility alias
-compose_glitchlings_rust = compose_operations_rust
 
 
 def build_pipeline_rust(
@@ -232,10 +215,6 @@ def keyboard_typo_rust(
     )
 
 
-# Backward compatibility alias
-fatfinger_rust = keyboard_typo_rust
-
-
 def slip_modifier_rust(
     text: str,
     enter_rate: float,
@@ -280,10 +259,6 @@ def swap_homoglyphs_rust(
     """
     fn = get_rust_operation("swap_homoglyphs")
     return cast(str, fn(text, rate, classes, banned, seed))
-
-
-# Backward compatibility alias
-mim1c_rust = swap_homoglyphs_rust
 
 
 def ocr_artifacts_rust(
@@ -354,10 +329,6 @@ def stretch_word_rust(
         str,
         fn(text, rate, extension_min, extension_max, word_length_threshold, base_p, seed),
     )
-
-
-# Backward compatibility alias
-hokey_rust = stretch_word_rust
 
 
 # ---------------------------------------------------------------------------
@@ -475,10 +446,6 @@ def substitute_lexeme_rust(
     return cast(str, fn(text, lexemes, mode, rate, seed))
 
 
-# Backward compatibility alias
-jargoyle_drift_rust = substitute_lexeme_rust
-
-
 def list_lexeme_dictionaries_rust() -> list[str]:
     """List available lexeme dictionaries.
 
@@ -510,10 +477,6 @@ def substitute_homophones_rust(
     return cast(str, fn(text, rate, weighting, seed))
 
 
-# Backward compatibility alias
-wherewolf_homophones_rust = substitute_homophones_rust
-
-
 # ---------------------------------------------------------------------------
 # Grammar Operations
 # ---------------------------------------------------------------------------
@@ -537,7 +500,3 @@ def apply_grammar_rule_rust(
     """
     fn = get_rust_operation("apply_grammar_rule")
     return cast(str, fn(text, stone=stone, seed=seed))
-
-
-# Backward compatibility alias
-pedant_rust = apply_grammar_rule_rust
