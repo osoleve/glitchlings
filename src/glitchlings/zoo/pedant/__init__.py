@@ -21,7 +21,7 @@ def _coerce_stone(value: Any) -> PedantStone:
 def pedant_transform(
     text: str,
     *,
-    stone: PedantStone | str = PedantStone.COEURITE,
+    stone: PedantStone | str = PedantStone.HYPERCORRECTITE,
     seed: int | None = None,
     rng: random.Random | None = None,
 ) -> str:
@@ -65,7 +65,7 @@ class Pedant(Glitchling):
     def __init__(
         self,
         *,
-        stone: PedantStone | str = PedantStone.COEURITE,
+        stone: PedantStone | str = PedantStone.HYPERCORRECTITE,
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:

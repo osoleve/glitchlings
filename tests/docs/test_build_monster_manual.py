@@ -17,4 +17,4 @@ def test_build_monster_manual_includes_flavor_and_params():
     assert "## Pedant" in result
     assert "Scope:" in result
     assert "rate` (float" in result
-    assert '*"Resurrects archaic ligatures and diacritics."*' in result
+    assert "*\"Learned that 'me' is wrong and now overcorrects everywhere.\"*" in result

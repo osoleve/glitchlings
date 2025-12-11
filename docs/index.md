@@ -166,7 +166,7 @@ Each glitchling subclasses the shared `Glitchling` base class and exposes the sa
 - [Redactyl](glitchlings/redactyl.md) - block out sensitive words with configurable redaction glyphs.
 - [Jargoyle](glitchlings/jargoyle.md) - dictionary-driven synonym substitutions for domain drift.
 - [Wherewolf](glitchlings/wherewolf.md) - curated homophone swaps that preserve casing and cadence.
-- [Pedant](glitchlings/pedant.md) - grammar evolutions driven by themed stones (Whomst, Fewerling, Commama, Kiloa, and more).
+- [Pedant](glitchlings/pedant.md) - hypercorrection evolutions driven by themed stones (Andi, Infinitoad, Aetheria, and more).
 - [Scannequin](glitchlings/scannequin.md) - OCR-style misreads and confusable spans with deterministic sampling.
 - [Zeedub](glitchlings/zeedub.md) - zero-width glyph injections that hide corruption inside seemingly clean text.
 

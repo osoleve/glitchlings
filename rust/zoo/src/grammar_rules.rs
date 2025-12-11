@@ -13,54 +13,42 @@ use crate::text_buffer::TextBuffer;
 
 #[derive(Debug, Clone, Copy)]
 enum PedantStone {
-    Whomst,
-    Fewerling,
-    Aetheria,
-    Apostrofae,
-    Subjunic,
-    Commama,
-    Kiloa,
-    Correctopus,
+    Andi,       // Coordinate pronoun hypercorrection
+    Infinitoad, // Split infinitive correction
+    Aetheria,   // Archaic ligatures/diaeresis
+    Apostrofae, // Curly quotes
+    Commama,    // Oxford comma insertion
 }
 
 impl PedantStone {
     fn try_from_name(name: &str) -> Option<Self> {
         match name {
-            "Whom Stone" => Some(PedantStone::Whomst),
-            "Fewerite" => Some(PedantStone::Fewerling),
+            "Hypercorrectite" => Some(PedantStone::Andi),
+            "Unsplittium" => Some(PedantStone::Infinitoad),
             "Coeurite" => Some(PedantStone::Aetheria),
             "Curlite" => Some(PedantStone::Apostrofae),
-            "Subjunctite" => Some(PedantStone::Subjunic),
             "Oxfordium" => Some(PedantStone::Commama),
-            "Orthogonite" => Some(PedantStone::Correctopus),
-            "Metricite" => Some(PedantStone::Kiloa),
             _ => None,
         }
     }
 
     fn stone_name(self) -> &'static str {
         match self {
-            PedantStone::Whomst => "Whom Stone",
-            PedantStone::Fewerling => "Fewerite",
+            PedantStone::Andi => "Hypercorrectite",
+            PedantStone::Infinitoad => "Unsplittium",
             PedantStone::Aetheria => "Coeurite",
             PedantStone::Apostrofae => "Curlite",
-            PedantStone::Subjunic => "Subjunctite",
             PedantStone::Commama => "Oxfordium",
-            PedantStone::Correctopus => "Orthogonite",
-            PedantStone::Kiloa => "Metricite",
         }
     }
 
     fn form_name(self) -> &'static str {
         match self {
-            PedantStone::Whomst => "Whomst",
-            PedantStone::Fewerling => "Fewerling",
+            PedantStone::Andi => "Andi",
+            PedantStone::Infinitoad => "Infinitoad",
             PedantStone::Aetheria => "Aetheria",
             PedantStone::Apostrofae => "Apostrofae",
-            PedantStone::Subjunic => "Subjunic",
             PedantStone::Commama => "Commama",
-            PedantStone::Correctopus => "Correctopus",
-            PedantStone::Kiloa => "Kiloa",
         }
     }
 }
@@ -95,14 +83,11 @@ impl TextOperation for GrammarRuleOp {
         let original = buffer.to_string();
         let lineage = self.lineage();
         let transformed = match self.stone {
-            PedantStone::Whomst => apply_whomst(&original),
-            PedantStone::Fewerling => apply_fewerling(&original),
+            PedantStone::Andi => apply_andi(&original),
+            PedantStone::Infinitoad => apply_infinitoad(&original, self.root_seed, &lineage)?,
             PedantStone::Aetheria => apply_aetheria(&original, self.root_seed, &lineage)?,
             PedantStone::Apostrofae => apply_curlite(&original, self.root_seed, &lineage)?,
-            PedantStone::Subjunic => apply_subjunic(&original),
             PedantStone::Commama => apply_commama(&original),
-            PedantStone::Kiloa => apply_kiloa(&original),
-            PedantStone::Correctopus => original.to_uppercase(),
         };
 
         if transformed != original {
@@ -113,45 +98,83 @@ impl TextOperation for GrammarRuleOp {
     }
 }
 
-fn apply_whomst(text: &str) -> String {
-    static WHO_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)\bwho\b").expect("valid regex"));
-    WHO_REGEX
-        .replace_all(text, |caps: &Captures<'_>| {
-            match_casing(caps.get(0).unwrap().as_str(), "whom")
-        })
-        .into_owned()
-}
-
-fn apply_fewerling(text: &str) -> String {
-    static FEWER_REGEX: Lazy<Regex> = Lazy::new(|| {
+/// Coordinate-structure pronoun hypercorrection.
+///
+/// Targets "X and me" / "me and X" after prepositions and overcorrects to "I".
+/// This mimics a common hypercorrection where speakers, taught that "John and me went"
+/// is wrong, overgeneralize to "for John and I" in object position.
+fn apply_andi(text: &str) -> String {
+    // "X and me" after prepositions → "X and I"
+    static COORD_AND_ME: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r"(?i)(?P<prefix>\b(?:\d[\d,]*|many|few)\b[^.?!]*?\b)(?P<or>or)(?P<space>\s+)(?P<less>less)\b",
-        )
-        .expect("valid regex")
+            r"(?i)\b(to|for|with|between|from|at|by|about|against|among|around|behind|beside|into|onto|through|toward|towards|upon|without)\s+(\w+(?:\s+\w+)*?)\s+and\s+(me)\b"
+        ).expect("valid regex")
     });
 
-    FEWER_REGEX
-        .replace_all(text, |caps: &Captures<'_>| {
-            let prefix = caps.name("prefix").unwrap().as_str();
-            let or_word = caps.name("or").unwrap().as_str();
-            let space = caps.name("space").unwrap().as_str();
-            let less = caps.name("less").unwrap().as_str();
-            let fewer = match_casing(less, "fewer");
-            format!("{prefix}{or_word}{space}{fewer}")
+    // "me and X" after prepositions → "I and X"
+    static ME_AND_COORD: Lazy<Regex> = Lazy::new(|| {
+        Regex::new(
+            r"(?i)\b(to|for|with|between|from|at|by|about|against|among|around|behind|beside|into|onto|through|toward|towards|upon|without)\s+(me)\s+and\s+(\w+)\b"
+        ).expect("valid regex")
+    });
+
+    // "I" as a pronoun is always uppercase in English
+    let result = COORD_AND_ME.replace_all(text, |caps: &Captures<'_>| {
+        let prep = caps.get(1).unwrap().as_str();
+        let other = caps.get(2).unwrap().as_str();
+        format!("{} {} and I", prep, other)
+    });
+
+    ME_AND_COORD
+        .replace_all(&result, |caps: &Captures<'_>| {
+            let prep = caps.get(1).unwrap().as_str();
+            let other = caps.get(3).unwrap().as_str();
+            format!("{} I and {}", prep, other)
         })
         .into_owned()
 }
 
-fn apply_subjunic(text: &str) -> String {
-    static SUBJ_REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"(?i)(\bif\s+i\s+)(was)\b").expect("valid regex"));
-    SUBJ_REGEX
+/// Split infinitive "correction".
+///
+/// Moves adverbs out of split infinitive position. The prohibition on split
+/// infinitives originated in the 19th century and is considered pedantic today.
+/// This function randomly places the adverb before "to" or after the verb.
+fn apply_infinitoad(
+    text: &str,
+    root_seed: i128,
+    lineage: &[&str],
+) -> Result<String, OperationError> {
+    // Pattern: "to" + adverb ending in -ly + verb
+    static SPLIT_INF: Lazy<Regex> =
+        Lazy::new(|| Regex::new(r"(?i)\bto\s+(\w+ly)\s+(\w+)").expect("valid regex"));
+
+    let matches: Vec<_> = SPLIT_INF.find_iter(text).collect();
+    if matches.is_empty() {
+        return Ok(text.to_string());
+    }
+
+    let seed = derive_seed(
+        root_seed,
+        lineage,
+        &[ReprArg::Str("infinitoad"), ReprArg::Str(text)],
+    );
+    let mut rng = DeterministicRng::new(seed);
+
+    let result = SPLIT_INF
         .replace_all(text, |caps: &Captures<'_>| {
-            let prefix = caps.get(1).unwrap().as_str();
+            let adverb = caps.get(1).unwrap().as_str();
             let verb = caps.get(2).unwrap().as_str();
-            format!("{prefix}{}", match_casing(verb, "were"))
+
+            // Randomly choose placement: before "to" or after verb
+            if rng.random() < 0.5 {
+                format!("{} to {}", adverb, verb)
+            } else {
+                format!("to {} {}", verb, adverb)
+            }
         })
-        .into_owned()
+        .into_owned();
+
+    Ok(result)
 }
 
 fn apply_commama(text: &str) -> String {
@@ -171,30 +194,6 @@ fn apply_commama(text: &str) -> String {
         .into_owned()
 }
 
-fn apply_kiloa(text: &str) -> String {
-    static OXFORD_REGEX: Lazy<Regex> = Lazy::new(|| {
-        Regex::new(r"(?i)\b(?P<distance>\d[\d,]*)\s+(?P<unit>mile(?:s)?)\b").expect("valid regex")
-    });
-
-    OXFORD_REGEX
-        .replace_all(text, |caps: &Captures<'_>| {
-            let raw_distance = caps.name("distance").unwrap().as_str().replace(',', "");
-            let miles: f64 = raw_distance
-                .parse::<i64>()
-                .map(|value| value as f64)
-                .unwrap_or(0.0);
-            let kilometres = (miles * 1.60934).round() as i64;
-            let base_unit = if kilometres == 1 {
-                "kilometre"
-            } else {
-                "kilometres"
-            };
-            let unit_source = caps.name("unit").unwrap().as_str();
-            let unit_text = match_casing(unit_source, base_unit);
-            format!("{kilometres} {unit_text}")
-        })
-        .into_owned()
-}
 
 fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
     if text.is_empty() {
