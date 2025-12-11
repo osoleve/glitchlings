@@ -116,14 +116,11 @@ OPERATION_MODULES: Dict[str, str] = {
 
 
 PEDANT_STONES: Dict[str, str] = {
-    "whomst": "Whom Stone",
-    "fewerling": "Fewerite",
+    "andi": "Hypercorrectite",
+    "infinitoad": "Unsplittium",
     "aetheria": "Coeurite",
     "apostrofae": "Curlite",
-    "subjunic": "Subjunctite",
     "commama": "Oxfordium",
-    "kiloa": "Metricite",
-    "correctopus": "Orthogonite",
 }
 
 
@@ -266,14 +263,11 @@ SCENARIO_DESCRIPTIONS: Dict[str, str] = {
     "hokey_only": "Hokey-only benchmark for expressive lengthening.",
     "jargoyle_only": "Jargoyle-only benchmark for dictionary-based synonym substitution.",
     # Pedant evolution scenarios
-    "pedant_whomst": "Pedant Whomst benchmark for who->whom correction.",
-    "pedant_fewerling": "Pedant Fewerling benchmark for less->fewer correction.",
+    "pedant_andi": "Pedant Andi benchmark for coordinate pronoun hypercorrection.",
+    "pedant_infinitoad": "Pedant Infinitoad benchmark for split infinitive correction.",
     "pedant_aetheria": "Pedant Aetheria benchmark for ligature and diaeresis restoration.",
     "pedant_apostrofae": "Pedant Apostrofae benchmark for curly quote normalization.",
-    "pedant_subjunic": "Pedant Subjunic benchmark for subjunctive correction.",
     "pedant_commama": "Pedant Commama benchmark for Oxford comma insertion.",
-    "pedant_kiloa": "Pedant Kiloa benchmark for imperial->metric conversion.",
-    "pedant_correctopus": "Pedant Correctopus benchmark for uppercase transformation.",
 }
 
 

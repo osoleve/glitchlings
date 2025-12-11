@@ -118,15 +118,17 @@ One mornⅳ𝖓g, ꝡhen Gr𝒆gor Samsꜷ wꚙkꬲ frꝏm trꝏubƚed dreꜷmʂ
 
 ## Pedant
 
-Pedant uses the Orthogonite stone (Correctopus form) for visible demonstration. Since Pedant doesn't use a `rate` parameter, all examples show the same transformation.
+Pedant uses the Hypercorrectite stone (Andi form) by default, which hypercorrects pronouns in coordinate structures. Since Pedant doesn't use a `rate` parameter, all examples show the same transformation.
 
-### Default (Orthogonite)
+### Default (Hypercorrectite)
 
-```text
-ONE MORNING, WHEN GREGOR SAMSA WOKE FROM TROUBLED DREAMS, HE FOUND HIMSELF TRANSFORMED IN HIS BED INTO A HORRIBLE VERMIN. HE LAY ON HIS ARMOUR-LIKE BACK, AND IF HE LIFTED HIS HEAD A LITTLE HE COULD SEE HIS BROWN BELLY, SLIGHTLY DOMED AND DIVIDED BY ARCHES INTO STIFF SECTIONS. THE BEDDING WAS HARDLY ABLE TO COVER IT AND SEEMED READY TO SLIDE OFF ANY MOMENT. HIS MANY LEGS, PITIFULLY THIN COMPARED WITH THE SIZE OF THE REST OF HIM, WAVED ABOUT HELPLESSLY AS HE LOOKED.
-```
+The Hypercorrectite stone transforms coordinate structures with "me" to use "I" instead—a common hypercorrection pattern. The example text doesn't contain coordinate structures, so here's a demonstration with suitable input:
 
-Other stones produce different transformations—Coeurite adds ligatures (æ, œ), Curlite converts quotes to typographic pairs, Metricite converts miles to kilometres, etc. See the [Pedant reference](glitchlings/pedant.md) for the full list of evolution stones.
+**Input:** `"Give it to her and me, the letter was between you and me."`
+
+**Output:** `"Give it to her and I, the letter was between you and I."`
+
+Other stones produce different transformations—Unsplittium "corrects" split infinitives, Coeurite adds ligatures (æ, ö), Curlite converts quotes to typographic pairs, etc. See the [Pedant reference](glitchlings/pedant.md) for the full list of evolution stones.
 
 ## Redactyl
 
