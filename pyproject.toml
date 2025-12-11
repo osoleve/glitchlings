@@ -1,7 +1,7 @@
 [project]
 name = "glitchlings"
-version = "0.11.0"
-description = "Monsters for your language games."
+version = "0.12.0"
+description = "Deterministic, high performance, principled natural language augmentation."
 readme = "README.md"
 requires-python = ">=3.10"
 
@@ -21,7 +21,10 @@ keywords = [
     "adversarial augmentation",
     "text augmentation",
     "data augmentation",
-    "domain randomization"
+    "domain randomization",
+    "tokenizer",
+    "tokenization",
+    "robustness"
 ]
 
 classifiers = [
