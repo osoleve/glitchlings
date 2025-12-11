@@ -259,6 +259,16 @@ enum PyOperationConfig {
     },
     Ocr {
         rate: f64,
+        // Burst model parameters (Kanungo et al., 1994)
+        burst_enter: f64,
+        burst_exit: f64,
+        burst_multiplier: f64,
+        // Document-level bias parameters (UNLV-ISRI, 1995)
+        bias_k: usize,
+        bias_beta: f64,
+        // Whitespace error parameters (Smith, 2007)
+        space_drop_rate: f64,
+        space_insert_rate: f64,
     },
     Typo {
         rate: f64,
@@ -376,7 +386,26 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
             }
             "ocr" => {
                 let rate = extract_required_field(dict, "ocr operation", "rate")?;
-                Ok(PyOperationConfig::Ocr { rate })
+                // Burst model parameters (Kanungo et al., 1994)
+                let burst_enter = extract_optional_field(dict, "burst_enter")?.unwrap_or(0.0);
+                let burst_exit = extract_optional_field(dict, "burst_exit")?.unwrap_or(0.3);
+                let burst_multiplier = extract_optional_field(dict, "burst_multiplier")?.unwrap_or(3.0);
+                // Document-level bias parameters (UNLV-ISRI, 1995)
+                let bias_k = extract_optional_field(dict, "bias_k")?.unwrap_or(0);
+                let bias_beta = extract_optional_field(dict, "bias_beta")?.unwrap_or(2.0);
+                // Whitespace error parameters (Smith, 2007)
+                let space_drop_rate = extract_optional_field(dict, "space_drop_rate")?.unwrap_or(0.0);
+                let space_insert_rate = extract_optional_field(dict, "space_insert_rate")?.unwrap_or(0.0);
+                Ok(PyOperationConfig::Ocr {
+                    rate,
+                    burst_enter,
+                    burst_exit,
+                    burst_multiplier,
+                    bias_k,
+                    bias_beta,
+                    space_drop_rate,
+                    space_insert_rate,
+                })
             }
             "typo" => {
                 let rate =
@@ -525,8 +554,26 @@ impl PyOperationConfig {
                 merge_adjacent,
                 unweighted,
             }),
-            PyOperationConfig::Ocr { rate } => {
-                Operation::Ocr(operations::OcrArtifactsOp { rate })
+            PyOperationConfig::Ocr {
+                rate,
+                burst_enter,
+                burst_exit,
+                burst_multiplier,
+                bias_k,
+                bias_beta,
+                space_drop_rate,
+                space_insert_rate,
+            } => {
+                Operation::Ocr(operations::OcrArtifactsOp::with_params(
+                    rate,
+                    burst_enter,
+                    burst_exit,
+                    burst_multiplier,
+                    bias_k,
+                    bias_beta,
+                    space_drop_rate,
+                    space_insert_rate,
+                ))
             }
             PyOperationConfig::Typo {
                 rate,
@@ -653,9 +700,40 @@ fn normalize_quote_pairs(text: &str, seed: Option<u64>) -> PyResult<String> {
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
 
-#[pyfunction(signature = (text, rate, seed=None))]
-fn ocr_artifacts(text: &str, rate: f64, seed: Option<u64>) -> PyResult<String> {
-    let op = OcrArtifactsOp { rate };
+#[pyfunction(signature = (
+    text,
+    rate,
+    seed=None,
+    burst_enter=None,
+    burst_exit=None,
+    burst_multiplier=None,
+    bias_k=None,
+    bias_beta=None,
+    space_drop_rate=None,
+    space_insert_rate=None
+))]
+fn ocr_artifacts(
+    text: &str,
+    rate: f64,
+    seed: Option<u64>,
+    burst_enter: Option<f64>,
+    burst_exit: Option<f64>,
+    burst_multiplier: Option<f64>,
+    bias_k: Option<usize>,
+    bias_beta: Option<f64>,
+    space_drop_rate: Option<f64>,
+    space_insert_rate: Option<f64>,
+) -> PyResult<String> {
+    let op = OcrArtifactsOp::with_params(
+        rate,
+        burst_enter.unwrap_or(0.0),
+        burst_exit.unwrap_or(0.3),
+        burst_multiplier.unwrap_or(3.0),
+        bias_k.unwrap_or(0),
+        bias_beta.unwrap_or(2.0),
+        space_drop_rate.unwrap_or(0.0),
+        space_insert_rate.unwrap_or(0.0),
+    );
     apply_operation(text, op, seed).map_err(operations::OperationError::into_pyerr)
 }
 
