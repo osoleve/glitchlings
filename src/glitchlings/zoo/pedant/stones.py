@@ -18,18 +18,27 @@ class Stone:
 class PedantStone(Enum):
     """Enumeration of evolution stones available to the pedant."""
 
-    WHOM = Stone("Whom Stone", "Ghost", "Encourages object-pronoun precision.")
-    FEWERITE = Stone("Fewerite", "Fairy", "Obsesses over countable quantities.")
-    COEURITE = Stone("Coeurite", "Psychic", "Restores archaic ligatures to modern words.")
+    HYPERCORRECTITE = Stone(
+        "Hypercorrectite",
+        "Ghost",
+        "Induces prestigious-sounding pronoun errors in coordinate structures.",
+    )
+    UNSPLITTIUM = Stone(
+        "Unsplittium",
+        "Steel",
+        "Unsplits infinitives that were never meant to be joined.",
+    )
+    COEURITE = Stone(
+        "Coeurite",
+        "Psychic",
+        "Restores archaic ligatures to modern words.",
+    )
     CURLITE = Stone(
         "Curlite",
         "Fairy",
         "Coaches punctuation to embrace typographic curls.",
     )
-    SUBJUNCTITE = Stone("Subjunctite", "Psychic", "Demands contrary-to-fact phrasing.")
     OXFORDIUM = Stone("Oxfordium", "Steel", "Polishes serial comma usage.")
-    ORTHOGONITE = Stone("Orthogonite", "Dragon", "Unlocks the legendary Correctopus.")
-    METRICITE = Stone("Metricite", "Electric", "Compels metrication of measures.")
 
     @property
     def descriptor(self) -> Stone:

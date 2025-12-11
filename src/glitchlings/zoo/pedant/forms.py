@@ -6,18 +6,18 @@ from .core import PedantEvolution
 from .stones import PedantStone
 
 
-class Whomst(PedantEvolution):
-    stone = PedantStone.WHOM
-    name = "Whomst"
+class Andi(PedantEvolution):
+    stone = PedantStone.HYPERCORRECTITE
+    name = "Andi"
     type = "Ghost"
-    flavor = "Insists upon objective-case precision."
+    flavor = "Learned that 'me' is wrong and now overcorrects everywhere."
 
 
-class Fewerling(PedantEvolution):
-    stone = PedantStone.FEWERITE
-    name = "Fewerling"
-    type = "Fairy"
-    flavor = "Counts only countable nouns."
+class Infinitoad(PedantEvolution):
+    stone = PedantStone.UNSPLITTIUM
+    name = "Infinitoad"
+    type = "Steel"
+    flavor = "To never split what was never whole."
 
 
 class Aetheria(PedantEvolution):
@@ -34,13 +34,6 @@ class Apostrofae(PedantEvolution):
     flavor = "Curves quotes into typeset perfection."
 
 
-class Subjunic(PedantEvolution):
-    stone = PedantStone.SUBJUNCTITE
-    name = "Subjunic"
-    type = "Psychic"
-    flavor = "Corrects the subjunctive wherever it can."
-
-
 class Commama(PedantEvolution):
     stone = PedantStone.OXFORDIUM
     name = "Commama"
@@ -48,27 +41,10 @@ class Commama(PedantEvolution):
     flavor = "Oxonian hero of the list."
 
 
-class Kiloa(PedantEvolution):
-    stone = PedantStone.METRICITE
-    name = "Kiloa"
-    type = "Electric"
-    flavor = "Measures the world in rational units."
-
-
-class Correctopus(PedantEvolution):
-    stone = PedantStone.ORTHOGONITE
-    name = "Correctopus"
-    type = "Dragon"
-    flavor = "The final editor, breathing blue ink."
-
-
 __all__ = [
-    "Whomst",
-    "Fewerling",
+    "Andi",
+    "Infinitoad",
     "Aetheria",
     "Apostrofae",
-    "Subjunic",
     "Commama",
-    "Kiloa",
-    "Correctopus",
 ]

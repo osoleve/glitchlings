@@ -79,26 +79,20 @@ EVOLUTIONS: Dict[PedantStone, Type[PedantEvolution]] = {}
 try:  # pragma: no cover - import resolution occurs at runtime
     from .forms import (
         Aetheria,
+        Andi,
         Apostrofae,
         Commama,
-        Correctopus,
-        Fewerling,
-        Kiloa,
-        Subjunic,
-        Whomst,
+        Infinitoad,
     )
 except ImportError:  # pragma: no cover - partial imports during type checking
     pass
 else:
     EVOLUTIONS = {
-        PedantStone.WHOM: Whomst,
-        PedantStone.FEWERITE: Fewerling,
+        PedantStone.HYPERCORRECTITE: Andi,
+        PedantStone.UNSPLITTIUM: Infinitoad,
         PedantStone.COEURITE: Aetheria,
         PedantStone.CURLITE: Apostrofae,
-        PedantStone.SUBJUNCTITE: Subjunic,
         PedantStone.OXFORDIUM: Commama,
-        PedantStone.ORTHOGONITE: Correctopus,
-        PedantStone.METRICITE: Kiloa,
     }
 
 
