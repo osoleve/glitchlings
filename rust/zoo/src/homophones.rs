@@ -1,7 +1,7 @@
 use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng};
+use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::resources::{wherewolf_homophone_sets, is_whitespace_only, split_affixes};
 use crate::text_buffer::TextBuffer;
 
@@ -26,7 +26,7 @@ impl HomophoneWeighting {
 }
 
 #[derive(Debug, Clone)]
-pub struct WherewolfOp {
+pub struct HomophoneOp {
     pub rate: f64,
     pub weighting: HomophoneWeighting,
 }
@@ -120,11 +120,11 @@ fn apply_casing(template: &str, candidate: &str) -> String {
 }
 
 fn choose_alternative(
-    rng: &mut dyn GlitchRng,
+    rng: &mut dyn OperationRng,
     group: &[String],
     source: &str,
     weighting: HomophoneWeighting,
-) -> Result<Option<String>, GlitchOpError> {
+) -> Result<Option<String>, OperationError> {
     let lowered = source.to_lowercase();
     let candidates: Vec<&String> = group
         .iter()
@@ -143,8 +143,8 @@ fn choose_alternative(
     }
 }
 
-impl GlitchOp for WherewolfOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for HomophoneOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         if buffer.word_count() == 0 {
             return Ok(());
         }

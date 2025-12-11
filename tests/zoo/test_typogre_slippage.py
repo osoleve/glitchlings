@@ -2,7 +2,7 @@
 
 import random
 
-from glitchlings.internal.rust_ffi import fatfinger_rust, resolve_seed
+from glitchlings.internal.rust_ffi import keyboard_typo_rust, resolve_seed
 from glitchlings.util import KEYNEIGHBORS
 from glitchlings.zoo.typogre import Typogre
 
@@ -29,7 +29,7 @@ def test_shift_slip_zero_matches_fatfinger() -> None:
     layout = getattr(KEYNEIGHBORS, "QWERTY")
 
     derived_seed = resolve_seed(None, random.Random(seed))
-    expected = fatfinger_rust(text, rate, layout, derived_seed)
+    expected = keyboard_typo_rust(text, rate, layout, derived_seed)
 
     typogre = Typogre(
         rate=rate,

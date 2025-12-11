@@ -3,7 +3,7 @@ from __future__ import annotations
 import ast
 from typing import Any
 
-from .core import Gaggle, Glitchling, plan_glitchlings
+from .core import Gaggle, Glitchling, plan_operations
 from .hokey import Hokey, hokey
 from .jargoyle import Jargoyle, jargoyle
 from .mim1c import Mim1c, mim1c
@@ -39,7 +39,7 @@ __all__ = [
     "pedant",
     "Glitchling",
     "Gaggle",
-    "plan_glitchlings",
+    "plan_operations",
     "summon",
     "BUILTIN_GLITCHLINGS",
     "DEFAULT_GLITCHLING_NAMES",

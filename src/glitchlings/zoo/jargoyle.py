@@ -26,9 +26,9 @@ from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
 from glitchlings.internal.rust_ffi import (
-    jargoyle_drift_rust,
     list_lexeme_dictionaries_rust,
     resolve_seed,
+    substitute_lexeme_rust,
 )
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
@@ -128,7 +128,7 @@ def jargoyle_drift(
     effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else float(rate)
     resolved_seed = resolve_seed(seed, None) if normalized_mode == "drift" else None
 
-    return jargoyle_drift_rust(
+    return substitute_lexeme_rust(
         text,
         normalized_lexemes,
         normalized_mode,

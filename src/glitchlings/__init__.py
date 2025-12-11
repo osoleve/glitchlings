@@ -35,7 +35,7 @@ from .zoo import (
     jargoyle,
     mim1c,
     pedant,
-    plan_glitchlings,
+    plan_operations,
     redactyl,
     rushmore,
     scannequin,
@@ -89,7 +89,7 @@ __all__ = [
     "summon",
     "Glitchling",
     "Gaggle",
-    "plan_glitchlings",
+    "plan_operations",
     # Utilities
     "SAMPLE_TEXT",
     "AttackConfig",

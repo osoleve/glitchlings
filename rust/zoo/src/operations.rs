@@ -3,10 +3,10 @@ use pyo3::PyErr;
 use smallvec::SmallVec;
 use std::collections::HashMap;
 
-use crate::wherewolf::WherewolfOp;
-use crate::jargoyle::JargoyleOp;
-use crate::mim1c::Mim1cOp;
-use crate::pedant::PedantOp;
+use crate::homophones::HomophoneOp;
+use crate::lexeme_substitution::LexemeSubstitutionOp;
+use crate::homoglyphs::HomoglyphOp;
+use crate::grammar_rules::GrammarRuleOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, ocr_automaton,
     split_affixes,
@@ -14,9 +14,9 @@ use crate::resources::{
 use crate::rng::{DeterministicRng, RngError};
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
 
-/// Errors produced while applying a [`GlitchOp`].
+/// Errors produced while applying a [`TextOperation`].
 #[derive(Debug)]
-pub enum GlitchOpError {
+pub enum OperationError {
     Buffer(TextBufferError),
     NoRedactableWords,
     ExcessiveRedaction { requested: usize, available: usize },
@@ -24,54 +24,54 @@ pub enum GlitchOpError {
     Regex(String),
 }
 
-impl GlitchOpError {
+impl OperationError {
     pub fn into_pyerr(self) -> PyErr {
         match self {
-            GlitchOpError::Buffer(err) => PyValueError::new_err(err.to_string()),
-            GlitchOpError::NoRedactableWords => PyValueError::new_err(
+            OperationError::Buffer(err) => PyValueError::new_err(err.to_string()),
+            OperationError::NoRedactableWords => PyValueError::new_err(
                 "Cannot redact words because the input text contains no redactable words.",
             ),
-            GlitchOpError::ExcessiveRedaction { .. } => {
+            OperationError::ExcessiveRedaction { .. } => {
                 PyValueError::new_err("Cannot redact more words than available in text")
             }
-            GlitchOpError::Rng(err) => PyValueError::new_err(err.to_string()),
-            GlitchOpError::Regex(message) => PyRuntimeError::new_err(message),
+            OperationError::Rng(err) => PyValueError::new_err(err.to_string()),
+            OperationError::Regex(message) => PyRuntimeError::new_err(message),
         }
     }
 }
 
-impl From<TextBufferError> for GlitchOpError {
+impl From<TextBufferError> for OperationError {
     fn from(value: TextBufferError) -> Self {
-        GlitchOpError::Buffer(value)
+        OperationError::Buffer(value)
     }
 }
 
-impl From<RngError> for GlitchOpError {
+impl From<RngError> for OperationError {
     fn from(value: RngError) -> Self {
-        GlitchOpError::Rng(value)
+        OperationError::Rng(value)
     }
 }
 
-/// RNG abstraction used by glitchling operations.
-pub trait GlitchRng {
-    fn random(&mut self) -> Result<f64, GlitchOpError>;
-    fn rand_index(&mut self, upper: usize) -> Result<usize, GlitchOpError>;
+/// RNG abstraction used by text corruption operations.
+pub trait OperationRng {
+    fn random(&mut self) -> Result<f64, OperationError>;
+    fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError>;
     #[allow(dead_code)]
-    fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, GlitchOpError>;
+    fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, OperationError>;
 }
 
-impl GlitchRng for DeterministicRng {
-    fn random(&mut self) -> Result<f64, GlitchOpError> {
+impl OperationRng for DeterministicRng {
+    fn random(&mut self) -> Result<f64, OperationError> {
         Ok(DeterministicRng::random(self))
     }
 
-    fn rand_index(&mut self, upper: usize) -> Result<usize, GlitchOpError> {
-        DeterministicRng::rand_index(self, upper).map_err(GlitchOpError::from)
+    fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError> {
+        DeterministicRng::rand_index(self, upper).map_err(OperationError::from)
     }
 
     #[allow(dead_code)]
-    fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, GlitchOpError> {
-        DeterministicRng::sample_indices(self, population, k).map_err(GlitchOpError::from)
+    fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, OperationError> {
+        DeterministicRng::sample_indices(self, population, k).map_err(OperationError::from)
     }
 }
 
@@ -132,16 +132,16 @@ struct RedactCandidate {
 /// This is O(N log k) instead of the naive O(k * N) approach.
 /// Each item gets a key = random^(1/weight), and we select the k items with highest keys.
 fn weighted_sample_without_replacement(
-    rng: &mut dyn GlitchRng,
+    rng: &mut dyn OperationRng,
     items: &[(usize, f64)],
     k: usize,
-) -> Result<Vec<usize>, GlitchOpError> {
+) -> Result<Vec<usize>, OperationError> {
     if k == 0 || items.is_empty() {
         return Ok(Vec::new());
     }
 
     if k > items.len() {
-        return Err(GlitchOpError::ExcessiveRedaction {
+        return Err(OperationError::ExcessiveRedaction {
             requested: k,
             available: items.len(),
         });
@@ -181,10 +181,10 @@ fn weighted_sample_without_replacement(
     Ok(selections)
 }
 
-/// Trait implemented by each glitchling mutation so they can be sequenced by
-/// the pipeline.
-pub trait GlitchOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError>;
+/// Trait implemented by each text corruption operation so they can be sequenced
+/// by the pipeline.
+pub trait TextOperation {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError>;
 }
 
 /// Repeats words to simulate stuttered speech.
@@ -194,8 +194,8 @@ pub struct ReduplicateWordsOp {
     pub unweighted: bool,
 }
 
-impl GlitchOp for ReduplicateWordsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for ReduplicateWordsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         if buffer.word_count() == 0 {
             return Ok(());
         }
@@ -279,8 +279,8 @@ pub struct DeleteRandomWordsOp {
     pub unweighted: bool,
 }
 
-impl GlitchOp for DeleteRandomWordsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for DeleteRandomWordsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         if buffer.word_count() <= 1 {
             return Ok(());
         }
@@ -439,8 +439,8 @@ pub struct SwapAdjacentWordsOp {
     pub rate: f64,
 }
 
-impl GlitchOp for SwapAdjacentWordsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for SwapAdjacentWordsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let total_words = buffer.word_count();
         if total_words < 2 {
             return Ok(());
@@ -530,8 +530,8 @@ impl RushmoreComboOp {
     }
 }
 
-impl GlitchOp for RushmoreComboOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for RushmoreComboOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         for mode in &self.modes {
             match mode {
                 RushmoreComboMode::Delete => {
@@ -566,10 +566,10 @@ pub struct RedactWordsOp {
     pub unweighted: bool,
 }
 
-impl GlitchOp for RedactWordsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for RedactWordsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         if buffer.word_count() == 0 {
-            return Err(GlitchOpError::NoRedactableWords);
+            return Err(OperationError::NoRedactableWords);
         }
 
         let total_words = buffer.word_count();
@@ -607,7 +607,7 @@ impl GlitchOp for RedactWordsOp {
         }
 
         if candidates.is_empty() {
-            return Err(GlitchOpError::NoRedactableWords);
+            return Err(OperationError::NoRedactableWords);
         }
 
         let effective_rate = self.rate.max(0.0);
@@ -616,7 +616,7 @@ impl GlitchOp for RedactWordsOp {
             num_to_redact = 1;
         }
         if num_to_redact > candidates.len() {
-            return Err(GlitchOpError::ExcessiveRedaction {
+            return Err(OperationError::ExcessiveRedaction {
                 requested: num_to_redact,
                 available: candidates.len(),
             });
@@ -694,8 +694,8 @@ pub struct OcrArtifactsOp {
     pub rate: f64,
 }
 
-impl GlitchOp for OcrArtifactsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for OcrArtifactsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let segments = buffer.segments();
         if segments.is_empty() {
             return Ok(());
@@ -825,8 +825,8 @@ pub struct ZeroWidthOp {
     pub characters: Vec<String>,
 }
 
-impl GlitchOp for ZeroWidthOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for ZeroWidthOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let palette: Vec<String> = self
             .characters
             .iter()
@@ -1161,7 +1161,7 @@ impl ShiftSlipConfig {
         ch.to_uppercase().collect()
     }
 
-    pub fn apply(&self, text: &str, rng: &mut dyn GlitchRng) -> Result<String, GlitchOpError> {
+    pub fn apply(&self, text: &str, rng: &mut dyn OperationRng) -> Result<String, OperationError> {
         let enter_rate = self.enter_rate.max(0.0);
         if enter_rate <= 0.0 || text.is_empty() {
             return Ok(text.to_string());
@@ -1215,10 +1215,10 @@ impl TypoOp {
     }
 
     fn draw_eligible_index(
-        rng: &mut dyn GlitchRng,
+        rng: &mut dyn OperationRng,
         chars: &[char],
         max_tries: usize,
-    ) -> Result<Option<usize>, GlitchOpError> {
+    ) -> Result<Option<usize>, OperationError> {
         let n = chars.len();
         if n == 0 {
             return Ok(None);
@@ -1265,8 +1265,8 @@ impl TypoOp {
         &self,
         prev_char: char,
         neighbors: &[String],
-        rng: &mut dyn GlitchRng,
-    ) -> Result<usize, GlitchOpError> {
+        rng: &mut dyn OperationRng,
+    ) -> Result<usize, OperationError> {
         // Fast path for uniform weighting
         if self.motor_weighting == MotorWeighting::Uniform {
             return rng.rand_index(neighbors.len());
@@ -1304,7 +1304,7 @@ impl TypoOp {
         Ok(neighbors.len() - 1)
     }
 
-    fn remove_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+    fn remove_space(rng: &mut dyn OperationRng, chars: &mut Vec<char>) -> Result<(), OperationError> {
         let mut count = 0usize;
         for ch in chars.iter() {
             if *ch == ' ' {
@@ -1334,7 +1334,7 @@ impl TypoOp {
         Ok(())
     }
 
-    fn insert_space(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+    fn insert_space(rng: &mut dyn OperationRng, chars: &mut Vec<char>) -> Result<(), OperationError> {
         if chars.len() < 2 {
             return Ok(());
         }
@@ -1345,7 +1345,7 @@ impl TypoOp {
         Ok(())
     }
 
-    fn repeat_char(rng: &mut dyn GlitchRng, chars: &mut Vec<char>) -> Result<(), GlitchOpError> {
+    fn repeat_char(rng: &mut dyn OperationRng, chars: &mut Vec<char>) -> Result<(), OperationError> {
         let mut count = 0usize;
         for ch in chars.iter() {
             if !ch.is_whitespace() {
@@ -1371,9 +1371,9 @@ impl TypoOp {
     }
 
     fn collapse_duplicate(
-        rng: &mut dyn GlitchRng,
+        rng: &mut dyn OperationRng,
         chars: &mut Vec<char>,
-    ) -> Result<(), GlitchOpError> {
+    ) -> Result<(), OperationError> {
         if chars.len() < 3 {
             return Ok(());
         }
@@ -1399,8 +1399,8 @@ impl TypoOp {
     }
 }
 
-impl GlitchOp for TypoOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for TypoOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         if let Some(config) = &self.shift_slip {
             let mut replacements: Vec<(usize, String)> = Vec::new();
             for (index, segment) in buffer.segments().iter().enumerate() {
@@ -1712,8 +1712,8 @@ impl QuotePairsOp {
     }
 }
 
-impl GlitchOp for QuotePairsOp {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for QuotePairsOp {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let segments = buffer.segments();
         if segments.is_empty() {
             return Ok(());
@@ -1837,9 +1837,9 @@ impl GlitchOp for QuotePairsOp {
     }
 }
 
-/// Type-erased glitchling operation for pipeline sequencing.
+/// Type-erased text corruption operation for pipeline sequencing.
 #[derive(Debug, Clone)]
-pub enum GlitchOperation {
+pub enum Operation {
     Reduplicate(ReduplicateWordsOp),
     Delete(DeleteRandomWordsOp),
     SwapAdjacent(SwapAdjacentWordsOp),
@@ -1847,32 +1847,32 @@ pub enum GlitchOperation {
     Redact(RedactWordsOp),
     Ocr(OcrArtifactsOp),
     Typo(TypoOp),
-    Mimic(Mim1cOp),
+    Mimic(HomoglyphOp),
     ZeroWidth(ZeroWidthOp),
-    Jargoyle(JargoyleOp),
+    Jargoyle(LexemeSubstitutionOp),
     QuotePairs(QuotePairsOp),
-    Hokey(crate::hokey::HokeyOp),
-    Wherewolf(WherewolfOp),
-    Pedant(PedantOp),
+    Hokey(crate::word_stretching::WordStretchOp),
+    Wherewolf(HomophoneOp),
+    Pedant(GrammarRuleOp),
 }
 
-impl GlitchOp for GlitchOperation {
-    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn GlitchRng) -> Result<(), GlitchOpError> {
+impl TextOperation for Operation {
+    fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         match self {
-            GlitchOperation::Reduplicate(op) => op.apply(buffer, rng),
-            GlitchOperation::Delete(op) => op.apply(buffer, rng),
-            GlitchOperation::SwapAdjacent(op) => op.apply(buffer, rng),
-            GlitchOperation::RushmoreCombo(op) => op.apply(buffer, rng),
-            GlitchOperation::Redact(op) => op.apply(buffer, rng),
-            GlitchOperation::Ocr(op) => op.apply(buffer, rng),
-            GlitchOperation::Typo(op) => op.apply(buffer, rng),
-            GlitchOperation::Mimic(op) => op.apply(buffer, rng),
-            GlitchOperation::ZeroWidth(op) => op.apply(buffer, rng),
-            GlitchOperation::Jargoyle(op) => op.apply(buffer, rng),
-            GlitchOperation::QuotePairs(op) => op.apply(buffer, rng),
-            GlitchOperation::Hokey(op) => op.apply(buffer, rng),
-            GlitchOperation::Wherewolf(op) => op.apply(buffer, rng),
-            GlitchOperation::Pedant(op) => op.apply(buffer, rng),
+            Operation::Reduplicate(op) => op.apply(buffer, rng),
+            Operation::Delete(op) => op.apply(buffer, rng),
+            Operation::SwapAdjacent(op) => op.apply(buffer, rng),
+            Operation::RushmoreCombo(op) => op.apply(buffer, rng),
+            Operation::Redact(op) => op.apply(buffer, rng),
+            Operation::Ocr(op) => op.apply(buffer, rng),
+            Operation::Typo(op) => op.apply(buffer, rng),
+            Operation::Mimic(op) => op.apply(buffer, rng),
+            Operation::ZeroWidth(op) => op.apply(buffer, rng),
+            Operation::Jargoyle(op) => op.apply(buffer, rng),
+            Operation::QuotePairs(op) => op.apply(buffer, rng),
+            Operation::Hokey(op) => op.apply(buffer, rng),
+            Operation::Wherewolf(op) => op.apply(buffer, rng),
+            Operation::Pedant(op) => op.apply(buffer, rng),
         }
     }
 }
@@ -1880,7 +1880,7 @@ impl GlitchOp for GlitchOperation {
 #[cfg(test)]
 mod tests {
     use super::{
-        DeleteRandomWordsOp, GlitchOp, GlitchOpError, OcrArtifactsOp, RedactWordsOp,
+        DeleteRandomWordsOp, TextOperation, OperationError, OcrArtifactsOp, RedactWordsOp,
         ReduplicateWordsOp, SwapAdjacentWordsOp,
     };
     use crate::rng::DeterministicRng;
@@ -1965,7 +1965,7 @@ mod tests {
         };
         let error = op.apply(&mut buffer, &mut rng).unwrap_err();
         match error {
-            GlitchOpError::NoRedactableWords => {}
+            OperationError::NoRedactableWords => {}
             other => panic!("expected no redactable words, got {other:?}"),
         }
     }

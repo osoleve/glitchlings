@@ -9,7 +9,7 @@ from glitchlings.constants import (
     DEFAULT_TYPOGRE_MOTOR_WEIGHTING,
     DEFAULT_TYPOGRE_RATE,
 )
-from glitchlings.internal.rust_ffi import fatfinger_rust, resolve_seed
+from glitchlings.internal.rust_ffi import keyboard_typo_rust, resolve_seed
 
 from ..util import KEYNEIGHBORS, MOTOR_WEIGHTS, SHIFT_MAPS
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
@@ -85,7 +85,7 @@ def fatfinger(
     if slip_rate == 0.0 and clamped_rate == 0.0:
         return text
 
-    return fatfinger_rust(
+    return keyboard_typo_rust(
         text,
         clamped_rate,
         layout_mapping,

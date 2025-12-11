@@ -71,6 +71,6 @@ def test_glitchling_pipeline_operation_factory_survives_clone() -> None:
     assert clone.pipeline_operation() == {"type": "custom", "value": 7}
 
 
-def test_plan_glitchlings_requires_seed() -> None:
+def test_plan_operations_requires_seed() -> None:
     with pytest.raises(ValueError, match="master seed"):
-        core_module.plan_glitchlings([], master_seed=None)
+        core_module.plan_operations([], master_seed=None)

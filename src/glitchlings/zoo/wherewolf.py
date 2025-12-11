@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Iterable, Mapping, Sequence
 
 from glitchlings.assets import load_homophone_groups
 from glitchlings.constants import DEFAULT_WHEREWOLF_RATE, DEFAULT_WHEREWOLF_WEIGHTING
-from glitchlings.internal.rust_ffi import resolve_seed, wherewolf_homophones_rust
+from glitchlings.internal.rust_ffi import resolve_seed, substitute_homophones_rust
 
 from .core import AttackOrder, AttackWave
 from .core import Glitchling as _GlitchlingRuntime
@@ -67,7 +67,7 @@ def substitute_homophones(
 
     clamped_rate = 0.0 if math.isnan(effective_rate) else max(0.0, min(1.0, effective_rate))
 
-    return wherewolf_homophones_rust(
+    return substitute_homophones_rust(
         text,
         clamped_rate,
         DEFAULT_WHEREWOLF_WEIGHTING,

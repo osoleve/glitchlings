@@ -17,7 +17,7 @@ uv.lock
 *.so
 *.dll
 *.dylib
-src/glitchlings/_zoo_rust*.pyd
+src/glitchlings/_corruption_engine*.pyd
 
 RELEASE.md
 .hypothesis/

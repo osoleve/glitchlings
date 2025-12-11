@@ -1,11 +1,11 @@
-/// Buffer round-trip tests for all GlitchOp implementations.
+/// Buffer round-trip tests for all TextOperation implementations.
 ///
 /// These tests verify that:
 /// 1. Each op can be applied to a TextBuffer without panicking
 /// 2. The resulting buffer is in a valid state (can be converted to string)
 /// 3. The buffer can be re-parsed from its string representation without loss
-use _zoo_rust::{
-    DeleteRandomWordsOp, DeterministicRng, GlitchOp, GlitchOperation, GlitchRng, OcrArtifactsOp,
+use _corruption_engine::{
+    DeleteRandomWordsOp, DeterministicRng, MotorWeighting, TextOperation, Operation, OcrArtifactsOp,
     QuotePairsOp, RedactWordsOp, ReduplicateWordsOp, SegmentKind, SwapAdjacentWordsOp, TextBuffer,
     TypoOp, ZeroWidthOp,
 };
@@ -56,9 +56,9 @@ const TEST_CORPUS: &[&str] = &[
 /// Helper to test a single operation without panicking
 fn test_op_roundtrip<O>(op: O, text: &str, seed: u64, op_name: &str)
 where
-    O: GlitchOp,
+    O: TextOperation,
 {
-    let mut buffer = TextBuffer::from_owned(text.to_string());
+    let mut buffer = TextBuffer::from_owned(text.to_string(), &[], &[]);
     let mut rng = DeterministicRng::new(seed);
 
     // Apply the operation - should not panic
@@ -71,7 +71,7 @@ where
             let output = buffer.to_string();
 
             // Re-parsing should work
-            let reparsed = TextBuffer::from_owned(output.clone());
+            let reparsed = TextBuffer::from_owned(output.clone(), &[], &[]);
             let reparsed_str = reparsed.to_string();
 
             // Round-trip should be lossless
@@ -88,7 +88,7 @@ where
             // Some errors are acceptable (e.g., NoRedactableWords)
             // Buffer should still be in valid state
             let output = buffer.to_string();
-            let _reparsed = TextBuffer::from_owned(output);
+            let _reparsed = TextBuffer::from_owned(output, &[], &[]);
             // If we get here without panic, the buffer state is valid
             eprintln!("Op {} returned error (acceptable): {:?}", op_name, e);
         }
@@ -213,6 +213,8 @@ fn test_typo_roundtrip() {
             let op = TypoOp {
                 rate,
                 layout: layout.clone(),
+                shift_slip: None,
+                motor_weighting: MotorWeighting::default(),
             };
             test_op_roundtrip(op, text, 202, "TypoOp");
         }
@@ -246,36 +248,36 @@ fn test_deterministic_operations() {
     let text = "The quick brown fox jumps over the lazy dog";
 
     // Run each op twice with same seed
-    let ops: Vec<(&str, GlitchOperation)> = vec![
+    let ops: Vec<(&str, Operation)> = vec![
         (
             "Reduplicate",
-            GlitchOperation::Reduplicate(ReduplicateWordsOp {
+            Operation::Reduplicate(ReduplicateWordsOp {
                 rate: 0.5,
                 unweighted: false,
             }),
         ),
         (
             "Delete",
-            GlitchOperation::Delete(DeleteRandomWordsOp {
+            Operation::Delete(DeleteRandomWordsOp {
                 rate: 0.3,
                 unweighted: false,
             }),
         ),
         (
             "SwapAdjacent",
-            GlitchOperation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 }),
+            Operation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 }),
         ),
-        ("Ocr", GlitchOperation::Ocr(OcrArtifactsOp { rate: 0.5 })),
-        ("QuotePairs", GlitchOperation::QuotePairs(QuotePairsOp)),
+        ("Ocr", Operation::Ocr(OcrArtifactsOp { rate: 0.5 })),
+        ("QuotePairs", Operation::QuotePairs(QuotePairsOp)),
     ];
 
     for (name, op) in ops {
-        let mut buffer1 = TextBuffer::from_owned(text.to_string());
+        let mut buffer1 = TextBuffer::from_owned(text.to_string(), &[], &[]);
         let mut rng1 = DeterministicRng::new(999);
         let _ = op.apply(&mut buffer1, &mut rng1);
         let result1 = buffer1.to_string();
 
-        let mut buffer2 = TextBuffer::from_owned(text.to_string());
+        let mut buffer2 = TextBuffer::from_owned(text.to_string(), &[], &[]);
         let mut rng2 = DeterministicRng::new(999);
         let _ = op.apply(&mut buffer2, &mut rng2);
         let result2 = buffer2.to_string();
@@ -293,7 +295,7 @@ fn test_deterministic_operations() {
 fn test_long_text_roundtrip() {
     let long_text = "word ".repeat(1000);
 
-    let ops: Vec<Box<dyn Fn() -> Box<dyn GlitchOp>>> = vec![
+    let ops: Vec<Box<dyn Fn() -> Box<dyn TextOperation>>> = vec![
         Box::new(|| {
             Box::new(ReduplicateWordsOp {
                 rate: 0.1,
@@ -311,7 +313,7 @@ fn test_long_text_roundtrip() {
 
     for (i, op_factory) in ops.iter().enumerate() {
         let op = op_factory();
-        let mut buffer = TextBuffer::from_owned(long_text.clone());
+        let mut buffer = TextBuffer::from_owned(long_text.clone(), &[], &[]);
         let mut rng = DeterministicRng::new(555);
 
         let result = op.apply(&mut buffer, &mut rng);
@@ -319,7 +321,7 @@ fn test_long_text_roundtrip() {
 
         // Verify round-trip
         let output = buffer.to_string();
-        let reparsed = TextBuffer::from_owned(output.clone());
+        let reparsed = TextBuffer::from_owned(output.clone(), &[], &[]);
         assert_eq!(
             output,
             reparsed.to_string(),

@@ -56,7 +56,7 @@ _ensure_datasets_stub()
 
 core_module = importlib.import_module("glitchlings.zoo.core")
 
-zoo_rust = importlib.import_module("glitchlings._zoo_rust")
+zoo_rust = importlib.import_module("glitchlings._corruption_engine")
 
 
 def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:
@@ -566,7 +566,7 @@ def collect_benchmark_results(
     for label, text in samples:
 
         def runtime_subject(text: str = text) -> str:
-            return zoo_rust.compose_glitchlings(
+            return zoo_rust.compose_operations(
                 text,
                 _seeded_descriptors(MASTER_SEED, descriptor_template),
                 MASTER_SEED,

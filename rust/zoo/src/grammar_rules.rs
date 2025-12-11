@@ -7,7 +7,7 @@ use pyo3::PyErr;
 use regex::{Captures, Regex};
 use sha2::{Digest, Sha256};
 
-use crate::glitch_ops::{GlitchOp, GlitchOpError, GlitchRng, QuotePairsOp};
+use crate::operations::{TextOperation, OperationError, OperationRng, QuotePairsOp};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 
@@ -66,12 +66,12 @@ impl PedantStone {
 }
 
 #[derive(Debug, Clone)]
-pub struct PedantOp {
+pub struct GrammarRuleOp {
     root_seed: i128,
     stone: PedantStone,
 }
 
-impl PedantOp {
+impl GrammarRuleOp {
     pub fn new(seed: i128, stone_name: &str) -> Result<Self, PyErr> {
         let stone = PedantStone::try_from_name(stone_name)
             .ok_or_else(|| PyValueError::new_err(format!("Unknown pedant stone: {stone_name}")))?;
@@ -86,12 +86,12 @@ impl PedantOp {
     }
 }
 
-impl GlitchOp for PedantOp {
+impl TextOperation for GrammarRuleOp {
     fn apply(
         &self,
         buffer: &mut TextBuffer,
-        _rng: &mut dyn GlitchRng,
-    ) -> Result<(), GlitchOpError> {
+        _rng: &mut dyn OperationRng,
+    ) -> Result<(), OperationError> {
         let original = buffer.to_string();
         let lineage = self.lineage();
         let transformed = match self.stone {
@@ -196,7 +196,7 @@ fn apply_kiloa(text: &str) -> String {
         .into_owned()
 }
 
-fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
+fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
     if text.is_empty() {
         return Ok(text.to_string());
     }
@@ -213,7 +213,7 @@ fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String
     Ok(buffer.to_string())
 }
 
-fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
+fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
     static COOPERATE_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r"(?i)cooperate").expect("valid regex"));
     static COORDINATE_REGEX: Lazy<Regex> =
@@ -258,7 +258,7 @@ fn coordinate_replacement(
     text: &str,
     root_seed: i128,
     lineage: &[&str],
-) -> Result<String, GlitchOpError> {
+) -> Result<String, OperationError> {
     if word_count <= 2 && matches!(detect_casing(word), Casing::Title) {
         return Ok(apply_diaeresis(word));
     }
@@ -280,7 +280,7 @@ fn coordinate_replacement(
     }
 }
 
-fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, GlitchOpError> {
+fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
     static AETHER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)ae").expect("valid regex"));
 
     let matches: Vec<usize> = AETHER_REGEX.find_iter(text).map(|m| m.start()).collect();

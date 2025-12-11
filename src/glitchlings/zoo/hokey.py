@@ -5,7 +5,7 @@ from __future__ import annotations
 import random
 from typing import Any, cast
 
-from glitchlings.internal.rust_ffi import hokey_rust, resolve_seed
+from glitchlings.internal.rust_ffi import resolve_seed, stretch_word_rust
 
 from .core import AttackOrder, AttackWave, Gaggle, PipelineOperationPayload
 from .core import Glitchling as GlitchlingBase
@@ -50,7 +50,7 @@ def extend_vowels(
     base_probability = base_p if base_p is not None else 0.45
 
     seed_value = resolve_seed(seed, rng)
-    return hokey_rust(
+    return stretch_word_rust(
         text,
         rate,
         extension_min,
