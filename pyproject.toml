@@ -117,7 +117,7 @@ include-package-data = true
 where = ["src"]
 
 [[tool.setuptools-rust.ext-modules]]
-target = "glitchlings._zoo_rust"
+target = "glitchlings._corruption_engine"
 path = "rust/zoo/Cargo.toml"
 binding = "PyO3"
 debug = false
