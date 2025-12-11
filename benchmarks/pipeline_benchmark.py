@@ -56,7 +56,7 @@ _ensure_datasets_stub()
 
 core_module = importlib.import_module("glitchlings.zoo.core")
 
-zoo_rust = importlib.import_module("glitchlings._zoo_rust")
+zoo_rust = importlib.import_module("glitchlings._corruption_engine")
 
 
 def _clone_descriptors(descriptors: Sequence[Descriptor]) -> list[Descriptor]:

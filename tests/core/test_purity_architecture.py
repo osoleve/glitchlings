@@ -193,7 +193,7 @@ IMPURE_MODULES = {
     "glitchlings.internal.rust",
     "glitchlings.internal.rust_ffi",
     "glitchlings.internal",
-    "glitchlings._zoo_rust",
+    "glitchlings._corruption_engine",
     "glitchlings.compat.loaders",
     "glitchlings.conf.loaders",
     # Attack impure modules
