@@ -314,3 +314,10 @@ Glitchlings incorporates research from the following sources:
   > The Unicode Consortium. (2024). Unicode Technical Standard #39: Unicode Security Mechanisms. https://www.unicode.org/reports/tr39/
 
   > The Unicode Consortium. (2024). Confusables Data File. https://www.unicode.org/Public/security/latest/confusables.txt
+
+- **Hypercorrection Research** — Sociolinguistic foundations for Pedant's coordinate-structure pronoun overcorrection and split infinitive patterns:
+  > Collins, P. (2022). Hypercorrection in English: an intervarietal corpus-based study. *English Language & Linguistics*, 26(2), 279–305. https://doi.org/10.1017/S1360674321000101
+
+  > Labov, W. (1966). Hypercorrection by the Lower Middle Class as a Factor in Linguistic Change. *Sociolinguistic Patterns*, 122–142. University of Pennsylvania Press.
+
+  > Angermeyer, P. S., & Singler, J. V. (2003). The case for politeness: Pronoun variation in co-ordinate NPs in object position in English. *Language Variation and Change*, 15(2), 171–209. https://doi.org/10.1017/S0954394503152027
