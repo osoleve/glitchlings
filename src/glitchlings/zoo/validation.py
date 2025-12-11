@@ -134,6 +134,77 @@ def normalise_mim1c_banned(value: object) -> tuple[str, ...] | None:
     raise TypeError("banned_characters must be an iterable of strings")
 
 
+# Valid Mim1c homoglyph mode values
+_MIM1C_MODE_VALUES: frozenset[str] = frozenset(
+    {
+        "single_script",
+        "mixed_script",
+        "compatibility",
+        "aggressive",
+    }
+)
+
+# Mode aliases for user convenience
+_MIM1C_MODE_ALIASES: dict[str, str] = {
+    "single": "single_script",
+    "singlescript": "single_script",
+    "single_script": "single_script",
+    "mixed": "mixed_script",
+    "mixedscript": "mixed_script",
+    "mixed_script": "mixed_script",
+    "compat": "compatibility",
+    "compatibility": "compatibility",
+    "all": "aggressive",
+    "aggressive": "aggressive",
+}
+
+
+def normalize_mim1c_mode(
+    mode: str | None,
+    default: str = "mixed_script",
+) -> str:
+    """Normalize Mim1c homoglyph mode.
+
+    Args:
+        mode: User-provided mode string, or None for default.
+        default: Default mode when input is None.
+
+    Returns:
+        Normalized mode string.
+
+    Raises:
+        ValueError: If mode is not recognized.
+    """
+    if mode is None:
+        return default
+    normalized = mode.lower().replace("-", "_").replace(" ", "_")
+    canonical = _MIM1C_MODE_ALIASES.get(normalized)
+    if canonical is None:
+        raise ValueError(
+            f"Invalid homoglyph mode '{mode}'. "
+            f"Expected one of: {', '.join(sorted(_MIM1C_MODE_VALUES))}"
+        )
+    return canonical
+
+
+def normalize_mim1c_max_consecutive(
+    max_consecutive: int | None,
+    default: int = 3,
+) -> int:
+    """Normalize Mim1c max_consecutive constraint.
+
+    Args:
+        max_consecutive: User-provided limit, or None for default.
+        default: Default max_consecutive value.
+
+    Returns:
+        Normalized max_consecutive value (non-negative).
+    """
+    if max_consecutive is None:
+        return default
+    return max(0, int(max_consecutive))
+
+
 # ---------------------------------------------------------------------------
 # Wherewolf Validation
 # ---------------------------------------------------------------------------
@@ -546,6 +617,8 @@ __all__ = [
     # Mim1c
     "normalise_mim1c_classes",
     "normalise_mim1c_banned",
+    "normalize_mim1c_mode",
+    "normalize_mim1c_max_consecutive",
     # Wherewolf
     "normalise_homophone_group",
     "build_homophone_lookup",

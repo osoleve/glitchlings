@@ -244,6 +244,8 @@ def swap_homoglyphs_rust(
     classes: list[str] | Literal["all"] | None,
     banned: list[str] | None,
     seed: int,
+    mode: str | None = None,
+    max_consecutive: int | None = None,
 ) -> str:
     """Replace characters with homoglyphs via Rust.
 
@@ -253,12 +255,14 @@ def swap_homoglyphs_rust(
         classes: Homoglyph classes to use, or "all".
         banned: Characters to never replace with.
         seed: Deterministic seed.
+        mode: Substitution mode - "single_script", "mixed_script", "compatibility", or "aggressive".
+        max_consecutive: Maximum consecutive substitutions (locality control).
 
     Returns:
         Text with homoglyph substitutions.
     """
     fn = get_rust_operation("swap_homoglyphs")
-    return cast(str, fn(text, rate, classes, banned, seed))
+    return cast(str, fn(text, rate, classes, banned, seed, mode, max_consecutive))
 
 
 def ocr_artifacts_rust(

@@ -28,7 +28,7 @@ pub use operations::{
 };
 pub use word_stretching::WordStretchOp;
 use lexeme_substitution::{JargoyleMode, LexemeSubstitutionOp};
-use homoglyphs::{ClassSelection as MimicClassSelection, HomoglyphOp};
+use homoglyphs::{ClassSelection as MimicClassSelection, HomoglyphMode, HomoglyphOp};
 use grammar_rules::GrammarRuleOp;
 pub use pipeline::{derive_seed, OperationDescriptor, Pipeline, PipelineError};
 pub use rng::{DeterministicRng, RngError};
@@ -280,6 +280,8 @@ enum PyOperationConfig {
         rate: f64,
         classes: MimicClassSelection,
         banned: Vec<String>,
+        mode: HomoglyphMode,
+        max_consecutive: usize,
     },
     ZeroWidth {
         rate: f64,
@@ -451,10 +453,15 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     extract_required_field_with_field_suffix(dict, "mimic operation", "rate")?;
                 let classes = homoglyphs::parse_class_selection(dict.get_item("classes")?)?;
                 let banned = homoglyphs::parse_banned_characters(dict.get_item("banned_characters")?)?;
+                let mode_str: Option<String> = extract_optional_field(dict, "mode")?;
+                let mode = homoglyphs::parse_homoglyph_mode(mode_str.as_deref());
+                let max_consecutive: usize = extract_optional_field(dict, "max_consecutive")?.unwrap_or(3);
                 Ok(PyOperationConfig::Mimic {
                     rate,
                     classes,
                     banned,
+                    mode,
+                    max_consecutive,
                 })
             }
             "zwj" => {
@@ -609,7 +616,9 @@ impl PyOperationConfig {
                 rate,
                 classes,
                 banned,
-            } => Operation::Mimic(HomoglyphOp::new(rate, classes, banned)),
+                mode,
+                max_consecutive,
+            } => Operation::Mimic(HomoglyphOp::with_mode(rate, classes, banned, mode, max_consecutive)),
             PyOperationConfig::ZeroWidth {
                 rate,
                 characters,

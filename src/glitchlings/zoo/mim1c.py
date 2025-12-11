@@ -1,4 +1,35 @@
-"""Rust-backed Mim1c glitchling that swaps characters for homoglyphs."""
+"""Rust-backed Mim1c glitchling that swaps characters for homoglyphs.
+
+The Mim1c glitchling replaces characters with visually similar confusable
+characters (homoglyphs) based on Unicode Technical Standard #39.
+
+## Modes
+
+- **single_script** (safest): Only substitute within the same script
+  (Latin→Latin variants). Minimal visual disruption.
+- **mixed_script** (default): Allow visually similar cross-script substitutions
+  (Latin↔Cyrillic↔Greek). Maximum visual similarity with some mixed scripts.
+- **compatibility**: Include Unicode compatibility variants
+  (fullwidth, math alphanumerics). Wider range of substitutions.
+- **aggressive**: All of the above combined. Most aggressive substitution.
+
+## Locality Control
+
+`max_consecutive` limits how many adjacent characters can be substituted,
+preventing the "ransom note" effect where every character is from a different
+script. Default is 3.
+
+## Data Source
+
+Confusable mappings derived from Unicode Technical Standard #39 (confusables.txt).
+
+## References
+
+- **Unicode Technical Standard #39**: Unicode Security Mechanisms
+  - https://www.unicode.org/reports/tr39/
+- **confusables.txt**: Official confusable character mappings
+  - https://www.unicode.org/Public/security/latest/confusables.txt
+"""
 
 from __future__ import annotations
 
@@ -6,10 +37,16 @@ import random
 from collections.abc import Collection, Iterable
 from typing import Any, Literal, cast
 
-from glitchlings.constants import DEFAULT_MIM1C_RATE, MIM1C_DEFAULT_CLASSES
+from glitchlings.constants import (
+    DEFAULT_MIM1C_MAX_CONSECUTIVE,
+    DEFAULT_MIM1C_MODE,
+    DEFAULT_MIM1C_RATE,
+    MIM1C_DEFAULT_CLASSES,
+)
 from glitchlings.internal.rust_ffi import resolve_seed, swap_homoglyphs_rust
 
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
+from .validation import normalize_mim1c_max_consecutive, normalize_mim1c_mode
 
 
 def _normalise_classes(
@@ -52,6 +89,9 @@ def _serialise_banned(value: tuple[str, ...] | None) -> list[str] | None:
     return list(value)
 
 
+HomoglyphMode = Literal["single_script", "mixed_script", "compatibility", "aggressive"]
+
+
 def swap_homoglyphs(
     text: str,
     rate: float | None = None,
@@ -59,10 +99,35 @@ def swap_homoglyphs(
     banned_characters: Collection[str] | None = None,
     seed: int | None = None,
     rng: random.Random | None = None,
+    mode: HomoglyphMode | None = None,
+    max_consecutive: int | None = None,
 ) -> str:
-    """Replace characters with visually confusable homoglyphs via the Rust engine."""
+    """Replace characters with visually confusable homoglyphs via the Rust engine.
 
+    Args:
+        text: The input text to transform.
+        rate: Probability of substituting each eligible character. Default 0.02.
+        classes: Unicode script classes to include.
+            Default ["LATIN", "GREEK", "CYRILLIC", "COMMON"].
+        banned_characters: Characters to never use as substitutes.
+        seed: Random seed for deterministic behavior.
+        rng: Optional random.Random instance (alternative to seed).
+        mode: Substitution mode controlling confusable types:
+            - "single_script": Only same-script substitutions (safest).
+            - "mixed_script": Allow cross-script like Latin↔Cyrillic↔Greek (default).
+            - "compatibility": Include fullwidth, math alphanumerics.
+            - "aggressive": All confusable types.
+        max_consecutive: Maximum consecutive characters to substitute. Default 3.
+            Set to 0 for unlimited.
+
+    Returns:
+        Text with some characters replaced by visually similar confusables.
+    """
     effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
+    effective_mode = normalize_mim1c_mode(mode, DEFAULT_MIM1C_MODE)
+    effective_max_consecutive = normalize_mim1c_max_consecutive(
+        max_consecutive, DEFAULT_MIM1C_MAX_CONSECUTIVE
+    )
 
     normalised_classes = _normalise_classes(classes)
     normalised_banned = _normalise_banned(banned_characters)
@@ -79,11 +144,43 @@ def swap_homoglyphs(
         payload_classes,
         payload_banned,
         resolve_seed(seed, rng),
+        effective_mode,
+        effective_max_consecutive,
     )
 
 
 class Mim1c(Glitchling):
-    """Glitchling that swaps characters for visually similar homoglyphs."""
+    """Glitchling that swaps characters for visually similar homoglyphs.
+
+    Mim1c replaces characters with visually similar confusable characters
+    (homoglyphs) based on Unicode Technical Standard #39.
+
+    ## Modes
+
+    - **single_script** (safest): Only substitute within the same script
+      (Latin→Latin variants). Minimal visual disruption.
+    - **mixed_script** (default): Allow visually similar cross-script substitutions
+      (Latin↔Cyrillic↔Greek). Maximum visual similarity with some mixed scripts.
+    - **compatibility**: Include Unicode compatibility variants
+      (fullwidth, math alphanumerics). Wider range of substitutions.
+    - **aggressive**: All of the above combined. Most aggressive substitution.
+
+    ## Locality Control
+
+    `max_consecutive` limits how many adjacent characters can be substituted,
+    preventing the "ransom note" effect where every character is from a different
+    script. Default is 3. Set to 0 for unlimited.
+
+    Args:
+        rate: Probability of substituting each eligible character. Default 0.02.
+        classes: Unicode script classes to include.
+            Default ["LATIN", "GREEK", "CYRILLIC", "COMMON"].
+        banned_characters: Characters to never use as substitutes.
+        mode: Substitution mode. One of "single_script", "mixed_script",
+            "compatibility", "aggressive".
+        max_consecutive: Maximum consecutive characters to substitute. Default 3.
+        seed: Random seed for deterministic behavior.
+    """
 
     flavor = (
         "Breaks your parser by replacing some characters in strings with "
@@ -96,10 +193,16 @@ class Mim1c(Glitchling):
         rate: float | None = None,
         classes: list[str] | Literal["all"] | None = None,
         banned_characters: Collection[str] | None = None,
+        mode: HomoglyphMode | None = None,
+        max_consecutive: int | None = None,
         seed: int | None = None,
         **kwargs: Any,
     ) -> None:
         effective_rate = DEFAULT_MIM1C_RATE if rate is None else rate
+        effective_mode = normalize_mim1c_mode(mode, DEFAULT_MIM1C_MODE)
+        effective_max_consecutive = normalize_mim1c_max_consecutive(
+            max_consecutive, DEFAULT_MIM1C_MAX_CONSECUTIVE
+        )
         normalised_classes = _normalise_classes(classes)
         normalised_banned = _normalise_banned(banned_characters)
         super().__init__(
@@ -111,6 +214,8 @@ class Mim1c(Glitchling):
             rate=effective_rate,
             classes=normalised_classes,
             banned_characters=normalised_banned,
+            mode=effective_mode,
+            max_consecutive=effective_max_consecutive,
             **kwargs,
         )
 
@@ -130,6 +235,15 @@ class Mim1c(Glitchling):
         if serialised_banned:
             descriptor["banned_characters"] = serialised_banned
 
+        # Add mode and max_consecutive parameters
+        mode = self.kwargs.get("mode")
+        if mode is not None:
+            descriptor["mode"] = str(mode)
+
+        max_consecutive = self.kwargs.get("max_consecutive")
+        if max_consecutive is not None:
+            descriptor["max_consecutive"] = int(max_consecutive)
+
         return cast(PipelineOperationPayload, descriptor)
 
     def set_param(self, key: str, value: object) -> None:
@@ -139,10 +253,17 @@ class Mim1c(Glitchling):
         if key == "banned_characters":
             super().set_param(key, _normalise_banned(value))
             return
+        if key == "mode":
+            super().set_param(key, normalize_mim1c_mode(str(value) if value else None))
+            return
+        if key == "max_consecutive":
+            int_value: int | None = int(cast(Any, value)) if value is not None else None
+            super().set_param(key, normalize_mim1c_max_consecutive(int_value))
+            return
         super().set_param(key, value)
 
 
 mim1c = Mim1c()
 
 
-__all__ = ["Mim1c", "mim1c", "swap_homoglyphs"]
+__all__ = ["Mim1c", "mim1c", "swap_homoglyphs", "HomoglyphMode"]
