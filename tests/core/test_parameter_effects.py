@@ -146,6 +146,9 @@ def test_zeedub_pipeline_descriptor_defaults():
         "type": "zwj",
         "rate": 0.05,
         "characters": list(_DEFAULT_ZERO_WIDTH_CHARACTERS),
+        "visibility": "glyphless",
+        "placement": "random",
+        "max_consecutive": 4,
     }
 
 

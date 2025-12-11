@@ -333,6 +333,10 @@ def inject_zero_widths_rust(
     rate: float,
     characters: list[str],
     seed: int | None,
+    *,
+    visibility: str | None = None,
+    placement: str | None = None,
+    max_consecutive: int | None = None,
 ) -> str:
     """Inject zero-width characters via Rust.
 
@@ -341,12 +345,15 @@ def inject_zero_widths_rust(
         rate: Probability of injection between characters.
         characters: Palette of zero-width characters to use.
         seed: Deterministic seed.
+        visibility: Visibility mode ('glyphless', 'with_joiners', 'semi_visible').
+        placement: Placement mode ('random', 'grapheme_boundary', 'script_aware').
+        max_consecutive: Maximum consecutive insertions (0 for unlimited).
 
     Returns:
         Text with injected zero-width characters.
     """
     fn = get_rust_operation("inject_zero_widths")
-    return cast(str, fn(text, rate, characters, seed))
+    return cast(str, fn(text, rate, characters, seed, visibility, placement, max_consecutive))
 
 
 def stretch_word_rust(

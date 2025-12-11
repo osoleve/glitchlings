@@ -216,6 +216,56 @@ class TestZeedubValidation:
         assert result == ("\u200b", "\u200c")
 
 
+class TestZeedubModeValidation:
+    """Tests for Zeedub visibility and placement mode validation."""
+
+    def test_visibility_mode_defaults(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_visibility
+
+        assert normalize_zeedub_visibility(None) == "glyphless"
+
+    def test_visibility_mode_valid(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_visibility
+
+        assert normalize_zeedub_visibility("glyphless") == "glyphless"
+        assert normalize_zeedub_visibility("with_joiners") == "with_joiners"
+        assert normalize_zeedub_visibility("semi_visible") == "semi_visible"
+
+    def test_visibility_mode_invalid(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_visibility
+
+        with pytest.raises(ValueError):
+            normalize_zeedub_visibility("invalid_mode")
+
+    def test_placement_mode_defaults(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_placement
+
+        assert normalize_zeedub_placement(None) == "random"
+
+    def test_placement_mode_valid(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_placement
+
+        assert normalize_zeedub_placement("random") == "random"
+        assert normalize_zeedub_placement("grapheme_boundary") == "grapheme_boundary"
+        assert normalize_zeedub_placement("script_aware") == "script_aware"
+
+    def test_placement_mode_invalid(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_placement
+
+        with pytest.raises(ValueError):
+            normalize_zeedub_placement("invalid_mode")
+
+    def test_max_consecutive_defaults(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_max_consecutive
+
+        assert normalize_zeedub_max_consecutive(None) == 4
+
+    def test_max_consecutive_clamps_negative(self) -> None:
+        from glitchlings.zoo.validation import normalize_zeedub_max_consecutive
+
+        assert normalize_zeedub_max_consecutive(-10) == 0
+
+
 class TestBooleanFlags:
     """Tests for boolean flag resolution."""
 
