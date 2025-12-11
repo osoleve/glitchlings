@@ -15,7 +15,7 @@ def test_run_cli_propagates_missing_command(monkeypatch):
     module = load_module()
     run_cli = module["run_cli"]
 
-    def fake_run(argv, *, stdout, stderr, text, check, env=None):  # type: ignore[no-untyped-def]
+    def fake_run(argv, *, stdout, stderr, text, env=None):  # type: ignore[no-untyped-def]
         raise FileNotFoundError
 
     monkeypatch.setattr(subprocess, "run", fake_run)
@@ -30,9 +30,9 @@ def test_run_cli_sets_columns_when_command_available(monkeypatch):
 
     recorded_envs: list[dict[str, str] | None] = []
 
-    def fake_run(argv, *, stdout, stderr, text, check, env=None):  # type: ignore[no-untyped-def]
+    def fake_run(argv, *, stdout, stderr, text, env=None):  # type: ignore[no-untyped-def]
         recorded_envs.append(env)
-        return SimpleNamespace(stdout="ready\n")
+        return SimpleNamespace(stdout="ready\n", returncode=0)
 
     monkeypatch.setattr(subprocess, "run", fake_run)
 
