@@ -14,6 +14,7 @@ HELP_PREVIEW_LINES = 40
 
 def run_cli(command: list[str]) -> str:
     """Execute a CLI command and return its stdout, stripped of trailing space."""
+    import sys
 
     env = os.environ.copy()
     env["COLUMNS"] = "80"
@@ -23,9 +24,12 @@ def run_cli(command: list[str]) -> str:
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
-        check=True,
         env=env,
     )
+    if result.returncode != 0:
+        print(f"Command {command} failed with exit code {result.returncode}:", file=sys.stderr)
+        print(result.stdout, file=sys.stderr)
+        result.check_returncode()
     return result.stdout.rstrip()
 
 

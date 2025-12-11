@@ -1,8 +1,8 @@
 # Command Line Interface
 
 The `glitchlings` CLI mirrors the Python API for corruption, configuration files, and dataset
-helpers.   
-_(page built with `python -m glitchlings.dev.docs`)_
+helpers. Regenerate this page with `python -m glitchlings.dev.docs` whenever the CLI contract
+changes.
 
 ## Quick commands
 
@@ -11,34 +11,20 @@ _(page built with `python -m glitchlings.dev.docs`)_
 glitchlings --list
 
 # Glitch an entire file with Typogre and inspect the unified diff.
-glitchlings -g typogre --input-file documents/report.txt --diff
+glitchlings -g typogre --file documents/report.txt --diff
 
 # Configure glitchlings inline with keyword arguments.
 glitchlings -g "Typogre(rate=0.05)" "Ghouls just wanna have fun"
 
 # Pipe text through Mim1c for on-the-fly homoglyph swaps.
 echo "Beware LLM-written flavor-text" | glitchlings -g mim1c
-
-# Run an attack analysis with a specific tokenizer and output format.
-glitchlings --attack --tokenizer cl100k_base --format yaml --sample
-
-# Generate a full report and save to a file.
-glitchlings --report -t gpt-4 -o report.json "Test input text"
 ```
 
 ## Built-in glitchlings
 
 ```text
    Typogre — scope: Character, order: early
-     Hokey — scope: Character, order: first
-     Mim1c — scope: Character, order: last
- Wherewolf — scope: Word, order: early
-    Pedant — scope: Word, order: late
-  Jargoyle — scope: Word, order: normal
-  Rushmore — scope: Word, order: normal
-  Redactyl — scope: Word, order: normal
 Scannequin — scope: Character, order: late
-    Zeedub — scope: Character, order: last
 ```
 
 ## Help overview
@@ -46,7 +32,8 @@ Scannequin — scope: Character, order: late
 ```text
 usage: glitchlings [-h] [-g SPEC] [-s SEED] [-i INPUT_FILE] [-o OUTPUT_FILE]
                    [--sample] [--diff] [--list] [-c CONFIG] [--attack]
-                   [--report] [-f {json,yaml,yml}] [-t TOKENIZER] [text ...]
+                   [--report] [-f {json,yaml,yml}] [-t TOKENIZER]
+                   [text ...]
 
 Summon glitchlings to corrupt text. Provide input text as an argument, via
 --input-file, or pipe it on stdin.
@@ -80,9 +67,8 @@ options:
   --report              Output a full Attack report. Includes tokens, token
                         IDs, metrics, and counts.
   -f {json,yaml,yml}, --format {json,yaml,yml}
-                        Output format for --attack or --report (default: json).
+                        Output format for --attack or --report (default:
+                        json).
   -t TOKENIZER, --tokenizer TOKENIZER
-                        Tokenizer to use for --attack or --report. Checks
-                        tiktoken first, then HuggingFace tokenizers library.
-                        Examples: cl100k_base, gpt-4, bert-base-uncased.
+...
 ```
