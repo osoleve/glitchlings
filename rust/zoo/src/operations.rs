@@ -688,14 +688,210 @@ impl TextOperation for RedactWordsOp {
     }
 }
 
-/// Introduces OCR-style character confusions.
-#[derive(Debug, Clone, Copy)]
+/// Introduces OCR-style character confusions with research-backed enhancements.
+///
+/// # Burst Model (Kanungo et al., 1994)
+///
+/// Real document defects are spatially correlated - a coffee stain or fold affects
+/// a region, not individual characters. The burst model uses an HMM with two states:
+/// - **Clean state**: Base error rate applies
+/// - **Harsh state**: Error rate multiplied by `burst_multiplier`
+///
+/// Transition probabilities: `P(clean→harsh) = burst_enter`, `P(harsh→clean) = burst_exit`
+///
+/// # Document-Level Bias (UNLV-ISRI, 1995)
+///
+/// Documents scanned under the same conditions exhibit consistent error profiles.
+/// At document start, K confusion patterns are selected and amplified by `bias_beta`.
+/// This creates "why does it always turn 'l' into '1'" consistency.
+///
+/// # Whitespace Errors (ICDAR, Smith 2007)
+///
+/// Segmentation failures cause word merges/splits before character recognition.
+/// Modeled as separate pre-pass operations:
+/// - `space_drop_rate`: P(delete space, merging words)
+/// - `space_insert_rate`: P(insert spurious space)
+///
+/// # References
+///
+/// - Kanungo et al. (1994) - "Nonlinear Global and Local Document Degradation Models"
+/// - Rice et al. / UNLV-ISRI Annual Tests (1995) - Quality preset empirical basis
+/// - Smith (2007) - Tesseract architecture, segmentation as distinct failure mode
+/// - ICDAR Robust Reading Competitions - Segmentation/localization failure modes
+#[derive(Debug, Clone)]
 pub struct OcrArtifactsOp {
+    /// Base probability of applying a confusion to any given candidate
     pub rate: f64,
+
+    // === Burst Model Parameters ===
+    /// Probability of transitioning from clean to harsh state (default ~0.05)
+    pub burst_enter: f64,
+    /// Probability of transitioning from harsh to clean state (default ~0.3)
+    pub burst_exit: f64,
+    /// Rate multiplier when in harsh state (default ~3.0)
+    pub burst_multiplier: f64,
+
+    // === Document-Level Bias Parameters ===
+    /// Number of confusion patterns to amplify per document (default ~3-5)
+    pub bias_k: usize,
+    /// Amplification factor for selected patterns (default ~2.0)
+    pub bias_beta: f64,
+
+    // === Whitespace Error Parameters ===
+    /// Probability of deleting a space (merging words): "the cat" → "thecat"
+    pub space_drop_rate: f64,
+    /// Probability of inserting a spurious space: "together" → "to gether"
+    pub space_insert_rate: f64,
+
+    // === Precomputed Bias Selection ===
+    /// Pre-selected pattern indices for document bias (populated at apply time)
+    bias_patterns: Vec<usize>,
+}
+
+impl OcrArtifactsOp {
+    /// Creates a new OCR artifacts operation with default parameters.
+    pub fn new(rate: f64) -> Self {
+        Self {
+            rate,
+            burst_enter: 0.0,
+            burst_exit: 0.3,
+            burst_multiplier: 3.0,
+            bias_k: 0,
+            bias_beta: 2.0,
+            space_drop_rate: 0.0,
+            space_insert_rate: 0.0,
+            bias_patterns: Vec::new(),
+        }
+    }
+
+    /// Creates an OCR operation with all parameters specified.
+    #[allow(clippy::too_many_arguments)]
+    pub fn with_params(
+        rate: f64,
+        burst_enter: f64,
+        burst_exit: f64,
+        burst_multiplier: f64,
+        bias_k: usize,
+        bias_beta: f64,
+        space_drop_rate: f64,
+        space_insert_rate: f64,
+    ) -> Self {
+        Self {
+            rate,
+            burst_enter,
+            burst_exit,
+            burst_multiplier,
+            bias_k,
+            bias_beta,
+            space_drop_rate,
+            space_insert_rate,
+            bias_patterns: Vec::new(),
+        }
+    }
+
+    /// Selects K random patterns for document-level bias.
+    fn select_bias_patterns(&mut self, rng: &mut dyn OperationRng, table_size: usize) -> Result<(), OperationError> {
+        self.bias_patterns.clear();
+        if self.bias_k == 0 || table_size == 0 {
+            return Ok(());
+        }
+        let k = self.bias_k.min(table_size);
+        let mut indices: Vec<usize> = (0..table_size).collect();
+        // Fisher-Yates partial shuffle to select k elements
+        for i in 0..k {
+            let j = i + rng.rand_index(table_size - i)?;
+            indices.swap(i, j);
+        }
+        self.bias_patterns = indices[..k].to_vec();
+        self.bias_patterns.sort_unstable();
+        Ok(())
+    }
+
+    /// Returns true if the given pattern index is in the bias set.
+    #[inline]
+    fn is_biased_pattern(&self, pattern_idx: usize) -> bool {
+        self.bias_patterns.binary_search(&pattern_idx).is_ok()
+    }
+
+    /// Applies whitespace errors (segmentation failures) as a pre-pass.
+    /// This models the OCR pipeline where segmentation happens before character recognition.
+    fn apply_whitespace_errors(
+        &self,
+        buffer: &mut TextBuffer,
+        rng: &mut dyn OperationRng,
+    ) -> Result<(), OperationError> {
+        if self.space_drop_rate <= 0.0 && self.space_insert_rate <= 0.0 {
+            return Ok(());
+        }
+
+        let segments = buffer.segments();
+        if segments.is_empty() {
+            return Ok(());
+        }
+
+        let mut segment_replacements: Vec<(usize, String)> = Vec::new();
+
+        for (seg_idx, segment) in segments.iter().enumerate() {
+            if !segment.is_mutable() {
+                continue;
+            }
+
+            let text = segment.text();
+            if text.is_empty() {
+                continue;
+            }
+
+            let chars: Vec<char> = text.chars().collect();
+            let mut modified = String::with_capacity(text.len());
+            let mut changed = false;
+
+            for (char_idx, &ch) in chars.iter().enumerate() {
+                if ch == ' ' && self.space_drop_rate > 0.0 {
+                    // Potential space drop
+                    if rng.random()? < self.space_drop_rate {
+                        // Drop this space (don't add to modified)
+                        changed = true;
+                        continue;
+                    }
+                }
+
+                modified.push(ch);
+
+                // Potential space insert (not after last char, not after/before existing space)
+                if self.space_insert_rate > 0.0
+                    && char_idx + 1 < chars.len()
+                    && !ch.is_whitespace()
+                    && !chars[char_idx + 1].is_whitespace()
+                {
+                    if rng.random()? < self.space_insert_rate {
+                        modified.push(' ');
+                        changed = true;
+                    }
+                }
+            }
+
+            if changed {
+                segment_replacements.push((seg_idx, modified));
+            }
+        }
+
+        if !segment_replacements.is_empty() {
+            buffer.replace_segments_bulk(segment_replacements);
+            buffer.reindex_if_needed();
+        }
+
+        Ok(())
+    }
 }
 
 impl TextOperation for OcrArtifactsOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
+        // Phase 1: Apply whitespace errors (segmentation failures) as pre-pass
+        // This models the OCR pipeline where segmentation happens before character recognition.
+        // Reference: Smith (2007) - Tesseract architecture
+        let mut op = self.clone();
+        op.apply_whitespace_errors(buffer, rng)?;
+
         let segments = buffer.segments();
         if segments.is_empty() {
             return Ok(());
@@ -705,32 +901,74 @@ impl TextOperation for OcrArtifactsOp {
         let table = confusion_table();
         let automaton = ocr_automaton();
 
+        // Phase 2: Select document-level bias patterns
+        // Reference: UNLV-ISRI Annual Tests (1995) - consistent error profiles
+        op.select_bias_patterns(rng, table.len())?;
+
         // Estimate candidate capacity based on text length
         let total_chars: usize = segments.iter().map(|s| s.text().len()).sum();
         let estimated_candidates = total_chars / 3;
 
         // Find candidates across all segments using Aho-Corasick
-        let mut candidates: Vec<(usize, usize, usize, usize)> =
+        // Track (seg_idx, start, end, pattern_idx, char_position) for burst model
+        let mut candidates: Vec<(usize, usize, usize, usize, usize)> =
             Vec::with_capacity(estimated_candidates);
 
+        let mut global_char_pos = 0usize;
         for (seg_idx, segment) in segments.iter().enumerate() {
             if !segment.is_mutable() {
+                global_char_pos += segment.text().chars().count();
                 continue;
             }
             let seg_text = segment.text();
             for mat in automaton.find_iter(seg_text) {
-                candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize()));
+                // Calculate approximate character position for this match
+                let char_pos = global_char_pos + seg_text[..mat.start()].chars().count();
+                candidates.push((seg_idx, mat.start(), mat.end(), mat.pattern().as_usize(), char_pos));
             }
+            global_char_pos += seg_text.chars().count();
         }
 
         if candidates.is_empty() {
             return Ok(());
         }
 
+        // Phase 3: Generate burst state sequence using HMM
+        // Reference: Kanungo et al. (1994) - spatial correlation of defects
         let total_candidates = candidates.len();
-        let to_select = ((total_candidates as f64) * self.rate).floor() as usize;
-        if to_select == 0 {
-            return Ok(());
+        let burst_enabled = op.burst_enter > 0.0;
+        let mut in_harsh_state = false;
+        let mut harsh_positions: std::collections::HashSet<usize> = std::collections::HashSet::new();
+
+        if burst_enabled {
+            // Walk through candidates in position order and simulate HMM
+            let mut sorted_by_pos: Vec<(usize, usize)> = candidates
+                .iter()
+                .enumerate()
+                .map(|(idx, (_, _, _, _, char_pos))| (idx, *char_pos))
+                .collect();
+            sorted_by_pos.sort_by_key(|(_, pos)| *pos);
+
+            for (candidate_idx, _char_pos) in sorted_by_pos {
+                // State transitions
+                if in_harsh_state {
+                    if rng.random()? < op.burst_exit {
+                        in_harsh_state = false;
+                    }
+                } else if rng.random()? < op.burst_enter {
+                    in_harsh_state = true;
+                }
+
+                if in_harsh_state {
+                    harsh_positions.insert(candidate_idx);
+                }
+            }
+        }
+
+        // Calculate effective selection count
+        let base_to_select = ((total_candidates as f64) * op.rate).floor() as usize;
+        if base_to_select == 0 && total_candidates > 0 && op.rate > 0.0 {
+            // At least try to select one if rate > 0
         }
 
         // Fisher-Yates shuffle - must complete for RNG determinism
@@ -740,18 +978,37 @@ impl TextOperation for OcrArtifactsOp {
             order.swap(idx, swap_with);
         }
 
-        // Now select candidates in shuffled order
+        // Now select candidates in shuffled order with burst and bias modifiers
         let num_segments = segments.len();
         let mut occupied: Vec<Vec<(usize, usize)>> = vec![Vec::new(); num_segments];
         let mut chosen: Vec<(usize, usize, usize, &'static str)> =
-            Vec::with_capacity(to_select.min(1024));
+            Vec::with_capacity(base_to_select.min(1024));
+
+        // Track effective selections (burst increases the count we can select)
+        let mut effective_selections = 0usize;
 
         for &candidate_idx in &order {
-            if chosen.len() >= to_select {
+            // Dynamic target based on burst state
+            let is_harsh = harsh_positions.contains(&candidate_idx);
+            let effective_rate = if is_harsh {
+                (op.rate * op.burst_multiplier).min(1.0)
+            } else {
+                op.rate
+            };
+
+            // Check if we've selected enough
+            // Use rate-weighted target: base_to_select for clean, more for harsh
+            let target = if is_harsh {
+                ((total_candidates as f64) * effective_rate).floor() as usize
+            } else {
+                base_to_select
+            };
+
+            if effective_selections >= target.max(base_to_select) {
                 break;
             }
 
-            let (seg_idx, start, end, pattern_idx) = candidates[candidate_idx];
+            let (seg_idx, start, end, pattern_idx, _char_pos) = candidates[candidate_idx];
             let (_, choices) = table[pattern_idx];
             if choices.is_empty() {
                 continue;
@@ -765,9 +1022,22 @@ impl TextOperation for OcrArtifactsOp {
                 continue;
             }
 
+            // Apply selection probability with bias amplification
+            // Reference: UNLV-ISRI - document-specific error profiles
+            let mut selection_weight = effective_rate;
+            if op.is_biased_pattern(pattern_idx) {
+                selection_weight *= op.bias_beta;
+            }
+
+            // Probabilistic selection
+            if selection_weight < 1.0 && rng.random()? >= selection_weight {
+                continue;
+            }
+
             let choice_idx = rng.rand_index(choices.len())?;
             chosen.push((seg_idx, start, end, choices[choice_idx]));
             occupied[seg_idx].push((start, end));
+            effective_selections += 1;
         }
 
         if chosen.is_empty() {

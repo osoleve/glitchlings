@@ -269,3 +269,15 @@ Glitchlings incorporates research from the following sources:
   > Brody, S., & Diakopoulos, N. (2011). Cooooooooooooooollllllllllllll!!!!!!!!!!!!!!: Using Word Lengthening to Detect Sentiment in Microtext. *Proceedings of the 2011 Conference on Empirical Methods in Natural Language Processing (EMNLP '11)*, 562–570. https://aclanthology.org/D11-1052
 
   > Gray, B., Bruxvoort, C., Beigman Klebanov, B., & Leong, B. (2020). Expressive Lengthening in Social Media. *Proceedings of the 12th Language Resources and Evaluation Conference (LREC 2020)*, 4517–4523. https://aclanthology.org/2020.lrec-1.556
+
+- **OCR Degradation Modeling** — Theoretical foundations for Scannequin's document-level corruption, burst error clustering, and segmentation failures:
+  > Kanungo, T., Haralick, R. M., & Phillips, I. (1994). Nonlinear Local and Global Document Degradation Models. *International Journal of Imaging Systems and Technology*, 5(3), 220–230. https://doi.org/10.1002/ima.1850050305
+
+  > Li, Y., Lopresti, D., Nagy, G., & Tompkins, A. (1996). Validation of Image Defect Models for Optical Character Recognition. *IEEE Transactions on Pattern Analysis and Machine Intelligence*, 18(2), 99–107. https://doi.org/10.1109/34.481540
+
+  > Kolak, O., & Resnik, P. (2002). OCR Error Correction Using a Noisy Channel Model. *Proceedings of the Second International Conference on Human Language Technology Research (HLT '02)*, 257–262. https://dl.acm.org/doi/10.5555/1289189.1289227
+
+- **OCR Evaluation Methodology** — Benchmark methodology informing Scannequin's quality presets and parameter calibration:
+  > Rice, S. V., Jenkins, F. R., & Nartker, T. A. (1995). The Fourth Annual Test of OCR Accuracy. Technical Report 95-04, Information Science Research Institute, University of Nevada, Las Vegas. https://tesseract-ocr.github.io/docs/AT-1995.pdf
+
+  > Lucas, S. M., Panaretos, A., Sosa, L., Tang, A., Wong, S., & Young, R. (2005). ICDAR 2003 Robust Reading Competitions: Entries, Results, and Future Directions. *International Journal on Document Analysis and Recognition*, 7(2–3), 105–122. https://doi.org/10.1007/s10032-004-0134-3

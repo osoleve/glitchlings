@@ -95,6 +95,13 @@ def test_all_glitchlings_emit_pipeline_descriptors(glitchling, required_field):
             {
                 "type": "ocr",
                 "rate": 0.12,
+                "burst_enter": 0.0,
+                "burst_exit": 0.3,
+                "burst_multiplier": 3.0,
+                "bias_k": 0,
+                "bias_beta": 2.0,
+                "space_drop_rate": 0.0,
+                "space_insert_rate": 0.0,
             },
         ),
     ],

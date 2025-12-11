@@ -265,19 +265,67 @@ def ocr_artifacts_rust(
     text: str,
     rate: float,
     seed: int,
+    *,
+    burst_enter: float | None = None,
+    burst_exit: float | None = None,
+    burst_multiplier: float | None = None,
+    bias_k: int | None = None,
+    bias_beta: float | None = None,
+    space_drop_rate: float | None = None,
+    space_insert_rate: float | None = None,
 ) -> str:
-    """Introduce OCR-like artifacts via Rust.
+    """Introduce OCR-like artifacts via Rust with research-backed enhancements.
+
+    This operation simulates OCR errors using three research-backed features:
+
+    **Burst Model (Kanungo et al., 1994)**
+    Real document defects are spatially correlated. Uses an HMM to create
+    error clusters simulating smudges, folds, or degraded scan regions.
+
+    **Document-Level Bias (UNLV-ISRI, 1995)**
+    Documents scanned under the same conditions show consistent error patterns.
+    Randomly selects K confusion patterns and amplifies their selection probability.
+
+    **Whitespace Errors (Smith, 2007; ICDAR)**
+    Models OCR segmentation failures that cause word merges/splits.
 
     Args:
         text: Input text.
-        rate: Probability of introducing artifacts.
+        rate: Base probability of introducing artifacts.
         seed: Deterministic seed.
+        burst_enter: Probability of entering harsh (high-error) state (default 0.0).
+        burst_exit: Probability of exiting harsh state (default 0.3).
+        burst_multiplier: Rate multiplier in harsh state (default 3.0).
+        bias_k: Number of confusion patterns to amplify (default 0 = disabled).
+        bias_beta: Amplification factor for biased patterns (default 2.0).
+        space_drop_rate: Probability of dropping a space (default 0.0).
+        space_insert_rate: Probability of inserting a spurious space (default 0.0).
 
     Returns:
         Text with simulated OCR errors.
+
+    References:
+        - Kanungo et al. (1994) - Nonlinear Global and Local Document Degradation Models
+        - Rice et al. / UNLV-ISRI Annual Tests (1995)
+        - Smith (2007) - Tesseract OCR architecture
+        - ICDAR Robust Reading Competitions
     """
     fn = get_rust_operation("ocr_artifacts")
-    return cast(str, fn(text, rate, seed))
+    return cast(
+        str,
+        fn(
+            text,
+            rate,
+            seed,
+            burst_enter,
+            burst_exit,
+            burst_multiplier,
+            bias_k,
+            bias_beta,
+            space_drop_rate,
+            space_insert_rate,
+        ),
+    )
 
 
 def inject_zero_widths_rust(
