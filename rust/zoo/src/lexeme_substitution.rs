@@ -36,17 +36,33 @@ const LEXEME_ENV_VAR: &str = "GLITCHLINGS_LEXEME_DIR";
 /// A single dictionary mapping words to their alternatives.
 type LexemeDict = HashMap<String, Vec<String>>;
 
+/// Names of lexemes that are embedded at compile time.
+static BUNDLED_LEXEME_NAMES: Lazy<Vec<String>> = Lazy::new(|| {
+    let raw: HashMap<String, serde_json::Value> =
+        serde_json::from_str(RAW_LEXEMES).expect("lexemes.json should be valid JSON");
+    raw.keys()
+        .filter(|k| !k.starts_with('_'))
+        .map(|k| k.to_ascii_lowercase())
+        .collect()
+});
+
 /// All loaded lexeme dictionaries, keyed by dictionary name.
+/// Always includes bundled lexemes; merges with custom lexemes from env dir if present.
 static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
+    // Always start with bundled lexemes
+    let mut dicts = load_bundled_lexemes();
+
+    // Merge any custom lexemes from the environment-specified directory
     if let Some(dir) = lexeme_directory_from_env() {
-        if let Ok(dicts) = load_lexemes_from_directory(&dir) {
-            if !dicts.is_empty() {
-                return dicts;
+        if let Ok(custom_dicts) = load_lexemes_from_directory(&dir) {
+            for (name, dict) in custom_dicts {
+                // Custom lexemes override bundled ones with the same name
+                dicts.insert(name, dict);
             }
         }
     }
 
-    load_bundled_lexemes()
+    dicts
 });
 
 /// Sorted lexeme names available for use.
@@ -486,6 +502,21 @@ pub(crate) fn substitute_lexeme(
 #[pyfunction]
 pub(crate) fn list_lexeme_dictionaries() -> Vec<String> {
     VALID_LEXEMES.clone()
+}
+
+/// List bundled (built-in) lexeme dictionaries embedded at compile time.
+#[pyfunction]
+pub(crate) fn list_bundled_lexeme_dictionaries() -> Vec<String> {
+    let mut names = BUNDLED_LEXEME_NAMES.clone();
+    names.sort();
+    names
+}
+
+/// Check if a lexeme dictionary name refers to a bundled (embedded) dictionary.
+#[pyfunction]
+pub(crate) fn is_bundled_lexeme(name: &str) -> bool {
+    let normalized = name.to_ascii_lowercase();
+    BUNDLED_LEXEME_NAMES.contains(&normalized)
 }
 
 #[cfg(test)]

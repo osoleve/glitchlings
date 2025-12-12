@@ -849,6 +849,8 @@ fn _corruption_engine(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(redact_words, m)?)?;
     m.add_function(wrap_pyfunction!(lexeme_substitution::substitute_lexeme, m)?)?;
     m.add_function(wrap_pyfunction!(lexeme_substitution::list_lexeme_dictionaries, m)?)?;
+    m.add_function(wrap_pyfunction!(lexeme_substitution::list_bundled_lexeme_dictionaries, m)?)?;
+    m.add_function(wrap_pyfunction!(lexeme_substitution::is_bundled_lexeme, m)?)?;
     m.add_function(wrap_pyfunction!(plan_operations, m)?)?;
     m.add_function(wrap_pyfunction!(compose_operations, m)?)?;
     m.add_function(wrap_pyfunction!(keyboard_typos::keyboard_typo, m)?)?;

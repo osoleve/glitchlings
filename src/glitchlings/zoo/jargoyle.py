@@ -26,6 +26,8 @@ from typing import Any, Literal, cast
 
 from glitchlings.constants import DEFAULT_JARGOYLE_RATE
 from glitchlings.internal.rust_ffi import (
+    is_bundled_lexeme_rust,
+    list_bundled_lexeme_dictionaries_rust,
     list_lexeme_dictionaries_rust,
     resolve_seed,
     substitute_lexeme_rust,
@@ -34,30 +36,45 @@ from glitchlings.internal.rust_ffi import (
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 _LEXEME_ENV_VAR = "GLITCHLINGS_LEXEME_DIR"
+_lexeme_directory_configured = False
 
 
 def _configure_lexeme_directory() -> Path | None:
-    """Expose the bundled lexeme directory to the Rust backend via an env var."""
+    """Expose the bundled lexeme directory to the Rust backend via an env var.
+
+    This is only needed for discovering custom lexeme files at runtime.
+    Built-in lexemes (synonyms, colors, corporate, academic, cyberpunk, lovecraftian)
+    are embedded directly in the Rust binary and require no file I/O.
+    """
+    global _lexeme_directory_configured
+    if _lexeme_directory_configured:
+        return None
 
     try:
         lexeme_root = resources.files("glitchlings.assets.lexemes")
     except (ModuleNotFoundError, AttributeError):
+        _lexeme_directory_configured = True
         return None
 
     try:
         with resources.as_file(lexeme_root) as resolved:
             path = Path(resolved)
     except FileNotFoundError:
+        _lexeme_directory_configured = True
         return None
 
     if not path.is_dir():
+        _lexeme_directory_configured = True
         return None
 
     os.environ.setdefault(_LEXEME_ENV_VAR, str(path))
+    _lexeme_directory_configured = True
     return path
 
 
-_configure_lexeme_directory()
+# NOTE: We intentionally do NOT call _configure_lexeme_directory() at module load.
+# Built-in lexemes are embedded in the Rust binary and require no file I/O.
+# The directory configuration is only needed for custom lexeme discovery.
 
 DEFAULT_LEXEMES = "synonyms"
 
@@ -67,12 +84,31 @@ VALID_MODES = ("literal", "drift")
 DEFAULT_MODE: JargoyleMode = "drift"
 
 
+def _bundled_lexemes() -> list[str]:
+    """Return the list of bundled (embedded) lexeme dictionaries."""
+    return sorted({name.lower() for name in list_bundled_lexeme_dictionaries_rust()})
+
+
 def _available_lexemes() -> list[str]:
+    """Return all available lexeme dictionaries (bundled + custom)."""
     return sorted({name.lower() for name in list_lexeme_dictionaries_rust()})
 
 
 def _validate_lexemes(name: str) -> str:
+    """Validate and normalize a lexeme dictionary name.
+
+    For built-in lexemes (bundled in the Rust binary), no file I/O is performed.
+    For custom lexemes, the lexeme directory is configured on-demand to discover them.
+    """
     normalized = name.lower()
+
+    # Fast path: check if it's a bundled lexeme (no file I/O needed)
+    if is_bundled_lexeme_rust(normalized):
+        return normalized
+
+    # Slow path: configure directory to discover custom lexemes
+    _configure_lexeme_directory()
+
     available = _available_lexemes()
     if normalized not in available:
         raise ValueError(f"Invalid lexemes '{name}'. Must be one of: {', '.join(available)}")
@@ -86,16 +122,34 @@ def _validate_mode(mode: JargoyleMode | str) -> JargoyleMode:
     return cast(JargoyleMode, normalized)
 
 
-VALID_LEXEMES = tuple(_available_lexemes())
+VALID_LEXEMES = tuple(_bundled_lexemes())
 
 
 def list_lexeme_dictionaries() -> list[str]:
     """Return the list of available lexeme dictionaries.
 
+    This includes both built-in dictionaries (embedded in the binary) and any
+    custom dictionaries found in the lexeme directory.
+
     Returns:
         List of dictionary names that can be used with Jargoyle.
     """
+    # Configure directory to discover any custom lexemes
+    _configure_lexeme_directory()
     return _available_lexemes()
+
+
+def list_bundled_lexeme_dictionaries() -> list[str]:
+    """Return the list of bundled (built-in) lexeme dictionaries.
+
+    These dictionaries are embedded directly in the Rust binary and require
+    no file I/O to access.
+
+    Returns:
+        List of built-in dictionary names: academic, colors, corporate,
+        cyberpunk, lovecraftian, synonyms.
+    """
+    return _bundled_lexemes()
 
 
 def jargoyle_drift(
@@ -239,5 +293,6 @@ __all__ = [
     "VALID_MODES",
     "jargoyle",
     "jargoyle_drift",
+    "list_bundled_lexeme_dictionaries",
     "list_lexeme_dictionaries",
 ]

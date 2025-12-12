@@ -54,6 +54,8 @@ __all__ = [
     "redact_words_rust",
     "substitute_lexeme_rust",
     "list_lexeme_dictionaries_rust",
+    "list_bundled_lexeme_dictionaries_rust",
+    "is_bundled_lexeme_rust",
     "substitute_homophones_rust",
     # Grammar operations
     "apply_grammar_rule_rust",
@@ -513,6 +515,29 @@ def list_lexeme_dictionaries_rust() -> list[str]:
     """
     fn = get_rust_operation("list_lexeme_dictionaries")
     return cast(list[str], fn())
+
+
+def list_bundled_lexeme_dictionaries_rust() -> list[str]:
+    """List bundled (built-in) lexeme dictionaries embedded at compile time.
+
+    Returns:
+        List of dictionary names that are embedded in the Rust binary.
+    """
+    fn = get_rust_operation("list_bundled_lexeme_dictionaries")
+    return cast(list[str], fn())
+
+
+def is_bundled_lexeme_rust(name: str) -> bool:
+    """Check if a lexeme dictionary name refers to a bundled dictionary.
+
+    Args:
+        name: Name of the lexeme dictionary to check.
+
+    Returns:
+        True if the dictionary is bundled (embedded), False otherwise.
+    """
+    fn = get_rust_operation("is_bundled_lexeme")
+    return cast(bool, fn(name))
 
 
 def substitute_homophones_rust(
