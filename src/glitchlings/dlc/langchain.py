@@ -51,9 +51,7 @@ class GlitchedRunnable:
         self._inferred_output_columns: list[str | int] | None = None
 
     def _glitch_single(self, payload: Any) -> Any:
-        columns = _resolve_columns(
-            payload, self._input_columns, self._inferred_input_columns
-        )
+        columns = _resolve_columns(payload, self._input_columns, self._inferred_input_columns)
         if self._inferred_input_columns is None:
             self._inferred_input_columns = columns
         return corrupt_batch(payload, columns, self._gaggle)
@@ -62,9 +60,7 @@ class GlitchedRunnable:
         if not values:
             return values
 
-        columns = _resolve_columns(
-            values[0], self._input_columns, self._inferred_input_columns
-        )
+        columns = _resolve_columns(values[0], self._input_columns, self._inferred_input_columns)
         if self._inferred_input_columns is None:
             self._inferred_input_columns = columns
 
@@ -77,9 +73,7 @@ class GlitchedRunnable:
         if not self._glitch_output:
             return result
 
-        columns = _resolve_columns(
-            result, self._output_columns, self._inferred_output_columns
-        )
+        columns = _resolve_columns(result, self._output_columns, self._inferred_output_columns)
         if self._inferred_output_columns is None:
             self._inferred_output_columns = columns
         return corrupt_batch(result, columns, self._gaggle)
