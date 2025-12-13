@@ -11,7 +11,6 @@ from functools import partial
 import pytest
 
 from glitchlings import (
-    wherewolf,
     hokey,
     jargoyle,
     mim1c,
@@ -19,6 +18,7 @@ from glitchlings import (
     rushmore,
     scannequin,
     typogre,
+    wherewolf,
     zeedub,
 )
 from glitchlings.zoo.core import AttackWave, Glitchling

@@ -46,6 +46,21 @@ noisy_loader = GlitchedDataLoader(loader, Typogre(rate=0.02), columns=["text"])
 
 When `columns` is omitted, `GlitchedDataLoader` infers textual fields from the first batch.
 
+## LangChain runnables
+
+Glitch LCEL chains without changing your graph:
+
+```python
+from glitchlings import Typogre
+from glitchlings.dlc.langchain import GlitchedRunnable
+
+glitched = GlitchedRunnable(chain, Typogre(rate=0.02), glitch_output=True, seed=404)
+response = glitched.invoke({"question": "Where did the glitches go?"})
+```
+
+- `input_columns`/`output_columns` can specify which fields to corrupt; omit to
+  infer from the first payload/response.
+
 ## Prime environments
 
 Use the `prime` extra to inject glitchlings into RL environments:

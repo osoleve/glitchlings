@@ -8,6 +8,7 @@ with popular ML frameworks:
 - :class:`~glitchlings.dlc.pytorch_lightning.GlitchedLightningDataModule`: Wrap
   Lightning data modules
 - :class:`~glitchlings.dlc.gutenberg.GlitchenbergAPI`: Wrap Project Gutenberg API
+- :class:`~glitchlings.dlc.langchain.GlitchedRunnable`: Wrap LangChain runnables
 
 Example:
     >>> from glitchlings.dlc.huggingface import GlitchedDataset

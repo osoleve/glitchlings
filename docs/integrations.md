@@ -38,6 +38,21 @@ from glitchlings.dlc.pytorch_lightning import GlitchedLightningDataModule
 glitched = GlitchedLightningDataModule(datamodule, "typogre", column="text", seed=404)
 ```
 
+## LangChain (`langchain` extra)
+
+- Use `glitchlings.dlc.langchain.GlitchedRunnable` to wrap LCEL runnables and
+  glitch inputs (optionally outputs) without modifying the chain.
+- Columns/fields are inferred from the first payload when omitted; pass
+  `input_columns`/`output_columns` for explicit control.
+
+```python
+from glitchlings.dlc.langchain import GlitchedRunnable
+from glitchlings import Typogre
+
+glitched = GlitchedRunnable(chain, Typogre(rate=0.01), glitch_output=True, seed=404)
+response = glitched.invoke({"question": "Who guards the guardians?"})
+```
+
 ## Prime Intellect (`prime` extra)
 
 - Install the `prime` extra for `glitchlings.dlc.prime`.
@@ -104,6 +119,7 @@ for book in books:
 pip install 'glitchlings[hf]'          # datasets
 pip install 'glitchlings[torch]'       # PyTorch DataLoader
 pip install 'glitchlings[lightning]'   # Lightning DataModule
+pip install 'glitchlings[langchain]'   # LangChain runnables
 pip install 'glitchlings[prime]'       # Prime Intellect DLC
 pip install 'glitchlings[gutenberg]'   # Project Gutenberg
 pip install 'glitchlings[all]'         # everything

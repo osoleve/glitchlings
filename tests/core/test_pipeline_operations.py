@@ -1,13 +1,13 @@
 import pytest
 
 from glitchlings import (
-    wherewolf,
     hokey,
     mim1c,
     redactyl,
     rushmore,
     scannequin,
     typogre,
+    wherewolf,
     zeedub,
 )
 from glitchlings.zoo.redactyl import Redactyl
