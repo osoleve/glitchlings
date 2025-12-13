@@ -3,6 +3,7 @@ use blake2::{Blake2s, Digest};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::PyErr;
+use rayon::prelude::*;
 use regex::Regex;
 
 use crate::operations::{TextOperation, OperationError, Operation};
@@ -97,6 +98,17 @@ impl Pipeline {
         );
         self.apply(&mut buffer)?;
         Ok(buffer.to_string())
+    }
+
+    /// Process multiple texts in parallel.
+    ///
+    /// Each text is processed independently with the same pipeline configuration.
+    /// Results are returned in the same order as inputs.
+    pub fn run_batch(&self, texts: &[&str]) -> Result<Vec<String>, PipelineError> {
+        texts
+            .par_iter()
+            .map(|text| self.run(text))
+            .collect()
     }
 }
 

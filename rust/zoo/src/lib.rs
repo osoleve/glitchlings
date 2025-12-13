@@ -194,8 +194,25 @@ impl Pipeline {
     }
 
     #[pyo3(name = "run")]
-    fn run_py(&self, text: &str) -> PyResult<String> {
-        Pipeline::run(self, text).map_err(|error| error.into_pyerr())
+    fn run_py(&self, py: Python<'_>, text: &str) -> PyResult<String> {
+        let pipeline = self.clone();
+        let text_owned = text.to_string();
+        py.allow_threads(move || {
+            pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+        })
+    }
+
+    /// Process multiple texts in parallel.
+    ///
+    /// Releases the GIL and processes all texts concurrently using rayon.
+    /// Results are returned in the same order as inputs.
+    #[pyo3(name = "run_batch")]
+    fn run_batch_py(&self, py: Python<'_>, texts: Vec<String>) -> PyResult<Vec<String>> {
+        let pipeline = self.clone();
+        py.allow_threads(move || {
+            let text_refs: Vec<&str> = texts.iter().map(|s| s.as_str()).collect();
+            pipeline.run_batch(&text_refs).map_err(|error| error.into_pyerr())
+        })
     }
 }
 
@@ -821,19 +838,26 @@ fn plan_operations(
 
 #[pyfunction(name = "compose_operations", signature = (text, descriptors, master_seed, include_only_patterns=None, exclude_patterns=None))]
 fn compose_operations(
+    py: Python<'_>,
     text: &str,
     descriptors: Vec<PyOperationDescriptor>,
     master_seed: i128,
     include_only_patterns: Option<Vec<String>>,
     exclude_patterns: Option<Vec<String>>,
 ) -> PyResult<String> {
+    // Build pipeline while holding GIL (requires parsing Python objects)
     let pipeline = build_pipeline_from_py(
         descriptors,
         master_seed,
         include_only_patterns,
         exclude_patterns,
     )?;
-    pipeline.run(text).map_err(|error| error.into_pyerr())
+    let text_owned = text.to_string();
+
+    // Release GIL for the actual computation
+    py.allow_threads(move || {
+        pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+    })
 }
 
 #[pymodule]

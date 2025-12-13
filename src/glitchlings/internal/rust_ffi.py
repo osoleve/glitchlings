@@ -100,6 +100,20 @@ class RustPipeline:
     def run(self, text: str) -> str:
         return cast(str, self._pipeline.run(text))
 
+    def run_batch(self, texts: Sequence[str]) -> list[str]:
+        """Process multiple texts in parallel.
+
+        Releases the GIL and processes all texts concurrently using rayon.
+        Results are returned in the same order as inputs.
+
+        Args:
+            texts: Sequence of text strings to process.
+
+        Returns:
+            List of corrupted texts in the same order as inputs.
+        """
+        return cast(list[str], self._pipeline.run_batch(list(texts)))
+
 
 # ---------------------------------------------------------------------------
 # Orchestration Operations

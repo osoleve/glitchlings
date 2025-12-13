@@ -214,6 +214,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand",
+ "rayon",
  "regex",
  "serde",
  "serde_json",
