@@ -108,9 +108,7 @@ class GlitchedRunnable:
         result = await self._runnable.ainvoke(glitched_input, config=config, **kwargs)
         return self._glitch_result(result)
 
-    async def abatch(
-        self, inputs: Sequence[Any], config: Any | None = None, **kwargs: Any
-    ) -> Any:
+    async def abatch(self, inputs: Sequence[Any], config: Any | None = None, **kwargs: Any) -> Any:
         glitched_inputs = self._glitch_many(inputs)
         result = await self._runnable.abatch(glitched_inputs, config=config, **kwargs)
 
