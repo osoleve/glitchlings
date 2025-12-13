@@ -22,6 +22,14 @@ class EchoRunnable:
     def stream(self, input: Any, **_: Any):
         yield from input if isinstance(input, list) else [input]
 
+    async def ainvoke(self, input: Any, **_: Any) -> Any:  # noqa: A003
+        self.seen.append(input)
+        return input
+
+    async def abatch(self, inputs: list[Any], **_: Any) -> list[Any]:
+        self.seen.append(inputs)
+        return inputs
+
     async def astream(self, input: Any, **_: Any):
         for chunk in (input if isinstance(input, list) else [input]):
             yield chunk
@@ -69,3 +77,19 @@ def test_glitch_runnable_astreams() -> None:
 
     assert result[0] != "async"
     assert result[-1] != "stream"
+
+
+def test_glitch_runnable_async_invoke_and_batch() -> None:
+    runnable = GlitchedRunnable(EchoRunnable(), "typogre", glitch_output=True, seed=222)
+
+    async def run_invocations() -> tuple[Any, list[Any]]:
+        single = await runnable.ainvoke({"prompt": "hello"})
+        batch = await runnable.abatch([{"prompt": "goodbye"}], config=None)
+        return single, batch
+
+    single_result, batch_result = asyncio.run(run_invocations())
+
+    assert single_result != {"prompt": "hello"}
+    assert batch_result[0] != {"prompt": "goodbye"}
+    assert runnable._inferred_input_columns == ["prompt"]  # noqa: SLF001
+    assert runnable._inferred_output_columns == ["prompt"]  # noqa: SLF001

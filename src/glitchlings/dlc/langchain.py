@@ -103,6 +103,33 @@ class GlitchedRunnable:
 
         return self._glitch_result(result)
 
+    async def ainvoke(self, input: Any, config: Any | None = None, **kwargs: Any) -> Any:
+        glitched_input = self._glitch_single(input)
+        result = await self._runnable.ainvoke(glitched_input, config=config, **kwargs)
+        return self._glitch_result(result)
+
+    async def abatch(
+        self, inputs: Sequence[Any], config: Any | None = None, **kwargs: Any
+    ) -> Any:
+        glitched_inputs = self._glitch_many(inputs)
+        result = await self._runnable.abatch(glitched_inputs, config=config, **kwargs)
+
+        if not self._glitch_output:
+            return result
+
+        if isinstance(result, Sequence) and result:
+            columns = _resolve_columns(
+                result[0], self._output_columns, self._inferred_output_columns
+            )
+            if self._inferred_output_columns is None:
+                self._inferred_output_columns = columns
+            glitched = [corrupt_batch(value, columns, self._gaggle) for value in result]
+            if isinstance(result, tuple):
+                return tuple(glitched)
+            return glitched
+
+        return self._glitch_result(result)
+
     def stream(self, input: Any, config: Any | None = None, **kwargs: Any) -> Any:
         glitched_input = self._glitch_single(input)
         for chunk in self._runnable.stream(glitched_input, config=config, **kwargs):
