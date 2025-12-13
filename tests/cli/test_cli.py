@@ -294,7 +294,7 @@ def test_run_cli_rejects_report_with_diff(capsys):
 
 def test_run_cli_attack_with_tokenizer(monkeypatch, capsys):
     # Skip if tiktoken is not installed
-    tiktoken = pytest.importorskip("tiktoken")
+    pytest.importorskip("tiktoken")
 
     class DummyStdin:
         def isatty(self):

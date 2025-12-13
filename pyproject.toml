@@ -60,6 +60,7 @@ all = [
     "interrogate>=1.5.0",
     "jellyfish==1.2.0",
     "isort>=5.13.0",
+    "langchain-core>=0.3.0",
     "mkdocs>=1.6.0",
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.24.0",
@@ -80,6 +81,7 @@ tok = ["tiktoken>=0.3.0", "tokenizers>=0.13.0"]
 gutenberg = ["py-gutenberg==1.0.0"]
 hf = ["datasets>=4.0.0"]
 lightning = ["pytorch_lightning>=2.0.0"]
+langchain = ["langchain-core>=0.3.0"]
 prime = ["verifiers>=0.1.8", "jellyfish==1.2.0"]
 torch = ["torch>=2.0.0"]
 dev = [

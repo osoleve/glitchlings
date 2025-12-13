@@ -60,6 +60,7 @@ Wrap popular dataset loaders for seamless, reproducible corruption:
 - `hf` for Hugging Face Datasets
 - `torch` for PyTorch DataLoader
 - `lightning` for Lightning DataModule
+- `langchain` for LCEL runnables
 - `gutenberg` for Project Gutenberg (Gutendex) corruption helpers
 
 See [Dataset workflows](datasets.md) for details.
@@ -103,13 +104,14 @@ Glitchlings slot neatly into existing pipelines:
 - **Direct invocation** - Instantiate a glitchling (or `Gaggle`) and call it on strings, iterables, or datasets. Keep the seed stable to reproduce every run.
 - **Dataset corruption** - Use ``glitchlings.dlc.huggingface.GlitchedDataset`` (or a `Gaggle`'s `.corrupt_dataset`) to perturb Hugging Face `datasets.Dataset` columns. Pass the target column names explicitly.
 - **PyTorch data loaders** - Use ``glitchlings.dlc.pytorch.GlitchedDataLoader`` to wrap ``torch.utils.data.DataLoader`` batches. The wrapper infers textual fields automatically or honours explicit column names/indices while leaving other batch data untouched.
+- **LangChain runnables** - Use ``glitchlings.dlc.langchain.GlitchedRunnable`` to wrap LCEL chains and glitch inputs (and optionally outputs) without modifying the runnable.
 
 ## Guide map
 
 - [Attack helper](attack.md) – single-call corruption plus metrics, with transcript-aware batching and tokenizer selection.
 - [Configuration files](configuration.md) - YAML attack configurations for version-controlled experiments.
 - [Dataset workflows](datasets.md) - how to glitch Hugging Face datasets and PyTorch data loaders with the provided wrappers and column selection.
-- [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, and Prime extras with install commands.
+- [Integrations and DLC](integrations.md) - Hugging Face, PyTorch, Lightning, LangChain, and Prime extras with install commands.
 - [Determinism guide](determinism.md) - seed hygiene and RNG guardrails across glitchlings, gaggles, and attacks.
 
 ### Command line interface

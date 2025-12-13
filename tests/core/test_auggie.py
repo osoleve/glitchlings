@@ -7,7 +7,6 @@ from hypothesis import strategies as st
 from glitchlings.auggie import Auggie
 from glitchlings.util import KEYNEIGHBORS
 from glitchlings.zoo import (
-    Wherewolf,
     Gaggle,
     Glitchling,
     Hokey,
@@ -19,6 +18,7 @@ from glitchlings.zoo import (
     RushmoreMode,
     Scannequin,
     Typogre,
+    Wherewolf,
     Zeedub,
 )
 from glitchlings.zoo.pedant.stones import PedantStone

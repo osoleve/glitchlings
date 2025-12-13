@@ -1,7 +1,6 @@
 """Property-based tests for pure functions.
 
-Uses hypothesis to verify purity guarantees and edge case handling
-for the pure modules in the codebase.
+Uses hypothesis to verify purity guarantees and edge case handling.
 
 Pure functions tested:
 - zoo/transforms.py: Text tokenization and transformation utilities
@@ -22,22 +21,15 @@ from hypothesis import strategies as st
 
 from glitchlings.attack.core_planning import (
     _format_metrics_for_batch as format_metrics_for_batch,
+)
+from glitchlings.attack.core_planning import (
     _format_metrics_for_single as format_metrics_for_single,
+)
+from glitchlings.attack.core_planning import (
     extract_transcript_contents,
 )
 from glitchlings.attack.metrics_dispatch import is_batch, validate_batch_consistency
-
-
-def build_empty_metrics(metric_names: list[str]) -> dict[str, list[float]]:
-    """Create empty metric results for empty transcript input."""
-    return {name: [] for name in metric_names}
-
-
 from glitchlings.zoo.rng import SEED_MASK, derive_seed
-
-# ---------------------------------------------------------------------------
-# Import pure functions under test
-# ---------------------------------------------------------------------------
 from glitchlings.zoo.transforms import (
     build_keyboard_neighbor_map,
     collect_word_tokens,
@@ -60,6 +52,11 @@ from glitchlings.zoo.validation import (
     resolve_bool_flag,
     resolve_rate,
 )
+
+
+def build_empty_metrics(metric_names: list[str]) -> dict[str, list[float]]:
+    """Create empty metric results for empty transcript input."""
+    return {name: [] for name in metric_names}
 
 # ---------------------------------------------------------------------------
 # Custom Strategies
