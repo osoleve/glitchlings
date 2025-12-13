@@ -313,7 +313,7 @@ mod tests {
             OperationDescriptor {
                 name: "Scannequin".to_string(),
                 seed: derive_seed(master_seed, "Scannequin", 3),
-                operation: Operation::Ocr(OcrArtifactsOp { rate: 0.25 }),
+                operation: Operation::Ocr(OcrArtifactsOp::new(0.25)),
             },
         ];
         let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
