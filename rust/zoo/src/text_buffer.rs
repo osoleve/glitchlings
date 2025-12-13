@@ -1,8 +1,36 @@
+use compact_str::CompactString;
 use regex::Regex;
 use std::ops::Range;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use crate::resources::split_with_separators;
+
+// ---------------------------------------------------------------------------
+// Interned Separators
+// ---------------------------------------------------------------------------
+// Common separators are pre-allocated to avoid repeated allocations.
+// This reduces memory churn since ~50% of segments are separators in typical text.
+
+/// Pre-allocated common separator strings to avoid allocation overhead.
+static SPACE: LazyLock<CompactString> = LazyLock::new(|| CompactString::const_new(" "));
+static NEWLINE: LazyLock<CompactString> = LazyLock::new(|| CompactString::const_new("\n"));
+static TAB: LazyLock<CompactString> = LazyLock::new(|| CompactString::const_new("\t"));
+static DOUBLE_SPACE: LazyLock<CompactString> = LazyLock::new(|| CompactString::const_new("  "));
+static CRLF: LazyLock<CompactString> = LazyLock::new(|| CompactString::const_new("\r\n"));
+
+/// Returns an interned separator string if the text matches a common pattern,
+/// otherwise returns a new CompactString (which stores short strings inline).
+#[inline]
+fn intern_separator(text: &str) -> CompactString {
+    match text {
+        " " => SPACE.clone(),
+        "\n" => NEWLINE.clone(),
+        "\t" => TAB.clone(),
+        "  " => DOUBLE_SPACE.clone(),
+        "\r\n" => CRLF.clone(),
+        _ => CompactString::new(text),
+    }
+}
 
 /// Represents the role of a segment inside a [`TextBuffer`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -16,10 +44,13 @@ pub enum SegmentKind {
 }
 
 /// A contiguous slice of text tracked by the [`TextBuffer`].
+///
+/// Uses `CompactString` for storage which inlines short strings (up to ~24 bytes)
+/// avoiding heap allocations for typical words and separators.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextSegment {
     kind: SegmentKind,
-    text: String,
+    text: CompactString,
     /// Cached count of Unicode characters (not bytes) in this segment.
     /// Stored to avoid expensive .chars().count() during reindex.
     char_len: usize,
@@ -28,7 +59,9 @@ pub struct TextSegment {
 }
 
 impl TextSegment {
-    fn new(text: String, kind: SegmentKind) -> Self {
+    /// Creates a new segment from a CompactString.
+    #[inline]
+    fn new(text: CompactString, kind: SegmentKind) -> Self {
         let char_len = text.chars().count();
         let byte_len = text.len();
         Self {
@@ -39,14 +72,27 @@ impl TextSegment {
         }
     }
 
+    /// Creates a new segment from a &str (convenience method).
+    #[inline]
+    fn from_str(text: &str, kind: SegmentKind) -> Self {
+        Self::new(CompactString::new(text), kind)
+    }
+
+    /// Creates a new separator segment, using interned strings for common separators.
+    #[inline]
+    fn new_separator(text: &str) -> Self {
+        let interned = intern_separator(text);
+        Self::new(interned, SegmentKind::Separator)
+    }
+
     /// Creates a new segment and infers its kind from the content.
-    fn inferred(text: String) -> Self {
+    fn inferred(text: &str) -> Self {
         let kind = if text.chars().all(char::is_whitespace) {
             SegmentKind::Separator
         } else {
             SegmentKind::Word
         };
-        Self::new(text, kind)
+        Self::new(CompactString::new(text), kind)
     }
 
     /// Returns the segment's text content.
@@ -74,10 +120,12 @@ impl TextSegment {
         self.byte_len
     }
 
-    fn set_text(&mut self, text: String, kind: SegmentKind) {
+    /// Updates the text and kind, recalculating cached lengths.
+    #[inline]
+    fn set_text(&mut self, text: &str, kind: SegmentKind) {
         self.char_len = text.chars().count();
         self.byte_len = text.len();
-        self.text = text;
+        self.text = CompactString::new(text);
         self.kind = kind;
     }
 }
@@ -275,7 +323,7 @@ impl TextBuffer {
             .segments
             .get_mut(segment_index)
             .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-        segment.set_text(replacement.to_string(), SegmentKind::Word);
+        segment.set_text(replacement, SegmentKind::Word);
         self.mark_dirty();
         Ok(())
     }
@@ -296,7 +344,7 @@ impl TextBuffer {
                 .segments
                 .get_mut(segment_index)
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-            segment.set_text(replacement, SegmentKind::Word);
+            segment.set_text(&replacement, SegmentKind::Word);
             applied_any = true;
         }
 
@@ -342,14 +390,14 @@ impl TextBuffer {
             if !sep.is_empty() {
                 self.segments.insert(
                     insert_at,
-                    TextSegment::new(sep.to_string(), SegmentKind::Separator),
+                    TextSegment::new_separator(sep),
                 );
                 insert_at += 1;
             }
         }
         self.segments.insert(
             insert_at,
-            TextSegment::new(word.to_string(), SegmentKind::Word),
+            TextSegment::from_str(word, SegmentKind::Word),
         );
         self.mark_dirty();
         Ok(())
@@ -408,17 +456,17 @@ impl TextBuffer {
                             ops_iter.next().unwrap();
 
                         // 1. First word (replacement)
-                        new_segments.push(TextSegment::new(first_replacement, SegmentKind::Word));
+                        new_segments.push(TextSegment::from_str(&first_replacement, SegmentKind::Word));
 
                         // 2. Separator (if any)
                         if let Some(sep) = separator {
                             if !sep.is_empty() {
-                                new_segments.push(TextSegment::new(sep, SegmentKind::Separator));
+                                new_segments.push(TextSegment::new_separator(&sep));
                             }
                         }
 
                         // 3. Second word
-                        new_segments.push(TextSegment::new(second_word, SegmentKind::Word));
+                        new_segments.push(TextSegment::from_str(&second_word, SegmentKind::Word));
 
                         continue; // Skip adding the original segment
                     }
@@ -478,7 +526,7 @@ impl TextBuffer {
                     .segments
                     .get_mut(segment_index)
                     .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
-                segment.set_text(repl_text, SegmentKind::Word);
+                segment.set_text(&repl_text, SegmentKind::Word);
             }
         }
 
@@ -555,7 +603,7 @@ impl TextBuffer {
 
                     // Add separator if needed (but not before sentence punctuation)
                     if pending_separator && !starts_with_punct && !normalized.is_empty() {
-                        normalized.push(TextSegment::new(" ".to_string(), SegmentKind::Separator));
+                        normalized.push(TextSegment::new_separator(" "));
                     }
                     pending_separator = false;
 
@@ -564,7 +612,7 @@ impl TextBuffer {
                 }
                 SegmentKind::Immutable => {
                     if pending_separator && !normalized.is_empty() {
-                        normalized.push(TextSegment::new(" ".to_string(), SegmentKind::Separator));
+                        normalized.push(TextSegment::new_separator(" "));
                     }
                     pending_separator = false;
                     normalized.push(segment.clone());
@@ -603,7 +651,7 @@ impl TextBuffer {
         }
 
         let kind = self.segments[segment_index].kind();
-        self.segments[segment_index] = TextSegment::new(new_text, kind);
+        self.segments[segment_index] = TextSegment::from_str(&new_text, kind);
         self.mark_dirty();
     }
 
@@ -619,7 +667,7 @@ impl TextBuffer {
         for (segment_index, new_text) in replacements {
             if segment_index < self.segments.len() {
                 let kind = self.segments[segment_index].kind();
-                self.segments[segment_index] = TextSegment::new(new_text, kind);
+                self.segments[segment_index] = TextSegment::from_str(&new_text, kind);
                 replaced = true;
             }
         }
@@ -691,7 +739,7 @@ impl TextBuffer {
 
                     // Create merged word with total count
                     let merged_text = repeated_char.repeat(token_count);
-                    merged.push(TextSegment::new(merged_text, SegmentKind::Word));
+                    merged.push(TextSegment::from_str(&merged_text, SegmentKind::Word));
 
                     // Skip to position j (we've consumed segments i..j)
                     i = j;
@@ -847,9 +895,10 @@ fn push_mutable_segments(text: &str, segments: &mut Vec<TextSegment>) {
         }
 
         if token.chars().all(char::is_whitespace) {
-            segments.push(TextSegment::new(token, SegmentKind::Separator));
+            // Use interned separators to reduce allocations
+            segments.push(TextSegment::new_separator(&token));
         } else {
-            segments.push(TextSegment::new(token, SegmentKind::Word));
+            segments.push(TextSegment::from_str(&token, SegmentKind::Word));
         }
     }
 }
@@ -874,8 +923,8 @@ fn tokenise(text: &str, masking: &MaskingRules) -> Vec<TextSegment> {
             push_mutable_segments(&text[cursor..span.start], &mut segments);
         }
         if span.start < span.end {
-            segments.push(TextSegment::new(
-                text[span.start..span.end].to_string(),
+            segments.push(TextSegment::from_str(
+                &text[span.start..span.end],
                 SegmentKind::Immutable,
             ));
         }
@@ -887,7 +936,7 @@ fn tokenise(text: &str, masking: &MaskingRules) -> Vec<TextSegment> {
     }
 
     if segments.is_empty() {
-        segments.push(TextSegment::inferred(text.to_string()));
+        segments.push(TextSegment::inferred(text));
     }
 
     segments

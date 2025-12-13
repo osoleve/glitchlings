@@ -3,6 +3,7 @@ use blake2::{Blake2s, Digest};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::PyErr;
+use rayon::prelude::*;
 use regex::Regex;
 
 use crate::operations::{TextOperation, OperationError, Operation};
@@ -97,6 +98,17 @@ impl Pipeline {
         );
         self.apply(&mut buffer)?;
         Ok(buffer.to_string())
+    }
+
+    /// Process multiple texts in parallel.
+    ///
+    /// Each text is processed independently with the same pipeline configuration.
+    /// Results are returned in the same order as inputs.
+    pub fn run_batch(&self, texts: &[&str]) -> Result<Vec<String>, PipelineError> {
+        texts
+            .par_iter()
+            .map(|text| self.run(text))
+            .collect()
     }
 }
 
@@ -301,7 +313,7 @@ mod tests {
             OperationDescriptor {
                 name: "Scannequin".to_string(),
                 seed: derive_seed(master_seed, "Scannequin", 3),
-                operation: Operation::Ocr(OcrArtifactsOp { rate: 0.25 }),
+                operation: Operation::Ocr(OcrArtifactsOp::new(0.25)),
             },
         ];
         let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());

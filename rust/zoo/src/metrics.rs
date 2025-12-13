@@ -5,6 +5,7 @@ use std::collections::{HashMap, HashSet};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyString;
+use rayon::prelude::*;
 
 /// Extract strings from Python string objects without deep copying.
 /// Returns Cow<str> which borrows when possible and owns when necessary.
@@ -19,6 +20,22 @@ fn extract_batch_str_refs<'py>(
     batches
         .iter()
         .map(|tokens| extract_str_refs(tokens))
+        .collect()
+}
+
+/// Extract strings as owned Strings for use outside GIL.
+/// Use this when you need to release the GIL for parallel processing.
+fn extract_owned_strings(tokens: &[Bound<'_, PyString>]) -> PyResult<Vec<String>> {
+    tokens.iter().map(|s| s.extract::<String>()).collect()
+}
+
+/// Extract batch of owned strings for parallel processing outside GIL.
+fn extract_batch_owned_strings(
+    batches: &[Vec<Bound<'_, PyString>>],
+) -> PyResult<Vec<Vec<String>>> {
+    batches
+        .iter()
+        .map(|tokens| extract_owned_strings(tokens))
         .collect()
 }
 
@@ -57,59 +74,71 @@ pub fn subsequence_retention(
 
 #[pyfunction]
 pub fn batch_jensen_shannon_divergence(
-    _py: Python<'_>,
+    py: Python<'_>,
     inputs: Vec<Vec<Bound<'_, PyString>>>,
     outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    let input_refs = extract_batch_str_refs(&inputs)?;
-    let output_refs = extract_batch_str_refs(&outputs)?;
+    // Extract to owned strings while holding GIL
+    let input_owned = extract_batch_owned_strings(&inputs)?;
+    let output_owned = extract_batch_owned_strings(&outputs)?;
 
-    Ok(input_refs
-        .iter()
-        .zip(output_refs.iter())
-        .map(|(input, output)| compute_jsd(input, output))
-        .collect())
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        input_owned
+            .par_iter()
+            .zip(output_owned.par_iter())
+            .map(|(input, output)| compute_jsd(input, output))
+            .collect()
+    }))
 }
 
 #[pyfunction]
 pub fn batch_normalized_edit_distance(
-    _py: Python<'_>,
+    py: Python<'_>,
     inputs: Vec<Vec<Bound<'_, PyString>>>,
     outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    let input_refs = extract_batch_str_refs(&inputs)?;
-    let output_refs = extract_batch_str_refs(&outputs)?;
+    // Extract to owned strings while holding GIL
+    let input_owned = extract_batch_owned_strings(&inputs)?;
+    let output_owned = extract_batch_owned_strings(&outputs)?;
 
-    Ok(input_refs
-        .iter()
-        .zip(output_refs.iter())
-        .map(|(input, output)| compute_normalized_edit_distance(input, output))
-        .collect())
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        input_owned
+            .par_iter()
+            .zip(output_owned.par_iter())
+            .map(|(input, output)| compute_normalized_edit_distance(input, output))
+            .collect()
+    }))
 }
 
 #[pyfunction]
 pub fn batch_subsequence_retention(
-    _py: Python<'_>,
+    py: Python<'_>,
     inputs: Vec<Vec<Bound<'_, PyString>>>,
     outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    let input_refs = extract_batch_str_refs(&inputs)?;
-    let output_refs = extract_batch_str_refs(&outputs)?;
+    // Extract to owned strings while holding GIL
+    let input_owned = extract_batch_owned_strings(&inputs)?;
+    let output_owned = extract_batch_owned_strings(&outputs)?;
 
-    Ok(input_refs
-        .iter()
-        .zip(output_refs.iter())
-        .map(|(input, output)| compute_subsequence_retention(input, output))
-        .collect())
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        input_owned
+            .par_iter()
+            .zip(output_owned.par_iter())
+            .map(|(input, output)| compute_subsequence_retention(input, output))
+            .collect()
+    }))
 }
 
-fn compute_jsd(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+fn compute_jsd<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     if tokens1.is_empty() && tokens2.is_empty() {
         return 0.0;
     }
@@ -155,7 +184,7 @@ fn compute_jsd(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
     0.5 * (kl_pm + kl_qm)
 }
 
-fn compute_normalized_edit_distance(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+fn compute_normalized_edit_distance<S: AsRef<str> + PartialEq>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let n = tokens1.len();
     let m = tokens2.len();
 
@@ -173,7 +202,7 @@ fn compute_normalized_edit_distance(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) 
     for (i, t1) in tokens1.iter().enumerate() {
         curr[0] = i + 1;
         for (j, t2) in tokens2.iter().enumerate() {
-            let cost = if t1 == t2 { 0 } else { 1 };
+            let cost = if t1.as_ref() == t2.as_ref() { 0 } else { 1 };
             curr[j + 1] =
                 std::cmp::min(std::cmp::min(curr[j] + 1, prev[j + 1] + 1), prev[j] + cost);
         }
@@ -184,7 +213,7 @@ fn compute_normalized_edit_distance(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) 
     dist / (max(n, m) as f64)
 }
 
-fn compute_subsequence_retention(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+fn compute_subsequence_retention<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let n = tokens1.len();
     let m = tokens2.len();
 
@@ -208,7 +237,7 @@ fn compute_subsequence_retention(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> 
 
     for t1 in s1 {
         for (j, t2) in s2.iter().enumerate() {
-            if t1 == t2 {
+            if t1.as_ref() == t2.as_ref() {
                 curr[j + 1] = prev[j] + 1;
             } else {
                 curr[j + 1] = max(prev[j + 1], curr[j]);
@@ -249,23 +278,27 @@ pub fn entropy_delta(
 
 #[pyfunction]
 pub fn batch_entropy_delta(
-    _py: Python<'_>,
+    py: Python<'_>,
     inputs: Vec<Vec<Bound<'_, PyString>>>,
     outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    let input_refs = extract_batch_str_refs(&inputs)?;
-    let output_refs = extract_batch_str_refs(&outputs)?;
+    // Extract to owned strings while holding GIL
+    let input_owned = extract_batch_owned_strings(&inputs)?;
+    let output_owned = extract_batch_owned_strings(&outputs)?;
 
-    Ok(input_refs
-        .iter()
-        .zip(output_refs.iter())
-        .map(|(input, output)| compute_entropy_delta(input, output))
-        .collect())
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        input_owned
+            .par_iter()
+            .zip(output_owned.par_iter())
+            .map(|(input, output)| compute_entropy_delta(input, output))
+            .collect()
+    }))
 }
 
-fn shannon_entropy(tokens: &[Cow<str>]) -> f64 {
+fn shannon_entropy<S: AsRef<str>>(tokens: &[S]) -> f64 {
     if tokens.is_empty() {
         return 0.0;
     }
@@ -286,7 +319,7 @@ fn shannon_entropy(tokens: &[Cow<str>]) -> f64 {
     entropy
 }
 
-fn compute_entropy_delta(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+fn compute_entropy_delta<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let h_orig = shannon_entropy(tokens1);
     let h_corr = shannon_entropy(tokens2);
     let delta = h_corr - h_orig;
@@ -334,23 +367,27 @@ pub fn merge_split_index(
 
 #[pyfunction]
 pub fn batch_merge_split_index(
-    _py: Python<'_>,
+    py: Python<'_>,
     inputs: Vec<Vec<Bound<'_, PyString>>>,
     outputs: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
     guard_equal_batches(inputs.len(), outputs.len())?;
 
-    let input_refs = extract_batch_str_refs(&inputs)?;
-    let output_refs = extract_batch_str_refs(&outputs)?;
+    // Extract to owned strings while holding GIL
+    let input_owned = extract_batch_owned_strings(&inputs)?;
+    let output_owned = extract_batch_owned_strings(&outputs)?;
 
-    Ok(input_refs
-        .iter()
-        .zip(output_refs.iter())
-        .map(|(input, output)| compute_merge_split_index(input, output))
-        .collect())
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        input_owned
+            .par_iter()
+            .zip(output_owned.par_iter())
+            .map(|(input, output)| compute_merge_split_index(input, output))
+            .collect()
+    }))
 }
 
-fn lcs_length(a: &[Cow<str>], b: &[Cow<str>]) -> usize {
+fn lcs_length<S: AsRef<str>>(a: &[S], b: &[S]) -> usize {
     let m = a.len();
     let n = b.len();
 
@@ -364,7 +401,7 @@ fn lcs_length(a: &[Cow<str>], b: &[Cow<str>]) -> usize {
 
     for i in 1..=m {
         for j in 1..=n {
-            if a[i - 1] == b[j - 1] {
+            if a[i - 1].as_ref() == b[j - 1].as_ref() {
                 curr[j] = prev[j - 1] + 1;
             } else {
                 curr[j] = max(prev[j], curr[j - 1]);
@@ -377,7 +414,7 @@ fn lcs_length(a: &[Cow<str>], b: &[Cow<str>]) -> usize {
     prev[n]
 }
 
-fn compute_merge_split_index(tokens1: &[Cow<str>], tokens2: &[Cow<str>]) -> f64 {
+fn compute_merge_split_index<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let m = tokens1.len();
     let n = tokens2.len();
 
@@ -517,11 +554,19 @@ pub fn token_entropy(
 /// Compute batch token entropies.
 #[pyfunction]
 pub fn batch_token_entropy(
-    _py: Python<'_>,
+    py: Python<'_>,
     token_batches: Vec<Vec<Bound<'_, PyString>>>,
 ) -> PyResult<Vec<f64>> {
-    let batch_refs = extract_batch_str_refs(&token_batches)?;
-    Ok(batch_refs.iter().map(|tokens| shannon_entropy(tokens)).collect())
+    // Extract to owned strings while holding GIL
+    let batch_owned = extract_batch_owned_strings(&token_batches)?;
+
+    // Release GIL and process in parallel
+    Ok(py.allow_threads(|| {
+        batch_owned
+            .par_iter()
+            .map(|tokens| shannon_entropy(tokens))
+            .collect()
+    }))
 }
 
 /// Result type for vocabulary utilization analysis.

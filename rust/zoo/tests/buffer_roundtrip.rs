@@ -194,7 +194,7 @@ fn test_redact_words_roundtrip() {
 fn test_ocr_artifacts_roundtrip() {
     for text in TEST_CORPUS {
         for rate in [0.0, 0.5, 1.0] {
-            let op = OcrArtifactsOp { rate };
+            let op = OcrArtifactsOp::new(rate);
             test_op_roundtrip(op, text, 101, "OcrArtifactsOp");
         }
     }
@@ -225,10 +225,10 @@ fn test_typo_roundtrip() {
 fn test_zero_width_roundtrip() {
     for text in TEST_CORPUS {
         for rate in [0.0, 0.1, 0.5] {
-            let op = ZeroWidthOp {
+            let op = ZeroWidthOp::new(
                 rate,
-                characters: vec!["\u{200B}".to_string(), "\u{200C}".to_string()],
-            };
+                vec!["\u{200B}".to_string(), "\u{200C}".to_string()],
+            );
             test_op_roundtrip(op, text, 303, "ZeroWidthOp");
         }
     }
@@ -267,7 +267,7 @@ fn test_deterministic_operations() {
             "SwapAdjacent",
             Operation::SwapAdjacent(SwapAdjacentWordsOp { rate: 0.5 }),
         ),
-        ("Ocr", Operation::Ocr(OcrArtifactsOp { rate: 0.5 })),
+        ("Ocr", Operation::Ocr(OcrArtifactsOp::new(0.5))),
         ("QuotePairs", Operation::QuotePairs(QuotePairsOp)),
     ];
 

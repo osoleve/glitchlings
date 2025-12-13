@@ -2622,7 +2622,7 @@ mod tests {
     fn ocr_artifacts_replaces_expected_regions() {
         let mut buffer = TextBuffer::from_owned("Hello rn world".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
-        let op = OcrArtifactsOp { rate: 1.0 };
+        let op = OcrArtifactsOp::new(1.0);
         op.apply(&mut buffer, &mut rng).expect("ocr works");
         let text = buffer.to_string();
         assert_ne!(text, "Hello rn world");
@@ -2702,7 +2702,7 @@ mod tests {
     fn ocr_produces_consistent_results_for_seed() {
         let mut buffer = TextBuffer::from_owned("The m rn".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(1);
-        let op = OcrArtifactsOp { rate: 1.0 };
+        let op = OcrArtifactsOp::new(1.0);
         op.apply(&mut buffer, &mut rng).expect("ocr succeeds");
         let result = buffer.to_string();
         assert_ne!(result, "The m rn");
