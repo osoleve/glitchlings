@@ -1,3 +1,20 @@
+//! Text corruption operations for the pipeline.
+//!
+//! This module contains all the text transformation operations that can be
+//! composed into a corruption pipeline. Operations are organized into categories:
+//!
+//! # Module Structure
+//!
+//! - **Core Types** (lines ~20-230): Error types, RNG trait, rate utilities
+//! - **Word Mutations** (lines ~240-580): Reduplicate, Delete, Swap, RushmoreCombo
+//! - **Redaction** (lines ~590-720): RedactWordsOp
+//! - **OCR Simulation** (lines ~720-1120): OcrArtifactsOp with burst/bias models
+//! - **Zero-Width Characters** (lines ~1120-1640): ZeroWidthOp and related types
+//! - **Keyboard Typos** (lines ~1640-2360): TypoOp, ShiftSlipConfig, MotorWeighting
+//! - **Quote Normalization** (lines ~2360-2510): QuotePairsOp
+//! - **Operation Enum** (lines ~2510-2550): Type-erased Operation wrapper
+//! - **Tests** (lines ~2550+): Unit tests for operations
+
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 use smallvec::SmallVec;
@@ -103,6 +120,52 @@ fn direct_length_weight(core: &str, original: &str) -> f64 {
     core_length_for_weight(core, original) as f64
 }
 
+// ============================================================================
+// Rate and probability utilities
+// ============================================================================
+
+/// Clamps a rate to the valid [0.0, 1.0] range.
+///
+/// Used by word mutation operations that apply changes with a probability.
+#[inline]
+fn clamp_rate(rate: f64) -> f64 {
+    rate.clamp(0.0, 1.0)
+}
+
+/// Computes the mean weight across a collection of weighted items.
+///
+/// Returns 0.0 for empty collections to avoid division by zero.
+#[inline]
+fn compute_mean_weight<T, F>(items: &[T], weight_fn: F) -> f64
+where
+    F: Fn(&T) -> f64,
+{
+    if items.is_empty() {
+        return 0.0;
+    }
+    items.iter().map(weight_fn).sum::<f64>() / (items.len() as f64)
+}
+
+/// Computes the probability of selecting an item based on its weight relative to the mean.
+///
+/// This implements weighted probability scaling where:
+/// - Items with weight > mean have higher selection probability
+/// - Items with weight < mean have lower selection probability
+/// - If rate >= 1.0, always returns 1.0 (select everything)
+/// - If mean_weight is negligible, returns the raw rate
+///
+/// The result is clamped to [0.0, 1.0].
+#[inline]
+fn compute_weighted_probability(rate: f64, item_weight: f64, mean_weight: f64) -> f64 {
+    if rate >= 1.0 {
+        1.0
+    } else if mean_weight <= f64::EPSILON {
+        rate
+    } else {
+        (rate * (item_weight / mean_weight)).min(1.0)
+    }
+}
+
 #[derive(Debug)]
 struct ReduplicateCandidate {
     index: usize,
@@ -187,6 +250,13 @@ pub trait TextOperation {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError>;
 }
 
+// ============================================================================
+// Word Mutation Operations
+// ============================================================================
+//
+// Operations that modify text at the word level: duplicating, deleting,
+// swapping, and combining these effects.
+
 /// Repeats words to simulate stuttered speech.
 #[derive(Debug, Clone, Copy)]
 pub struct ReduplicateWordsOp {
@@ -234,27 +304,17 @@ impl TextOperation for ReduplicateWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.clamp(0.0, 1.0);
+        let effective_rate = clamp_rate(self.rate);
         if effective_rate <= 0.0 {
             return Ok(());
         }
 
-        let mean_weight = candidates
-            .iter()
-            .map(|candidate| candidate.weight)
-            .sum::<f64>()
-            / (candidates.len() as f64);
+        let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
         // Collect all reduplications to apply in bulk
         let mut reduplications = Vec::new();
         for candidate in candidates.into_iter() {
-            let probability = if effective_rate >= 1.0 {
-                1.0
-            } else if mean_weight <= f64::EPSILON {
-                effective_rate
-            } else {
-                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
-            };
+            let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
                 continue;
@@ -311,7 +371,7 @@ impl TextOperation for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.clamp(0.0, 1.0);
+        let effective_rate = clamp_rate(self.rate);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -321,11 +381,7 @@ impl TextOperation for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let mean_weight = candidates
-            .iter()
-            .map(|candidate| candidate.weight)
-            .sum::<f64>()
-            / (candidates.len() as f64);
+        let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
         // Collect deletion decisions
         use std::collections::HashSet;
@@ -337,13 +393,7 @@ impl TextOperation for DeleteRandomWordsOp {
                 break;
             }
 
-            let probability = if effective_rate >= 1.0 {
-                1.0
-            } else if mean_weight <= f64::EPSILON {
-                effective_rate
-            } else {
-                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
-            };
+            let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
                 continue;
@@ -446,7 +496,7 @@ impl TextOperation for SwapAdjacentWordsOp {
             return Ok(());
         }
 
-        let clamped = self.rate.clamp(0.0, 1.0);
+        let clamped = clamp_rate(self.rate);
         if clamped <= 0.0 {
             return Ok(());
         }
@@ -556,6 +606,10 @@ impl TextOperation for RushmoreComboOp {
         Ok(())
     }
 }
+
+// ============================================================================
+// Redaction Operation
+// ============================================================================
 
 /// Redacts words by replacing core characters with a replacement token.
 #[derive(Debug, Clone)]
@@ -687,6 +741,13 @@ impl TextOperation for RedactWordsOp {
         Ok(())
     }
 }
+
+// ============================================================================
+// OCR Simulation Operation
+// ============================================================================
+//
+// Simulates OCR (Optical Character Recognition) errors with research-backed
+// models including burst errors, document-level bias, and whitespace errors.
 
 /// Introduces OCR-style character confusions with research-backed enhancements.
 ///
@@ -1089,9 +1150,12 @@ impl TextOperation for OcrArtifactsOp {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Zero-Width Character Classification and Modes
-// ---------------------------------------------------------------------------
+// ============================================================================
+// Zero-Width Character Operations
+// ============================================================================
+//
+// Operations for inserting invisible zero-width Unicode characters that can
+// disrupt tokenization and string matching while remaining visually invisible.
 
 /// Classification of zero-width Unicode characters by their rendering behavior.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1605,11 +1669,13 @@ impl TextOperation for ZeroWidthOp {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Motor Coordination Weighting
-// ---------------------------------------------------------------------------
-// Based on the Aalto 136M Keystrokes dataset
-// Dhakal et al. (2018). Observations on Typing from 136 Million Keystrokes. CHI '18.
+// ============================================================================
+// Keyboard Typo Operations
+// ============================================================================
+//
+// Simulates keyboard typing errors using adjacency-based neighbor selection
+// and motor coordination models based on the Aalto 136M Keystrokes dataset
+// (Dhakal et al., 2018).
 
 /// Motor coordination weighting mode for typo sampling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -2283,6 +2349,13 @@ impl TextOperation for TypoOp {
     }
 }
 
+// ============================================================================
+// Quote Normalization Operation
+// ============================================================================
+//
+// Converts ASCII straight quotes to typographically correct curly quotes
+// (smart quotes) based on context and pairing.
+
 #[derive(Clone, Copy, Debug)]
 enum QuoteKind {
     Double,
@@ -2484,6 +2557,13 @@ impl TextOperation for QuotePairsOp {
     }
 }
 
+// ============================================================================
+// Operation Enum (Type-Erased Wrapper)
+// ============================================================================
+//
+// The Operation enum provides a type-erased wrapper around all operation types,
+// enabling heterogeneous collections and dynamic dispatch in the pipeline.
+
 /// Type-erased text corruption operation for pipeline sequencing.
 #[derive(Debug, Clone)]
 pub enum Operation {
@@ -2523,6 +2603,10 @@ impl TextOperation for Operation {
         }
     }
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {

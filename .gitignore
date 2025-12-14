@@ -32,8 +32,7 @@ htmlcov/
 
 # Local caches
 .cache/
-.beads/vc.db-shm
-.beads/vc.db-wal
-.beads/beads.db
 
 site/
+.claude/settings.local.json
+*.cp312-win_amd64.pyd

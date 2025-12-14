@@ -26,6 +26,20 @@ pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = L
 });
 
 /// Sorted confusion pairs reused by glitchling implementations.
+///
+/// # Memory Management
+///
+/// This table uses `Box::leak` to create `'static` slice references for the
+/// replacement arrays. This is safe and intentional because:
+///
+/// 1. **One-time initialization**: The `Lazy` wrapper ensures this runs exactly once
+/// 2. **Constant data**: The OCR confusion table is immutable configuration data
+/// 3. **Process lifetime**: The data is needed for the entire process lifetime
+/// 4. **No accumulation**: Unlike a cache that grows, this is a fixed-size table
+///
+/// The leaked memory is ~10KB and is effectively "compiled in" to the running
+/// process. This is a common pattern for static tables that need to be built
+/// from embedded assets at runtime.
 pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])>> =
     Lazy::new(|| {
         let mut entries: Vec<(usize, (&'static str, &'static [&'static str]))> = Vec::new();
@@ -45,6 +59,8 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
                 continue;
             }
 
+            // Convert Vec to 'static slice. The memory is intentionally leaked
+            // because this table lives for the entire process lifetime.
             let leaked: &'static [&'static str] = Box::leak(replacements.into_boxed_slice());
             entries.push((line_number, (source, leaked)));
         }

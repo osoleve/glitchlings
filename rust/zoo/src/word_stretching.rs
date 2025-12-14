@@ -1,4 +1,5 @@
 use pyo3::prelude::*;
+use rayon::prelude::*;
 use regex::Regex;
 use serde::Deserialize;
 use std::borrow::Cow;
@@ -149,7 +150,9 @@ pub struct WordStretchOp {
 impl WordStretchOp {
     fn tokenise<'a>(&self, text: &'a str) -> Vec<TokenInfo<'a>> {
         let regex = token_regex();
-        let mut tokens = Vec::new();
+        // Estimate token count: ~1 token per 5 chars on average (words + separators)
+        let estimated_tokens = text.len() / 5 + 1;
+        let mut tokens = Vec::with_capacity(estimated_tokens);
         let mut clause_index = 0usize;
         let mut at_clause_start = true; // First token is always at clause start
 
@@ -346,72 +349,95 @@ impl WordStretchOp {
         (sentiment_score, swing)
     }
 
-    /// Phonotactic scoring using pre-computed lowercase chars from cache
+    /// Phonotactic scoring using pre-computed lowercase chars from cache.
+    /// Uses a single pass over the character array to check all patterns.
     fn phonotactic_with_cache(&self, chars: &[char]) -> f64 {
-        if chars.is_empty() || !chars.iter().any(|&c| is_vowel(c)) {
+        let len = chars.len();
+        if len == 0 {
+            return 0.0;
+        }
+
+        // Single pass to check for vowels and collect pattern matches
+        let mut has_vowel = false;
+        let mut has_digraph = false;
+        let mut has_adjacent_vowels = false;
+        let mut has_aba = false;
+
+        for i in 0..len {
+            let c0 = chars[i];
+
+            // Check for any vowel (needed for early exit)
+            if is_vowel(c0) {
+                has_vowel = true;
+            }
+
+            // Check pairs (digraphs and adjacent vowels)
+            if i + 1 < len {
+                let c1 = chars[i + 1];
+
+                // Digraph check via direct match instead of array lookup
+                has_digraph |= matches!(
+                    (c0, c1),
+                    ('a', 'a')
+                        | ('a', 'e')
+                        | ('a', 'i')
+                        | ('a', 'y')
+                        | ('e', 'e')
+                        | ('e', 'i')
+                        | ('e', 'y')
+                        | ('i', 'e')
+                        | ('o', 'a')
+                        | ('o', 'e')
+                        | ('o', 'i')
+                        | ('o', 'o')
+                        | ('o', 'u')
+                        | ('u', 'e')
+                        | ('u', 'i')
+                );
+
+                // Adjacent vowels check
+                has_adjacent_vowels |= is_vowel(c0) && is_vowel(c1);
+
+                // ABA pattern check (needs i+2)
+                if i + 2 < len {
+                    let c2 = chars[i + 2];
+                    has_aba |= c0 == c2 && c0 != c1;
+                }
+            }
+        }
+
+        // Early exit if no vowels
+        if !has_vowel {
             return 0.0;
         }
 
         let mut score: f64 = 0.25;
 
-        // Check sonorant codas using last char
-        if let Some(&last) = chars.last() {
-            if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
-                score += 0.2;
-            }
-            // Check sibilant codas
-            if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
-                score += 0.18;
-            }
+        // Check sonorant and sibilant codas using last char
+        let last = chars[len - 1];
+        if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
+            score += 0.2;
+        }
+        if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
+            score += 0.18;
         }
 
-        // Check two-char sibilant codas
-        if chars.len() >= 2 {
-            let len = chars.len();
+        // Check two-char sibilant codas (sh, zh)
+        if len >= 2 {
             let last_two = (chars[len - 2], chars[len - 1]);
             if last_two == ('s', 'h') || last_two == ('z', 'h') {
                 score += 0.18;
             }
         }
 
-        // Check digraphs using windows (faster than string contains for each)
-        let digraph_pairs: [(char, char); 15] = [
-            ('a', 'a'),
-            ('a', 'e'),
-            ('a', 'i'),
-            ('a', 'y'),
-            ('e', 'e'),
-            ('e', 'i'),
-            ('e', 'y'),
-            ('i', 'e'),
-            ('o', 'a'),
-            ('o', 'e'),
-            ('o', 'i'),
-            ('o', 'o'),
-            ('o', 'u'),
-            ('u', 'e'),
-            ('u', 'i'),
-        ];
-        if chars.windows(2).any(|pair| {
-            let p = (pair[0], pair[1]);
-            digraph_pairs.contains(&p)
-        }) {
+        // Apply scores from single-pass checks
+        if has_digraph {
             score += 0.22;
         }
-
-        // Check adjacent vowels
-        if chars
-            .windows(2)
-            .any(|pair| is_vowel(pair[0]) && is_vowel(pair[1]))
-        {
+        if has_adjacent_vowels {
             score += 0.22;
         }
-
-        // Check ABA pattern
-        if chars
-            .windows(3)
-            .any(|triple| triple[0] == triple[2] && triple[0] != triple[1])
-        {
+        if has_aba {
             score += 0.08;
         }
 
@@ -458,37 +484,83 @@ impl WordStretchOp {
         score.clamp(0.0, 1.0)
     }
 
+    /// Threshold for switching to parallel analysis (word count)
+    const PARALLEL_THRESHOLD: usize = 200;
+
     fn analyse(&self, tokens: &[TokenInfo<'_>]) -> Vec<StretchCandidate> {
-        let mut candidates = Vec::new();
-        for (idx, token) in tokens.iter().enumerate() {
-            if !token.is_word {
-                continue;
-            }
-            if self.excluded(tokens, idx) {
-                continue;
-            }
-            // Build cache lazily only for non-excluded word tokens
-            let cache = self.build_cache(token);
-            let features = self.compute_features(tokens, idx, &cache);
-            let weights = (0.32, 0.18, 0.14, 0.22, 0.14);
-            let weighted = weights.0 * features.lexical
-                + weights.1 * features.pos
-                + weights.2 * features.sentiment
-                + weights.3 * features.phonotactic
-                + weights.4 * features.context;
-            let score = weighted / (weights.0 + weights.1 + weights.2 + weights.3 + weights.4);
-            if score >= 0.18 {
-                // Pre-compute stretch site using cached token data
-                let stretch_site = self.find_stretch_site_with_cache(&cache);
-                candidates.push(StretchCandidate {
-                    token_index: idx,
-                    score: score.clamp(0.0, 1.0),
-                    features,
-                    stretch_site,
-                });
+        // Count word tokens to decide on parallel vs sequential
+        let word_indices: Vec<usize> = tokens
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.is_word)
+            .map(|(i, _)| i)
+            .collect();
+
+        if word_indices.len() < Self::PARALLEL_THRESHOLD {
+            self.analyse_sequential(tokens, &word_indices)
+        } else {
+            self.analyse_parallel(tokens, &word_indices)
+        }
+    }
+
+    fn analyse_sequential(
+        &self,
+        tokens: &[TokenInfo<'_>],
+        word_indices: &[usize],
+    ) -> Vec<StretchCandidate> {
+        let mut candidates = Vec::with_capacity(word_indices.len() / 2);
+        for &idx in word_indices {
+            if let Some(candidate) = self.evaluate_candidate(tokens, idx) {
+                candidates.push(candidate);
             }
         }
         candidates
+    }
+
+    fn analyse_parallel(
+        &self,
+        tokens: &[TokenInfo<'_>],
+        word_indices: &[usize],
+    ) -> Vec<StretchCandidate> {
+        word_indices
+            .par_iter()
+            .filter_map(|&idx| self.evaluate_candidate(tokens, idx))
+            .collect()
+    }
+
+    /// Evaluate a single token index and return a candidate if it qualifies.
+    /// Extracted to share logic between sequential and parallel paths.
+    fn evaluate_candidate(
+        &self,
+        tokens: &[TokenInfo<'_>],
+        idx: usize,
+    ) -> Option<StretchCandidate> {
+        let token = &tokens[idx];
+        if self.excluded(tokens, idx) {
+            return None;
+        }
+        // Build cache lazily only for non-excluded word tokens
+        let cache = self.build_cache(token);
+        let features = self.compute_features(tokens, idx, &cache);
+        let weights = (0.32, 0.18, 0.14, 0.22, 0.14);
+        let weighted = weights.0 * features.lexical
+            + weights.1 * features.pos
+            + weights.2 * features.sentiment
+            + weights.3 * features.phonotactic
+            + weights.4 * features.context;
+        let score = weighted / (weights.0 + weights.1 + weights.2 + weights.3 + weights.4);
+        if score >= 0.18 {
+            // Pre-compute stretch site using cached token data
+            let stretch_site = self.find_stretch_site_with_cache(&cache);
+            Some(StretchCandidate {
+                token_index: idx,
+                score: score.clamp(0.0, 1.0),
+                features,
+                stretch_site,
+            })
+        } else {
+            None
+        }
     }
 
     fn select_candidates(
@@ -511,8 +583,10 @@ impl WordStretchOp {
                 .push(idx);
         }
 
-        let mut selected_indices: Vec<usize> = Vec::new();
         let total_expected = (candidates.len() as f64 * rate).round() as usize;
+        // Use HashSet for O(1) membership checks instead of O(n) Vec::contains
+        let mut selected_set: HashSet<usize> = HashSet::with_capacity(total_expected);
+        let mut selected_indices: Vec<usize> = Vec::with_capacity(total_expected);
         let mut grouped_keys: Vec<usize> = grouped.keys().copied().collect();
         grouped_keys.sort_unstable();
 
@@ -549,6 +623,7 @@ impl WordStretchOp {
 
             if provisional.len() < clause_quota {
                 for &cand_idx in clause_candidate_indices.iter() {
+                    // O(1) membership check via HashSet
                     if provisional.contains(&cand_idx) {
                         continue;
                     }
@@ -558,12 +633,17 @@ impl WordStretchOp {
                     }
                 }
             }
+            // Track selected in HashSet for fast lookup during backfill
+            for &idx in &provisional {
+                selected_set.insert(idx);
+            }
             selected_indices.extend(provisional);
         }
 
         if selected_indices.len() < total_expected {
+            // O(1) membership check via HashSet instead of O(n) Vec::contains
             let mut remaining: Vec<usize> = (0..candidates.len())
-                .filter(|idx| !selected_indices.contains(idx))
+                .filter(|idx| !selected_set.contains(idx))
                 .collect();
             remaining.sort_by(|&a, &b| {
                 let score_order = candidates[b]
@@ -674,6 +754,16 @@ impl WordStretchOp {
     }
 }
 
+/// A stretch replacement to apply, sorted by byte position for efficient single-pass assembly.
+struct StretchReplacement {
+    /// Byte offset in the original text where this token starts
+    byte_start: usize,
+    /// Byte offset in the original text where this token ends
+    byte_end: usize,
+    /// The stretched replacement text
+    stretched: String,
+}
+
 impl TextOperation for WordStretchOp {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         let text = buffer.to_string();
@@ -688,14 +778,13 @@ impl TextOperation for WordStretchOp {
             return Ok(());
         }
 
-        // Convert tokens to owned strings only when we need to modify them
-        let mut token_strings: Vec<Cow<'_, str>> = tokens.iter().map(|t| t.text.clone()).collect();
+        // Collect stretch replacements with byte positions (already sorted by token position)
+        let mut replacements: Vec<StretchReplacement> = Vec::with_capacity(selected_indices.len());
 
         for &cand_idx in &selected_indices {
             let candidate = &candidates[cand_idx];
             let token_idx = candidate.token_index;
             let token = &tokens[token_idx];
-            let original = &token_strings[token_idx];
 
             // Use pre-computed stretch site from candidate
             let site = match candidate.stretch_site {
@@ -727,12 +816,48 @@ impl TextOperation for WordStretchOp {
             if repeats <= 0 {
                 continue;
             }
-            // Apply stretch using the original uncached method
-            let stretched = self.apply_stretch(original, &site, repeats as usize);
-            token_strings[token_idx] = Cow::Owned(stretched);
+
+            let stretched = self.apply_stretch(&token.text, &site, repeats as usize);
+            let byte_end = token.start + token.text.len();
+            replacements.push(StretchReplacement {
+                byte_start: token.start,
+                byte_end,
+                stretched,
+            });
         }
 
-        let result: String = token_strings.iter().map(|s| s.as_ref()).collect();
+        if replacements.is_empty() {
+            return Ok(());
+        }
+
+        // Ensure replacements are sorted by byte position for correct reconstruction.
+        // While selected_indices is sorted by token position, some candidates may be
+        // skipped during iteration, and we need ascending byte order for the cursor logic.
+        replacements.sort_by_key(|r| r.byte_start);
+
+        // Build result string in a single pass using byte positions
+        // Estimate capacity: original length + extra chars from stretching
+        let extra_chars: usize = replacements
+            .iter()
+            .map(|r| r.stretched.len().saturating_sub(r.byte_end - r.byte_start))
+            .sum();
+        let mut result = String::with_capacity(text.len() + extra_chars);
+
+        let mut cursor = 0usize;
+        for replacement in &replacements {
+            // Copy unchanged text before this replacement
+            if cursor < replacement.byte_start {
+                result.push_str(&text[cursor..replacement.byte_start]);
+            }
+            // Insert stretched text
+            result.push_str(&replacement.stretched);
+            cursor = replacement.byte_end;
+        }
+        // Copy remaining text after last replacement
+        if cursor < text.len() {
+            result.push_str(&text[cursor..]);
+        }
+
         *buffer = buffer.rebuild_with_patterns(result);
         buffer.reindex_if_needed();
         Ok(())

@@ -3,69 +3,59 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::Bound;
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::Arc;
 
+use crate::cache::StaticCache;
 use crate::operations::{MotorWeighting, ShiftSlipConfig};
 
-type CachedLayouts = HashMap<usize, Arc<HashMap<String, Vec<String>>>>;
-type CachedShiftMaps = HashMap<usize, Arc<HashMap<String, String>>>;
-
-fn layout_cache() -> &'static RwLock<CachedLayouts> {
-    static CACHE: OnceLock<RwLock<CachedLayouts>> = OnceLock::new();
-    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+fn layout_cache() -> &'static StaticCache<usize, HashMap<String, Vec<String>>> {
+    static CACHE: std::sync::OnceLock<StaticCache<usize, HashMap<String, Vec<String>>>> =
+        std::sync::OnceLock::new();
+    CACHE.get_or_init(StaticCache::new)
 }
 
-fn shift_map_cache() -> &'static RwLock<CachedShiftMaps> {
-    static CACHE: OnceLock<RwLock<CachedShiftMaps>> = OnceLock::new();
-    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+fn shift_map_cache() -> &'static StaticCache<usize, HashMap<String, String>> {
+    static CACHE: std::sync::OnceLock<StaticCache<usize, HashMap<String, String>>> =
+        std::sync::OnceLock::new();
+    CACHE.get_or_init(StaticCache::new)
 }
 
 fn extract_layout_map(layout: &Bound<'_, PyDict>) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
     let key = layout.as_ptr() as usize;
-    if let Some(cached) = layout_cache()
-        .read()
-        .expect("layout cache poisoned")
-        .get(&key)
-    {
-        return Ok(cached.clone());
+
+    // Check cache first (common case)
+    if let Some(cached) = layout_cache().get(&key) {
+        return Ok(cached);
     }
 
+    // Materialize the layout from Python dict
     let mut materialised: HashMap<String, Vec<String>> = HashMap::new();
     for (entry_key, entry_value) in layout.iter() {
         materialised.insert(entry_key.extract()?, entry_value.extract()?);
     }
-    let arc = Arc::new(materialised);
 
-    let mut guard = layout_cache()
-        .write()
-        .expect("layout cache poisoned during write");
-    let entry = guard.entry(key).or_insert_with(|| arc.clone());
-    Ok(entry.clone())
+    // Insert into cache (handles race conditions internally)
+    Ok(layout_cache().get_or_insert(key, materialised))
 }
 
 pub(crate) fn extract_shift_map(
     shift_map: &Bound<'_, PyDict>,
 ) -> PyResult<Arc<HashMap<String, String>>> {
     let key = shift_map.as_ptr() as usize;
-    if let Some(cached) = shift_map_cache()
-        .read()
-        .expect("shift map cache poisoned")
-        .get(&key)
-    {
-        return Ok(cached.clone());
+
+    // Check cache first (common case)
+    if let Some(cached) = shift_map_cache().get(&key) {
+        return Ok(cached);
     }
 
+    // Materialize the shift map from Python dict
     let mut materialised: HashMap<String, String> = HashMap::new();
     for (entry_key, entry_value) in shift_map.iter() {
         materialised.insert(entry_key.extract()?, entry_value.extract()?);
     }
-    let arc = Arc::new(materialised);
 
-    let mut guard = shift_map_cache()
-        .write()
-        .expect("shift map cache poisoned during write");
-    let entry = guard.entry(key).or_insert_with(|| arc.clone());
-    Ok(entry.clone())
+    // Insert into cache (handles race conditions internally)
+    Ok(shift_map_cache().get_or_insert(key, materialised))
 }
 
 pub(crate) fn build_shift_slip_config(
