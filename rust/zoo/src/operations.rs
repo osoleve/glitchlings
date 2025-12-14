@@ -1,3 +1,20 @@
+//! Text corruption operations for the pipeline.
+//!
+//! This module contains all the text transformation operations that can be
+//! composed into a corruption pipeline. Operations are organized into categories:
+//!
+//! # Module Structure
+//!
+//! - **Core Types** (lines ~20-230): Error types, RNG trait, rate utilities
+//! - **Word Mutations** (lines ~240-580): Reduplicate, Delete, Swap, RushmoreCombo
+//! - **Redaction** (lines ~590-720): RedactWordsOp
+//! - **OCR Simulation** (lines ~720-1120): OcrArtifactsOp with burst/bias models
+//! - **Zero-Width Characters** (lines ~1120-1640): ZeroWidthOp and related types
+//! - **Keyboard Typos** (lines ~1640-2360): TypoOp, ShiftSlipConfig, MotorWeighting
+//! - **Quote Normalization** (lines ~2360-2510): QuotePairsOp
+//! - **Operation Enum** (lines ~2510-2550): Type-erased Operation wrapper
+//! - **Tests** (lines ~2550+): Unit tests for operations
+
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::PyErr;
 use smallvec::SmallVec;
@@ -232,6 +249,13 @@ fn weighted_sample_without_replacement(
 pub trait TextOperation {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError>;
 }
+
+// ============================================================================
+// Word Mutation Operations
+// ============================================================================
+//
+// Operations that modify text at the word level: duplicating, deleting,
+// swapping, and combining these effects.
 
 /// Repeats words to simulate stuttered speech.
 #[derive(Debug, Clone, Copy)]
@@ -583,6 +607,10 @@ impl TextOperation for RushmoreComboOp {
     }
 }
 
+// ============================================================================
+// Redaction Operation
+// ============================================================================
+
 /// Redacts words by replacing core characters with a replacement token.
 #[derive(Debug, Clone)]
 pub struct RedactWordsOp {
@@ -713,6 +741,13 @@ impl TextOperation for RedactWordsOp {
         Ok(())
     }
 }
+
+// ============================================================================
+// OCR Simulation Operation
+// ============================================================================
+//
+// Simulates OCR (Optical Character Recognition) errors with research-backed
+// models including burst errors, document-level bias, and whitespace errors.
 
 /// Introduces OCR-style character confusions with research-backed enhancements.
 ///
@@ -1115,9 +1150,12 @@ impl TextOperation for OcrArtifactsOp {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Zero-Width Character Classification and Modes
-// ---------------------------------------------------------------------------
+// ============================================================================
+// Zero-Width Character Operations
+// ============================================================================
+//
+// Operations for inserting invisible zero-width Unicode characters that can
+// disrupt tokenization and string matching while remaining visually invisible.
 
 /// Classification of zero-width Unicode characters by their rendering behavior.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1631,11 +1669,13 @@ impl TextOperation for ZeroWidthOp {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Motor Coordination Weighting
-// ---------------------------------------------------------------------------
-// Based on the Aalto 136M Keystrokes dataset
-// Dhakal et al. (2018). Observations on Typing from 136 Million Keystrokes. CHI '18.
+// ============================================================================
+// Keyboard Typo Operations
+// ============================================================================
+//
+// Simulates keyboard typing errors using adjacency-based neighbor selection
+// and motor coordination models based on the Aalto 136M Keystrokes dataset
+// (Dhakal et al., 2018).
 
 /// Motor coordination weighting mode for typo sampling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -2309,6 +2349,13 @@ impl TextOperation for TypoOp {
     }
 }
 
+// ============================================================================
+// Quote Normalization Operation
+// ============================================================================
+//
+// Converts ASCII straight quotes to typographically correct curly quotes
+// (smart quotes) based on context and pairing.
+
 #[derive(Clone, Copy, Debug)]
 enum QuoteKind {
     Double,
@@ -2510,6 +2557,13 @@ impl TextOperation for QuotePairsOp {
     }
 }
 
+// ============================================================================
+// Operation Enum (Type-Erased Wrapper)
+// ============================================================================
+//
+// The Operation enum provides a type-erased wrapper around all operation types,
+// enabling heterogeneous collections and dynamic dispatch in the pipeline.
+
 /// Type-erased text corruption operation for pipeline sequencing.
 #[derive(Debug, Clone)]
 pub enum Operation {
@@ -2549,6 +2603,10 @@ impl TextOperation for Operation {
         }
     }
 }
+
+// ============================================================================
+// Tests
+// ============================================================================
 
 #[cfg(test)]
 mod tests {
