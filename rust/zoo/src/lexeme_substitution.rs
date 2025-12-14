@@ -16,13 +16,13 @@
 //! - "literal": First entry in each word's alternatives (deterministic mapping)
 //! - "drift": Random selection from alternatives (probabilistic)
 
+use aho_corasick::{AhoCorasick, MatchKind};
 use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
 use once_cell::sync::Lazy;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use regex::Regex;
 use std::collections::HashMap;
 use std::env;
 use std::fs;
@@ -149,35 +149,41 @@ fn parse_dictionary_entries(entries: serde_json::Map<String, serde_json::Value>)
     dict
 }
 
-/// Pre-compiled regex patterns for each dictionary.
-/// We build word-boundary patterns for efficient matching.
-static LEXEME_PATTERNS: Lazy<HashMap<String, Regex>> = Lazy::new(|| {
-    let mut patterns: HashMap<String, Regex> = HashMap::new();
+/// Aho-Corasick matcher for each dictionary.
+/// Provides O(n+m) matching instead of O(n*k) regex alternation.
+struct LexemeMatcher {
+    /// The Aho-Corasick automaton for fast multi-pattern matching
+    automaton: AhoCorasick,
+    /// Mapping from pattern index to the lowercase dictionary key
+    pattern_keys: Vec<String>,
+}
+
+/// Pre-compiled Aho-Corasick matchers for each dictionary.
+static LEXEME_MATCHERS: Lazy<HashMap<String, LexemeMatcher>> = Lazy::new(|| {
+    let mut matchers: HashMap<String, LexemeMatcher> = HashMap::new();
 
     for (dict_name, dict) in LEXEME_DICTIONARIES.iter() {
         let mut words: Vec<&str> = dict.keys().map(|s| s.as_str()).collect();
-        // Sort by length descending to match longer words first
+        // Sort by length descending so longer matches are preferred
         words.sort_by_key(|w| std::cmp::Reverse(w.len()));
 
         if words.is_empty() {
             continue;
         }
 
-        // Escape any regex special characters in words
-        let escaped: Vec<String> = words.iter().map(|w| regex::escape(w)).collect();
-        let joined = escaped.join("|");
+        // Build Aho-Corasick with case-insensitive matching and leftmost-longest semantics
+        let automaton = AhoCorasick::builder()
+            .ascii_case_insensitive(true)
+            .match_kind(MatchKind::LeftmostLongest)
+            .build(&words)
+            .expect("valid patterns for Aho-Corasick");
 
-        // Build a pattern that:
-        // - Matches word boundaries
-        // - Captures the base word and optional suffix (for colors: "reddish", "greenery")
-        let pattern = format!(r"(?i)\b(?P<word>{joined})(?P<suffix>[a-zA-Z]*)\b");
+        let pattern_keys: Vec<String> = words.iter().map(|s| s.to_string()).collect();
 
-        if let Ok(re) = Regex::new(&pattern) {
-            patterns.insert(dict_name.clone(), re);
-        }
+        matchers.insert(dict_name.clone(), LexemeMatcher { automaton, pattern_keys });
     }
 
-    patterns
+    matchers
 });
 
 /// Jargoyle operating mode.
@@ -202,53 +208,81 @@ impl JargoyleMode {
     }
 }
 
-/// Get the canonical (first) replacement for a word.
-fn literal_replacement<'a>(dict: &'a LexemeDict, word: &str) -> Option<&'a str> {
-    dict.get(&word.to_lowercase())
-        .and_then(|alts| alts.first())
-        .map(|s| s.as_str())
+/// Case pattern detected from a template string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CasePattern {
+    Empty,
+    AllUpper,
+    AllLower,
+    TitleCase,
+    Mixed,
 }
 
-/// Get a random replacement from alternatives.
-fn drift_replacement<'a>(
-    dict: &'a LexemeDict,
-    word: &str,
-    rng: &mut dyn OperationRng,
-) -> Result<Option<&'a str>, OperationError> {
-    if let Some(alternatives) = dict.get(&word.to_lowercase()) {
-        if alternatives.is_empty() {
-            return Ok(None);
+/// Detect case pattern in a single pass over the string.
+fn detect_case_pattern(s: &str) -> CasePattern {
+    if s.is_empty() {
+        return CasePattern::Empty;
+    }
+
+    let mut chars = s.chars();
+    let first = chars.next().unwrap();
+    let first_upper = first.is_ascii_uppercase();
+    let first_lower = first.is_ascii_lowercase();
+    let first_alpha = first.is_ascii_alphabetic();
+
+    // Track what we've seen after the first character
+    let mut seen_upper = false;
+    let mut seen_lower = false;
+
+    for ch in chars {
+        if ch.is_ascii_uppercase() {
+            seen_upper = true;
+        } else if ch.is_ascii_lowercase() {
+            seen_lower = true;
         }
-        let index = rng.rand_index(alternatives.len())?;
-        return Ok(Some(&alternatives[index]));
+        // Early exit if we've seen both cases after first char - it's mixed
+        if seen_upper && seen_lower {
+            return CasePattern::Mixed;
+        }
     }
-    Ok(None)
-}
 
-/// Case preservation helpers.
-fn is_all_ascii_uppercase(value: &str) -> bool {
-    !value.is_empty()
-        && value.chars().all(|ch| {
-            !ch.is_ascii_lowercase() && (!ch.is_ascii_alphabetic() || ch.is_ascii_uppercase())
-        })
-}
-
-fn is_all_ascii_lowercase(value: &str) -> bool {
-    !value.is_empty()
-        && value.chars().all(|ch| {
-            !ch.is_ascii_uppercase() && (!ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
-        })
-}
-
-fn is_title_case(value: &str) -> bool {
-    let mut chars = value.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    if !first.is_ascii_uppercase() {
-        return false;
+    // Now determine the pattern based on first char and rest
+    if !first_alpha {
+        // First char is not alphabetic
+        if seen_upper && !seen_lower {
+            return CasePattern::AllUpper;
+        }
+        if seen_lower && !seen_upper {
+            return CasePattern::AllLower;
+        }
+        if !seen_upper && !seen_lower {
+            return CasePattern::AllLower; // No alphabetic chars, treat as lowercase
+        }
+        return CasePattern::Mixed;
     }
-    chars.all(|ch| !ch.is_ascii_alphabetic() || ch.is_ascii_lowercase())
+
+    if first_upper {
+        if !seen_lower && !seen_upper {
+            // Single uppercase letter
+            return CasePattern::AllUpper;
+        }
+        if seen_lower && !seen_upper {
+            // First upper, rest all lower
+            return CasePattern::TitleCase;
+        }
+        if seen_upper && !seen_lower {
+            // All uppercase
+            return CasePattern::AllUpper;
+        }
+        // Has both after first - but first was upper
+        return CasePattern::Mixed;
+    }
+
+    // first_lower
+    if seen_upper {
+        return CasePattern::Mixed;
+    }
+    CasePattern::AllLower
 }
 
 fn capitalize_ascii(value: &str) -> String {
@@ -264,22 +298,8 @@ fn capitalize_ascii(value: &str) -> String {
     result
 }
 
-/// Apply case from template to replacement.
-fn apply_case(template: &str, replacement: &str) -> String {
-    if template.is_empty() {
-        return replacement.to_string();
-    }
-    if is_all_ascii_uppercase(template) {
-        return replacement.to_ascii_uppercase();
-    }
-    if is_all_ascii_lowercase(template) {
-        return replacement.to_ascii_lowercase();
-    }
-    if is_title_case(template) {
-        return capitalize_ascii(replacement);
-    }
-
-    // Character-by-character case mapping for mixed case
+/// Apply mixed case character-by-character.
+fn apply_mixed_case(template: &str, replacement: &str) -> String {
     let mut template_chars = template.chars();
     let mut adjusted = String::with_capacity(replacement.len());
     for repl_char in replacement.chars() {
@@ -297,6 +317,17 @@ fn apply_case(template: &str, replacement: &str) -> String {
         adjusted.push(mapped);
     }
     adjusted
+}
+
+/// Apply case from template to replacement using single-pass detection.
+fn apply_case(template: &str, replacement: &str) -> String {
+    match detect_case_pattern(template) {
+        CasePattern::Empty => replacement.to_string(),
+        CasePattern::AllUpper => replacement.to_ascii_uppercase(),
+        CasePattern::AllLower => replacement.to_ascii_lowercase(),
+        CasePattern::TitleCase => capitalize_ascii(replacement),
+        CasePattern::Mixed => apply_mixed_case(template, replacement),
+    }
 }
 
 /// Handle suffix harmonization (e.g., "reddish" -> "blueish", not "bluereddish").
@@ -321,6 +352,95 @@ fn harmonize_suffix(original: &str, replacement: &str, suffix: &str) -> String {
     suffix.to_string()
 }
 
+/// A validated match with word boundary checks and suffix extraction.
+struct ValidatedMatch {
+    /// Start byte position in text
+    start: usize,
+    /// End byte position of the base word (before suffix)
+    base_end: usize,
+    /// End byte position including any suffix
+    full_end: usize,
+    /// The lowercase dictionary key for lookup
+    dict_key: String,
+}
+
+/// Check if a character is a word boundary (not alphanumeric).
+#[inline]
+fn is_word_boundary_char(c: char) -> bool {
+    !c.is_alphanumeric()
+}
+
+/// Find valid matches with word boundary checks and suffix detection.
+fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch> {
+    let text_bytes = text.as_bytes();
+    let text_len = text.len();
+    let mut matches = Vec::new();
+    let mut last_end = 0usize;
+
+    for mat in matcher.automaton.find_iter(text) {
+        let start = mat.start();
+        let end = mat.end();
+
+        // Skip overlapping matches (Aho-Corasick with LeftmostLongest should handle this,
+        // but we double-check to avoid issues)
+        if start < last_end {
+            continue;
+        }
+
+        // Check word boundary before match
+        if start > 0 {
+            // Get the character before the match
+            let before_start = text[..start].chars().next_back();
+            if let Some(c) = before_start {
+                if !is_word_boundary_char(c) {
+                    continue; // Not at word boundary
+                }
+            }
+        }
+
+        // Check for word boundary or suffix after match
+        // We need to find where the word actually ends (including any suffix)
+        let mut full_end = end;
+        let mut has_suffix = false;
+
+        if end < text_len {
+            // Check if there are more alphabetic characters (suffix)
+            let rest = &text[end..];
+            for c in rest.chars() {
+                if c.is_ascii_alphabetic() {
+                    full_end += c.len_utf8();
+                    has_suffix = true;
+                } else {
+                    break;
+                }
+            }
+
+            // After consuming any suffix, check we're at a word boundary
+            if full_end < text_len {
+                let after_char = text[full_end..].chars().next();
+                if let Some(c) = after_char {
+                    if !is_word_boundary_char(c) {
+                        continue; // Not at word boundary
+                    }
+                }
+            }
+        }
+
+        let dict_key = matcher.pattern_keys[mat.pattern().as_usize()].clone();
+
+        matches.push(ValidatedMatch {
+            start,
+            base_end: end,
+            full_end,
+            dict_key,
+        });
+
+        last_end = full_end;
+    }
+
+    matches
+}
+
 /// Transform text using the specified dictionary and mode.
 fn transform_text(
     text: &str,
@@ -338,13 +458,13 @@ fn transform_text(
         None => return Ok(text.to_string()), // Unknown dictionary, return unchanged
     };
 
-    let pattern = match LEXEME_PATTERNS.get(dict_name) {
-        Some(p) => p,
+    let matcher = match LEXEME_MATCHERS.get(dict_name) {
+        Some(m) => m,
         None => return Ok(text.to_string()),
     };
 
-    // Collect all matches first
-    let matches: Vec<_> = pattern.captures_iter(text).collect();
+    // Find all valid matches with word boundary checks
+    let matches = find_valid_matches(text, matcher);
     if matches.is_empty() {
         return Ok(text.to_string());
     }
@@ -375,21 +495,20 @@ fn transform_text(
         // Sample indices
         let selected = r.sample_indices(matches.len(), max_count)?;
         let mut sorted: Vec<usize> = selected;
-        sorted.sort();
+        sorted.sort_unstable();
         sorted
     } else {
         // No RNG, literal mode transforms all
         (0..matches.len()).collect()
     };
 
-    // Build result with replacements
-    let mut result = String::with_capacity(text.len());
+    // Estimate result capacity: original length + some growth for longer replacements
+    let estimated_growth = (indices_to_transform.len() * 4).min(text.len() / 4);
+    let mut result = String::with_capacity(text.len() + estimated_growth);
     let mut cursor = 0usize;
     let mut transform_index = 0usize;
 
-    for (match_index, captures) in matches.iter().enumerate() {
-        let matched = captures.get(0).expect("match with full capture");
-
+    for (match_index, validated) in matches.iter().enumerate() {
         // Check if this match should be transformed
         let should_transform = transform_index < indices_to_transform.len()
             && indices_to_transform[transform_index] == match_index;
@@ -399,19 +518,35 @@ fn transform_text(
         }
 
         // Copy text before this match
-        result.push_str(&text[cursor..matched.start()]);
+        result.push_str(&text[cursor..validated.start]);
 
-        let base = captures.name("word").map(|m| m.as_str()).unwrap_or("");
-        let suffix = captures.name("suffix").map(|m| m.as_str()).unwrap_or("");
+        let base = &text[validated.start..validated.base_end];
+        let suffix = &text[validated.base_end..validated.full_end];
 
         if should_transform {
+            // Look up replacement using the pre-lowercased dictionary key
             let replacement_base = match mode {
-                JargoyleMode::Literal => literal_replacement(dict, base),
+                JargoyleMode::Literal => {
+                    dict.get(&validated.dict_key)
+                        .and_then(|alts| alts.first())
+                        .map(|s| s.as_str())
+                }
                 JargoyleMode::Drift => {
                     if let Some(ref mut r) = rng {
-                        drift_replacement(dict, base, &mut **r)?
+                        if let Some(alternatives) = dict.get(&validated.dict_key) {
+                            if !alternatives.is_empty() {
+                                let index = r.rand_index(alternatives.len())?;
+                                Some(alternatives[index].as_str())
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
                     } else {
-                        literal_replacement(dict, base)
+                        dict.get(&validated.dict_key)
+                            .and_then(|alts| alts.first())
+                            .map(|s| s.as_str())
                     }
                 }
             };
@@ -422,13 +557,15 @@ fn transform_text(
                 result.push_str(&adjusted);
                 result.push_str(&suffix_fragment);
             } else {
-                result.push_str(matched.as_str());
+                // No replacement found, keep original
+                result.push_str(&text[validated.start..validated.full_end]);
             }
         } else {
-            result.push_str(matched.as_str());
+            // Not transforming this match, keep original
+            result.push_str(&text[validated.start..validated.full_end]);
         }
 
-        cursor = matched.end();
+        cursor = validated.full_end;
     }
 
     result.push_str(&text[cursor..]);
