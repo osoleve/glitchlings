@@ -1,3 +1,4 @@
+mod cache;
 mod homophones;
 mod operations;
 mod word_stretching;
@@ -18,7 +19,9 @@ use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
 use rand::Rng;
 use std::collections::HashMap;
-use std::sync::{Arc, OnceLock, RwLock};
+use std::sync::Arc;
+
+use cache::StaticCache;
 
 use homophones::{HomophoneOp, HomophoneWeighting};
 pub use operations::{
@@ -60,11 +63,10 @@ impl<'py> FromPyObject<'py> for PyOperationDescriptor {
 }
 
 type Layout = Vec<(String, Vec<String>)>;
-type LayoutVecCache = HashMap<usize, Arc<Layout>>;
 
-fn layout_vec_cache() -> &'static RwLock<LayoutVecCache> {
-    static CACHE: OnceLock<RwLock<LayoutVecCache>> = OnceLock::new();
-    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+fn layout_vec_cache() -> &'static StaticCache<usize, Layout> {
+    static CACHE: std::sync::OnceLock<StaticCache<usize, Layout>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(StaticCache::new)
 }
 
 enum MissingFieldSuffix {
@@ -124,24 +126,20 @@ where
 
 fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Layout>> {
     let key = layout_dict.as_ptr() as usize;
-    if let Some(cached) = layout_vec_cache()
-        .read()
-        .expect("layout vec cache poisoned")
-        .get(&key)
-    {
-        return Ok(cached.clone());
+
+    // Check cache first (common case)
+    if let Some(cached) = layout_vec_cache().get(&key) {
+        return Ok(cached);
     }
 
+    // Materialize the layout from Python dict
     let mut materialised: Vec<(String, Vec<String>)> = Vec::with_capacity(layout_dict.len());
     for (key_obj, value_obj) in layout_dict.iter() {
         materialised.push((key_obj.extract()?, value_obj.extract()?));
     }
-    let arc = Arc::new(materialised);
-    let mut guard = layout_vec_cache()
-        .write()
-        .expect("layout vec cache poisoned during write");
-    let entry = guard.entry(key).or_insert_with(|| arc.clone());
-    Ok(entry.clone())
+
+    // Insert into cache (handles race conditions internally)
+    Ok(layout_vec_cache().get_or_insert(key, materialised))
 }
 
 fn build_operation_descriptors(

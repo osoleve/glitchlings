@@ -103,6 +103,52 @@ fn direct_length_weight(core: &str, original: &str) -> f64 {
     core_length_for_weight(core, original) as f64
 }
 
+// ============================================================================
+// Rate and probability utilities
+// ============================================================================
+
+/// Clamps a rate to the valid [0.0, 1.0] range.
+///
+/// Used by word mutation operations that apply changes with a probability.
+#[inline]
+fn clamp_rate(rate: f64) -> f64 {
+    rate.clamp(0.0, 1.0)
+}
+
+/// Computes the mean weight across a collection of weighted items.
+///
+/// Returns 0.0 for empty collections to avoid division by zero.
+#[inline]
+fn compute_mean_weight<T, F>(items: &[T], weight_fn: F) -> f64
+where
+    F: Fn(&T) -> f64,
+{
+    if items.is_empty() {
+        return 0.0;
+    }
+    items.iter().map(weight_fn).sum::<f64>() / (items.len() as f64)
+}
+
+/// Computes the probability of selecting an item based on its weight relative to the mean.
+///
+/// This implements weighted probability scaling where:
+/// - Items with weight > mean have higher selection probability
+/// - Items with weight < mean have lower selection probability
+/// - If rate >= 1.0, always returns 1.0 (select everything)
+/// - If mean_weight is negligible, returns the raw rate
+///
+/// The result is clamped to [0.0, 1.0].
+#[inline]
+fn compute_weighted_probability(rate: f64, item_weight: f64, mean_weight: f64) -> f64 {
+    if rate >= 1.0 {
+        1.0
+    } else if mean_weight <= f64::EPSILON {
+        rate
+    } else {
+        (rate * (item_weight / mean_weight)).min(1.0)
+    }
+}
+
 #[derive(Debug)]
 struct ReduplicateCandidate {
     index: usize,
@@ -234,27 +280,17 @@ impl TextOperation for ReduplicateWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.clamp(0.0, 1.0);
+        let effective_rate = clamp_rate(self.rate);
         if effective_rate <= 0.0 {
             return Ok(());
         }
 
-        let mean_weight = candidates
-            .iter()
-            .map(|candidate| candidate.weight)
-            .sum::<f64>()
-            / (candidates.len() as f64);
+        let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
         // Collect all reduplications to apply in bulk
         let mut reduplications = Vec::new();
         for candidate in candidates.into_iter() {
-            let probability = if effective_rate >= 1.0 {
-                1.0
-            } else if mean_weight <= f64::EPSILON {
-                effective_rate
-            } else {
-                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
-            };
+            let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
                 continue;
@@ -311,7 +347,7 @@ impl TextOperation for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let effective_rate = self.rate.clamp(0.0, 1.0);
+        let effective_rate = clamp_rate(self.rate);
         if effective_rate <= 0.0 {
             return Ok(());
         }
@@ -321,11 +357,7 @@ impl TextOperation for DeleteRandomWordsOp {
             return Ok(());
         }
 
-        let mean_weight = candidates
-            .iter()
-            .map(|candidate| candidate.weight)
-            .sum::<f64>()
-            / (candidates.len() as f64);
+        let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
         // Collect deletion decisions
         use std::collections::HashSet;
@@ -337,13 +369,7 @@ impl TextOperation for DeleteRandomWordsOp {
                 break;
             }
 
-            let probability = if effective_rate >= 1.0 {
-                1.0
-            } else if mean_weight <= f64::EPSILON {
-                effective_rate
-            } else {
-                (effective_rate * (candidate.weight / mean_weight)).min(1.0)
-            };
+            let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
                 continue;
@@ -446,7 +472,7 @@ impl TextOperation for SwapAdjacentWordsOp {
             return Ok(());
         }
 
-        let clamped = self.rate.clamp(0.0, 1.0);
+        let clamped = clamp_rate(self.rate);
         if clamped <= 0.0 {
             return Ok(());
         }
