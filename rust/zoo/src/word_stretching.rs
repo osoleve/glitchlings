@@ -830,6 +830,11 @@ impl TextOperation for WordStretchOp {
             return Ok(());
         }
 
+        // Ensure replacements are sorted by byte position for correct reconstruction.
+        // While selected_indices is sorted by token position, some candidates may be
+        // skipped during iteration, and we need ascending byte order for the cursor logic.
+        replacements.sort_by_key(|r| r.byte_start);
+
         // Build result string in a single pass using byte positions
         // Estimate capacity: original length + extra chars from stretching
         let extra_chars: usize = replacements

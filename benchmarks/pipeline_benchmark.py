@@ -538,13 +538,16 @@ def collect_benchmark_results(
         _clone_descriptors(descriptors if descriptors is not None else BASE_DESCRIPTORS)
     )
 
+    # Pre-compute seeded descriptors once, outside the timing loop
+    seeded_descriptors = _seeded_descriptors(MASTER_SEED, descriptor_template)
+
     results: list[BenchmarkResult] = []
     for label, text in samples:
 
-        def runtime_subject(text: str = text) -> str:
+        def runtime_subject(text: str = text, descriptors: list = seeded_descriptors) -> str:
             return zoo_rust.compose_operations(
                 text,
-                _seeded_descriptors(MASTER_SEED, descriptor_template),
+                descriptors,
                 MASTER_SEED,
             )
 
