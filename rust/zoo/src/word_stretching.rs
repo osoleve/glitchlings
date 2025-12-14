@@ -150,7 +150,9 @@ pub struct WordStretchOp {
 impl WordStretchOp {
     fn tokenise<'a>(&self, text: &'a str) -> Vec<TokenInfo<'a>> {
         let regex = token_regex();
-        let mut tokens = Vec::new();
+        // Estimate token count: ~1 token per 5 chars on average (words + separators)
+        let estimated_tokens = text.len() / 5 + 1;
+        let mut tokens = Vec::with_capacity(estimated_tokens);
         let mut clause_index = 0usize;
         let mut at_clause_start = true; // First token is always at clause start
 
@@ -347,72 +349,95 @@ impl WordStretchOp {
         (sentiment_score, swing)
     }
 
-    /// Phonotactic scoring using pre-computed lowercase chars from cache
+    /// Phonotactic scoring using pre-computed lowercase chars from cache.
+    /// Uses a single pass over the character array to check all patterns.
     fn phonotactic_with_cache(&self, chars: &[char]) -> f64 {
-        if chars.is_empty() || !chars.iter().any(|&c| is_vowel(c)) {
+        let len = chars.len();
+        if len == 0 {
+            return 0.0;
+        }
+
+        // Single pass to check for vowels and collect pattern matches
+        let mut has_vowel = false;
+        let mut has_digraph = false;
+        let mut has_adjacent_vowels = false;
+        let mut has_aba = false;
+
+        for i in 0..len {
+            let c0 = chars[i];
+
+            // Check for any vowel (needed for early exit)
+            if is_vowel(c0) {
+                has_vowel = true;
+            }
+
+            // Check pairs (digraphs and adjacent vowels)
+            if i + 1 < len {
+                let c1 = chars[i + 1];
+
+                // Digraph check via direct match instead of array lookup
+                has_digraph |= matches!(
+                    (c0, c1),
+                    ('a', 'a')
+                        | ('a', 'e')
+                        | ('a', 'i')
+                        | ('a', 'y')
+                        | ('e', 'e')
+                        | ('e', 'i')
+                        | ('e', 'y')
+                        | ('i', 'e')
+                        | ('o', 'a')
+                        | ('o', 'e')
+                        | ('o', 'i')
+                        | ('o', 'o')
+                        | ('o', 'u')
+                        | ('u', 'e')
+                        | ('u', 'i')
+                );
+
+                // Adjacent vowels check
+                has_adjacent_vowels |= is_vowel(c0) && is_vowel(c1);
+
+                // ABA pattern check (needs i+2)
+                if i + 2 < len {
+                    let c2 = chars[i + 2];
+                    has_aba |= c0 == c2 && c0 != c1;
+                }
+            }
+        }
+
+        // Early exit if no vowels
+        if !has_vowel {
             return 0.0;
         }
 
         let mut score: f64 = 0.25;
 
-        // Check sonorant codas using last char
-        if let Some(&last) = chars.last() {
-            if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
-                score += 0.2;
-            }
-            // Check sibilant codas
-            if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
-                score += 0.18;
-            }
+        // Check sonorant and sibilant codas using last char
+        let last = chars[len - 1];
+        if matches!(last, 'r' | 'l' | 'm' | 'n' | 'w' | 'y' | 'h') {
+            score += 0.2;
+        }
+        if matches!(last, 's' | 'z' | 'x' | 'c' | 'j') {
+            score += 0.18;
         }
 
-        // Check two-char sibilant codas
-        if chars.len() >= 2 {
-            let len = chars.len();
+        // Check two-char sibilant codas (sh, zh)
+        if len >= 2 {
             let last_two = (chars[len - 2], chars[len - 1]);
             if last_two == ('s', 'h') || last_two == ('z', 'h') {
                 score += 0.18;
             }
         }
 
-        // Check digraphs using windows (faster than string contains for each)
-        let digraph_pairs: [(char, char); 15] = [
-            ('a', 'a'),
-            ('a', 'e'),
-            ('a', 'i'),
-            ('a', 'y'),
-            ('e', 'e'),
-            ('e', 'i'),
-            ('e', 'y'),
-            ('i', 'e'),
-            ('o', 'a'),
-            ('o', 'e'),
-            ('o', 'i'),
-            ('o', 'o'),
-            ('o', 'u'),
-            ('u', 'e'),
-            ('u', 'i'),
-        ];
-        if chars.windows(2).any(|pair| {
-            let p = (pair[0], pair[1]);
-            digraph_pairs.contains(&p)
-        }) {
+        // Apply scores from single-pass checks
+        if has_digraph {
             score += 0.22;
         }
-
-        // Check adjacent vowels
-        if chars
-            .windows(2)
-            .any(|pair| is_vowel(pair[0]) && is_vowel(pair[1]))
-        {
+        if has_adjacent_vowels {
             score += 0.22;
         }
-
-        // Check ABA pattern
-        if chars
-            .windows(3)
-            .any(|triple| triple[0] == triple[2] && triple[0] != triple[1])
-        {
+        if has_aba {
             score += 0.08;
         }
 
