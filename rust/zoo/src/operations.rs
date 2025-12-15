@@ -26,7 +26,7 @@ use crate::homoglyphs::HomoglyphOp;
 use crate::grammar_rules::GrammarRuleOp;
 use crate::resources::{
     affix_bounds, apostrofae_pairs, confusion_table, is_whitespace_only, ocr_automaton,
-    split_affixes,
+    split_affixes_ref,
 };
 use crate::rng::{DeterministicRng, RngError};
 use crate::text_buffer::{SegmentKind, TextBuffer, TextBufferError, TextSegment};
@@ -178,6 +178,10 @@ struct ReduplicateCandidate {
 #[derive(Debug)]
 struct DeleteCandidate {
     index: usize,
+    /// Cached prefix (leading punctuation) for efficient replacement during deletion.
+    prefix: String,
+    /// Cached suffix (trailing punctuation) for efficient replacement during deletion.
+    suffix: String,
     weight: f64,
 }
 
@@ -271,7 +275,8 @@ impl TextOperation for ReduplicateWordsOp {
         }
 
         let total_words = buffer.word_count();
-        let mut candidates: Vec<ReduplicateCandidate> = Vec::new();
+        // Pre-allocate candidates vector
+        let mut candidates: Vec<ReduplicateCandidate> = Vec::with_capacity(total_words);
         for idx in 0..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
                 if !segment.is_mutable() {
@@ -280,21 +285,23 @@ impl TextOperation for ReduplicateWordsOp {
                 if matches!(segment.kind(), SegmentKind::Separator) {
                     continue;
                 }
-                let original = segment.text().to_string();
-                if original.trim().is_empty() {
+                let text = segment.text();
+                if text.trim().is_empty() {
                     continue;
                 }
-                let (prefix, core, suffix) = split_affixes(&original);
+                // Use split_affixes_ref to avoid intermediate allocations during weight calculation
+                let (prefix_ref, core_ref, suffix_ref) = split_affixes_ref(text);
                 let weight = if self.unweighted {
                     1.0
                 } else {
-                    inverse_length_weight(&core, &original)
+                    inverse_length_weight(core_ref, text)
                 };
+                // Only allocate owned strings when building candidate
                 candidates.push(ReduplicateCandidate {
                     index: idx,
-                    prefix,
-                    core,
-                    suffix,
+                    prefix: prefix_ref.to_string(),
+                    core: core_ref.to_string(),
+                    suffix: suffix_ref.to_string(),
                     weight,
                 });
             }
@@ -311,8 +318,13 @@ impl TextOperation for ReduplicateWordsOp {
 
         let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
-        // Collect all reduplications to apply in bulk
-        let mut reduplications = Vec::new();
+        // Pre-allocate reduplications vector based on expected selections
+        let expected_redups = ((candidates.len() as f64) * effective_rate).ceil() as usize;
+        let mut reduplications: Vec<(usize, String, String, Option<String>)> = Vec::with_capacity(expected_redups);
+
+        // Reuse separator allocation across iterations
+        let separator = Some(" ".to_string());
+
         for candidate in candidates.into_iter() {
             let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
@@ -320,9 +332,17 @@ impl TextOperation for ReduplicateWordsOp {
                 continue;
             }
 
-            let first = format!("{}{}", candidate.prefix, candidate.core);
-            let second = format!("{}{}", candidate.core, candidate.suffix);
-            reduplications.push((candidate.index, first, second, Some(" ".to_string())));
+            // Build first word: prefix + core
+            let mut first = String::with_capacity(candidate.prefix.len() + candidate.core.len());
+            first.push_str(&candidate.prefix);
+            first.push_str(&candidate.core);
+
+            // Build second word: core + suffix
+            let mut second = String::with_capacity(candidate.core.len() + candidate.suffix.len());
+            second.push_str(&candidate.core);
+            second.push_str(&candidate.suffix);
+
+            reduplications.push((candidate.index, first, second, separator.clone()));
         }
 
         // Apply all reduplications in a single bulk operation
@@ -346,7 +366,9 @@ impl TextOperation for DeleteRandomWordsOp {
         }
 
         let total_words = buffer.word_count();
-        let mut candidates: Vec<DeleteCandidate> = Vec::new();
+        // Pre-allocate candidate vector based on expected size (excluding first word)
+        let mut candidates: Vec<DeleteCandidate> = Vec::with_capacity(total_words.saturating_sub(1));
+
         for idx in 1..total_words {
             if let Some(segment) = buffer.word_segment(idx) {
                 if !segment.is_mutable() {
@@ -356,14 +378,19 @@ impl TextOperation for DeleteRandomWordsOp {
                 if text.is_empty() || is_whitespace_only(text) {
                     continue;
                 }
-                let original = text.to_string();
-                let (_prefix, core, _suffix) = split_affixes(&original);
+                // Use zero-allocation split_affixes_ref, only allocate prefix/suffix for candidates
+                let (prefix, core, suffix) = split_affixes_ref(text);
                 let weight = if self.unweighted {
                     1.0
                 } else {
-                    inverse_length_weight(&core, &original)
+                    inverse_length_weight(core, text)
                 };
-                candidates.push(DeleteCandidate { index: idx, weight });
+                candidates.push(DeleteCandidate {
+                    index: idx,
+                    prefix: prefix.trim().to_string(),
+                    suffix: suffix.trim().to_string(),
+                    weight,
+                });
             }
         }
 
@@ -383,9 +410,8 @@ impl TextOperation for DeleteRandomWordsOp {
 
         let mean_weight = compute_mean_weight(&candidates, |c| c.weight);
 
-        // Collect deletion decisions
-        use std::collections::HashSet;
-        let mut delete_set: HashSet<usize> = HashSet::new();
+        // Pre-allocate deletion list with expected capacity
+        let mut deletion_ops: Vec<(usize, Option<String>)> = Vec::with_capacity(allowed);
         let mut deletions = 0usize;
 
         for candidate in candidates.into_iter() {
@@ -399,85 +425,29 @@ impl TextOperation for DeleteRandomWordsOp {
                 continue;
             }
 
-            delete_set.insert(candidate.index);
+            // Build replacement: trimmed prefix + trimmed suffix (or None if empty)
+            let combined = if candidate.prefix.is_empty() && candidate.suffix.is_empty() {
+                None
+            } else {
+                let mut replacement = String::with_capacity(candidate.prefix.len() + candidate.suffix.len());
+                replacement.push_str(&candidate.prefix);
+                replacement.push_str(&candidate.suffix);
+                Some(replacement)
+            };
+            deletion_ops.push((candidate.index, combined));
             deletions += 1;
         }
 
-        // Build output string in a single pass with normalization
-        let mut result = String::new();
-        let mut needs_separator = false;
-
-        for (_seg_idx, segment, word_idx_opt) in buffer.segments_with_word_indices() {
-            match segment.kind() {
-                SegmentKind::Word => {
-                    if let Some(word_idx) = word_idx_opt {
-                        if delete_set.contains(&word_idx) {
-                            // Word is deleted - emit only affixes
-                            let text = segment.text();
-                            let (prefix, _core, suffix) = split_affixes(text);
-                            let combined = format!("{}{}", prefix.trim(), suffix.trim());
-
-                            if !combined.is_empty() {
-                                // Check if we need space before this
-                                if needs_separator {
-                                    let starts_with_punct = combined
-                                        .chars()
-                                        .next()
-                                        .map(|c| matches!(c, '.' | ',' | ':' | ';'))
-                                        .unwrap_or(false);
-                                    if !starts_with_punct {
-                                        result.push(' ');
-                                    }
-                                }
-                                result.push_str(&combined);
-                                needs_separator = true;
-                            }
-                            continue;
-                        }
-                    }
-
-                    // Word not deleted - emit with separator if needed
-                    let text = segment.text();
-                    if !text.is_empty() {
-                        if needs_separator {
-                            let starts_with_punct = text
-                                .chars()
-                                .next()
-                                .map(|c| matches!(c, '.' | ',' | ':' | ';'))
-                                .unwrap_or(false);
-                            if !starts_with_punct {
-                                result.push(' ');
-                            }
-                        }
-                        result.push_str(text);
-                        needs_separator = true;
-                    }
-                }
-                SegmentKind::Separator => {
-                    // Mark that we need a separator before the next word
-                    // (actual separator will be added when we emit next word)
-                    let sep_text = segment.text();
-                    if sep_text.contains('\n') || !sep_text.trim().is_empty() {
-                        needs_separator = true;
-                    }
-                }
-                SegmentKind::Immutable => {
-                    let text = segment.text();
-                    if text.is_empty() {
-                        continue;
-                    }
-                    result.push_str(text);
-                    needs_separator = text
-                        .chars()
-                        .last()
-                        .map(|ch| !ch.is_whitespace())
-                        .unwrap_or(false);
-                }
-            }
+        if deletion_ops.is_empty() {
+            return Ok(());
         }
 
-        let final_text = result.trim().to_string();
-        *buffer = buffer.rebuild_with_patterns(final_text);
+        // Use bulk deletion API instead of rebuilding entire buffer
+        buffer.delete_words_bulk(deletion_ops)?;
+
+        // Normalize handles spacing around punctuation (.,:;) efficiently
+        buffer.normalize();
+
         buffer.reindex_if_needed();
         Ok(())
     }
@@ -518,11 +488,12 @@ impl TextOperation for SwapAdjacentWordsOp {
                 continue;
             }
 
-            let left_original = left_segment.text().to_string();
-            let right_original = right_segment.text().to_string();
+            let left_text = left_segment.text();
+            let right_text = right_segment.text();
 
-            let (left_prefix, left_core, left_suffix) = split_affixes(&left_original);
-            let (right_prefix, right_core, right_suffix) = split_affixes(&right_original);
+            // Use zero-allocation split_affixes_ref
+            let (left_prefix, left_core, left_suffix) = split_affixes_ref(left_text);
+            let (right_prefix, right_core, right_suffix) = split_affixes_ref(right_text);
 
             if left_core.is_empty() || right_core.is_empty() {
                 index += 2;
@@ -531,8 +502,21 @@ impl TextOperation for SwapAdjacentWordsOp {
 
             let should_swap = clamped >= 1.0 || rng.random()? < clamped;
             if should_swap {
-                let left_replacement = format!("{left_prefix}{right_core}{left_suffix}");
-                let right_replacement = format!("{right_prefix}{left_core}{right_suffix}");
+                // Build replacements with pre-allocated capacity instead of format!
+                let mut left_replacement = String::with_capacity(
+                    left_prefix.len() + right_core.len() + left_suffix.len()
+                );
+                left_replacement.push_str(left_prefix);
+                left_replacement.push_str(right_core);
+                left_replacement.push_str(left_suffix);
+
+                let mut right_replacement = String::with_capacity(
+                    right_prefix.len() + left_core.len() + right_suffix.len()
+                );
+                right_replacement.push_str(right_prefix);
+                right_replacement.push_str(left_core);
+                right_replacement.push_str(right_suffix);
+
                 replacements.push((index, left_replacement));
                 replacements.push((index + 1, right_replacement));
             }
