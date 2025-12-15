@@ -599,28 +599,50 @@ mod tests {
 
     struct ScriptedRng {
         picks: Vec<usize>,
-        position: usize,
+        randoms: Vec<f64>,
+        pick_position: usize,
+        random_position: usize,
     }
 
     impl ScriptedRng {
         fn new(picks: Vec<usize>) -> Self {
-            Self { picks, position: 0 }
+            Self {
+                picks,
+                randoms: Vec::new(),
+                pick_position: 0,
+                random_position: 0,
+            }
+        }
+
+        fn with_randoms(picks: Vec<usize>, randoms: Vec<f64>) -> Self {
+            Self {
+                picks,
+                randoms,
+                pick_position: 0,
+                random_position: 0,
+            }
         }
     }
 
     impl OperationRng for ScriptedRng {
         fn random(&mut self) -> Result<f64, OperationError> {
-            unreachable!("random should not be called in scripted tests")
+            let value = self
+                .randoms
+                .get(self.random_position)
+                .copied()
+                .unwrap_or(0.5); // Default to 0.5 if not specified
+            self.random_position += 1;
+            Ok(value)
         }
 
         fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError> {
             let value = self
                 .picks
-                .get(self.position)
+                .get(self.pick_position)
                 .copied()
                 .expect("scripted RNG ran out of values");
             assert!(value < upper, "scripted pick {value} out of range {upper}");
-            self.position += 1;
+            self.pick_position += 1;
             Ok(value)
         }
 

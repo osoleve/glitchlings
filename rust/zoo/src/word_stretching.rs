@@ -1245,7 +1245,9 @@ mod tests {
         let op = default_op();
         let site = StretchSite { start: 1, end: 3 }; // "oo" in "cool"
         let result = op.apply_stretch("cool", &site, 2);
-        assert_eq!(result, "coooool"); // each char in range repeated
+        // Each char at index 1 and 2 (both 'o') gets repeated 2 additional times:
+        // c + (o + oo) + (o + oo) + l = cooooool
+        assert_eq!(result, "cooooool");
     }
 
     #[test]
