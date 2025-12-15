@@ -506,6 +506,7 @@ impl TextBuffer {
 
         // Separate removals from replacements, collecting segment indices to remove
         let mut removal_indices: HashSet<usize> = HashSet::with_capacity(ops.len());
+        let mut had_replacements = false;
 
         for (word_index, replacement) in ops {
             let segment_index = self
@@ -527,6 +528,7 @@ impl TextBuffer {
                     .get_mut(segment_index)
                     .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
                 segment.set_text(&repl_text, SegmentKind::Word);
+                had_replacements = true;
             }
         }
 
@@ -542,7 +544,14 @@ impl TextBuffer {
             self.segments = new_segments;
         }
 
-        self.mark_dirty();
+        // If we had replacements (e.g., punctuation-only affixes), rebuild to re-tokenize
+        // properly. This ensures punctuation doesn't become standalone Word segments.
+        if had_replacements {
+            *self = self.rebuild_with_patterns(self.to_string());
+        } else {
+            self.mark_dirty();
+        }
+
         Ok(())
     }
 

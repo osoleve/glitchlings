@@ -425,14 +425,20 @@ impl TextOperation for DeleteRandomWordsOp {
                 continue;
             }
 
-            // Build replacement: trimmed prefix + trimmed suffix (or None if empty)
+            // Build replacement: trimmed prefix + trimmed suffix (or None if empty/punctuation-only)
             let combined = if candidate.prefix.is_empty() && candidate.suffix.is_empty() {
                 None
             } else {
                 let mut replacement = String::with_capacity(candidate.prefix.len() + candidate.suffix.len());
                 replacement.push_str(&candidate.prefix);
                 replacement.push_str(&candidate.suffix);
-                Some(replacement)
+                // If replacement is punctuation-only (no alphanumeric), remove entirely
+                // to prevent standalone punctuation from becoming word segments
+                if replacement.chars().all(|c| !c.is_alphanumeric()) {
+                    None
+                } else {
+                    Some(replacement)
+                }
             };
             deletion_ops.push((candidate.index, combined));
             deletions += 1;
