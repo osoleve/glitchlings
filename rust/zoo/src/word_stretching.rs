@@ -583,7 +583,10 @@ impl WordStretchOp {
                 .push(idx);
         }
 
-        let total_expected = (candidates.len() as f64 * rate).round() as usize;
+        // Clamp total_expected to candidates.len() to handle rate=inf/NaN safely
+        let total_expected = (candidates.len() as f64 * rate)
+            .round()
+            .min(candidates.len() as f64) as usize;
         // Use HashSet for O(1) membership checks instead of O(n) Vec::contains
         let mut selected_set: HashSet<usize> = HashSet::with_capacity(total_expected);
         let mut selected_indices: Vec<usize> = Vec::with_capacity(total_expected);
