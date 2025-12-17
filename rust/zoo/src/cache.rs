@@ -3,25 +3,28 @@
 //! This module provides thread-safe caching with content-based keys rather than
 //! pointer-based keys. Pointer-based caching is dangerous because Python can
 //! reuse memory addresses after garbage collection, leading to cache poisoning.
+//!
+//! Values are stored wrapped in `Arc<V>` to enable cheap retrieval without
+//! deep cloning the cached data.
 
 use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 /// A thread-safe cache that uses content-based keys.
 ///
 /// Unlike pointer-based caching, this approach hashes the actual content
 /// to generate cache keys, ensuring correctness even when memory addresses
 /// are reused.
+///
+/// Values are stored as `Arc<V>` internally, so retrieval returns a cheap
+/// reference-counted pointer rather than cloning the entire value.
 pub struct ContentCache<V> {
-    data: RwLock<HashMap<u64, V>>,
+    data: RwLock<HashMap<u64, Arc<V>>>,
 }
 
-impl<V> ContentCache<V>
-where
-    V: Clone,
-{
+impl<V> ContentCache<V> {
     pub fn new() -> Self {
         Self {
             data: RwLock::new(HashMap::new()),
@@ -29,14 +32,16 @@ where
     }
 
     /// Get a cached value by its content hash, if present.
-    pub fn get(&self, hash: u64) -> Option<V> {
+    ///
+    /// Returns an `Arc<V>` for cheap access without deep cloning.
+    pub fn get(&self, hash: u64) -> Option<Arc<V>> {
         self.data.read().ok()?.get(&hash).cloned()
     }
 
     /// Get a cached value or insert it if not present.
     ///
-    /// Returns the cached value (either existing or newly inserted).
-    pub fn get_or_insert_with<F>(&self, hash: u64, f: F) -> V
+    /// Returns an `Arc<V>` pointing to the cached value.
+    pub fn get_or_insert_with<F>(&self, hash: u64, f: F) -> Arc<V>
     where
         F: FnOnce() -> V,
     {
@@ -46,22 +51,19 @@ where
         }
 
         // Slow path: compute and insert
-        let value = f();
+        let value = Arc::new(f());
         if let Ok(mut guard) = self.data.write() {
             // Double-check in case another thread inserted while we were computing
             if let Some(existing) = guard.get(&hash) {
-                return existing.clone();
+                return Arc::clone(existing);
             }
-            guard.insert(hash, value.clone());
+            guard.insert(hash, Arc::clone(&value));
         }
         value
     }
 }
 
-impl<V> Default for ContentCache<V>
-where
-    V: Clone,
-{
+impl<V> Default for ContentCache<V> {
     fn default() -> Self {
         Self::new()
     }
@@ -141,11 +143,14 @@ mod tests {
         let cache: ContentCache<String> = ContentCache::new();
 
         let value = cache.get_or_insert_with(42, || "hello".to_string());
-        assert_eq!(value, "hello");
+        assert_eq!(&*value, "hello");
 
-        // Should return cached value
+        // Should return cached value (same Arc, not a clone)
         let value2 = cache.get_or_insert_with(42, || "world".to_string());
-        assert_eq!(value2, "hello");
+        assert_eq!(&*value2, "hello");
+
+        // Verify both point to the same allocation
+        assert!(Arc::ptr_eq(&value, &value2));
     }
 
     #[test]

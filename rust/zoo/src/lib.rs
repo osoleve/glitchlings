@@ -59,6 +59,8 @@ impl<'py> FromPyObject<'py> for PyOperationDescriptor {
     }
 }
 
+use std::sync::Arc;
+
 type Layout = Vec<(String, Vec<String>)>;
 
 fn layout_cache() -> &'static cache::ContentCache<Layout> {
@@ -121,14 +123,14 @@ where
         .transpose()
 }
 
-fn extract_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Layout> {
+fn extract_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Layout>> {
     // First, materialize to compute the content hash
     let mut materialised: Vec<(String, Vec<String>)> = Vec::with_capacity(layout_dict.len());
     for (key_obj, value_obj) in layout_dict.iter() {
         materialised.push((key_obj.extract()?, value_obj.extract()?));
     }
 
-    // Use content-based caching
+    // Use content-based caching - returns Arc for cheap access
     let hash = cache::hash_layout_vec(&materialised);
     Ok(layout_cache().get_or_insert_with(hash, || materialised))
 }
@@ -278,7 +280,7 @@ enum PyOperationConfig {
     },
     Typo {
         rate: f64,
-        layout: Layout,
+        layout: Arc<Layout>,
         shift_slip: Option<ShiftSlipConfig>,
         motor_weighting: MotorWeighting,
     },
@@ -430,7 +432,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let shift_slip_exit_rate = extract_optional_field(dict, "shift_slip_exit_rate")?;
                 let shift_map = dict
                     .get_item("shift_map")?
-                    .map(|value| -> PyResult<HashMap<String, String>> {
+                    .map(|value| -> PyResult<Arc<HashMap<String, String>>> {
                         let mapping = value.downcast::<PyDict>()?;
                         keyboard_typos::extract_shift_map(mapping)
                     })
@@ -609,7 +611,11 @@ impl PyOperationConfig {
                 shift_slip,
                 motor_weighting,
             } => {
-                let layout_map: HashMap<String, Vec<String>> = layout.into_iter().collect();
+                // Clone from Arc-cached layout - cheap if same layout reused
+                let layout_map: HashMap<String, Vec<String>> = layout
+                    .iter()
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
                 Operation::Typo(operations::TypoOp {
                     rate,
                     layout: layout_map,
