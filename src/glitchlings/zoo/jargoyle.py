@@ -20,6 +20,7 @@ Two modes are available:
 from __future__ import annotations
 
 import os
+import random
 from importlib import resources
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -159,6 +160,7 @@ def jargoyle_drift(
     mode: JargoyleMode = DEFAULT_MODE,
     rate: float | None = None,
     seed: int | None = None,
+    rng: random.Random | None = None,
 ) -> str:
     """Apply dictionary-based word drift to text.
 
@@ -169,6 +171,7 @@ def jargoyle_drift(
               "drift" for random selection from alternatives.
         rate: Probability of transforming each matching word (0.0 to 1.0).
         seed: Seed for deterministic randomness (only used in "drift" mode).
+        rng: Random number generator (alternative to seed).
 
     Returns:
         Text with word substitutions applied.
@@ -180,7 +183,7 @@ def jargoyle_drift(
     normalized_mode = _validate_mode(mode)
 
     effective_rate = DEFAULT_JARGOYLE_RATE if rate is None else float(rate)
-    resolved_seed = resolve_seed(seed, None) if normalized_mode == "drift" else None
+    resolved_seed = resolve_seed(seed, rng) if normalized_mode == "drift" else None
 
     return substitute_lexeme_rust(
         text,

@@ -141,7 +141,7 @@ def _install_fake_datasets(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(zoo_core, "_DatasetsDataset", FakeDataset, raising=False)
 
 
-def append_marker(text: str) -> str:
+def append_marker(text: str, **kwargs: object) -> str:
     """Tag the provided text with a deterministic marker."""
     return f"{text}<<<"
 
