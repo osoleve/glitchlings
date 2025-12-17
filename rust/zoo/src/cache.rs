@@ -69,8 +69,9 @@ impl<V> Default for ContentCache<V> {
     }
 }
 
-// Safety: ContentCache uses RwLock which is Send + Sync when V is Send + Sync
-unsafe impl<V: Send> Send for ContentCache<V> {}
+// Safety: ContentCache uses RwLock<HashMap<u64, Arc<V>>>.
+// Arc<V> is Send + Sync only when V: Send + Sync, so both impls require the same bounds.
+unsafe impl<V: Send + Sync> Send for ContentCache<V> {}
 unsafe impl<V: Send + Sync> Sync for ContentCache<V> {}
 
 /// Compute a content-based hash for a keyboard layout mapping.
