@@ -1,119 +1,135 @@
-//! Thread-safe caching utilities for Python object materialization.
+//! Content-based caching utilities.
 //!
-//! This module provides a generic caching mechanism for expensive Python-to-Rust
-//! conversions. Caches are keyed by Python object pointer address, which is stable
-//! for the lifetime of the object.
-//!
-//! # Cache Poisoning
-//!
-//! `RwLock` becomes "poisoned" when a thread panics while holding the lock.
-//! Rather than panicking on poisoned locks (which would cascade failures),
-//! we recover by extracting the inner data. This is safe because:
-//! 1. The data itself is still valid even if the updating thread panicked
-//! 2. We'd rather return stale/reconstructed data than crash the Python process
+//! This module provides thread-safe caching with content-based keys rather than
+//! pointer-based keys. Pointer-based caching is dangerous because Python can
+//! reuse memory addresses after garbage collection, leading to cache poisoning.
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::HashMap;
-use std::hash::Hash;
-use std::sync::{Arc, PoisonError, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::hash::{Hash, Hasher};
+use std::sync::RwLock;
 
-/// A thread-safe cache that stores `Arc<V>` values keyed by `K`.
+/// A thread-safe cache that uses content-based keys.
 ///
-/// Handles lock poisoning gracefully by recovering the inner data.
-pub struct StaticCache<K, V> {
-    inner: RwLock<HashMap<K, Arc<V>>>,
+/// Unlike pointer-based caching, this approach hashes the actual content
+/// to generate cache keys, ensuring correctness even when memory addresses
+/// are reused.
+pub struct ContentCache<V> {
+    data: RwLock<HashMap<u64, V>>,
 }
 
-impl<K, V> StaticCache<K, V>
+impl<V> ContentCache<V>
 where
-    K: Eq + Hash,
+    V: Clone,
 {
-    /// Creates a new empty cache.
     pub fn new() -> Self {
         Self {
-            inner: RwLock::new(HashMap::new()),
+            data: RwLock::new(HashMap::new()),
         }
     }
 
-    /// Attempts to get a cached value by key.
-    ///
-    /// Returns `None` if the key is not present. Recovers gracefully from
-    /// poisoned locks.
-    pub fn get(&self, key: &K) -> Option<Arc<V>> {
-        let guard = Self::recover_read(&self.inner);
-        guard.get(key).cloned()
+    /// Get a cached value by its content hash, if present.
+    pub fn get(&self, hash: u64) -> Option<V> {
+        self.data.read().ok()?.get(&hash).cloned()
     }
 
-    /// Inserts a value into the cache, returning the cached `Arc`.
+    /// Get a cached value or insert it if not present.
     ///
-    /// If the key already exists, returns the existing value without
-    /// replacing it (first-writer-wins semantics).
-    pub fn get_or_insert(&self, key: K, value: V) -> Arc<V> {
-        // Check if already cached (common case)
-        if let Some(cached) = self.get(&key) {
+    /// Returns the cached value (either existing or newly inserted).
+    pub fn get_or_insert_with<F>(&self, hash: u64, f: F) -> V
+    where
+        F: FnOnce() -> V,
+    {
+        // Fast path: check if already cached
+        if let Some(cached) = self.get(hash) {
             return cached;
         }
 
-        // Need to insert - acquire write lock
-        let mut guard = Self::recover_write(&self.inner);
-
-        // Double-check after acquiring write lock (another thread may have inserted)
-        if let Some(cached) = guard.get(&key) {
-            return cached.clone();
+        // Slow path: compute and insert
+        let value = f();
+        if let Ok(mut guard) = self.data.write() {
+            // Double-check in case another thread inserted while we were computing
+            if let Some(existing) = guard.get(&hash) {
+                return existing.clone();
+            }
+            guard.insert(hash, value.clone());
         }
-
-        let arc = Arc::new(value);
-        guard.insert(key, arc.clone());
-        arc
-    }
-
-    /// Recovers a read guard from a potentially poisoned lock.
-    #[inline]
-    fn recover_read(lock: &RwLock<HashMap<K, Arc<V>>>) -> RwLockReadGuard<'_, HashMap<K, Arc<V>>> {
-        lock.read().unwrap_or_else(PoisonError::into_inner)
-    }
-
-    /// Recovers a write guard from a potentially poisoned lock.
-    #[inline]
-    fn recover_write(
-        lock: &RwLock<HashMap<K, Arc<V>>>,
-    ) -> RwLockWriteGuard<'_, HashMap<K, Arc<V>>> {
-        lock.write().unwrap_or_else(PoisonError::into_inner)
+        value
     }
 }
 
-impl<K, V> Default for StaticCache<K, V>
+impl<V> Default for ContentCache<V>
 where
-    K: Eq + Hash,
+    V: Clone,
 {
     fn default() -> Self {
         Self::new()
     }
 }
 
-// Safety: StaticCache uses RwLock which is Send + Sync when K and V are
-unsafe impl<K: Send, V: Send> Send for StaticCache<K, V> {}
-unsafe impl<K: Send + Sync, V: Send + Sync> Sync for StaticCache<K, V> {}
+// Safety: ContentCache uses RwLock which is Send + Sync when V is Send + Sync
+unsafe impl<V: Send> Send for ContentCache<V> {}
+unsafe impl<V: Send + Sync> Sync for ContentCache<V> {}
 
-/// Macro to define a static cache with a getter function.
+/// Compute a content-based hash for a keyboard layout mapping.
 ///
-/// # Example
-///
-/// ```ignore
-/// define_static_cache!(
-///     layout_cache,           // getter function name
-///     usize,                  // key type
-///     HashMap<String, Vec<String>>  // value type
-/// );
-/// ```
-#[macro_export]
-macro_rules! define_static_cache {
-    ($name:ident, $key:ty, $value:ty) => {
-        fn $name() -> &'static $crate::cache::StaticCache<$key, $value> {
-            static CACHE: std::sync::OnceLock<$crate::cache::StaticCache<$key, $value>> =
-                std::sync::OnceLock::new();
-            CACHE.get_or_init($crate::cache::StaticCache::new)
+/// This creates a deterministic hash from the actual key-value pairs,
+/// not from memory addresses.
+pub fn hash_layout_map(layout: &HashMap<String, Vec<String>>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    // Sort keys for deterministic ordering
+    let mut keys: Vec<_> = layout.keys().collect();
+    keys.sort();
+
+    for key in keys {
+        key.hash(&mut hasher);
+        if let Some(values) = layout.get(key) {
+            values.len().hash(&mut hasher);
+            for v in values {
+                v.hash(&mut hasher);
+            }
         }
-    };
+    }
+
+    hasher.finish()
+}
+
+/// Compute a content-based hash for a shift map.
+pub fn hash_shift_map(shift_map: &HashMap<String, String>) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    // Sort keys for deterministic ordering
+    let mut keys: Vec<_> = shift_map.keys().collect();
+    keys.sort();
+
+    for key in keys {
+        key.hash(&mut hasher);
+        if let Some(value) = shift_map.get(key) {
+            value.hash(&mut hasher);
+        }
+    }
+
+    hasher.finish()
+}
+
+/// Compute a content-based hash for a layout vector.
+pub fn hash_layout_vec(layout: &[(String, Vec<String>)]) -> u64 {
+    let mut hasher = DefaultHasher::new();
+
+    // Sort by key for deterministic ordering
+    let mut sorted: Vec<_> = layout.iter().collect();
+    sorted.sort_by_key(|(k, _)| k);
+
+    for (key, values) in sorted {
+        key.hash(&mut hasher);
+        values.len().hash(&mut hasher);
+        for v in values {
+            v.hash(&mut hasher);
+        }
+    }
+
+    hasher.finish()
 }
 
 #[cfg(test)]
@@ -121,35 +137,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cache_insert_and_get() {
-        let cache: StaticCache<usize, String> = StaticCache::new();
+    fn test_content_cache_basic() {
+        let cache: ContentCache<String> = ContentCache::new();
 
-        let value = cache.get_or_insert(42, "hello".to_string());
-        assert_eq!(&*value, "hello");
+        let value = cache.get_or_insert_with(42, || "hello".to_string());
+        assert_eq!(value, "hello");
 
-        // Second insert with same key returns original value
-        let value2 = cache.get_or_insert(42, "world".to_string());
-        assert_eq!(&*value2, "hello");
-
-        // Different key works
-        let value3 = cache.get_or_insert(99, "world".to_string());
-        assert_eq!(&*value3, "world");
+        // Should return cached value
+        let value2 = cache.get_or_insert_with(42, || "world".to_string());
+        assert_eq!(value2, "hello");
     }
 
     #[test]
-    fn test_cache_get_missing() {
-        let cache: StaticCache<usize, String> = StaticCache::new();
-        assert!(cache.get(&42).is_none());
+    fn test_hash_layout_map_deterministic() {
+        let mut map1 = HashMap::new();
+        map1.insert("a".to_string(), vec!["b".to_string(), "c".to_string()]);
+        map1.insert("d".to_string(), vec!["e".to_string()]);
+
+        let mut map2 = HashMap::new();
+        map2.insert("d".to_string(), vec!["e".to_string()]);
+        map2.insert("a".to_string(), vec!["b".to_string(), "c".to_string()]);
+
+        // Same content should produce same hash regardless of insertion order
+        assert_eq!(hash_layout_map(&map1), hash_layout_map(&map2));
     }
 
     #[test]
-    fn test_cache_arc_sharing() {
-        let cache: StaticCache<usize, String> = StaticCache::new();
+    fn test_hash_layout_map_different_content() {
+        let mut map1 = HashMap::new();
+        map1.insert("a".to_string(), vec!["b".to_string()]);
 
-        let arc1 = cache.get_or_insert(1, "shared".to_string());
-        let arc2 = cache.get(&1).unwrap();
+        let mut map2 = HashMap::new();
+        map2.insert("a".to_string(), vec!["c".to_string()]);
 
-        // Both point to the same allocation
-        assert!(Arc::ptr_eq(&arc1, &arc2));
+        // Different content should produce different hash
+        assert_ne!(hash_layout_map(&map1), hash_layout_map(&map2));
     }
 }

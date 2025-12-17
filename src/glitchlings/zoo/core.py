@@ -14,7 +14,9 @@ from ..compat.types import Dataset as DatasetProtocol
 from ..util.transcripts import (
     Transcript,
     TranscriptTarget,
+    TranscriptTurn,
     is_transcript,
+    resolve_transcript_indices,
 )
 from .core_execution import execute_plan
 from .core_planning import (
@@ -26,11 +28,6 @@ from .core_planning import (
 )
 from .core_planning import (
     PlanEntry as _PlanEntry,
-)
-from .corrupt_dispatch import (
-    StringCorruptionTarget,
-    assemble_corruption_result,
-    resolve_corruption_target,
 )
 
 _DatasetsDataset = get_datasets_dataset()
@@ -146,8 +143,6 @@ class Glitchling:
         self._pipeline_descriptor_factory = pipeline_operation
         self.transcript_target: TranscriptTarget = transcript_target
         self.kwargs: dict[str, Any] = {}
-        self._cached_rng_callable: CorruptionCallable | None = None
-        self._cached_rng_expectation: bool | None = None
         self._pipeline: object | None = None
         mask_kwargs = dict(kwargs)
         if "exclude_patterns" not in mask_kwargs:
@@ -211,38 +206,9 @@ class Glitchling:
 
         return cast(PipelineOperationPayload, payload)
 
-    def _corruption_expects_rng(self) -> bool:
-        """Return `True` when the corruption function accepts an rng keyword."""
-        cached_callable = self._cached_rng_callable
-        cached_expectation = self._cached_rng_expectation
-        corruption_function = self.corruption_function
-
-        if cached_callable is corruption_function and cached_expectation is not None:
-            return cached_expectation
-
-        expects_rng = False
-        try:
-            signature = inspect.signature(corruption_function)
-        except (TypeError, ValueError):
-            signature = None
-
-        if signature is not None:
-            expects_rng = "rng" in signature.parameters
-
-        self._cached_rng_callable = corruption_function
-        self._cached_rng_expectation = expects_rng
-        return expects_rng
-
     def __corrupt(self, text: str, *args: Any, **kwargs: Any) -> str:
-        """Execute the corruption callable, injecting the RNG when required."""
-        # Pass rng to underlying corruption function if it expects it.
-        expects_rng = self._corruption_expects_rng()
-
-        if expects_rng:
-            corrupted = self.corruption_function(text, *args, rng=self.rng, **kwargs)
-        else:
-            corrupted = self.corruption_function(text, *args, **kwargs)
-        return corrupted
+        """Execute the corruption callable, injecting the RNG."""
+        return self.corruption_function(text, *args, rng=self.rng, **kwargs)
 
     def _execute_corruption(self, text: str) -> str:
         """Execute the actual corruption on a single text string.
@@ -266,11 +232,6 @@ class Glitchling:
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply the corruption function to text or conversational transcripts.
 
-        This method uses a pure dispatch pattern:
-        1. Resolve the corruption target (pure - what to corrupt)
-        2. Execute corruption (impure - single isolated point)
-        3. Assemble the result (pure - combine results)
-
         When the input is a transcript, the ``transcript_target`` setting
         controls which turns are corrupted:
 
@@ -281,20 +242,23 @@ class Glitchling:
         - ``int``: corrupt a specific turn by index
         - ``Sequence[int]``: corrupt specific turns by index
         """
-        # Step 1: Pure dispatch - determine what to corrupt
-        target = resolve_corruption_target(text, self.transcript_target)
+        # Fast path for strings (most common case)
+        if isinstance(text, str):
+            return self._execute_corruption(text)
 
-        # Step 2: Impure execution - apply corruption via isolated method
-        if isinstance(target, StringCorruptionTarget):
-            corrupted: str | dict[int, str] = self._execute_corruption(target.text)
-        else:
-            # TranscriptCorruptionTarget
-            corrupted = {
-                turn.index: self._execute_corruption(turn.content) for turn in target.turns
-            }
+        # Handle transcripts
+        if _is_transcript(text):
+            indices = resolve_transcript_indices(text, self.transcript_target)
+            result: list[TranscriptTurn] = [dict(turn) for turn in text]
+            for idx in indices:
+                turn = text[idx]
+                content = turn.get("content")
+                if isinstance(content, str):
+                    result[idx]["content"] = self._execute_corruption(content)
+            return result
 
-        # Step 3: Pure assembly - combine results
-        return assemble_corruption_result(target, corrupted)
+        # Fallback: cast to string for backwards compatibility
+        return self._execute_corruption(str(text))
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption lazily across dataset columns."""
@@ -549,7 +513,7 @@ class Gaggle(Glitchling):
 
         return descriptors, missing
 
-    def _corrupt_text(self, text: str) -> str:
+    def _corrupt_text(self, text: str, **kwargs: Any) -> str:
         """Apply each glitchling to string input sequentially.
 
         This method uses a batched execution strategy to minimize tokenization
@@ -589,11 +553,6 @@ class Gaggle(Glitchling):
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially.
 
-        This method uses a pure dispatch pattern:
-        1. Resolve the corruption target (pure - what to corrupt)
-        2. Execute corruption (impure - single isolated point)
-        3. Assemble the result (pure - combine results)
-
         When the input is a transcript, the ``transcript_target`` setting
         controls which turns are corrupted:
 
@@ -604,18 +563,23 @@ class Gaggle(Glitchling):
         - ``int``: corrupt a specific turn by index
         - ``Sequence[int]``: corrupt specific turns by index
         """
-        # Step 1: Pure dispatch - determine what to corrupt
-        target = resolve_corruption_target(text, self.transcript_target)
+        # Fast path for strings (most common case)
+        if isinstance(text, str):
+            return self._corrupt_text(text)
 
-        # Step 2: Impure execution - apply corruption via isolated method
-        if isinstance(target, StringCorruptionTarget):
-            corrupted: str | dict[int, str] = self._corrupt_text(target.text)
-        else:
-            # TranscriptCorruptionTarget
-            corrupted = {turn.index: self._corrupt_text(turn.content) for turn in target.turns}
+        # Handle transcripts
+        if _is_transcript(text):
+            indices = resolve_transcript_indices(text, self.transcript_target)
+            result: list[TranscriptTurn] = [dict(turn) for turn in text]
+            for idx in indices:
+                turn = text[idx]
+                content = turn.get("content")
+                if isinstance(content, str):
+                    result[idx]["content"] = self._corrupt_text(content)
+            return result
 
-        # Step 3: Pure assembly - combine results
-        return assemble_corruption_result(target, corrupted)
+        # Fallback: cast to string for backwards compatibility
+        return self._corrupt_text(str(text))
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
         """Apply corruption across dataset columns with batch optimization.

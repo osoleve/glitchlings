@@ -3,65 +3,52 @@ use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::Bound;
 use std::collections::HashMap;
-use std::sync::Arc;
 
-use crate::cache::StaticCache;
+use crate::cache::{hash_layout_map, hash_shift_map, ContentCache};
 use crate::operations::{MotorWeighting, ShiftSlipConfig};
 
-fn layout_cache() -> &'static StaticCache<usize, HashMap<String, Vec<String>>> {
-    static CACHE: std::sync::OnceLock<StaticCache<usize, HashMap<String, Vec<String>>>> =
+fn layout_cache() -> &'static ContentCache<HashMap<String, Vec<String>>> {
+    static CACHE: std::sync::OnceLock<ContentCache<HashMap<String, Vec<String>>>> =
         std::sync::OnceLock::new();
-    CACHE.get_or_init(StaticCache::new)
+    CACHE.get_or_init(ContentCache::new)
 }
 
-fn shift_map_cache() -> &'static StaticCache<usize, HashMap<String, String>> {
-    static CACHE: std::sync::OnceLock<StaticCache<usize, HashMap<String, String>>> =
+fn shift_map_cache() -> &'static ContentCache<HashMap<String, String>> {
+    static CACHE: std::sync::OnceLock<ContentCache<HashMap<String, String>>> =
         std::sync::OnceLock::new();
-    CACHE.get_or_init(StaticCache::new)
+    CACHE.get_or_init(ContentCache::new)
 }
 
-fn extract_layout_map(layout: &Bound<'_, PyDict>) -> PyResult<Arc<HashMap<String, Vec<String>>>> {
-    let key = layout.as_ptr() as usize;
-
-    // Check cache first (common case)
-    if let Some(cached) = layout_cache().get(&key) {
-        return Ok(cached);
-    }
-
-    // Materialize the layout from Python dict
+fn extract_layout_map(layout: &Bound<'_, PyDict>) -> PyResult<HashMap<String, Vec<String>>> {
+    // Materialize to compute content hash
     let mut materialised: HashMap<String, Vec<String>> = HashMap::new();
     for (entry_key, entry_value) in layout.iter() {
         materialised.insert(entry_key.extract()?, entry_value.extract()?);
     }
 
-    // Insert into cache (handles race conditions internally)
-    Ok(layout_cache().get_or_insert(key, materialised))
+    // Use content-based caching
+    let hash = hash_layout_map(&materialised);
+    Ok(layout_cache().get_or_insert_with(hash, || materialised))
 }
 
 pub(crate) fn extract_shift_map(
     shift_map: &Bound<'_, PyDict>,
-) -> PyResult<Arc<HashMap<String, String>>> {
-    let key = shift_map.as_ptr() as usize;
-
-    // Check cache first (common case)
-    if let Some(cached) = shift_map_cache().get(&key) {
-        return Ok(cached);
-    }
-
-    // Materialize the shift map from Python dict
+) -> PyResult<HashMap<String, String>> {
+    // Materialize to compute content hash
     let mut materialised: HashMap<String, String> = HashMap::new();
     for (entry_key, entry_value) in shift_map.iter() {
         materialised.insert(entry_key.extract()?, entry_value.extract()?);
     }
 
-    // Insert into cache (handles race conditions internally)
-    Ok(shift_map_cache().get_or_insert(key, materialised))
+    // Use content-based caching
+    let hash = hash_shift_map(&materialised);
+    Ok(shift_map_cache().get_or_insert_with(hash, || materialised))
 }
 
 pub(crate) fn build_shift_slip_config(
     shift_slip_rate: f64,
     shift_slip_exit_rate: Option<f64>,
-    shift_map: Option<Arc<HashMap<String, String>>>,
+    shift_map: Option<HashMap<String, String>>,
 ) -> PyResult<Option<ShiftSlipConfig>> {
     let enter_rate = shift_slip_rate.max(0.0);
     if enter_rate <= f64::EPSILON {
@@ -75,11 +62,7 @@ pub(crate) fn build_shift_slip_config(
     };
 
     let exit_rate = shift_slip_exit_rate.unwrap_or(enter_rate * 0.5);
-    Ok(Some(ShiftSlipConfig::new(
-        enter_rate,
-        exit_rate,
-        (*map).clone(),
-    )))
+    Ok(Some(ShiftSlipConfig::new(enter_rate, exit_rate, map)))
 }
 
 #[pyfunction(name = "keyboard_typo", signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None, motor_weighting=None))]
@@ -115,7 +98,7 @@ pub(crate) fn keyboard_typo(
 
     let op = crate::operations::TypoOp {
         rate: max_change_rate,
-        layout: (*layout_map).clone(),
+        layout: layout_map,
         shift_slip,
         motor_weighting,
     };
@@ -136,7 +119,7 @@ pub(crate) fn slip_modifier(
     }
 
     let shift_map = extract_shift_map(shift_map)?;
-    let config = ShiftSlipConfig::new(enter_rate, exit_rate, (*shift_map).clone());
+    let config = ShiftSlipConfig::new(enter_rate, exit_rate, shift_map);
     let mut rng = crate::DeterministicRng::new(crate::resolve_seed(seed));
     config
         .apply(text, &mut rng)

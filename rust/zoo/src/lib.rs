@@ -19,9 +19,6 @@ use pyo3::Bound;
 use pyo3::{exceptions::PyValueError, FromPyObject};
 use rand::Rng;
 use std::collections::HashMap;
-use std::sync::Arc;
-
-use cache::StaticCache;
 
 use homophones::{HomophoneOp, HomophoneWeighting};
 pub use operations::{
@@ -64,9 +61,9 @@ impl<'py> FromPyObject<'py> for PyOperationDescriptor {
 
 type Layout = Vec<(String, Vec<String>)>;
 
-fn layout_vec_cache() -> &'static StaticCache<usize, Layout> {
-    static CACHE: std::sync::OnceLock<StaticCache<usize, Layout>> = std::sync::OnceLock::new();
-    CACHE.get_or_init(StaticCache::new)
+fn layout_cache() -> &'static cache::ContentCache<Layout> {
+    static CACHE: std::sync::OnceLock<cache::ContentCache<Layout>> = std::sync::OnceLock::new();
+    CACHE.get_or_init(cache::ContentCache::new)
 }
 
 enum MissingFieldSuffix {
@@ -124,22 +121,16 @@ where
         .transpose()
 }
 
-fn cached_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Arc<Layout>> {
-    let key = layout_dict.as_ptr() as usize;
-
-    // Check cache first (common case)
-    if let Some(cached) = layout_vec_cache().get(&key) {
-        return Ok(cached);
-    }
-
-    // Materialize the layout from Python dict
+fn extract_layout_vec(layout_dict: &Bound<'_, PyDict>) -> PyResult<Layout> {
+    // First, materialize to compute the content hash
     let mut materialised: Vec<(String, Vec<String>)> = Vec::with_capacity(layout_dict.len());
     for (key_obj, value_obj) in layout_dict.iter() {
         materialised.push((key_obj.extract()?, value_obj.extract()?));
     }
 
-    // Insert into cache (handles race conditions internally)
-    Ok(layout_vec_cache().get_or_insert(key, materialised))
+    // Use content-based caching
+    let hash = cache::hash_layout_vec(&materialised);
+    Ok(layout_cache().get_or_insert_with(hash, || materialised))
 }
 
 fn build_operation_descriptors(
@@ -287,7 +278,7 @@ enum PyOperationConfig {
     },
     Typo {
         rate: f64,
-        layout: Arc<Layout>,
+        layout: Layout,
         shift_slip: Option<ShiftSlipConfig>,
         motor_weighting: MotorWeighting,
     },
@@ -433,13 +424,13 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let layout_obj: Bound<'py, PyAny> =
                     extract_required_field_with_field_suffix(dict, "typo operation", "layout")?;
                 let layout_dict = layout_obj.downcast::<PyDict>()?;
-                let layout = cached_layout_vec(layout_dict)?;
+                let layout = extract_layout_vec(layout_dict)?;
                 let shift_slip_rate =
                     extract_optional_field(dict, "shift_slip_rate")?.unwrap_or(0.0);
                 let shift_slip_exit_rate = extract_optional_field(dict, "shift_slip_exit_rate")?;
                 let shift_map = dict
                     .get_item("shift_map")?
-                    .map(|value| -> PyResult<Arc<HashMap<String, String>>> {
+                    .map(|value| -> PyResult<HashMap<String, String>> {
                         let mapping = value.downcast::<PyDict>()?;
                         keyboard_typos::extract_shift_map(mapping)
                     })
@@ -618,8 +609,7 @@ impl PyOperationConfig {
                 shift_slip,
                 motor_weighting,
             } => {
-                let layout_map: HashMap<String, Vec<String>> =
-                    layout.as_ref().iter().cloned().collect();
+                let layout_map: HashMap<String, Vec<String>> = layout.into_iter().collect();
                 Operation::Typo(operations::TypoOp {
                     rate,
                     layout: layout_map,
