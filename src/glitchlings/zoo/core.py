@@ -559,28 +559,16 @@ class Gaggle(Glitchling):
         the text is tokenized fewer times compared to executing every glitchling
         individually.
         """
-        master_seed = self.seed
-        if master_seed is None:
-            message = "Gaggle orchestration requires a master seed"
-            raise RuntimeError(message)
-
-        include_patterns, exclude_patterns = self._collect_masking_patterns()
-        if (
-            include_patterns != self._cached_include_patterns
-            or exclude_patterns != self._cached_exclude_patterns
-        ):
-            self._cached_include_patterns = include_patterns
-            self._cached_exclude_patterns = exclude_patterns
-            self._pipeline = None
-            self._pipeline_descriptors_cache = None
-            self._missing_pipeline_glitchlings = []
-
-        if self._pipeline is None and not self._missing_pipeline_glitchlings:
-            self._initialize_pipeline_cache()
+        self._ensure_pipeline_ready()
 
         if self._pipeline is not None and not self._missing_pipeline_glitchlings:
             pipeline = cast(Any, self._pipeline)
             return cast(str, pipeline.run(text))
+
+        master_seed = self.seed
+        if master_seed is None:  # pragma: no cover - validated by _ensure_pipeline_ready
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
 
         # Build the pure execution plan
         plan = build_execution_plan(
@@ -629,6 +617,60 @@ class Gaggle(Glitchling):
         # Step 3: Pure assembly - combine results
         return assemble_corruption_result(target, corrupted)
 
+    def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
+        """Apply corruption across dataset columns with batch optimization.
+
+        When all glitchlings support the Rust pipeline and columns contain
+        simple strings, this method uses batched parallel processing for
+        improved throughput. Falls back to row-by-row processing for
+        transcripts or when Python fallback is required.
+
+        Args:
+            dataset: The HuggingFace Dataset to corrupt.
+            columns: List of column names to corrupt.
+
+        Returns:
+            A new dataset with the specified columns corrupted.
+        """
+        require_datasets("datasets is not installed")
+
+        # Check if we can use batch optimization
+        self._ensure_pipeline_ready()
+        can_batch = self._pipeline is not None and not self._missing_pipeline_glitchlings
+
+        if not can_batch:
+            # Fall back to base class row-by-row processing
+            return super().corrupt_dataset(dataset, columns)
+
+        def __corrupt_batch(batch: dict[str, list[Any]]) -> dict[str, list[Any]]:
+            result = dict(batch)
+            for column in columns:
+                values = batch[column]
+                if not values:
+                    continue
+
+                # Check if all values are simple strings (batchable)
+                if all(isinstance(v, str) for v in values):
+                    result[column] = self.corrupt_batch(values)
+                else:
+                    # Mixed types or transcripts - process individually
+                    corrupted_values: list[Any] = []
+                    for value in values:
+                        if _is_transcript(value, allow_empty=False, require_all_content=True):
+                            corrupted_values.append(self.corrupt(value))
+                        elif isinstance(value, list) and all(
+                            isinstance(item, str) for item in value
+                        ):
+                            corrupted_values.append(self.corrupt_batch(value))
+                        elif isinstance(value, str):
+                            corrupted_values.append(self._corrupt_text(value))
+                        else:
+                            corrupted_values.append(value)
+                    result[column] = corrupted_values
+            return result
+
+        return dataset.map(__corrupt_batch, batched=True)
+
     @staticmethod
     def _merge_pattern_lists(base: list[str] | None, extra: list[str] | None) -> list[str] | None:
         if base is None and extra is None:
@@ -662,6 +704,64 @@ class Gaggle(Glitchling):
             _extend_unique(exclude_patterns, clone.kwargs.get("exclude_patterns"))
 
         return include_patterns, exclude_patterns
+
+    def _ensure_pipeline_ready(self) -> None:
+        """Ensure the pipeline cache is initialized and patterns are current."""
+        master_seed = self.seed
+        if master_seed is None:
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
+
+        include_patterns, exclude_patterns = self._collect_masking_patterns()
+        if (
+            include_patterns != self._cached_include_patterns
+            or exclude_patterns != self._cached_exclude_patterns
+        ):
+            self._cached_include_patterns = include_patterns
+            self._cached_exclude_patterns = exclude_patterns
+            self._pipeline = None
+            self._pipeline_descriptors_cache = None
+            self._missing_pipeline_glitchlings = []
+
+        if self._pipeline is None and not self._missing_pipeline_glitchlings:
+            self._initialize_pipeline_cache()
+
+    def _can_use_batch_pipeline(self) -> bool:
+        """Return True if all glitchlings support the Rust pipeline."""
+        self._ensure_pipeline_ready()
+        return self._pipeline is not None and not self._missing_pipeline_glitchlings
+
+    def corrupt_batch(self, texts: Sequence[str]) -> list[str]:
+        """Apply corruptions to multiple texts, using parallel Rust execution when possible.
+
+        When all glitchlings support the Rust pipeline, this method releases the GIL
+        and processes all texts concurrently using rayon. This provides significant
+        speedups for large batches compared to sequential processing.
+
+        When any glitchling requires Python fallback, texts are processed sequentially.
+
+        Args:
+            texts: Sequence of text strings to corrupt.
+
+        Returns:
+            List of corrupted texts in the same order as inputs.
+
+        Example:
+            >>> gaggle = Gaggle([Typogre(rate=0.05), Mim1c(rate=0.01)], seed=42)
+            >>> results = gaggle.corrupt_batch(["Hello world", "How are you?"])
+        """
+        if not texts:
+            return []
+
+        self._ensure_pipeline_ready()
+
+        # Fast path: use parallel Rust pipeline when available
+        if self._pipeline is not None and not self._missing_pipeline_glitchlings:
+            pipeline = cast(Any, self._pipeline)
+            return cast(list[str], pipeline.run_batch(list(texts)))
+
+        # Fallback: sequential processing
+        return [self._corrupt_text(text) for text in texts]
 
 
 __all__ = [
