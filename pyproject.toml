@@ -134,6 +134,9 @@ pythonpath = [
 ]
 addopts = "--cov=glitchlings --cov-report=term-missing --cov-report=html --hypothesis-seed=0"
 
+[tool.hypothesis]
+database = "none"
+
 [tool.interrogate]
 config = true
 fail-under = 80
