@@ -4,10 +4,10 @@ import inspect
 import random
 from collections.abc import Mapping, Sequence
 from enum import IntEnum, auto
-from hashlib import blake2s
 from typing import TYPE_CHECKING, Any, Callable, Protocol, cast
 
 from glitchlings.internal.rust_ffi import build_pipeline_rust, plan_operations_rust
+from glitchlings.zoo.rng import SEED_MASK, _fnv1a_hash, _splitmix64
 
 from ..compat.loaders import get_datasets_dataset, require_datasets
 from ..compat.types import Dataset as DatasetProtocol
@@ -416,31 +416,22 @@ class Gaggle(Glitchling):
 
     @staticmethod
     def derive_seed(master_seed: int, glitchling_name: str, index: int) -> int:
-        """Derive a deterministic seed for a glitchling based on the master seed."""
+        """Derive a deterministic seed for a glitchling based on the master seed.
 
-        def _int_to_bytes(value: int) -> bytes:
-            if value == 0:
-                return b"\x00"
+        Uses FNV-1a for string hashing and SplitMix64 for mixing. This provides
+        stable, deterministic derivation without cryptographic overhead.
+        """
+        state = master_seed & SEED_MASK
 
-            abs_value = abs(value)
-            length = max(1, (abs_value.bit_length() + 7) // 8)
+        # Mix in glitchling name via FNV-1a
+        state ^= _fnv1a_hash(glitchling_name.encode("utf-8"))
+        state = _splitmix64(state)
 
-            if value < 0:
-                while True:
-                    try:
-                        return value.to_bytes(length, "big", signed=True)
-                    except OverflowError:
-                        length += 1
+        # Mix in index
+        state ^= abs(index) & SEED_MASK
+        state = _splitmix64(state)
 
-            return abs_value.to_bytes(length, "big", signed=False)
-
-        hasher = blake2s(digest_size=8)
-        hasher.update(_int_to_bytes(master_seed))
-        hasher.update(b"\x00")
-        hasher.update(glitchling_name.encode("utf-8"))
-        hasher.update(b"\x00")
-        hasher.update(_int_to_bytes(index))
-        return int.from_bytes(hasher.digest(), "big")
+        return state
 
     def sort_glitchlings(self) -> None:
         """Sort glitchlings by wave then order to produce application order."""

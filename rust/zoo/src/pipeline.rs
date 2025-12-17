@@ -1,5 +1,3 @@
-use blake2::digest::consts::U8;
-use blake2::{Blake2s, Digest};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::PyErr;
@@ -175,43 +173,50 @@ pub fn plan_gaggle(inputs: Vec<GagglePlanInput>, master_seed: i128) -> Vec<Gaggl
         .collect()
 }
 
-pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
-    let mut hasher = Blake2s::<U8>::new();
-    Digest::update(&mut hasher, int_to_bytes(master_seed));
-    Digest::update(&mut hasher, [0]);
-    Digest::update(&mut hasher, glitchling_name.as_bytes());
-    Digest::update(&mut hasher, [0]);
-    Digest::update(&mut hasher, int_to_bytes(index));
-    let digest = hasher.finalize();
-    u64::from_be_bytes(digest.into())
+/// FNV-1a constants for 64-bit hashing
+const FNV_OFFSET_BASIS: u64 = 0xCBF29CE484222325;
+const FNV_PRIME: u64 = 0x100000001B3;
+
+/// SplitMix64 constants
+const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
+const SPLITMIX_MIX1: u64 = 0xBF58476D1CE4E5B9;
+const SPLITMIX_MIX2: u64 = 0x94D049BB133111EB;
+
+/// FNV-1a 64-bit hash of bytes.
+#[inline]
+fn fnv1a_hash(data: &[u8]) -> u64 {
+    let mut h = FNV_OFFSET_BASIS;
+    for &byte in data {
+        h ^= byte as u64;
+        h = h.wrapping_mul(FNV_PRIME);
+    }
+    h
 }
 
-fn int_to_bytes(value: i128) -> Vec<u8> {
-    if value == 0 {
-        return vec![0];
-    }
-    if value > 0 {
-        let mut bytes = Vec::new();
-        let mut current = value;
-        while current > 0 {
-            bytes.push((current & 0xFF) as u8);
-            current >>= 8;
-        }
-        bytes.reverse();
-        return bytes;
-    }
+/// SplitMix64 mixing function.
+#[inline]
+fn splitmix64(state: u64) -> u64 {
+    let mut z = state.wrapping_add(SPLITMIX_GAMMA);
+    z = (z ^ (z >> 30)).wrapping_mul(SPLITMIX_MIX1);
+    z = (z ^ (z >> 27)).wrapping_mul(SPLITMIX_MIX2);
+    z ^ (z >> 31)
+}
 
-    let mut bytes = value.to_be_bytes().to_vec();
-    while bytes.len() > 1 {
-        let first = bytes[0];
-        let second = bytes[1];
-        if (first == 0xFF && (second & 0x80) != 0) || (first == 0x00 && (second & 0x80) == 0) {
-            bytes.remove(0);
-        } else {
-            break;
-        }
-    }
-    bytes
+/// Derive a deterministic seed for a glitchling.
+///
+/// Uses FNV-1a for string hashing and SplitMix64 for mixing.
+pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
+    let mut state = master_seed as u64;
+
+    // Mix in glitchling name via FNV-1a
+    state ^= fnv1a_hash(glitchling_name.as_bytes());
+    state = splitmix64(state);
+
+    // Mix in index
+    state ^= index.unsigned_abs() as u64;
+    state = splitmix64(state);
+
+    state
 }
 
 #[cfg(test)]
@@ -228,9 +233,9 @@ mod tests {
     fn derive_seed_matches_python_reference() {
         assert_eq!(
             derive_seed(151, "Rushmore-Duplicate", 0),
-            5788556628871228872
+            7389502113326060275
         );
-        assert_eq!(derive_seed(151, "Rushmore", 1), 15756123308692553544);
+        assert_eq!(derive_seed(151, "Rushmore", 1), 6396582009440301753);
     }
 
     #[test]

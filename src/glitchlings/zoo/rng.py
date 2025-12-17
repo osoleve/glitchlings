@@ -26,7 +26,6 @@ See AGENTS.md "Functional Purity Architecture" for full details.
 from __future__ import annotations
 
 import random
-from hashlib import blake2s
 from typing import Protocol, runtime_checkable
 
 # ---------------------------------------------------------------------------
@@ -36,6 +35,15 @@ from typing import Protocol, runtime_checkable
 # Bit width for seed values (64-bit for compatibility with Rust u64)
 SEED_BIT_WIDTH = 64
 SEED_MASK = (1 << SEED_BIT_WIDTH) - 1  # 0xFFFFFFFFFFFFFFFF
+
+# FNV-1a constants for 64-bit hashing (fast, simple string hashing)
+_FNV_OFFSET_BASIS = 0xCBF29CE484222325
+_FNV_PRIME = 0x100000001B3
+
+# SplitMix64 constants (standard PRNG seed mixer)
+_SPLITMIX_GAMMA = 0x9E3779B97F4A7C15
+_SPLITMIX_MIX1 = 0xBF58476D1CE4E5B9
+_SPLITMIX_MIX2 = 0x94D049BB133111EB
 
 
 # ---------------------------------------------------------------------------
@@ -123,15 +131,40 @@ def resolve_seed_deterministic(
 # ---------------------------------------------------------------------------
 
 
+def _fnv1a_hash(data: bytes) -> int:
+    """FNV-1a 64-bit hash of bytes.
+
+    Fast, simple string hashing with good distribution.
+    No cryptographic properties needed for seed derivation.
+    """
+    h = _FNV_OFFSET_BASIS
+    for byte in data:
+        h ^= byte
+        h = (h * _FNV_PRIME) & SEED_MASK
+    return h
+
+
+def _splitmix64(state: int) -> int:
+    """SplitMix64 mixing function.
+
+    Standard PRNG seed mixer used by Java's SplittableRandom
+    and Rust's rand crate. Provides excellent avalanche properties.
+    """
+    state = (state + _SPLITMIX_GAMMA) & SEED_MASK
+    state = ((state ^ (state >> 30)) * _SPLITMIX_MIX1) & SEED_MASK
+    state = ((state ^ (state >> 27)) * _SPLITMIX_MIX2) & SEED_MASK
+    return (state ^ (state >> 31)) & SEED_MASK
+
+
 def derive_seed(base_seed: int, *components: int | str) -> int:
     """Derive a new seed from a base seed and components.
 
     This is a pure function for hierarchical seed derivation.
     Used by Gaggle to give each glitchling a unique but reproducible seed.
 
-    Uses blake2s for stable hashing across interpreter runs (unlike Python's
-    built-in hash() which is salted per-process). This ensures identical
-    inputs always produce identical seeds regardless of PYTHONHASHSEED.
+    Uses FNV-1a for string hashing and SplitMix64 for mixing. This provides
+    stable, deterministic derivation across interpreter runs without the
+    overhead of cryptographic hashing.
 
     Args:
         base_seed: The parent seed.
@@ -142,38 +175,26 @@ def derive_seed(base_seed: int, *components: int | str) -> int:
 
     Examples:
         >>> derive_seed(12345, 0)  # first child
-        13704458811836263874
+        2454886589211414944
         >>> derive_seed(12345, 1)  # second child
-        7874335407589182396
+        18133564086679993456
         >>> derive_seed(12345, "typogre")  # named child
-        561509252352425601
+        1187037253482581891
     """
-    # Use blake2s for stable, deterministic hashing across runs
-    hasher = blake2s(digest_size=8)
+    state = base_seed & SEED_MASK
 
-    # Helper to convert int to bytes (handles arbitrary size)
-    def _int_to_bytes(value: int) -> bytes:
-        if value == 0:
-            return b"\x00"
-        abs_value = abs(value)
-        length = (abs_value.bit_length() + 7) // 8
-        if value < 0:
-            while True:
-                try:
-                    return value.to_bytes(length, "big", signed=True)
-                except OverflowError:
-                    length += 1
-        return abs_value.to_bytes(length, "big", signed=False)
-
-    hasher.update(_int_to_bytes(base_seed))
     for component in components:
-        hasher.update(b"\x00")  # separator
         if isinstance(component, str):
-            hasher.update(component.encode("utf-8"))
+            # Hash string to u64 via FNV-1a, then XOR into state
+            state ^= _fnv1a_hash(component.encode("utf-8"))
         else:
-            hasher.update(_int_to_bytes(component))
+            # XOR integer directly (masked to 64 bits)
+            state ^= abs(component) & SEED_MASK
 
-    return int.from_bytes(hasher.digest(), "big")
+        # Mix with SplitMix64 after each component
+        state = _splitmix64(state)
+
+    return state
 
 
 # ---------------------------------------------------------------------------
