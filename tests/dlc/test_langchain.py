@@ -44,7 +44,12 @@ def test_glitch_runnable_invokes_with_inferred_columns() -> None:
 
 
 def test_glitch_runnable_batch_and_output_glitching() -> None:
-    runnable = GlitchedRunnable(EchoRunnable(), "typogre", glitch_output=True, seed=321)
+    runnable = GlitchedRunnable(
+        EchoRunnable(),
+        Rushmore(duplicate_rate=1.0, modes="duplicate"),
+        glitch_output=True,
+        seed=321,
+    )
     batch = [{"prompt": "hello"}, {"prompt": "world"}]
 
     result = runnable.batch(batch)
