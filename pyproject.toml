@@ -132,7 +132,7 @@ debug = false
 pythonpath = [
     "src",
 ]
-addopts = "--cov=glitchlings --cov-report=term-missing --cov-report=html --hypothesis-seed=0"
+addopts = "--cov=glitchlings --cov-report=term-missing --cov-report=html"
 
 [tool.interrogate]
 config = true
