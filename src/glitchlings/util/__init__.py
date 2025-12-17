@@ -9,6 +9,8 @@ from .keyboards import (
     ShiftMap,
     ShiftMaps,
     classify_transition,
+    get_serialized_layout,
+    get_serialized_shift_map,
 )
 
 __all__ = [
@@ -19,6 +21,9 @@ __all__ = [
     "KeyNeighbors",
     "KEYNEIGHBORS",
     "SHIFT_MAPS",
+    # Pre-serialized accessors for pipeline use
+    "get_serialized_layout",
+    "get_serialized_shift_map",
     # Motor coordination
     "FingerAssignment",
     "FINGER_MAP",
