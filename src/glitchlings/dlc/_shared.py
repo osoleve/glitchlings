@@ -107,6 +107,10 @@ def is_textual_candidate(value: Any) -> bool:
 def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
     """Return ``value`` with glitchlings applied when possible.
 
+    Uses parallel Rust pipeline execution for lists of strings when all
+    glitchlings support the Rust pipeline, providing significant speedups
+    for large batches.
+
     Args:
         value: The value to corrupt (string, transcript, or sequence of strings).
         gaggle: The gaggle of glitchlings to apply.
@@ -121,10 +125,10 @@ def corrupt_text_value(value: Any, gaggle: Gaggle) -> Any:
         return gaggle.corrupt(value)
 
     if isinstance(value, list) and value and all(isinstance(item, str) for item in value):
-        return [gaggle.corrupt(item) for item in value]
+        return gaggle.corrupt_batch(value)
 
     if isinstance(value, tuple) and value and all(isinstance(item, str) for item in value):
-        return tuple(gaggle.corrupt(item) for item in value)
+        return tuple(gaggle.corrupt_batch(list(value)))
 
     return value
 
