@@ -19,11 +19,11 @@ DEFAULT_ZEEDUB_RATE = 0.02
 # Base rate for character-level OCR confusions
 DEFAULT_SCANNEQUIN_RATE = 0.02
 # Burst model parameters (Kanungo et al., 1994)
-DEFAULT_SCANNEQUIN_BURST_ENTER = 0.0  # Disabled by default for backward compat
+DEFAULT_SCANNEQUIN_BURST_ENTER = 0.0  # Disabled by default
 DEFAULT_SCANNEQUIN_BURST_EXIT = 0.3
 DEFAULT_SCANNEQUIN_BURST_MULTIPLIER = 3.0
 # Document-level bias parameters (UNLV-ISRI, 1995)
-DEFAULT_SCANNEQUIN_BIAS_K = 0  # Disabled by default for backward compat
+DEFAULT_SCANNEQUIN_BIAS_K = 0  # Disabled by default
 DEFAULT_SCANNEQUIN_BIAS_BETA = 2.0
 # Whitespace error parameters (Smith, 2007)
 DEFAULT_SCANNEQUIN_SPACE_DROP_RATE = 0.0  # Disabled by default

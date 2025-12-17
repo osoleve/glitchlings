@@ -257,7 +257,7 @@ class Glitchling:
                     result[idx]["content"] = self._execute_corruption(content)
             return result
 
-        # Fallback: cast to string for backwards compatibility
+        # Fallback: cast to string
         return self._execute_corruption(str(text))
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:
@@ -569,7 +569,7 @@ class Gaggle(Glitchling):
                     result[idx]["content"] = self._corrupt_text(content)
             return result
 
-        # Fallback: cast to string for backwards compatibility
+        # Fallback: cast to string
         return self._corrupt_text(str(text))
 
     def corrupt_dataset(self, dataset: Dataset, columns: list[str]) -> Dataset:

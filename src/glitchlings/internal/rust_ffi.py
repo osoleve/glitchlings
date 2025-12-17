@@ -31,9 +31,8 @@ from typing import Any, Literal, Mapping, Sequence, cast
 
 from .rust import get_rust_operation, load_rust_module, resolve_seed
 
-# Re-export resolve_seed for backward compatibility
 __all__ = [
-    # Seed resolution (re-exported from rust.py)
+    # Seed resolution
     "resolve_seed",
     # Orchestration operations
     "plan_operations_rust",

@@ -16,7 +16,6 @@ from tests.fixtures.mocks import (
     torch_stub,
 )
 
-# Re-export for backward compatibility with existing tests
 __all__ = [
     "torch_stub",
     "_Rubric",

@@ -29,9 +29,9 @@ from glitchlings.attack.core_planning import (
     extract_transcript_contents,
 )
 from glitchlings.attack.metrics_dispatch import is_batch, validate_batch_consistency
+from glitchlings.util.keyboards import build_keyboard_neighbor_map
 from glitchlings.zoo.rng import SEED_MASK, derive_seed
 from glitchlings.zoo.transforms import (
-    build_keyboard_neighbor_map,
     collect_word_tokens,
     compute_core_length,
     compute_string_diffs,
@@ -57,6 +57,7 @@ from glitchlings.zoo.validation import (
 def build_empty_metrics(metric_names: list[str]) -> dict[str, list[float]]:
     """Create empty metric results for empty transcript input."""
     return {name: [] for name in metric_names}
+
 
 # ---------------------------------------------------------------------------
 # Custom Strategies

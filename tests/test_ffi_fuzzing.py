@@ -58,15 +58,17 @@ rate_strategy = st.sampled_from([0.0, 0.1, 0.5, 1.0, -0.1, 1.5, float("inf"), fl
 ZERO_WIDTH_CHARS = ["\u200b", "\u200c", "\u200d", "\ufeff", "\u2060"]
 
 # Text strategies with adversarial cases
-adversarial_text = st.sampled_from([
-    "",
-    " ",
-    "".join(ZERO_WIDTH_CHARS),
-    "hello world",
-    "The quick brown fox jumps over the lazy dog.",
-    "Hello, World! How are you?",
-    "a" * 100,
-])
+adversarial_text = st.sampled_from(
+    [
+        "",
+        " ",
+        "".join(ZERO_WIDTH_CHARS),
+        "hello world",
+        "The quick brown fox jumps over the lazy dog.",
+        "Hello, World! How are you?",
+        "a" * 100,
+    ]
+)
 
 
 # ===========================================================================
@@ -79,9 +81,7 @@ class TestWordLevelOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, rate=rate_strategy, seed=seed_strategy)
-    def test_reduplicate_words_no_crash(
-        self, text: str, rate: float, seed: int | None
-    ) -> None:
+    def test_reduplicate_words_no_crash(self, text: str, rate: float, seed: int | None) -> None:
         """reduplicate_words should never crash."""
         try:
             result = engine.reduplicate_words(text, rate, False, seed)
@@ -91,9 +91,7 @@ class TestWordLevelOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, rate=rate_strategy, seed=seed_strategy)
-    def test_delete_random_words_no_crash(
-        self, text: str, rate: float, seed: int | None
-    ) -> None:
+    def test_delete_random_words_no_crash(self, text: str, rate: float, seed: int | None) -> None:
         """delete_random_words should never crash."""
         try:
             result = engine.delete_random_words(text, rate, False, seed)
@@ -103,9 +101,7 @@ class TestWordLevelOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, rate=rate_strategy, seed=seed_strategy)
-    def test_swap_adjacent_words_no_crash(
-        self, text: str, rate: float, seed: int | None
-    ) -> None:
+    def test_swap_adjacent_words_no_crash(self, text: str, rate: float, seed: int | None) -> None:
         """swap_adjacent_words should never crash."""
         try:
             result = engine.swap_adjacent_words(text, rate, seed)
@@ -175,9 +171,7 @@ class TestCharacterLevelOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, rate=rate_strategy, seed=seed_strategy)
-    def test_ocr_artifacts_no_crash(
-        self, text: str, rate: float, seed: int | None
-    ) -> None:
+    def test_ocr_artifacts_no_crash(self, text: str, rate: float, seed: int | None) -> None:
         """ocr_artifacts should never crash."""
         try:
             result = engine.ocr_artifacts(
@@ -199,9 +193,7 @@ class TestCharacterLevelOperations:
     ) -> None:
         """inject_zero_widths should never crash."""
         try:
-            result = engine.inject_zero_widths(
-                text, rate, characters, seed, None, None, None
-            )
+            result = engine.inject_zero_widths(text, rate, characters, seed, None, None, None)
             assert isinstance(result, str)
         except (ValueError, TypeError, OverflowError):
             pass
@@ -237,9 +229,7 @@ class TestKeyboardTypoOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, rate=rate_strategy, seed=seed_strategy)
-    def test_keyboard_typo_no_crash(
-        self, text: str, rate: float, seed: int | None
-    ) -> None:
+    def test_keyboard_typo_no_crash(self, text: str, rate: float, seed: int | None) -> None:
         """keyboard_typo should never crash."""
         try:
             result = engine.keyboard_typo(text, rate, self.MINIMAL_LAYOUT, seed)
@@ -373,19 +363,19 @@ class TestOrchestrationOperations:
     @fuzz_settings
     @given(
         glitchlings=st.lists(
-            st.fixed_dictionaries({
-                "name": st.text(min_size=1, max_size=10),
-                "scope": st.integers(min_value=0, max_value=5),
-                "order": st.integers(min_value=0, max_value=5),
-            }),
+            st.fixed_dictionaries(
+                {
+                    "name": st.text(min_size=1, max_size=10),
+                    "scope": st.integers(min_value=0, max_value=5),
+                    "order": st.integers(min_value=0, max_value=5),
+                }
+            ),
             min_size=0,
             max_size=5,
         ),
         master_seed=master_seed_strategy,
     )
-    def test_plan_operations_no_crash(
-        self, glitchlings: list[dict], master_seed: int
-    ) -> None:
+    def test_plan_operations_no_crash(self, glitchlings: list[dict], master_seed: int) -> None:
         """plan_operations should never crash."""
         try:
             result = engine.plan_operations(glitchlings, master_seed)
@@ -395,9 +385,7 @@ class TestOrchestrationOperations:
 
     @fuzz_settings
     @given(text=adversarial_text, master_seed=master_seed_strategy)
-    def test_compose_operations_empty_no_crash(
-        self, text: str, master_seed: int
-    ) -> None:
+    def test_compose_operations_empty_no_crash(self, text: str, master_seed: int) -> None:
         """compose_operations with empty descriptors should never crash."""
         try:
             result = engine.compose_operations(text, [], master_seed)
@@ -461,9 +449,7 @@ class TestMetricsOperations:
 
     @fuzz_settings
     @given(original=adversarial_text, corrupted=adversarial_text)
-    def test_normalized_edit_distance_no_crash(
-        self, original: str, corrupted: str
-    ) -> None:
+    def test_normalized_edit_distance_no_crash(self, original: str, corrupted: str) -> None:
         """normalized_edit_distance should never crash."""
         try:
             result = engine.normalized_edit_distance(original, corrupted)

@@ -30,7 +30,9 @@ def _glitchling_module(name: str) -> ModuleType:
 
 def redactyl_full_block() -> str:
     """Expose the Redactyl full block character."""
-    return getattr(_glitchling_module("Redactyl"), "FULL_BLOCK")
+    from glitchlings.constants import DEFAULT_REDACTYL_CHAR
+
+    return DEFAULT_REDACTYL_CHAR
 
 
 def zero_width_characters() -> List[str]:
@@ -235,11 +237,9 @@ def resolve_corpus(corpus: CorpusLike) -> Tuple[Tuple[str, str], ...]:
     return tuple(selected)
 
 
-# Keep the legacy "gutenberg_titles" key as a CLI alias.
 BENCHMARK_CORPORA: Dict[str, CorpusLike] = {
     "default": DEFAULT_TEXTS,
     "gutenberg": load_gutenberg_books,
-    "gutenberg_titles": load_gutenberg_books,
 }
 DEFAULT_ITERATIONS = 25
 MASTER_SEED = 151

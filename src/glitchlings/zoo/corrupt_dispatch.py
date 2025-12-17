@@ -103,11 +103,9 @@ def resolve_corruption_target(
         CorruptionTarget describing what should be corrupted.
 
     Note:
-        For backwards compatibility, lists that are not valid transcripts
-        (e.g., lists of strings) are treated as strings. The original corrupt()
-        implementation would cast such inputs to str and pass them to the
-        corruption function. This behavior is preserved to maintain compatibility
-        with dataset column transformations.
+        Lists that are not valid transcripts (e.g., lists of strings) are
+        treated as strings via casting. This handles cases like dataset column
+        transformations where HuggingFace may batch values as lists.
     """
     # Handle plain strings
     if isinstance(text, str):
@@ -129,9 +127,7 @@ def resolve_corruption_target(
             original_transcript=text,
         )
 
-    # For backwards compatibility: treat other types (including lists of strings)
-    # as strings by casting. This preserves the original behavior where
-    # non-transcript lists were passed to corruption functions after casting.
+    # Treat other types (including lists of strings) as strings by casting.
     # This handles cases like dataset column transformations where HuggingFace
     # may batch values as lists.
     return StringCorruptionTarget(text=str(text))

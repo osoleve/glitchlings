@@ -95,9 +95,7 @@ class TestScannequinBurstModel:
 
     def test_burst_parameters_stored_correctly(self):
         """Burst parameters should be stored in kwargs."""
-        scan = Scannequin(
-            burst_enter=0.1, burst_exit=0.2, burst_multiplier=4.0, seed=42
-        )
+        scan = Scannequin(burst_enter=0.1, burst_exit=0.2, burst_multiplier=4.0, seed=42)
         assert scan.kwargs.get("burst_enter") == 0.1
         assert scan.kwargs.get("burst_exit") == 0.2
         assert scan.kwargs.get("burst_multiplier") == 4.0
@@ -157,9 +155,7 @@ class TestScannequinDeterminism:
     def test_determinism_with_burst_enabled(self):
         """Burst mode should still be deterministic."""
         text = "The quick brown fox jumps over the lazy dog"
-        scan = Scannequin(
-            rate=0.05, burst_enter=0.1, burst_exit=0.3, burst_multiplier=3.0, seed=42
-        )
+        scan = Scannequin(rate=0.05, burst_enter=0.1, burst_exit=0.3, burst_multiplier=3.0, seed=42)
 
         scan.reset_rng(42)
         result1 = scan(text)
@@ -181,9 +177,7 @@ class TestScannequinDeterminism:
     def test_determinism_with_whitespace_errors(self):
         """Whitespace errors should still be deterministic."""
         text = "hello world foo bar"
-        scan = Scannequin(
-            rate=0.02, space_drop_rate=0.1, space_insert_rate=0.05, seed=42
-        )
+        scan = Scannequin(rate=0.02, space_drop_rate=0.1, space_insert_rate=0.05, seed=42)
 
         scan.reset_rng(42)
         result1 = scan(text)

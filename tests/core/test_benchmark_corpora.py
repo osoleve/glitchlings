@@ -28,7 +28,6 @@ def test_gutenberg_corpus_aliases() -> None:
     """The Project Gutenberg corpus entries should route to the loader."""
 
     assert constants.BENCHMARK_CORPORA["gutenberg"] is constants.load_gutenberg_books
-    assert constants.BENCHMARK_CORPORA["gutenberg_titles"] is constants.load_gutenberg_books
 
 
 def test_gutenberg_corpus_loads_book_text() -> None:

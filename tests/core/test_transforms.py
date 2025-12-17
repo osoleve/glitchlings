@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from glitchlings.util.keyboards import build_keyboard_neighbor_map
 from glitchlings.zoo.transforms import (
     WordToken,
-    build_keyboard_neighbor_map,
     collect_word_tokens,
     compute_core_length,
     compute_string_diffs,

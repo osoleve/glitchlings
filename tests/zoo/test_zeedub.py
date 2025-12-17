@@ -287,7 +287,7 @@ class TestZeedubScriptAwareMode:
     def test_script_aware_with_emoji(self) -> None:
         # Emoji should allow joiners (for ZWJ sequences)
         z = Zeedub(rate=0.5, placement="script_aware", seed=42)
-        result = z("\U0001F468\U0001F469\U0001F467")  # Family emoji base characters
+        result = z("\U0001f468\U0001f469\U0001f467")  # Family emoji base characters
         assert isinstance(result, str)
 
 
@@ -304,7 +304,7 @@ class TestZeedubGraphemeBoundaryMode:
     def test_grapheme_boundary_with_emoji_zwj_sequence(self) -> None:
         # Family emoji (ZWJ sequence)
         z = Zeedub(rate=0.5, placement="grapheme_boundary", seed=42)
-        emoji = "\U0001F468\u200D\U0001F469\u200D\U0001F467"  # Family emoji
+        emoji = "\U0001f468\u200d\U0001f469\u200d\U0001f467"  # Family emoji
         result = z(emoji)
         # Should produce valid output
         assert isinstance(result, str)

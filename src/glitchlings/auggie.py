@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Sequence
 from typing import Collection, Literal
 
+from .constants import DEFAULT_REDACTYL_CHAR
 from .zoo.core import Gaggle, Glitchling
 from .zoo.hokey import Hokey
 from .zoo.jargoyle import (
@@ -16,7 +17,7 @@ from .zoo.jargoyle import (
 from .zoo.mim1c import Mim1c
 from .zoo.pedant import Pedant
 from .zoo.pedant.stones import PedantStone
-from .zoo.redactyl import FULL_BLOCK, Redactyl
+from .zoo.redactyl import Redactyl
 from .zoo.rushmore import Rushmore, RushmoreMode
 from .zoo.scannequin import Scannequin
 from .zoo.typogre import Typogre
@@ -172,7 +173,7 @@ class Auggie(Gaggle):
     def redact(
         self,
         *,
-        replacement_char: str = FULL_BLOCK,
+        replacement_char: str = DEFAULT_REDACTYL_CHAR,
         rate: float | None = None,
         merge_adjacent: bool = False,
         seed: int | None = 151,
