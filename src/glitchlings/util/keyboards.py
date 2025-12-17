@@ -18,6 +18,9 @@ __all__ = [
     "SHIFT_MAPS",
     "KeyNeighborMap",
     "build_keyboard_neighbor_map",
+    # Pre-serialized accessors for pipeline use
+    "get_serialized_layout",
+    "get_serialized_shift_map",
     # Motor coordination types
     "FingerAssignment",
     "FINGER_MAP",
@@ -192,8 +195,27 @@ class KeyNeighbors:
         for layout_name, layout in _KEYNEIGHBORS.items():
             setattr(self, layout_name, layout)
 
+    def get(self, name: str) -> KeyNeighborMap | None:
+        """Get a layout by name, returning None if not found."""
+        return _KEYNEIGHBORS.get(name)
+
 
 KEYNEIGHBORS: KeyNeighbors = KeyNeighbors()
+
+
+# Pre-serialized layouts for pipeline use (avoids per-call dict comprehension)
+# Format: {key: list(neighbors)} - lists instead of iterables for Rust FFI
+_SERIALIZED_LAYOUTS: dict[str, dict[str, list[str]]] = {
+    name: {k: list(v) for k, v in layout.items()} for name, layout in _KEYNEIGHBORS.items()
+}
+
+
+def get_serialized_layout(name: str) -> dict[str, list[str]] | None:
+    """Get a pre-serialized layout for pipeline use.
+
+    Returns the cached serialized form directly - do not mutate.
+    """
+    return _SERIALIZED_LAYOUTS.get(name)
 
 
 def _uppercase_keys(layout: str) -> ShiftMap:
@@ -357,8 +379,20 @@ class ShiftMapsAccessor:
         for layout_name, mapping in _SHIFT_MAPS.items():
             setattr(self, layout_name, mapping)
 
+    def get(self, name: str) -> ShiftMap | None:
+        """Get a shift map by name, returning None if not found."""
+        return _SHIFT_MAPS.get(name)
+
 
 SHIFT_MAPS: ShiftMapsAccessor = ShiftMapsAccessor()
+
+
+def get_serialized_shift_map(name: str) -> dict[str, str] | None:
+    """Get a pre-serialized shift map for pipeline use.
+
+    Returns the cached dict directly - do not mutate.
+    """
+    return _SHIFT_MAPS.get(name)
 
 
 # ---------------------------------------------------------------------------

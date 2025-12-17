@@ -11,7 +11,13 @@ from glitchlings.constants import (
 )
 from glitchlings.internal.rust_ffi import keyboard_typo_rust, resolve_seed
 
-from ..util import KEYNEIGHBORS, MOTOR_WEIGHTS, SHIFT_MAPS
+from ..util import (
+    KEYNEIGHBORS,
+    MOTOR_WEIGHTS,
+    SHIFT_MAPS,
+    get_serialized_layout,
+    get_serialized_shift_map,
+)
 from .core import AttackOrder, AttackWave, Glitchling, PipelineOperationPayload
 
 
@@ -147,21 +153,24 @@ class Typogre(Glitchling):
     def pipeline_operation(self) -> PipelineOperationPayload:
         rate_value = self.kwargs.get("rate")
         rate = DEFAULT_TYPOGRE_RATE if rate_value is None else float(rate_value)
-        keyboard = self.kwargs.get("keyboard", DEFAULT_TYPOGRE_KEYBOARD)
-        layout = getattr(KEYNEIGHBORS, str(keyboard), None)
-        if layout is None:
+        keyboard = str(self.kwargs.get("keyboard", DEFAULT_TYPOGRE_KEYBOARD))
+
+        # Use pre-serialized layout (cached at module load time)
+        serialized_layout = get_serialized_layout(keyboard)
+        if serialized_layout is None:
             message = f"Unknown keyboard layout '{keyboard}' for Typogre pipeline"
             raise RuntimeError(message)
 
-        serialized_layout = {key: list(value) for key, value in layout.items()}
         shift_slip_rate = float(self.kwargs.get("shift_slip_rate", 0.0) or 0.0)
         shift_slip_exit_rate = self.kwargs.get("shift_slip_exit_rate")
         resolved_exit_rate = _resolve_slip_exit_rate(shift_slip_rate, shift_slip_exit_rate)
-        shift_map = getattr(SHIFT_MAPS, str(keyboard), None)
-        if shift_slip_rate > 0.0 and shift_map is None:
+
+        # Use pre-serialized shift map (already a dict, no copy needed)
+        serialized_shift_map = get_serialized_shift_map(keyboard)
+        if shift_slip_rate > 0.0 and serialized_shift_map is None:
             message = f"Unknown shift map layout '{keyboard}' for Typogre pipeline"
             raise RuntimeError(message)
-        serialized_shift_map = dict(shift_map) if shift_map is not None else None
+
         motor_weighting = self.kwargs.get("motor_weighting", DEFAULT_TYPOGRE_MOTOR_WEIGHTING)
 
         return cast(
@@ -169,7 +178,7 @@ class Typogre(Glitchling):
             {
                 "type": "typo",
                 "rate": float(rate),
-                "keyboard": str(keyboard),
+                "keyboard": keyboard,
                 "layout": serialized_layout,
                 "shift_slip_rate": shift_slip_rate,
                 "shift_slip_exit_rate": float(resolved_exit_rate),
