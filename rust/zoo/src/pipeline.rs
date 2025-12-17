@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 use pyo3::PyErr;
 use rayon::prelude::*;
 use regex::Regex;
+use std::sync::Arc;
 
 use crate::operations::{TextOperation, OperationError, Operation};
 use crate::rng::DeterministicRng;
@@ -35,13 +36,16 @@ impl PipelineError {
 }
 
 /// Deterministic glitchling pipeline mirroring the Python orchestrator contract.
+///
+/// Pattern vectors are wrapped in Arc for cheap cloning when releasing the GIL.
+/// This avoids expensive deep copies of compiled regex patterns.
 #[derive(Debug, Clone)]
 #[pyclass(module = "_corruption_engine")]
 pub struct Pipeline {
     _master_seed: i128,
     descriptors: Vec<OperationDescriptor>,
-    include_only_patterns: Vec<Regex>,
-    exclude_patterns: Vec<Regex>,
+    include_only_patterns: Arc<Vec<Regex>>,
+    exclude_patterns: Arc<Vec<Regex>>,
 }
 
 impl Pipeline {
@@ -54,8 +58,8 @@ impl Pipeline {
         Self {
             _master_seed: master_seed,
             descriptors,
-            include_only_patterns,
-            exclude_patterns,
+            include_only_patterns: Arc::new(include_only_patterns),
+            exclude_patterns: Arc::new(exclude_patterns),
         }
     }
 
