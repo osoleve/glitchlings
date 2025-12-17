@@ -6,7 +6,7 @@ but instead return clean PyValueError or equivalent for all malformed inputs.
 
 The _corruption_engine module exposes functions like plan_operations and
 compose_operations to Python. These are attack surfaces for unexpected input
-that could cause Rust panics.
+that could cause Rust panics. 
 
 Run tests:
     pytest tests/test_ffi_fuzzing.py -v --hypothesis-seed=0
