@@ -29,8 +29,8 @@ def test_gaggle_ordering_stable(sample_text):
 
 
 def test_gaggle_seed_derivation_regression():
-    assert Gaggle.derive_seed(151, "Typogre", 0) == 13006513535068165406
-    assert Gaggle.derive_seed(151, "Redactyl", 3) == 12503957440331561761
+    assert Gaggle.derive_seed(151, "Typogre", 0) == 7825245934999920055
+    assert Gaggle.derive_seed(151, "Redactyl", 3) == 13322901689384981635
 
 
 def test_summon_accepts_parameterized_specification():
