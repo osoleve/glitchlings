@@ -185,9 +185,25 @@ pub fn split_affixes(word: &str) -> (String, String, String) {
     }
 }
 
+/// Zero-allocation variant of split_affixes that returns slices into the original string.
+///
+/// Returns (prefix, core, suffix) where:
+/// - prefix: leading punctuation/non-word characters
+/// - core: the actual word content
+/// - suffix: trailing punctuation/non-word characters
+///
+/// If the word has no core (all punctuation), returns (word, "", "").
+#[inline]
+pub fn split_affixes_ref(word: &str) -> (&str, &str, &str) {
+    match affix_bounds(word) {
+        Some((start, end)) => (&word[..start], &word[start..end], &word[end..]),
+        None => (word, "", ""),
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{apostrofae_pairs, confusion_table, split_affixes, split_with_separators};
+    use super::{apostrofae_pairs, confusion_table, split_affixes, split_affixes_ref, split_with_separators};
 
     #[test]
     fn split_with_separators_matches_expected_boundaries() {
@@ -212,6 +228,18 @@ mod tests {
         assert_eq!(prefix, "(");
         assert_eq!(core, "hello");
         assert_eq!(suffix, ")!");
+    }
+
+    #[test]
+    fn split_affixes_ref_matches_owned_variant() {
+        let test_cases = ["(hello)!", "world", "...test...", "plain", ""];
+        for word in test_cases {
+            let (owned_prefix, owned_core, owned_suffix) = split_affixes(word);
+            let (ref_prefix, ref_core, ref_suffix) = split_affixes_ref(word);
+            assert_eq!(owned_prefix, ref_prefix, "prefix mismatch for '{word}'");
+            assert_eq!(owned_core, ref_core, "core mismatch for '{word}'");
+            assert_eq!(owned_suffix, ref_suffix, "suffix mismatch for '{word}'");
+        }
     }
 
     #[test]

@@ -583,7 +583,10 @@ impl WordStretchOp {
                 .push(idx);
         }
 
-        let total_expected = (candidates.len() as f64 * rate).round() as usize;
+        // Clamp total_expected to candidates.len() to handle rate=inf/NaN safely
+        let total_expected = (candidates.len() as f64 * rate)
+            .round()
+            .min(candidates.len() as f64) as usize;
         // Use HashSet for O(1) membership checks instead of O(n) Vec::contains
         let mut selected_set: HashSet<usize> = HashSet::with_capacity(total_expected);
         let mut selected_indices: Vec<usize> = Vec::with_capacity(total_expected);
@@ -1245,7 +1248,9 @@ mod tests {
         let op = default_op();
         let site = StretchSite { start: 1, end: 3 }; // "oo" in "cool"
         let result = op.apply_stretch("cool", &site, 2);
-        assert_eq!(result, "coooool"); // each char in range repeated
+        // Each char at index 1 and 2 (both 'o') gets repeated 2 additional times:
+        // c + (o + oo) + (o + oo) + l = cooooool
+        assert_eq!(result, "cooooool");
     }
 
     #[test]

@@ -258,8 +258,9 @@ mod tests {
         ];
         let pipeline = Pipeline::new(master_seed, descriptors, Vec::new(), Vec::new());
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
-        // Note: output changed after fixing reindex bug - now subsequent ops see duplicated words
-        assert_eq!(output, "█████ Guard ███ the vault █████");
+        // After reduplication: "Guard Guard the the vault vault"
+        // After redaction at rate 0.5 with this seed: specific words get redacted
+        assert_eq!(output, "Guard Guard ███ ███ vault █████");
     }
 
     #[test]

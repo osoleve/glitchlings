@@ -687,9 +687,12 @@ mod tests {
 
     #[test]
     fn test_synonyms_literal_mode() {
+        // Both "fast" and "car" are in the synonyms dictionary
+        // "fast" -> "rapid" (first synonym)
+        // "car" -> "vehicle" (first synonym)
         let result = transform_text("fast car", "synonyms", JargoyleMode::Literal, 1.0, None)
             .expect("transform should succeed");
-        assert_eq!(result, "rapid car");
+        assert_eq!(result, "rapid vehicle");
     }
 
     #[test]

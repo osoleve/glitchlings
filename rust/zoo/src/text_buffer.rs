@@ -1,5 +1,6 @@
 use compact_str::CompactString;
 use regex::Regex;
+use std::collections::HashSet;
 use std::ops::Range;
 use std::sync::{Arc, LazyLock};
 
@@ -497,12 +498,15 @@ impl TextBuffer {
         // Ensure indices are fresh before we start
         self.reindex_if_needed();
 
-        // Collect and sort in descending order by word_index
-        let mut ops: Vec<_> = deletions.into_iter().collect();
+        // Collect operations
+        let ops: Vec<_> = deletions.into_iter().collect();
         if ops.is_empty() {
             return Ok(());
         }
-        ops.sort_by(|a, b| b.0.cmp(&a.0)); // Descending order
+
+        // Separate removals from replacements, collecting segment indices to remove
+        let mut removal_indices: HashSet<usize> = HashSet::with_capacity(ops.len());
+        let mut had_replacements = false;
 
         for (word_index, replacement) in ops {
             let segment_index = self
@@ -511,26 +515,43 @@ impl TextBuffer {
                 .copied()
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
 
-            // Determine if we should remove or replace
             let should_remove = replacement.as_ref().is_none_or(|s| s.is_empty());
 
             if should_remove {
-                // Remove the segment entirely
-                if segment_index < self.segments.len() {
-                    self.segments.remove(segment_index);
-                }
+                // Mark segment for removal (processed in single pass below)
+                removal_indices.insert(segment_index);
             } else {
-                // Replace with the provided text
+                // Replace in place - O(1)
                 let repl_text = replacement.unwrap(); // Safe: we checked it's Some and not empty
                 let segment = self
                     .segments
                     .get_mut(segment_index)
                     .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
                 segment.set_text(&repl_text, SegmentKind::Word);
+                had_replacements = true;
             }
         }
 
-        self.mark_dirty();
+        // Rebuild segments vector in single O(n) pass, filtering out removed indices
+        if !removal_indices.is_empty() {
+            let new_segments: Vec<_> = self
+                .segments
+                .drain(..)
+                .enumerate()
+                .filter(|(idx, _)| !removal_indices.contains(idx))
+                .map(|(_, seg)| seg)
+                .collect();
+            self.segments = new_segments;
+        }
+
+        // If we had replacements (e.g., punctuation-only affixes), rebuild to re-tokenize
+        // properly. This ensures punctuation doesn't become standalone Word segments.
+        if had_replacements {
+            *self = self.rebuild_with_patterns(self.to_string());
+        } else {
+            self.mark_dirty();
+        }
+
         Ok(())
     }
 
