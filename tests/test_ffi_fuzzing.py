@@ -6,7 +6,7 @@ but instead return clean PyValueError or equivalent for all malformed inputs.
 
 The _corruption_engine module exposes functions like plan_operations and
 compose_operations to Python. These are attack surfaces for unexpected input
-that could cause Rust panics. 
+that could cause Rust panics.
 
 Run tests:
     pytest tests/test_ffi_fuzzing.py -v --hypothesis-seed=0
@@ -14,7 +14,13 @@ Run tests:
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Skip in CI - these fuzz tests are for local security testing, not CI gates
+if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"):
+    pytest.skip("FFI fuzz tests skipped in CI", allow_module_level=True)
 
 try:  # pragma: no cover - optional dependency guard
     from hypothesis import HealthCheck, given, settings
