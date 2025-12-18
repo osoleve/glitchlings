@@ -159,9 +159,7 @@ class TestDeterminism:
 class TestPedantGlitchling:
     """Tests for the Pedant glitchling integration."""
 
-    @pytest.mark.parametrize(
-        "stone_input", [PedantStone.HYPERCORRECTITE, "Hypercorrectite"]
-    )
+    @pytest.mark.parametrize("stone_input", [PedantStone.HYPERCORRECTITE, "Hypercorrectite"])
     def test_pedant_glitch_applies_selected_stone(self, stone_input):
         glitch = Pedant(stone=stone_input, seed=21)
         assert glitch("between you and me") == "between you and I"

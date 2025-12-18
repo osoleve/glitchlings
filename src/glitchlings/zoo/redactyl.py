@@ -6,9 +6,6 @@ from glitchlings.internal.rust_ffi import redact_words_rust, resolve_seed
 
 from .core import AttackWave, Glitchling, PipelineOperationPayload
 
-# Backwards compatibility alias
-FULL_BLOCK = DEFAULT_REDACTYL_CHAR
-
 
 def redact_words(
     text: str,

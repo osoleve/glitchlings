@@ -32,10 +32,6 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import TypeVar, cast
 
-# Re-export from util.keyboards for backwards compatibility
-# The actual implementation lives in util.keyboards to avoid circular imports
-from ..util.keyboards import KeyNeighborMap, build_keyboard_neighbor_map
-
 # ---------------------------------------------------------------------------
 # Text Tokenization
 # ---------------------------------------------------------------------------
@@ -183,14 +179,6 @@ def reassemble_tokens(tokens: Sequence[str]) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Keyboard Layout Processing
-# ---------------------------------------------------------------------------
-
-# KeyNeighborMap and build_keyboard_neighbor_map are imported at module level
-# and re-exported for backwards compatibility. See module imports above.
-
-
-# ---------------------------------------------------------------------------
 # String Difference Computation
 # ---------------------------------------------------------------------------
 
@@ -333,9 +321,6 @@ __all__ = [
     "WordToken",
     "collect_word_tokens",
     "reassemble_tokens",
-    # Keyboard
-    "KeyNeighborMap",
-    "build_keyboard_neighbor_map",
     # Diffs
     "compute_string_diffs",
     # Sequences

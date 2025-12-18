@@ -31,7 +31,8 @@ class EchoRunnable:
         return inputs
 
     async def astream(self, input: Any, **_: Any):
-        for chunk in (input if isinstance(input, list) else [input]):
+        _input  = input if isinstance(input, list) else [input]
+        for chunk in _input:
             yield chunk
 
 
