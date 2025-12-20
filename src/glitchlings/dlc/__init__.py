@@ -9,6 +9,7 @@ with popular ML frameworks:
   Lightning data modules
 - :class:`~glitchlings.dlc.gutenberg.GlitchenbergAPI`: Wrap Project Gutenberg API
 - :class:`~glitchlings.dlc.langchain.GlitchedRunnable`: Wrap LangChain runnables
+- :class:`~glitchlings.dlc.nemo.GlitchlingColumnGenerator`: NeMo DataDesigner plugin
 
 Example:
     >>> from glitchlings.dlc.huggingface import GlitchedDataset

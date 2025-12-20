@@ -53,6 +53,64 @@ glitched = GlitchedRunnable(chain, Typogre(rate=0.01), glitch_output=True, seed=
 response = glitched.invoke({"question": "Who guards the guardians?"})
 ```
 
+## NVIDIA NeMo DataDesigner (`nemo` extra)
+
+- Install the `nemo` extra for `glitchlings.dlc.nemo`, or install the standalone
+  plugin package `glitchlings-nemo` for automatic DataDesigner discovery.
+- `GlitchlingColumnConfig` defines a text corruption column generator.
+- Accepts glitchling names, specs with parameters, lists, or YAML config paths.
+- Use `source_column` to corrupt a different column than the output.
+
+```python
+from data_designer import DataDesignerConfigBuilder
+from glitchlings.dlc.nemo import GlitchlingColumnConfig
+
+builder = DataDesignerConfigBuilder()
+builder.add_column(
+    GlitchlingColumnConfig(
+        name="corrupted_prompt",
+        source_column="prompt",
+        glitchlings=["Typogre(rate=0.02)", "Mim1c(rate=0.01)"],
+        seed=404,
+    )
+)
+```
+
+### Standalone Usage (without DataDesigner)
+
+For direct DataFrame corruption without the full DataDesigner infrastructure:
+
+```python
+import pandas as pd
+from glitchlings.dlc.nemo import corrupt_dataframe
+
+df = pd.DataFrame({"text": ["Hello world", "Test input"]})
+result = corrupt_dataframe(df, "typogre", column="text", seed=42)
+```
+
+### Flexible Glitchling Specifications
+
+The plugin accepts multiple specification formats:
+
+```python
+# Pre-constructed Gaggle
+from glitchlings import Gaggle, Typogre, Mim1c
+gaggle = Gaggle([Typogre(rate=0.02), Mim1c(rate=0.01)], seed=404)
+
+# Auggie fluent builder
+from glitchlings import Auggie
+auggie = Auggie(seed=404).typo(rate=0.02).confusable(rate=0.01)
+
+# String specification
+glitchlings = "Typogre(rate=0.02)"
+
+# List of specifications
+glitchlings = ["Typogre(rate=0.02)", "Mim1c(rate=0.01)"]
+
+# YAML config path
+glitchlings = "configs/chaos.yaml"
+```
+
 ## Prime Intellect (`prime` extra)
 
 - Install the `prime` extra for `glitchlings.dlc.prime`.
@@ -120,7 +178,11 @@ pip install 'glitchlings[hf]'          # datasets
 pip install 'glitchlings[torch]'       # PyTorch DataLoader
 pip install 'glitchlings[lightning]'   # Lightning DataModule
 pip install 'glitchlings[langchain]'   # LangChain runnables
+pip install 'glitchlings[nemo]'        # NeMo DataDesigner
 pip install 'glitchlings[prime]'       # Prime Intellect DLC
 pip install 'glitchlings[gutenberg]'   # Project Gutenberg
 pip install 'glitchlings[all]'         # everything
+
+# Alternatively, install the standalone NeMo plugin for auto-discovery:
+pip install glitchlings-nemo
 ```
