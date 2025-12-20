@@ -25,7 +25,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Literal, Union
 
 from ..auggie import Auggie
 from ..conf.loaders import load_attack_config
@@ -151,6 +151,7 @@ def _create_plugin_classes() -> tuple[type, type, Any] | None:
 
         Attributes:
             name: Output column name.
+            column_type: Discriminator field for DataDesigner plugin discovery.
             glitchlings: Glitchling specification. Can be:
                 - A string glitchling name: ``"typogre"``
                 - A spec with parameters: ``"Typogre(rate=0.02)"``
@@ -162,6 +163,7 @@ def _create_plugin_classes() -> tuple[type, type, Any] | None:
                 a default seed for reproducibility.
         """
 
+        column_type: Literal["glitchlings"] = "glitchlings"
         glitchlings: str | list[str] = "typogre"
         source_column: str | None = None
         seed: int | None = None
