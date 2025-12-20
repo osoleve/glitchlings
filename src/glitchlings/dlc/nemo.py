@@ -87,12 +87,15 @@ def _resolve_gaggle(
     # String path (check if it looks like a file path)
     if isinstance(spec, str) and (spec.endswith(".yaml") or spec.endswith(".yml")):
         path = Path(spec)
-        if path.exists():
-            config = load_attack_config(path)
-            from ..conf.loaders import build_gaggle
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Glitchling config file not found: {spec!r}. "
+                "If this was intended as a glitchling name, remove the .yaml/.yml extension."
+            )
+        config = load_attack_config(path)
+        from ..conf.loaders import build_gaggle
 
-            return build_gaggle(config, seed_override=seed)
-        # Fall through to treat as glitchling name if file doesn't exist
+        return build_gaggle(config, seed_override=seed)
 
     # Single glitchling or string, or sequence
     return coerce_gaggle(spec, seed=seed)

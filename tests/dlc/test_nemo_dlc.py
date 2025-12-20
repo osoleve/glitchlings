@@ -121,6 +121,20 @@ glitchlings:
         finally:
             Path(config_path).unlink()
 
+    def test_resolve_missing_yaml_raises_error(self) -> None:
+        """Missing YAML config file raises FileNotFoundError with clear message."""
+        from glitchlings.dlc.nemo import _resolve_gaggle
+
+        with pytest.raises(FileNotFoundError, match="Glitchling config file not found"):
+            _resolve_gaggle("nonexistent_config.yaml", seed=42)
+
+    def test_resolve_missing_yml_raises_error(self) -> None:
+        """Missing .yml config file also raises FileNotFoundError."""
+        from glitchlings.dlc.nemo import _resolve_gaggle
+
+        with pytest.raises(FileNotFoundError, match="Glitchling config file not found"):
+            _resolve_gaggle("configs/typo.yml", seed=42)
+
 
 class TestCorruptDataframe:
     """Tests for corrupt_dataframe standalone function."""

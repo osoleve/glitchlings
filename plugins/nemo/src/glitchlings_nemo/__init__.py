@@ -32,6 +32,15 @@ from glitchlings.dlc.nemo import (
     plugin,
 )
 
+# Validate that the plugin is properly initialized.
+# This will be None if data-designer is not installed or broken.
+if plugin is None:
+    raise ImportError(
+        "Failed to initialize glitchlings-nemo plugin. "
+        "The 'data-designer' package is required but could not be imported. "
+        "Install it with: pip install data-designer"
+    )
+
 __all__ = [
     "GlitchlingColumnConfig",
     "GlitchlingColumnGenerator",
