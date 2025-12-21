@@ -203,11 +203,7 @@ def _create_plugin_classes() -> tuple[type, type, Any] | None:
             seed = self.config.seed if self.config.seed is not None else 151
 
             # Resolve glitchlings specification
-            spec: GlitchlingSpec
-            if isinstance(self.config.glitchlings, list):
-                spec = self.config.glitchlings
-            else:
-                spec = self.config.glitchlings
+            spec: GlitchlingSpec = self.config.glitchlings
 
             gaggle = _resolve_gaggle(spec, seed=seed)
 
