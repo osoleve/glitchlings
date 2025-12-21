@@ -36,6 +36,7 @@ classifiers = [
 dependencies = [
     "glitchlings>=0.12.0",
     "data-designer",
+    "pandas",
 ]
 
 [project.urls]
