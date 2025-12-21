@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "glitchlings-nemo"
+version = "0.1.0"
+description = "NVIDIA NeMo DataDesigner plugin for Glitchlings text corruption"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.10"
+authors = [
+    { name = "Glitchlings Contributors" }
+]
+keywords = [
+    "glitchlings",
+    "nemo",
+    "data-designer",
+    "text-corruption",
+    "augmentation",
+    "nlp",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+]
+dependencies = [
+    "glitchlings>=0.12.0",
+    "data-designer",
+    "pandas",
+]
+
+[project.urls]
+Homepage = "https://github.com/osoleve/glitchlings"
+Documentation = "https://github.com/osoleve/glitchlings#readme"
+Repository = "https://github.com/osoleve/glitchlings"
+Issues = "https://github.com/osoleve/glitchlings/issues"
+
+[project.entry-points."data_designer.plugins"]
+glitchlings = "glitchlings_nemo:plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/glitchlings_nemo"]
