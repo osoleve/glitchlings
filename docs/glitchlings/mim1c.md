@@ -1,6 +1,8 @@
 # Mim1c
 
-Mim1c replaces characters with visually confusable Unicode homoglyphs to test robustness against adversarial typography. Based on [Unicode Technical Standard #39](https://www.unicode.org/reports/tr39/) confusable mappings.
+*"Wait, was that an 'a' or an 'а'? Looks the same to me..."*
+
+Mim1c is a master of visual deception. It replaces characters with Unicode homoglyphs—characters from different scripts that look nearly identical. The text appears unchanged to human readers but breaks string comparisons, parsers, and security filters that expect ASCII.
 
 - **Scope**: character level (late attack order so it acts after insertions/deletions).
 - **Signature**: `Mim1c(rate=0.02, classes=None, banned_characters=None, mode="mixed_script", max_consecutive=3, seed=None)`.
@@ -60,3 +62,24 @@ print(compat_mim1c("Hello World"))  # Ｈello Ｗorld (fullwidth)
 # Aggressive with no locality limit
 chaos_mim1c = Mim1c(rate=0.2, mode="aggressive", max_consecutive=0, seed=42)
 ```
+
+## When to Use Mim1c
+
+**Unicode normalization testing** — Does your system normalize confusables before comparison? Mim1c finds out.
+
+**Security filter bypass testing** — Homoglyph attacks are used to evade keyword filters. Test your defenses.
+
+**Tokenizer robustness** — Many tokenizers split unexpectedly on non-ASCII characters. See what breaks.
+
+**Adversarial example generation** — Create visually identical but technically different text for ML testing.
+
+## Complementary Glitchlings
+
+- **[Typogre](typogre.md)** — Keyboard typos for a different class of character-level corruption
+- **[Zeedub](zeedub.md)** — Invisible characters instead of visible lookalikes
+- **[Scannequin](scannequin.md)** — OCR-style errors based on visual confusion
+
+## See Also
+
+- [Monster Manual](../monster-manual.md) — Full bestiary with all glitchlings
+- [Visual Gallery](../glitchling-gallery.md) — See Mim1c output at multiple rates

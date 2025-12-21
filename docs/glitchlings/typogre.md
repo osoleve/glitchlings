@@ -1,16 +1,40 @@
 # Typogre
 
-Typogre simulates fat-finger typing errors by swapping or duplicating characters based on keyboard adjacency maps.
+*"What a nice word. Would be a shame if something happened to it..."*
 
-- **Scope**: character level (early in the pipeline).
-- **Signature**: `Typogre(rate=0.02, keyboard="CURATOR_QWERTY", shift_slip_rate=0.0, shift_slip_exit_rate=None, motor_weighting="uniform", seed=None)`.
-- **Behaviour**: simulates fat-finger typing by swapping neighbouring keys, dropping spaces, inserting doubles, or choosing layout-adjacent characters. Keyboard layouts map through `glitchlings.util.KEYNEIGHBORS` and include curated QWERTY, DVORAK, and custom research boards. Modifier slippage is applied first via `SHIFT_MAPS`, producing short shift bursts before the standard fatfinger actions run.
-- **Usage tips**:
-  - Lower `rate` (0.005-0.01) for gentle noise; raise it for more chaotic misspellings.
-  - Swap to `keyboard="DVORAK"` or supply a custom adjacency dict to model alternative hardware.
-  - Enable `shift_slip_rate` for bursty modifier slips (e.g., `Typogre(rate=0.0, shift_slip_rate=1.0, seed=151)` turns `hello` into `HEllo` before any fatfinger edits).
-  - Use `motor_weighting` to simulate biomechanically-realistic error patterns (see below).
-  - Combine with Rushmore deletions to simulate hurried note-taking.
+Typogre is the classic keyboard gremlin—it simulates fat-finger typing errors by swapping characters with their keyboard neighbors, dropping spaces, doubling letters, and occasionally holding Shift too long. The result is text that looks like it was typed in a hurry by someone who never learned to touch-type.
+
+## Stats
+
+| Attribute | Value |
+|-----------|-------|
+| **Scope** | Character |
+| **Attack Order** | Early |
+| **Signature** | Keyboard-adjacent typos |
+
+## Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `rate` | float | 0.02 | Probability of error at each character position |
+| `keyboard` | str | `"CURATOR_QWERTY"` | Keyboard layout for adjacency lookups |
+| `shift_slip_rate` | float | 0.0 | Probability of Shift modifier slippage |
+| `shift_slip_exit_rate` | float | None | How quickly Shift slippage ends |
+| `motor_weighting` | str | `"uniform"` | Biomechanical error weighting (see below) |
+| `seed` | int | None | Deterministic seed for reproducibility |
+
+## Behaviour
+
+Typogre uses keyboard adjacency maps to determine which keys are "nearby" on a physical keyboard. When it corrupts a character, it picks a neighbor based on the layout. This produces realistic typos—the kind where your finger slipped one key over.
+
+**Modifier slippage** adds another dimension: when `shift_slip_rate` is non-zero, Typogre simulates holding Shift too long, producing bursts like "HELlo" instead of "Hello". This happens *before* the standard fat-finger errors.
+
+## Usage Tips
+
+- Use `rate=0.005–0.01` for gentle, realistic noise. Higher rates produce obviously corrupted text.
+- Set `keyboard="DVORAK"` or `keyboard="AZERTY"` to match your target population's hardware.
+- Enable `shift_slip_rate` for bursty modifier errors.
+- Combine with [Rushmore](rushmore.md) deletions to simulate hurried note-taking.
 
 ## Motor Coordination Weighting
 
@@ -48,3 +72,15 @@ typo_hasty = Typogre(rate=0.1, motor_weighting="hastily_edited")
 ### Citation
 
 > Dhakal, V., Feit, A. M., Kristensson, P. O., & Oulasvirta, A. (2018). Observations on Typing from 136 Million Keystrokes. *CHI '18*. https://doi.org/10.1145/3173574.3174220
+
+## Complementary Glitchlings
+
+- **[Mim1c](mim1c.md)** — Unicode confusables for visual deception alongside keyboard typos
+- **[Scannequin](scannequin.md)** — OCR-style errors for document scanning scenarios
+- **[Rushmore](rushmore.md)** — Word-level deletions for hasty-writing simulation
+
+## See Also
+
+- [Keyboard Layouts](../keyboard-layouts.md) — Available adjacency maps (QWERTY, DVORAK, AZERTY, etc.)
+- [Monster Manual](../monster-manual.md) — Full bestiary with all glitchlings
+- [Visual Gallery](../glitchling-gallery.md) — See Typogre output at multiple rates

@@ -1,38 +1,103 @@
-# Keyboard Layout Reference
+# Keyboard Layouts
 
-Glitchlings includes several keyboard adjacency maps that fuel Typogre and any
-behaviour that depends on "nearby" keys. Layouts live in
-`glitchlings.util.KEYNEIGHBORS` and each entry exposes a mapping from a key to
-the characters that surround it on the corresponding physical keyboard.
+[Typogre](glitchlings/typogre.md) simulates fat-finger typos by swapping characters with their keyboard neighbors. The quality of those typos depends entirely on having accurate adjacency maps—you can't slip from 'f' to 'g' if the layout doesn't know they're next to each other.
 
-The following layouts are currently bundled:
+Glitchlings bundles several keyboard layouts for different regions and ergonomic preferences.
 
-| Layout name | Region / focus | Notes |
-| --- | --- | --- |
-| `CURATOR_QWERTY` | Project-specific curation | Includes numeric neighbours for symbol-heavy glitches. |
-| `QWERTY` | US English | Standard ANSI layout. |
-| `DVORAK` | US English (Dvorak) | Optimised vowel/consonant arrangement. |
-| `COLEMAK` | US English (Colemak) | Ergonomic compromise between QWERTY and Dvorak. |
-| `AZERTY` | France / Belgium | ISO layout featuring accented characters such as `é` and `à`. |
-| `QWERTZ` | Germany / Central Europe | Adds umlauts (`ä`, `ö`, `ü`) and `ß`. |
-| `SPANISH_QWERTY` | Spain | Provides dedicated keys for `ñ`, acute accents, and inverted punctuation. |
-| `SWEDISH_QWERTY` | Sweden / Nordic | Includes `å`, `ä`, and `ö` alongside the `<` dead-key column. |
+## Bundled Layouts
 
-To use a layout, import `KEYNEIGHBORS` and select the desired mapping:
+| Layout | Region | Notes |
+|--------|--------|-------|
+| `CURATOR_QWERTY` | Project default | Curated QWERTY with numeric neighbors for symbol-heavy typos |
+| `QWERTY` | US English | Standard ANSI layout |
+| `DVORAK` | US English | Vowels on home row, consonants opposite |
+| `COLEMAK` | US English | Ergonomic compromise between QWERTY and Dvorak |
+| `AZERTY` | France / Belgium | ISO layout with `é`, `à`, and other accented characters |
+| `QWERTZ` | Germany / Central Europe | Umlauts (`ä`, `ö`, `ü`) and `ß` |
+| `SPANISH_QWERTY` | Spain | `ñ`, acute accents, and inverted punctuation |
+| `SWEDISH_QWERTY` | Sweden / Nordic | `å`, `ä`, `ö` and the `<` dead-key column |
+
+## Using Layouts with Typogre
+
+Pass the layout name to Typogre's `keyboard` parameter:
+
+```python
+from glitchlings import Typogre
+
+# German keyboard layout
+typo = Typogre(rate=0.1, keyboard="QWERTZ", seed=42)
+typo("Größe und Gemütlichkeit")
+
+# French layout
+typo_fr = Typogre(rate=0.1, keyboard="AZERTY", seed=42)
+typo_fr("Café résumé")
+
+# Dvorak for ergonomic typo simulation
+typo_dv = Typogre(rate=0.1, keyboard="DVORAK", seed=42)
+typo_dv("The quick brown fox")
+```
+
+## Accessing Layout Data Directly
+
+For custom glitchlings or analysis, access the adjacency maps directly:
 
 ```python
 from glitchlings.util import KEYNEIGHBORS
-neighbors = getattr(KEYNEIGHBORS, "QWERTZ")
-print(neighbors["z"])  # -> list of adjacent characters
+
+# Get the QWERTZ layout
+qwertz = getattr(KEYNEIGHBORS, "QWERTZ")
+
+# What's adjacent to 'z' on a German keyboard?
+print(qwertz["z"])  # ['a', 's', 'x'] or similar
+
+# All keys in the layout
+print(list(qwertz.keys()))
 ```
 
-Each mapping only contains lowercase keys; call `.lower()` on user input before
-looking up neighbours.
+!!! note "Lowercase Only"
+    Adjacency maps only contain lowercase keys. Call `.lower()` on input before lookups.
 
-### Modifier slippage shift maps
+## Shift Slippage
 
-Typogre’s `shift_slip_rate` relies on a parallel `SHIFT_MAPS` bundle that maps
-unshifted keys to their shifted counterparts (letters and symbols). All layouts
-listed above have a matching shift map. When you register a new keyboard layout,
-also provide a shift map (or pass one explicitly to Typogre) if you want
-modifier slippage to work for that layout.
+Typogre's `shift_slip_rate` parameter simulates holding Shift too long (or releasing it too early), producing bursts like "HEllo" instead of "Hello".
+
+This requires a separate shift map that knows which characters produce which when Shift is held:
+
+```python
+from glitchlings import Typogre
+
+# Simulate modifier slippage
+typo = Typogre(rate=0.0, shift_slip_rate=0.3, seed=42)
+typo("hello world")  # "HELlo world" or similar
+```
+
+All bundled layouts have matching shift maps. If you create a custom layout, provide a shift map too.
+
+## Custom Layouts
+
+To add a custom keyboard layout, create a dict mapping each key to its neighbors:
+
+```python
+custom_layout = {
+    "a": ["q", "w", "s", "z"],
+    "b": ["v", "g", "h", "n"],
+    # ... all other keys
+}
+```
+
+Then pass it directly or register it in `KEYNEIGHBORS` for reuse.
+
+## Why Layout Matters
+
+Different keyboards produce different typo patterns:
+
+- **QWERTY** users commonly swap `e/r`, `t/y`, `u/i` (horizontal neighbors)
+- **AZERTY** users might hit `q` when reaching for `a` (they're swapped)
+- **Dvorak** users have vowels clustered, so vowel-vowel swaps are common
+
+Matching your typo simulation to your target population's keyboard makes corruption more realistic.
+
+## See Also
+
+- [Typogre](glitchlings/typogre.md) — Full Typogre documentation with motor weighting options
+- [Monster Manual](monster-manual.md) — Complete glitchling bestiary
