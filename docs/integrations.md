@@ -1,6 +1,6 @@
 # Integrations and DLC
 
-Optional extras patch popular libraries to make corruption frictionless.
+Optional extras patch popular libraries to make corruption frictionless. This page is a **quick reference catalog**—for detailed tutorials and examples, see [Pipeline Workflows](pipeline-workflows.md).
 
 ## Hugging Face Datasets (`hf` extra)
 

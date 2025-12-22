@@ -15,6 +15,9 @@ theme:
     - navigation.tabs
     - navigation.top
     - navigation.expand
+    - navigation.footer
+    - navigation.instant
+    - navigation.instant.progress
     - toc.integrate
     - content.code.copy
     - search.suggest
@@ -54,7 +57,7 @@ nav:
   - '🧪 Lab Notes':
       - 'Attack Helper': attack.md
       - 'Analysis Tools': analysis-tools.md
-      - 'Dataset Workflows': datasets.md
+      - 'Pipeline Workflows': pipeline-workflows.md
       - 'Determinism Protocols': determinism.md
       - 'Integrations & DLC': integrations.md
       - 'Spec: Hokey Linguistics': hokey_design_spec.md
