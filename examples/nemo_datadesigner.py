@@ -138,6 +138,119 @@ glitchlings:
         config_path.unlink()
 
 
+def demo_label_leakage_prevention() -> None:
+    """Demonstrate preventing label leakage in multilabel classification.
+
+    This example shows how to use heterogeneous masks to create a learning
+    curriculum where:
+    1. Labels are corrupted with high rate (to test robustness to label noise)
+    2. Content is corrupted with lower rate (for difficulty scaling)
+    3. System prompts are never corrupted (to maintain instruction clarity)
+
+    This is useful for training models that must learn from noisy labels
+    while avoiding label leakage where the model memorizes label patterns.
+    """
+    if not HAS_PANDAS:
+        print("\n" + "=" * 60)
+        print("Label Leakage Prevention (requires pandas)")
+        print("=" * 60)
+        print("\nSkipping demo (pandas not installed)")
+        return
+
+    import pandas as pd
+
+    from glitchlings import Gaggle, Typogre
+
+    print("\n" + "=" * 60)
+    print("Label Leakage Prevention for Multilabel Classification")
+    print("=" * 60)
+
+    # Sample multilabel classification data with structured format
+    df = pd.DataFrame(
+        {
+            "text": [
+                "[SYSTEM]Classify[/SYSTEM] The movie was [LABEL]positive[/LABEL] great.",
+                "[SYSTEM]Classify[/SYSTEM] A [LABEL]negative[/LABEL] experience overall.",
+                "[SYSTEM]Classify[/SYSTEM] It was [LABEL]neutral[/LABEL] but informative.",
+            ]
+        }
+    )
+
+    print("\n--- Original Data ---")
+    for _, row in df.iterrows():
+        print(f"  {row['text']}")
+
+    # Strategy 1: Corrupt only labels (test label noise robustness)
+    print("\n--- Strategy 1: Corrupt Labels Only ---")
+    label_corruptor = Typogre(
+        rate=0.8,  # High rate on labels
+        seed=42,
+        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
+        exclude_patterns=[r"\[/?SYSTEM\]", r"\[/?LABEL\]"],  # Preserve tags
+    )
+    gaggle_labels = Gaggle([label_corruptor], seed=100)
+
+    for _, row in df.iterrows():
+        result = gaggle_labels.corrupt(row["text"])
+        print(f"  {result}")
+
+    # Strategy 2: Corrupt content only, preserve labels (curriculum learning)
+    print("\n--- Strategy 2: Corrupt Content Only (Lower Rate) ---")
+    content_corruptor = Typogre(
+        rate=0.3,  # Lower rate for curriculum
+        seed=43,
+        exclude_patterns=[
+            r"\[/?SYSTEM\].*?\[/SYSTEM\]",  # Exclude system block
+            r"\[/?LABEL\].*?\[/LABEL\]",  # Exclude label block
+        ],
+    )
+    gaggle_content = Gaggle([content_corruptor], seed=100)
+
+    for _, row in df.iterrows():
+        result = gaggle_content.corrupt(row["text"])
+        print(f"  {result}")
+
+    # Strategy 3: Heterogeneous masks - both corruptions with independent targeting
+    print("\n--- Strategy 3: Heterogeneous Masks (Both Corruptions) ---")
+    print("    Label corruptor: targets only label content (not tags)")
+    print("    Content corruptor: targets only surrounding text")
+
+    label_typo = Typogre(
+        rate=0.8,
+        seed=42,
+        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
+        exclude_patterns=[r"\[/?LABEL\]"],  # Preserve the tag syntax
+    )
+
+    content_typo = Typogre(
+        rate=0.2,
+        seed=43,
+        exclude_patterns=[
+            r"\[SYSTEM\].*?\[/SYSTEM\]",
+            r"\[LABEL\].*?\[/LABEL\]",
+        ],
+    )
+
+    # Both in same gaggle with different masks
+    gaggle_both = Gaggle([label_typo, content_typo], seed=100)
+
+    print(f"\n    Heterogeneous masks detected: {gaggle_both._has_heterogeneous_masks()}")
+    print(f"    Number of mask groups: {len(gaggle_both._group_by_masks())}")
+
+    for _, row in df.iterrows():
+        result = gaggle_both.corrupt(row["text"])
+        print(f"  {result}")
+
+    # Verify system prompt is always preserved
+    print("\n--- Verification: System Prompt Preservation ---")
+    for _, row in df.iterrows():
+        result = gaggle_both.corrupt(row["text"])
+        if "[SYSTEM]Classify[/SYSTEM]" in result:
+            print("  ✓ System prompt preserved")
+        else:
+            print(f"  ✗ System prompt corrupted: {result}")
+
+
 def demo_datadesigner_integration() -> None:
     """Demonstrate full DataDesigner integration."""
     if not HAS_DATA_DESIGNER:
@@ -203,6 +316,7 @@ def main() -> None:
 
     demo_standalone_usage()
     demo_yaml_config()
+    demo_label_leakage_prevention()
     demo_datadesigner_integration()
 
     print("\n" + "=" * 60)

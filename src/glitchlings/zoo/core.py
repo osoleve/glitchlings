@@ -510,20 +510,28 @@ class Gaggle(Glitchling):
         This method uses a batched execution strategy to minimize tokenization
         overhead. Consecutive glitchlings with pipeline support are grouped and
         executed together via the Rust pipeline, while glitchlings without
-        pipeline support are executed individually. This hybrid approach ensures
-        the text is tokenized fewer times compared to executing every glitchling
-        individually.
+        pipeline support are executed individually.
+
+        When glitchlings have heterogeneous masks (different include/exclude
+        patterns), they are grouped by mask configuration and each group is
+        executed with its own patterns. This ensures each glitchling respects
+        its intended mask semantics while still batching where possible.
         """
+        master_seed = self.seed
+        if master_seed is None:
+            message = "Gaggle orchestration requires a master seed"
+            raise RuntimeError(message)
+
+        # Check for heterogeneous masks requiring per-group execution
+        if self._has_heterogeneous_masks():
+            return self._corrupt_text_heterogeneous(text, master_seed)
+
+        # Homogeneous masks: use unified pipeline
         self._ensure_pipeline_ready()
 
         if self._pipeline is not None and not self._missing_pipeline_glitchlings:
             pipeline = cast(Any, self._pipeline)
             return cast(str, pipeline.run(text))
-
-        master_seed = self.seed
-        if master_seed is None:  # pragma: no cover - validated by _ensure_pipeline_ready
-            message = "Gaggle orchestration requires a master seed"
-            raise RuntimeError(message)
 
         # Build the pure execution plan
         plan = build_execution_plan(
@@ -540,6 +548,39 @@ class Gaggle(Glitchling):
             include_only_patterns=self._cached_include_patterns,
             exclude_patterns=self._cached_exclude_patterns,
         )
+
+    def _corrupt_text_heterogeneous(self, text: str, master_seed: int) -> str:
+        """Execute glitchlings grouped by mask configuration.
+
+        This method handles the case where glitchlings have different mask
+        patterns. Groups consecutive glitchlings with matching masks and
+        executes each group with its specific patterns, chaining results.
+
+        Performance note: This path builds a pipeline per mask group rather
+        than one unified pipeline. For gaggles where all glitchlings share
+        the same masks, the unified path is preferred.
+        """
+        groups = self._group_by_masks()
+        result = text
+
+        for include_patterns, exclude_patterns, glitchlings in groups:
+            # Build execution plan for this group
+            plan = build_execution_plan(
+                glitchlings,
+                master_seed=master_seed,
+                derive_seed_fn=Gaggle.derive_seed,
+            )
+
+            # Execute with group-specific masks
+            result = execute_plan(
+                result,
+                plan,
+                master_seed,
+                include_only_patterns=include_patterns or [],
+                exclude_patterns=exclude_patterns or [],
+            )
+
+        return result
 
     def corrupt(self, text: str | Transcript) -> str | Transcript:
         """Apply each glitchling to the provided text sequentially.
@@ -660,6 +701,78 @@ class Gaggle(Glitchling):
 
         return include_patterns, exclude_patterns
 
+    def _has_heterogeneous_masks(self) -> bool:
+        """Check if glitchlings have different individual mask configurations.
+
+        Returns True when per-glitchling masks differ, requiring sequential
+        execution with individual mask application rather than batched pipeline.
+
+        Gaggle-level masks are applied uniformly and don't cause heterogeneity.
+        Only per-glitchling differences trigger this fallback.
+        """
+        if len(self._clones_by_index) <= 1:
+            return False
+
+        def _normalize(patterns: list[str] | None) -> tuple[str, ...]:
+            if not patterns:
+                return ()
+            return tuple(sorted(patterns))
+
+        first_include = _normalize(self._clones_by_index[0].kwargs.get("include_only_patterns"))
+        first_exclude = _normalize(self._clones_by_index[0].kwargs.get("exclude_patterns"))
+
+        for clone in self._clones_by_index[1:]:
+            clone_include = _normalize(clone.kwargs.get("include_only_patterns"))
+            clone_exclude = _normalize(clone.kwargs.get("exclude_patterns"))
+            if clone_include != first_include or clone_exclude != first_exclude:
+                return True
+
+        return False
+
+    @staticmethod
+    def _mask_key(glitchling: Glitchling) -> tuple[tuple[str, ...], tuple[str, ...]]:
+        """Return a hashable key representing a glitchling's mask configuration."""
+        include = glitchling.kwargs.get("include_only_patterns")
+        exclude = glitchling.kwargs.get("exclude_patterns")
+        return (
+            tuple(sorted(include)) if include else (),
+            tuple(sorted(exclude)) if exclude else (),
+        )
+
+    def _group_by_masks(
+        self,
+    ) -> list[tuple[list[str] | None, list[str] | None, list[Glitchling]]]:
+        """Group glitchlings by their mask configuration, preserving execution order.
+
+        Returns a list of (include_patterns, exclude_patterns, glitchlings) tuples.
+        Consecutive glitchlings with the same mask are grouped together for batching.
+        """
+        if not self.apply_order:
+            return []
+
+        groups: list[tuple[list[str] | None, list[str] | None, list[Glitchling]]] = []
+        current_key: tuple[tuple[str, ...], tuple[str, ...]] | None = None
+        current_group: list[Glitchling] = []
+
+        for glitchling in self.apply_order:
+            key = self._mask_key(glitchling)
+            if key != current_key:
+                if current_group:
+                    include = list(current_key[0]) if current_key[0] else None
+                    exclude = list(current_key[1]) if current_key[1] else None
+                    groups.append((include, exclude, current_group))
+                current_key = key
+                current_group = [glitchling]
+            else:
+                current_group.append(glitchling)
+
+        if current_group and current_key is not None:
+            include = list(current_key[0]) if current_key[0] else None
+            exclude = list(current_key[1]) if current_key[1] else None
+            groups.append((include, exclude, current_group))
+
+        return groups
+
     def _ensure_pipeline_ready(self) -> None:
         """Ensure the pipeline cache is initialized and patterns are current."""
         master_seed = self.seed
@@ -689,11 +802,13 @@ class Gaggle(Glitchling):
     def corrupt_batch(self, texts: Sequence[str]) -> list[str]:
         """Apply corruptions to multiple texts, using parallel Rust execution when possible.
 
-        When all glitchlings support the Rust pipeline, this method releases the GIL
-        and processes all texts concurrently using rayon. This provides significant
-        speedups for large batches compared to sequential processing.
+        When all glitchlings support the Rust pipeline and share the same mask
+        configuration, this method releases the GIL and processes all texts
+        concurrently using rayon. This provides significant speedups for large
+        batches compared to sequential processing.
 
-        When any glitchling requires Python fallback, texts are processed sequentially.
+        When glitchlings have heterogeneous masks or require Python fallback,
+        texts are processed sequentially.
 
         Args:
             texts: Sequence of text strings to corrupt.
@@ -707,6 +822,10 @@ class Gaggle(Glitchling):
         """
         if not texts:
             return []
+
+        # Heterogeneous masks require per-text sequential processing
+        if self._has_heterogeneous_masks():
+            return [self._corrupt_text(text) for text in texts]
 
         self._ensure_pipeline_ready()
 
