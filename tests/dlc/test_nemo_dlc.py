@@ -155,9 +155,7 @@ class TestCorruptDataframe:
         from glitchlings.dlc.nemo import corrupt_dataframe
 
         df = pd.DataFrame({"text": ["Hello world"]})
-        result = corrupt_dataframe(
-            df, "typogre", column="text", output_column="corrupted", seed=42
-        )
+        result = corrupt_dataframe(df, "typogre", column="text", output_column="corrupted", seed=42)
 
         assert "text" in result.columns
         assert "corrupted" in result.columns
@@ -180,16 +178,10 @@ class TestCorruptDataframe:
         from glitchlings.dlc.nemo import corrupt_dataframe
 
         # Use longer text with higher rate to increase chance of corruption
-        df = pd.DataFrame(
-            {"text": ["The quick brown fox jumps over the lazy dog repeatedly"]}
-        )
+        df = pd.DataFrame({"text": ["The quick brown fox jumps over the lazy dog repeatedly"]})
 
-        result1 = corrupt_dataframe(
-            df, "Typogre(rate=0.3)", column="text", seed=42
-        )
-        result2 = corrupt_dataframe(
-            df, "Typogre(rate=0.3)", column="text", seed=99
-        )
+        result1 = corrupt_dataframe(df, "Typogre(rate=0.3)", column="text", seed=42)
+        result2 = corrupt_dataframe(df, "Typogre(rate=0.3)", column="text", seed=99)
 
         # With high rate, different seeds should produce different results
         # (may occasionally be same by chance, but unlikely with long text and high rate)
@@ -291,9 +283,7 @@ class TestPluginClasses:
         # These will be None if data-designer is not installed
         # We just verify the module loads without error
         assert GlitchlingColumnConfig is not None or GlitchlingColumnConfig is None
-        assert (
-            GlitchlingColumnGenerator is not None or GlitchlingColumnGenerator is None
-        )
+        assert GlitchlingColumnGenerator is not None or GlitchlingColumnGenerator is None
         assert plugin is not None or plugin is None
 
 
@@ -327,3 +317,78 @@ class TestGlitchlingSpec:
         # Auggie
         g6 = _resolve_gaggle(Auggie(seed=100).typo(rate=0.05), seed=1)
         assert isinstance(g6, Gaggle)
+
+
+class TestHeterogeneousMasks:
+    """Tests for heterogeneous mask handling in NeMo integration."""
+
+    def test_corrupt_dataframe_with_heterogeneous_masks(self) -> None:
+        """Heterogeneous masks work correctly with corrupt_dataframe."""
+        from glitchlings.dlc.nemo import corrupt_dataframe
+
+        df = pd.DataFrame(
+            {
+                "text": [
+                    "[SYSTEM]Classify[/SYSTEM] Content [LABEL]positive[/LABEL] here.",
+                    "[SYSTEM]Classify[/SYSTEM] More [LABEL]negative[/LABEL] content.",
+                ]
+            }
+        )
+
+        # Create gaggle with different masks per glitchling
+        label_typo = Typogre(
+            rate=1.0,
+            seed=42,
+            include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
+            exclude_patterns=[r"\[/?LABEL\]"],
+        )
+        content_typo = Typogre(
+            rate=0.5,
+            seed=43,
+            exclude_patterns=[r"\[SYSTEM\].*?\[/SYSTEM\]", r"\[LABEL\].*?\[/LABEL\]"],
+        )
+        gaggle = Gaggle([label_typo, content_typo], seed=100)
+
+        result = corrupt_dataframe(df, gaggle, column="text", seed=100)
+
+        # System prompts should be preserved
+        for text in result["text"]:
+            assert "[SYSTEM]Classify[/SYSTEM]" in text
+
+    def test_heterogeneous_masks_determinism(self) -> None:
+        """Heterogeneous mask corruption is deterministic."""
+        from glitchlings.dlc.nemo import corrupt_dataframe
+
+        df = pd.DataFrame({"text": ["PREFIX FIRST MIDDLE SECOND SUFFIX"]})
+
+        typo_first = Typogre(rate=1.0, seed=1, include_only_patterns=[r"FIRST"])
+        typo_second = Typogre(rate=1.0, seed=2, include_only_patterns=[r"SECOND"])
+        gaggle = Gaggle([typo_first, typo_second], seed=100)
+
+        result1 = corrupt_dataframe(df, gaggle, column="text", output_column="c1", seed=100)
+        result2 = corrupt_dataframe(df, gaggle, column="text", output_column="c2", seed=100)
+
+        assert result1["c1"].iloc[0] == result2["c2"].iloc[0]
+
+    def test_heterogeneous_masks_batch_matches_individual(self) -> None:
+        """Batch processing with heterogeneous masks matches individual processing."""
+        from glitchlings.dlc.nemo import _apply_corruption
+
+        series = pd.Series(["PREFIX FIRST MIDDLE SECOND SUFFIX"] * 3)
+
+        typo_first = Typogre(rate=1.0, seed=1, include_only_patterns=[r"FIRST"])
+        typo_second = Typogre(rate=1.0, seed=2, include_only_patterns=[r"SECOND"])
+        gaggle = Gaggle([typo_first, typo_second], seed=100)
+
+        # Batch via _apply_corruption
+        batch_result = _apply_corruption(series, gaggle)
+
+        # Individual via fresh gaggle
+        individual_results = [
+            Gaggle([typo_first, typo_second], seed=100).corrupt(t) for t in series
+        ]
+
+        for i, (batch, individual) in enumerate(
+            zip(batch_result.tolist(), individual_results, strict=True)
+        ):
+            assert batch == individual, f"Mismatch at index {i}"
