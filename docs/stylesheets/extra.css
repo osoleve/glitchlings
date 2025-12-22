@@ -938,6 +938,22 @@ mark {
 }
 
 /* =============================================================
+   Flavor Text Styling - Opening Quotes on Glitchling Pages
+   ============================================================= */
+
+/* Style the italic opening quotes at the top of pages */
+.md-typeset > p:first-of-type > em:only-child {
+  display: block;
+  color: var(--vector-cyan);
+  text-shadow: 0 0 8px rgba(88, 212, 240, 0.4);
+  border-left: 2px solid var(--vector-cyan);
+  padding-left: 1rem;
+  margin-bottom: 1.5rem;
+  font-style: italic;
+  font-size: 1.05rem;
+}
+
+/* =============================================================
    MathJax Styling - Vector Math Display
    ============================================================= */
 

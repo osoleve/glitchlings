@@ -15,6 +15,9 @@ theme:
     - navigation.tabs
     - navigation.top
     - navigation.expand
+    - navigation.footer
+    - navigation.instant
+    - navigation.instant.progress
     - toc.integrate
     - content.code.copy
     - search.suggest

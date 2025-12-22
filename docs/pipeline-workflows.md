@@ -1,5 +1,7 @@
 # Pipeline Workflows
 
+This page provides **detailed tutorials** for integrating glitchlings into your ML pipelines. For a quick reference of all available extras, see [Integrations & DLC](integrations.md).
+
 Glitchlings integrate with popular ML libraries so you can inject corruption into datasets, data loaders, and inference chains without rewriting your pipeline. The key principle: specify which columns contain text, pass a seed for reproducibility, and let the glitchlings do the rest.
 
 ## Hugging Face Datasets
