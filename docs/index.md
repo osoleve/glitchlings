@@ -91,7 +91,7 @@ Auggie knows all the glitchlings and their quirks. See [Auggie's page](glitchlin
 **Building a pipeline?** Check out:
 
 - [Attack Helper](attack.md) — single-call corruption with tokenization and metrics
-- [Dataset Workflows](datasets.md) — corrupt Hugging Face datasets and PyTorch loaders
+- [Pipeline Workflows](pipeline-workflows.md) — integrate with HF datasets, PyTorch, LangChain, and more
 - [Configuration Files](configuration.md) — version-controlled YAML attack configs
 
 **Need reproducibility?** Read the [Determinism Guide](determinism.md) for seed hygiene and RNG best practices.

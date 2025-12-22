@@ -1,6 +1,6 @@
-# Dataset Workflows
+# Pipeline Workflows
 
-Glitchlings integrate with popular data loading libraries so you can corrupt entire datasets without rewriting your training loop. The key principle: specify which columns contain text, pass a seed for reproducibility, and let the glitchlings do the rest.
+Glitchlings integrate with popular ML libraries so you can inject corruption into datasets, data loaders, and inference chains without rewriting your pipeline. The key principle: specify which columns contain text, pass a seed for reproducibility, and let the glitchlings do the rest.
 
 ## Hugging Face Datasets
 
