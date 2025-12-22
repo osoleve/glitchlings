@@ -757,7 +757,7 @@ class Gaggle(Glitchling):
         for glitchling in self.apply_order:
             key = self._mask_key(glitchling)
             if key != current_key:
-                if current_group:
+                if current_group and current_key is not None:
                     include = list(current_key[0]) if current_key[0] else None
                     exclude = list(current_key[1]) if current_key[1] else None
                     groups.append((include, exclude, current_group))
