@@ -4,6 +4,11 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.87.0"
 build = "build.rs"
+description = "High-performance text corruption engine for glitchlings"
+license = "Apache-2.0"
+repository = "https://github.com/osoleve/glitchlings"
+keywords = ["text", "corruption", "nlp", "augmentation"]
+categories = ["text-processing"]
 
 [lib]
 name = "_corruption_engine"
