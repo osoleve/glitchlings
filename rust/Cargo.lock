@@ -223,7 +223,6 @@ dependencies = [
  "compact_str",
  "criterion",
  "flate2",
- "once_cell",
  "pprof",
  "pyo3",
  "pyo3-build-config",

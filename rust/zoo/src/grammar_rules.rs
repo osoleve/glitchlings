@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::fmt::Write;
 
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pyo3::exceptions::PyValueError;
 use pyo3::PyErr;
 use regex::{Captures, Regex};
@@ -105,14 +105,14 @@ impl TextOperation for GrammarRuleOp {
 /// is wrong, overgeneralize to "for John and I" in object position.
 fn apply_andi(text: &str) -> String {
     // "X and me" after prepositions → "X and I"
-    static COORD_AND_ME: Lazy<Regex> = Lazy::new(|| {
+    static COORD_AND_ME: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             r"(?i)\b(to|for|with|between|from|at|by|about|against|among|around|behind|beside|into|onto|through|toward|towards|upon|without)\s+(\w+(?:\s+\w+)*?)\s+and\s+(me)\b"
         ).expect("valid regex")
     });
 
     // "me and X" after prepositions → "I and X"
-    static ME_AND_COORD: Lazy<Regex> = Lazy::new(|| {
+    static ME_AND_COORD: LazyLock<Regex> = LazyLock::new(|| {
         Regex::new(
             r"(?i)\b(to|for|with|between|from|at|by|about|against|among|around|behind|beside|into|onto|through|toward|towards|upon|without)\s+(me)\s+and\s+(\w+)\b"
         ).expect("valid regex")
@@ -145,8 +145,8 @@ fn apply_infinitoad(
     lineage: &[&str],
 ) -> Result<String, OperationError> {
     // Pattern: "to" + adverb ending in -ly + verb
-    static SPLIT_INF: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"(?i)\bto\s+(\w+ly)\s+(\w+)").expect("valid regex"));
+    static SPLIT_INF: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?i)\bto\s+(\w+ly)\s+(\w+)").expect("valid regex"));
 
     let matches: Vec<_> = SPLIT_INF.find_iter(text).collect();
     if matches.is_empty() {
@@ -178,8 +178,8 @@ fn apply_infinitoad(
 }
 
 fn apply_commama(text: &str) -> String {
-    static SERIAL_REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"(,\s*)([^,]+)\s+and\s+([^,]+)").expect("valid regex"));
+    static SERIAL_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(,\s*)([^,]+)\s+and\s+([^,]+)").expect("valid regex"));
 
     SERIAL_REGEX
         .replace_all(text, |caps: &Captures<'_>| {
@@ -213,10 +213,10 @@ fn apply_curlite(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String
 }
 
 fn apply_aetheria(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
-    static COOPERATE_REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"(?i)cooperate").expect("valid regex"));
-    static COORDINATE_REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"(?i)coordinate").expect("valid regex"));
+    static COOPERATE_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?i)cooperate").expect("valid regex"));
+    static COORDINATE_REGEX: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(?i)coordinate").expect("valid regex"));
 
     let intermediate = COOPERATE_REGEX
         .replace_all(text, |caps: &Captures<'_>| {
@@ -280,7 +280,7 @@ fn coordinate_replacement(
 }
 
 fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<String, OperationError> {
-    static AETHER_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"(?i)ae").expect("valid regex"));
+    static AETHER_REGEX: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"(?i)ae").expect("valid regex"));
 
     let matches: Vec<usize> = AETHER_REGEX.find_iter(text).map(|m| m.start()).collect();
     if matches.is_empty() {

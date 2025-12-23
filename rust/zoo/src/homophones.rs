@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::{HashMap, HashSet};
 
 use crate::operations::{TextOperation, OperationError, OperationRng};
@@ -31,7 +31,7 @@ pub struct HomophoneOp {
     pub weighting: HomophoneWeighting,
 }
 
-static HOMOPHONE_LOOKUP: Lazy<HashMap<String, Vec<String>>> = Lazy::new(|| {
+static HOMOPHONE_LOOKUP: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
     let mut mapping: HashMap<String, Vec<String>> = HashMap::new();
 
     for group in wherewolf_homophone_sets() {

@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PySequence, PyString};
@@ -184,7 +184,7 @@ struct HomoglyphEntry {
     alias: String,
 }
 
-static HOMOGLYPH_TABLE: Lazy<BTreeMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| {
+static HOMOGLYPH_TABLE: LazyLock<BTreeMap<char, Vec<HomoglyphEntry>>> = LazyLock::new(|| {
     // Parse JSON into a BTreeMap by explicitly specifying the target type.
     // We use BTreeMap here to ensure deterministic key ordering during iteration.
     let raw: BTreeMap<String, Vec<RawHomoglyphEntry>> =

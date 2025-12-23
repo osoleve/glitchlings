@@ -20,7 +20,7 @@ use aho_corasick::{AhoCorasick, MatchKind};
 use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -37,7 +37,7 @@ const LEXEME_ENV_VAR: &str = "GLITCHLINGS_LEXEME_DIR";
 type LexemeDict = HashMap<String, Vec<String>>;
 
 /// Names of lexemes that are embedded at compile time.
-static BUNDLED_LEXEME_NAMES: Lazy<Vec<String>> = Lazy::new(|| {
+static BUNDLED_LEXEME_NAMES: LazyLock<Vec<String>> = LazyLock::new(|| {
     let raw: HashMap<String, serde_json::Value> =
         serde_json::from_str(RAW_LEXEMES).expect("lexemes.json should be valid JSON");
     raw.keys()
@@ -48,7 +48,7 @@ static BUNDLED_LEXEME_NAMES: Lazy<Vec<String>> = Lazy::new(|| {
 
 /// All loaded lexeme dictionaries, keyed by dictionary name.
 /// Always includes bundled lexemes; merges with custom lexemes from env dir if present.
-static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
+static LEXEME_DICTIONARIES: LazyLock<HashMap<String, LexemeDict>> = LazyLock::new(|| {
     // Always start with bundled lexemes
     let mut dicts = load_bundled_lexemes();
 
@@ -66,7 +66,7 @@ static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
 });
 
 /// Sorted lexeme names available for use.
-static VALID_LEXEMES: Lazy<Vec<String>> = Lazy::new(|| {
+static VALID_LEXEMES: LazyLock<Vec<String>> = LazyLock::new(|| {
     let mut names: Vec<String> = LEXEME_DICTIONARIES.keys().cloned().collect();
     names.sort();
     names
@@ -159,7 +159,7 @@ struct LexemeMatcher {
 }
 
 /// Pre-compiled Aho-Corasick matchers for each dictionary.
-static LEXEME_MATCHERS: Lazy<HashMap<String, LexemeMatcher>> = Lazy::new(|| {
+static LEXEME_MATCHERS: LazyLock<HashMap<String, LexemeMatcher>> = LazyLock::new(|| {
     let mut matchers: HashMap<String, LexemeMatcher> = HashMap::new();
 
     for (dict_name, dict) in LEXEME_DICTIONARIES.iter() {
