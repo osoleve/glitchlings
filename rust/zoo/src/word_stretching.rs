@@ -625,7 +625,7 @@ impl WordStretchOp {
             }
 
             if provisional.len() < clause_quota {
-                for &cand_idx in clause_candidate_indices.iter() {
+                for &cand_idx in &clause_candidate_indices {
                     // O(1) membership check via HashSet
                     if provisional.contains(&cand_idx) {
                         continue;

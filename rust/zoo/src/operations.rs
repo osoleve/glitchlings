@@ -325,7 +325,7 @@ impl TextOperation for ReduplicateWordsOp {
         // Reuse separator allocation across iterations
         let separator = Some(" ".to_string());
 
-        for candidate in candidates.into_iter() {
+        for candidate in candidates {
             let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
@@ -414,7 +414,7 @@ impl TextOperation for DeleteRandomWordsOp {
         let mut deletion_ops: Vec<(usize, Option<String>)> = Vec::with_capacity(allowed);
         let mut deletions = 0usize;
 
-        for candidate in candidates.into_iter() {
+        for candidate in candidates {
             if deletions >= allowed {
                 break;
             }

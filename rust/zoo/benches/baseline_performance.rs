@@ -64,7 +64,7 @@ fn create_typical_pipeline() -> Vec<Operation> {
 fn bench_tokenization(c: &mut Criterion) {
     let mut group = c.benchmark_group("tokenization");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
@@ -88,7 +88,7 @@ fn bench_tokenization(c: &mut Criterion) {
 fn bench_pipeline_typical(c: &mut Criterion) {
     let mut group = c.benchmark_group("pipeline_typical");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
         let ops = create_typical_pipeline();
@@ -119,7 +119,7 @@ fn bench_pipeline_typical(c: &mut Criterion) {
 fn bench_reindex(c: &mut Criterion) {
     let mut group = c.benchmark_group("reindex");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
@@ -157,7 +157,7 @@ fn bench_reindex(c: &mut Criterion) {
 fn bench_heavy_replace(c: &mut Criterion) {
     let mut group = c.benchmark_group("heavy_replace");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
@@ -190,7 +190,7 @@ fn bench_heavy_replace(c: &mut Criterion) {
 fn bench_heavy_delete(c: &mut Criterion) {
     let mut group = c.benchmark_group("heavy_delete");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
@@ -256,7 +256,7 @@ fn bench_typo(c: &mut Criterion) {
         ("i".to_string(), vec!["u".to_string(), "o".to_string()]),
     ]);
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
@@ -291,7 +291,7 @@ fn bench_scaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("scaling");
 
     // Test 2x scaling: 250k vs 500k should be close to 2x time (ideally ≤2.4x)
-    for size in [250_000, 500_000].iter() {
+    for size in &[250_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 

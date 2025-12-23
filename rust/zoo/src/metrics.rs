@@ -160,7 +160,7 @@ fn compute_jsd<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let norm2 = if sum2 > 0.0 { sum2 } else { 1.0 };
 
     let mut kl_pm = 0.0;
-    for (token, count_p) in counts1.iter() {
+    for (token, count_p) in &counts1 {
         let p = count_p / norm1;
         let q = counts2.get(token).copied().unwrap_or(0.0) / norm2;
         let m = 0.5 * (p + q);
@@ -171,7 +171,7 @@ fn compute_jsd<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     }
 
     let mut kl_qm = 0.0;
-    for (token, count_q) in counts2.iter() {
+    for (token, count_q) in &counts2 {
         let q = count_q / norm2;
         if q == 0.0 {
             continue;
