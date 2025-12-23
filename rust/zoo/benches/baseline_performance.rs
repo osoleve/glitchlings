@@ -70,7 +70,7 @@ fn bench_tokenization(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
@@ -95,7 +95,7 @@ fn bench_pipeline_typical(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
@@ -125,7 +125,7 @@ fn bench_reindex(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 // Pre-create buffer outside measurement
@@ -163,7 +163,7 @@ fn bench_heavy_replace(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
@@ -196,7 +196,7 @@ fn bench_heavy_delete(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
@@ -262,7 +262,7 @@ fn bench_typo(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
@@ -297,7 +297,7 @@ fn bench_scaling(c: &mut Criterion) {
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {

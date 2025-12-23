@@ -77,8 +77,7 @@ where
             // Round-trip should be lossless
             assert_eq!(
                 output, reparsed_str,
-                "Round-trip failed for {}: input='{}', output='{}', reparsed='{}'",
-                op_name, text, output, reparsed_str
+                "Round-trip failed for {op_name}: input='{text}', output='{output}', reparsed='{reparsed_str}'"
             );
 
             // Verify segment integrity
@@ -90,7 +89,7 @@ where
             let output = buffer.to_string();
             let _reparsed = TextBuffer::from_owned(output, &[], &[]);
             // If we get here without panic, the buffer state is valid
-            eprintln!("Op {} returned error (acceptable): {:?}", op_name, e);
+            eprintln!("Op {op_name} returned error (acceptable): {e:?}");
         }
     }
 }
@@ -104,8 +103,7 @@ fn verify_segment_integrity(buffer: &TextBuffer, op_name: &str) {
     assert_eq!(
         segments.len(),
         spans.len(),
-        "{}: segment/span count mismatch",
-        op_name
+        "{op_name}: segment/span count mismatch"
     );
 
     // Word segments should be tracked correctly
@@ -116,8 +114,7 @@ fn verify_segment_integrity(buffer: &TextBuffer, op_name: &str) {
     assert_eq!(
         word_count,
         buffer.word_count(),
-        "{}: word count mismatch",
-        op_name
+        "{op_name}: word count mismatch"
     );
 
     // Verify no double spaces in output (unless originally present)
@@ -284,8 +281,7 @@ fn test_deterministic_operations() {
 
         assert_eq!(
             result1, result2,
-            "{} should be deterministic with same seed",
-            name
+            "{name} should be deterministic with same seed"
         );
     }
 }
@@ -317,7 +313,7 @@ fn test_long_text_roundtrip() {
         let mut rng = DeterministicRng::new(555);
 
         let result = op.apply(&mut buffer, &mut rng);
-        assert!(result.is_ok(), "Op {} failed on long text", i);
+        assert!(result.is_ok(), "Op {i} failed on long text");
 
         // Verify round-trip
         let output = buffer.to_string();
@@ -325,8 +321,7 @@ fn test_long_text_roundtrip() {
         assert_eq!(
             output,
             reparsed.to_string(),
-            "Op {} failed round-trip on long text",
-            i
+            "Op {i} failed round-trip on long text"
         );
     }
 }
