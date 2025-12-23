@@ -8,8 +8,9 @@
 //! - "academic": Scholarly word substitutions
 //! - "cyberpunk": Neon cyberpunk slang and gadgetry
 //! - "lovecraftian": Cosmic horror terminology
+//!
 //! Additional dictionaries can be dropped into the assets/lexemes directory
-//! (or another directory pointed to by the GLITCHLINGS_LEXEME_DIR environment
+//! (or another directory pointed to by the `GLITCHLINGS_LEXEME_DIR` environment
 //! variable) without changing the code.
 //!
 //! Two modes are supported:
@@ -469,7 +470,7 @@ fn transform_text(
     let indices_to_transform: Vec<usize> = if rate >= 1.0 {
         (0..matches.len()).collect()
     } else if let Some(ref mut r) = rng {
-        let clamped_rate = rate.max(0.0).min(1.0);
+        let clamped_rate = rate.clamp(0.0, 1.0);
         let expected = (matches.len() as f64) * clamped_rate;
         let mut max_count = expected.floor() as usize;
         let remainder = expected - (max_count as f64);

@@ -426,7 +426,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     extract_optional_field(dict, "motor_weighting")?;
                 let motor_weighting = motor_weighting_str
                     .as_deref()
-                    .and_then(MotorWeighting::from_str)
+                    .and_then(MotorWeighting::parse)
                     .unwrap_or_default();
 
                 Ok(PyOperationConfig::Typo {
@@ -743,6 +743,7 @@ fn normalize_quote_pairs(text: &str, seed: Option<u64>) -> PyResult<String> {
     space_drop_rate=None,
     space_insert_rate=None
 ))]
+#[allow(clippy::too_many_arguments)]
 fn ocr_artifacts(
     text: &str,
     rate: f64,

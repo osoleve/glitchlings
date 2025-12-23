@@ -68,6 +68,7 @@ pub(crate) fn build_shift_slip_config(
     Ok(Some(ShiftSlipConfig::new(enter_rate, exit_rate, (*map).clone())))
 }
 
+#[allow(clippy::too_many_arguments)]
 #[pyfunction(name = "keyboard_typo", signature = (text, max_change_rate, layout, seed=None, shift_slip_rate=None, shift_slip_exit_rate=None, shift_map=None, motor_weighting=None))]
 pub(crate) fn keyboard_typo(
     text: &str,
@@ -95,7 +96,7 @@ pub(crate) fn keyboard_typo(
     )?;
 
     let motor_weighting = match motor_weighting {
-        Some(s) => MotorWeighting::from_str(s).unwrap_or_default(),
+        Some(s) => MotorWeighting::parse(s).unwrap_or_default(),
         None => MotorWeighting::default(),
     };
 

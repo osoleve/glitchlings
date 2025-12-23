@@ -1650,7 +1650,7 @@ pub enum MotorWeighting {
 
 impl MotorWeighting {
     /// Parse a motor weighting mode from a string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().replace('-', "_").as_str() {
             "uniform" => Some(Self::Uniform),
             "wet_ink" => Some(Self::WetInk),

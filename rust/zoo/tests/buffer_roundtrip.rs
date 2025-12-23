@@ -121,7 +121,7 @@ fn verify_segment_integrity(buffer: &TextBuffer, op_name: &str) {
     );
 
     // Verify no double spaces in output (unless originally present)
-    let text = buffer.to_string();
+    let _text = buffer.to_string();
     for (i, segment) in segments.iter().enumerate() {
         if matches!(segment.kind(), SegmentKind::Separator) {
             // Separators should only be whitespace

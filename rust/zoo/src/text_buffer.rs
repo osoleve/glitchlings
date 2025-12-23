@@ -877,6 +877,7 @@ fn merge_spans(mut spans: Vec<Range<usize>>) -> Vec<Range<usize>> {
     merged
 }
 
+#[allow(clippy::single_range_in_vec_init)]
 fn invert_spans(spans: &[Range<usize>], total: usize) -> Vec<Range<usize>> {
     if spans.is_empty() {
         return vec![0..total];

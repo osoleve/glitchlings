@@ -298,12 +298,10 @@ impl TextOperation for HomoglyphOp {
         let mut targets: Vec<(usize, usize, char, usize)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
-            let mut char_pos = 0usize;
-            for (byte_offset, ch) in segment.text().char_indices() {
+            for (char_pos, (byte_offset, ch)) in segment.text().char_indices().enumerate() {
                 if ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(&ch) {
                     targets.push((seg_idx, byte_offset, ch, char_pos));
                 }
-                char_pos += 1;
             }
         }
 
