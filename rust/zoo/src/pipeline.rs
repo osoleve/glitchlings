@@ -178,13 +178,13 @@ pub fn plan_gaggle(inputs: Vec<GagglePlanInput>, master_seed: i128) -> Vec<Gaggl
 }
 
 /// FNV-1a constants for 64-bit hashing
-const FNV_OFFSET_BASIS: u64 = 0xCBF29CE484222325;
-const FNV_PRIME: u64 = 0x100000001B3;
+const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
+const FNV_PRIME: u64 = 0x0100_0000_01B3;
 
 /// SplitMix64 constants
-const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
-const SPLITMIX_MIX1: u64 = 0xBF58476D1CE4E5B9;
-const SPLITMIX_MIX2: u64 = 0x94D049BB133111EB;
+const SPLITMIX_GAMMA: u64 = 0x9E37_79B9_7F4A_7C15;
+const SPLITMIX_MIX1: u64 = 0xBF58_476D_1CE4_E5B9;
+const SPLITMIX_MIX2: u64 = 0x94D0_49BB_1331_11EB;
 
 /// FNV-1a 64-bit hash of bytes.
 #[inline]
