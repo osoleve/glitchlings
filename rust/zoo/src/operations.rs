@@ -128,7 +128,7 @@ fn direct_length_weight(core: &str, original: &str) -> f64 {
 ///
 /// Used by word mutation operations that apply changes with a probability.
 #[inline]
-fn clamp_rate(rate: f64) -> f64 {
+const fn clamp_rate(rate: f64) -> f64 {
     rate.clamp(0.0, 1.0)
 }
 
@@ -553,7 +553,7 @@ pub struct RushmoreComboOp {
 }
 
 impl RushmoreComboOp {
-    pub fn new(
+    pub const fn new(
         modes: Vec<RushmoreComboMode>,
         delete: Option<DeleteRandomWordsOp>,
         duplicate: Option<ReduplicateWordsOp>,
@@ -799,7 +799,7 @@ pub struct OcrArtifactsOp {
 
 impl OcrArtifactsOp {
     /// Creates a new OCR artifacts operation with default parameters.
-    pub fn new(rate: f64) -> Self {
+    pub const fn new(rate: f64) -> Self {
         Self {
             rate,
             burst_enter: 0.0,
@@ -815,7 +815,7 @@ impl OcrArtifactsOp {
 
     /// Creates an OCR operation with all parameters specified.
     #[allow(clippy::too_many_arguments)]
-    pub fn with_params(
+    pub const fn with_params(
         rate: f64,
         burst_enter: f64,
         burst_exit: f64,
@@ -1292,7 +1292,7 @@ impl ZeroWidthOp {
     }
 
     /// Create with all settings.
-    pub fn with_options(
+    pub const fn with_options(
         rate: f64,
         characters: Vec<String>,
         visibility_mode: VisibilityMode,
@@ -1658,7 +1658,7 @@ impl MotorWeighting {
     }
 
     /// Get the weight multiplier for a transition type.
-    fn weight_for_transition(&self, transition: TransitionType) -> f64 {
+    const fn weight_for_transition(&self, transition: TransitionType) -> f64 {
         match self {
             Self::Uniform => 1.0,
             Self::WetInk => match transition {
@@ -1690,7 +1690,7 @@ enum TransitionType {
 /// Finger assignment: (hand, finger)
 /// hand: 0=left, 1=right, 2=thumb/space
 /// finger: 0=pinky, 1=ring, 2=middle, 3=index, 4=thumb
-fn finger_for_char(ch: char) -> Option<(u8, u8)> {
+const fn finger_for_char(ch: char) -> Option<(u8, u8)> {
     // Use lowercase for lookup
     let lower = ch.to_ascii_lowercase();
     match lower {
@@ -1718,7 +1718,7 @@ fn finger_for_char(ch: char) -> Option<(u8, u8)> {
 }
 
 /// Classify the motor coordination required for a key transition.
-fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
+const fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
     let Some(prev) = finger_for_char(prev_char) else {
         return TransitionType::Unknown;
     };
@@ -1773,7 +1773,7 @@ enum TypoAction {
 impl TypoAction {
     const COUNT: usize = 8;
 
-    fn from_index(idx: usize) -> Self {
+    const fn from_index(idx: usize) -> Self {
         match idx {
             0 => Self::SwapAdjacent,
             1 => Self::Delete,
@@ -1787,7 +1787,7 @@ impl TypoAction {
         }
     }
 
-    fn is_char_level(self) -> bool {
+    const fn is_char_level(self) -> bool {
         matches!(
             self,
             Self::SwapAdjacent | Self::Delete | Self::InsertNeighbor | Self::ReplaceNeighbor
@@ -1812,7 +1812,7 @@ pub struct ShiftSlipConfig {
 }
 
 impl ShiftSlipConfig {
-    pub fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
+    pub const fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
         Self {
             enter_rate: enter_rate.max(0.0),
             exit_rate: exit_rate.max(0.0),
@@ -2319,7 +2319,7 @@ enum QuoteKind {
 }
 
 impl QuoteKind {
-    fn from_char(ch: char) -> Option<Self> {
+    const fn from_char(ch: char) -> Option<Self> {
         match ch {
             '"' => Some(Self::Double),
             '\'' => Some(Self::Single),
@@ -2328,7 +2328,7 @@ impl QuoteKind {
         }
     }
 
-    fn as_char(self) -> char {
+    const fn as_char(self) -> char {
         match self {
             Self::Double => '"',
             Self::Single => '\'',
@@ -2336,7 +2336,7 @@ impl QuoteKind {
         }
     }
 
-    fn index(self) -> usize {
+    const fn index(self) -> usize {
         match self {
             Self::Double => 0,
             Self::Single => 1,

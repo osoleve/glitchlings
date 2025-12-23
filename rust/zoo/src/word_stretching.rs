@@ -973,7 +973,7 @@ fn vowel_site(clusters: &[(usize, usize)]) -> Option<StretchSite> {
         .map(|&(start, end)| StretchSite { start, end })
 }
 
-fn is_vowel(ch: char) -> bool {
+const fn is_vowel(ch: char) -> bool {
     matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y')
 }
 

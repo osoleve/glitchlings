@@ -199,7 +199,7 @@ fn fnv1a_hash(data: &[u8]) -> u64 {
 
 /// SplitMix64 mixing function.
 #[inline]
-fn splitmix64(state: u64) -> u64 {
+const fn splitmix64(state: u64) -> u64 {
     let mut z = state.wrapping_add(SPLITMIX_GAMMA);
     z = (z ^ (z >> 30)).wrapping_mul(SPLITMIX_MIX1);
     z = (z ^ (z >> 27)).wrapping_mul(SPLITMIX_MIX2);

@@ -32,7 +32,7 @@ impl PedantStone {
         }
     }
 
-    fn stone_name(self) -> &'static str {
+    const fn stone_name(self) -> &'static str {
         match self {
             Self::Andi => "Hypercorrectite",
             Self::Infinitoad => "Unsplittium",
@@ -42,7 +42,7 @@ impl PedantStone {
         }
     }
 
-    fn form_name(self) -> &'static str {
+    const fn form_name(self) -> &'static str {
         match self {
             Self::Andi => "Andi",
             Self::Infinitoad => "Infinitoad",
@@ -69,7 +69,7 @@ impl GrammarRuleOp {
         })
     }
 
-    fn lineage(&self) -> [&'static str; 3] {
+    const fn lineage(&self) -> [&'static str; 3] {
         ["Pedant", self.stone.stone_name(), self.stone.form_name()]
     }
 }
@@ -406,7 +406,7 @@ fn py_repr_str(value: &str) -> String {
     result
 }
 
-fn is_cased(ch: char) -> bool {
+const fn is_cased(ch: char) -> bool {
     ch.is_uppercase() || ch.is_lowercase()
 }
 

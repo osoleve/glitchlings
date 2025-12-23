@@ -102,22 +102,22 @@ impl TextSegment {
     }
 
     /// Returns the classification of the segment.
-    pub fn kind(&self) -> SegmentKind {
+    pub const fn kind(&self) -> SegmentKind {
         self.kind
     }
 
     /// Returns true when the segment is allowed to be mutated.
-    pub fn is_mutable(&self) -> bool {
+    pub const fn is_mutable(&self) -> bool {
         !matches!(self.kind, SegmentKind::Immutable)
     }
 
     /// Returns the cached character count (Unicode scalar values).
-    fn char_len(&self) -> usize {
+    const fn char_len(&self) -> usize {
         self.char_len
     }
 
     /// Returns the cached byte length.
-    fn byte_len(&self) -> usize {
+    const fn byte_len(&self) -> usize {
         self.byte_len
     }
 
@@ -277,12 +277,12 @@ impl TextBuffer {
     }
 
     /// Returns the number of characters across the entire buffer.
-    pub fn char_len(&self) -> usize {
+    pub const fn char_len(&self) -> usize {
         self.total_chars
     }
 
     /// Returns the number of word segments tracked by the buffer.
-    pub fn word_count(&self) -> usize {
+    pub const fn word_count(&self) -> usize {
         self.word_segment_indices.len()
     }
 
@@ -836,7 +836,7 @@ impl TextBuffer {
     }
 
     /// Marks the buffer as needing reindexing after a mutation.
-    fn mark_dirty(&mut self) {
+    const fn mark_dirty(&mut self) {
         self.needs_reindex = true;
     }
 }

@@ -269,7 +269,7 @@ impl HomoglyphOp {
         }
     }
 
-    pub fn with_mode(
+    pub const fn with_mode(
         rate: f64,
         classes: ClassSelection,
         banned: Vec<String>,
