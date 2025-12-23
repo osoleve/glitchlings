@@ -790,9 +790,8 @@ impl TextOperation for WordStretchOp {
             let token = &tokens[token_idx];
 
             // Use pre-computed stretch site from candidate
-            let site = match candidate.stretch_site {
-                Some(site) => site,
-                None => continue, // Skip if no stretch site was found during analysis
+            let Some(site) = candidate.stretch_site else {
+                continue; // Skip if no stretch site was found during analysis
             };
 
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);

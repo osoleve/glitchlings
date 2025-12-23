@@ -162,9 +162,8 @@ impl TextOperation for HomophoneOp {
         let mut replacements: Vec<(usize, String)> = Vec::new();
 
         for idx in 0..buffer.word_count() {
-            let segment = match buffer.word_segment(idx) {
-                Some(seg) => seg,
-                None => continue,
+            let Some(segment) = buffer.word_segment(idx) else {
+                continue;
             };
 
             let token = segment.text();
@@ -178,9 +177,8 @@ impl TextOperation for HomophoneOp {
             }
 
             let lowered = core.to_lowercase();
-            let group = match HOMOPHONE_LOOKUP.get(&lowered) {
-                Some(group) => group,
-                None => continue,
+            let Some(group) = HOMOPHONE_LOOKUP.get(&lowered) else {
+                continue;
             };
 
             if rng.random()? >= clamped_rate {

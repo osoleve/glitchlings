@@ -480,13 +480,11 @@ impl TextOperation for SwapAdjacentWordsOp {
         let mut index = 0usize;
         let mut replacements: SmallVec<[(usize, String); 8]> = SmallVec::new();
         while index + 1 < total_words {
-            let left_segment = match buffer.word_segment(index) {
-                Some(segment) => segment,
-                None => break,
+            let Some(left_segment) = buffer.word_segment(index) else {
+                break;
             };
-            let right_segment = match buffer.word_segment(index + 1) {
-                Some(segment) => segment,
-                None => break,
+            let Some(right_segment) = buffer.word_segment(index + 1) else {
+                break;
             };
 
             if !left_segment.is_mutable() || !right_segment.is_mutable() {
@@ -1721,13 +1719,11 @@ fn finger_for_char(ch: char) -> Option<(u8, u8)> {
 
 /// Classify the motor coordination required for a key transition.
 fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
-    let prev = match finger_for_char(prev_char) {
-        Some(f) => f,
-        None => return TransitionType::Unknown,
+    let Some(prev) = finger_for_char(prev_char) else {
+        return TransitionType::Unknown;
     };
-    let curr = match finger_for_char(curr_char) {
-        Some(f) => f,
-        None => return TransitionType::Unknown,
+    let Some(curr) = finger_for_char(curr_char) else {
+        return TransitionType::Unknown;
     };
 
     let (prev_hand, prev_finger) = prev;

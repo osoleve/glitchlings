@@ -450,14 +450,12 @@ fn transform_text(
         return Ok(String::new());
     }
 
-    let dict = match LEXEME_DICTIONARIES.get(dict_name) {
-        Some(d) => d,
-        None => return Ok(text.to_string()), // Unknown dictionary, return unchanged
+    let Some(dict) = LEXEME_DICTIONARIES.get(dict_name) else {
+        return Ok(text.to_string()); // Unknown dictionary, return unchanged
     };
 
-    let matcher = match LEXEME_MATCHERS.get(dict_name) {
-        Some(m) => m,
-        None => return Ok(text.to_string()),
+    let Some(matcher) = LEXEME_MATCHERS.get(dict_name) else {
+        return Ok(text.to_string());
     };
 
     // Find all valid matches with word boundary checks
