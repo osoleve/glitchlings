@@ -42,6 +42,7 @@ pub enum OperationError {
 }
 
 impl OperationError {
+    #[must_use] 
     pub fn into_pyerr(self) -> PyErr {
         match self {
             Self::Buffer(err) => PyValueError::new_err(err.to_string()),
@@ -553,6 +554,7 @@ pub struct RushmoreComboOp {
 }
 
 impl RushmoreComboOp {
+    #[must_use] 
     pub const fn new(
         modes: Vec<RushmoreComboMode>,
         delete: Option<DeleteRandomWordsOp>,
@@ -799,6 +801,7 @@ pub struct OcrArtifactsOp {
 
 impl OcrArtifactsOp {
     /// Creates a new OCR artifacts operation with default parameters.
+    #[must_use] 
     pub const fn new(rate: f64) -> Self {
         Self {
             rate,
@@ -815,6 +818,7 @@ impl OcrArtifactsOp {
 
     /// Creates an OCR operation with all parameters specified.
     #[allow(clippy::too_many_arguments)]
+    #[must_use] 
     pub const fn with_params(
         rate: f64,
         burst_enter: f64,
@@ -1281,6 +1285,7 @@ pub struct ZeroWidthOp {
 
 impl ZeroWidthOp {
     /// Create a new ZeroWidthOp with default settings.
+    #[must_use] 
     pub fn new(rate: f64, characters: Vec<String>) -> Self {
         Self {
             rate,
@@ -1292,6 +1297,7 @@ impl ZeroWidthOp {
     }
 
     /// Create with all settings.
+    #[must_use] 
     pub const fn with_options(
         rate: f64,
         characters: Vec<String>,
@@ -1648,6 +1654,7 @@ pub enum MotorWeighting {
 
 impl MotorWeighting {
     /// Parse a motor weighting mode from a string.
+    #[must_use] 
     pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().replace('-', "_").as_str() {
             "uniform" => Some(Self::Uniform),
@@ -1812,6 +1819,7 @@ pub struct ShiftSlipConfig {
 }
 
 impl ShiftSlipConfig {
+    #[must_use] 
     pub const fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
         Self {
             enter_rate: enter_rate.max(0.0),

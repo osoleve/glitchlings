@@ -32,6 +32,7 @@ pub struct DeterministicRng {
 }
 
 impl DeterministicRng {
+    #[must_use] 
     pub fn new(seed: u64) -> Self {
         Self {
             inner: SmallRng::seed_from_u64(seed),

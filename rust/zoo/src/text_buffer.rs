@@ -97,16 +97,19 @@ impl TextSegment {
     }
 
     /// Returns the segment's text content.
+    #[must_use] 
     pub fn text(&self) -> &str {
         &self.text
     }
 
     /// Returns the classification of the segment.
+    #[must_use] 
     pub const fn kind(&self) -> SegmentKind {
         self.kind
     }
 
     /// Returns true when the segment is allowed to be mutated.
+    #[must_use] 
     pub const fn is_mutable(&self) -> bool {
         !matches!(self.kind, SegmentKind::Immutable)
     }
@@ -233,6 +236,7 @@ impl std::str::FromStr for TextBuffer {
 
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
+    #[must_use] 
     pub fn from_owned(
         text: String,
         include_only_patterns: &[Regex],
@@ -262,31 +266,37 @@ impl TextBuffer {
     }
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
+    #[must_use] 
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
         Self::from_owned_with_rules(&text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
+    #[must_use] 
     pub fn segments(&self) -> &[TextSegment] {
         &self.segments
     }
 
     /// Returns metadata spans describing segment positions.
+    #[must_use] 
     pub fn spans(&self) -> &[TextSpan] {
         &self.spans
     }
 
     /// Returns the number of characters across the entire buffer.
+    #[must_use] 
     pub const fn char_len(&self) -> usize {
         self.total_chars
     }
 
     /// Returns the number of word segments tracked by the buffer.
+    #[must_use] 
     pub const fn word_count(&self) -> usize {
         self.word_segment_indices.len()
     }
 
     /// Returns the `TextSegment` corresponding to the requested word index.
+    #[must_use] 
     pub fn word_segment(&self, word_index: usize) -> Option<&TextSegment> {
         self.word_segment_indices
             .get(word_index)

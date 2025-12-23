@@ -25,6 +25,7 @@ pub enum PipelineError {
 }
 
 impl PipelineError {
+    #[must_use] 
     pub fn into_pyerr(self) -> PyErr {
         match self {
             Self::OperationFailure { source, .. } => source.into_pyerr(),
@@ -49,6 +50,7 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
+    #[must_use] 
     pub fn new(
         master_seed: i128,
         descriptors: Vec<OperationDescriptor>,
@@ -74,6 +76,7 @@ impl Pipeline {
         Ok(Self::new(master_seed, descriptors, include, exclude))
     }
 
+    #[must_use] 
     pub fn descriptors(&self) -> &[OperationDescriptor] {
         &self.descriptors
     }
@@ -209,6 +212,7 @@ const fn splitmix64(state: u64) -> u64 {
 /// Derive a deterministic seed for a glitchling.
 ///
 /// Uses FNV-1a for string hashing and SplitMix64 for mixing.
+#[must_use] 
 pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
     let mut state = master_seed as u64;
 
