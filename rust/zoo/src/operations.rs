@@ -42,30 +42,31 @@ pub enum OperationError {
 }
 
 impl OperationError {
+    #[must_use] 
     pub fn into_pyerr(self) -> PyErr {
         match self {
-            OperationError::Buffer(err) => PyValueError::new_err(err.to_string()),
-            OperationError::NoRedactableWords => PyValueError::new_err(
+            Self::Buffer(err) => PyValueError::new_err(err.to_string()),
+            Self::NoRedactableWords => PyValueError::new_err(
                 "Cannot redact words because the input text contains no redactable words.",
             ),
-            OperationError::ExcessiveRedaction { .. } => {
+            Self::ExcessiveRedaction { .. } => {
                 PyValueError::new_err("Cannot redact more words than available in text")
             }
-            OperationError::Rng(err) => PyValueError::new_err(err.to_string()),
-            OperationError::Regex(message) => PyRuntimeError::new_err(message),
+            Self::Rng(err) => PyValueError::new_err(err.to_string()),
+            Self::Regex(message) => PyRuntimeError::new_err(message),
         }
     }
 }
 
 impl From<TextBufferError> for OperationError {
     fn from(value: TextBufferError) -> Self {
-        OperationError::Buffer(value)
+        Self::Buffer(value)
     }
 }
 
 impl From<RngError> for OperationError {
     fn from(value: RngError) -> Self {
-        OperationError::Rng(value)
+        Self::Rng(value)
     }
 }
 
@@ -79,16 +80,16 @@ pub trait OperationRng {
 
 impl OperationRng for DeterministicRng {
     fn random(&mut self) -> Result<f64, OperationError> {
-        Ok(DeterministicRng::random(self))
+        Ok(Self::random(self))
     }
 
     fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError> {
-        DeterministicRng::rand_index(self, upper).map_err(OperationError::from)
+        Self::rand_index(self, upper).map_err(OperationError::from)
     }
 
     #[allow(dead_code)]
     fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, OperationError> {
-        DeterministicRng::sample_indices(self, population, k).map_err(OperationError::from)
+        Self::sample_indices(self, population, k).map_err(OperationError::from)
     }
 }
 
@@ -128,7 +129,7 @@ fn direct_length_weight(core: &str, original: &str) -> f64 {
 ///
 /// Used by word mutation operations that apply changes with a probability.
 #[inline]
-fn clamp_rate(rate: f64) -> f64 {
+const fn clamp_rate(rate: f64) -> f64 {
     rate.clamp(0.0, 1.0)
 }
 
@@ -325,7 +326,7 @@ impl TextOperation for ReduplicateWordsOp {
         // Reuse separator allocation across iterations
         let separator = Some(" ".to_string());
 
-        for candidate in candidates.into_iter() {
+        for candidate in candidates {
             let probability = compute_weighted_probability(effective_rate, candidate.weight, mean_weight);
 
             if rng.random()? >= probability {
@@ -414,7 +415,7 @@ impl TextOperation for DeleteRandomWordsOp {
         let mut deletion_ops: Vec<(usize, Option<String>)> = Vec::with_capacity(allowed);
         let mut deletions = 0usize;
 
-        for candidate in candidates.into_iter() {
+        for candidate in candidates {
             if deletions >= allowed {
                 break;
             }
@@ -480,13 +481,11 @@ impl TextOperation for SwapAdjacentWordsOp {
         let mut index = 0usize;
         let mut replacements: SmallVec<[(usize, String); 8]> = SmallVec::new();
         while index + 1 < total_words {
-            let left_segment = match buffer.word_segment(index) {
-                Some(segment) => segment,
-                None => break,
+            let Some(left_segment) = buffer.word_segment(index) else {
+                break;
             };
-            let right_segment = match buffer.word_segment(index + 1) {
-                Some(segment) => segment,
-                None => break,
+            let Some(right_segment) = buffer.word_segment(index + 1) else {
+                break;
             };
 
             if !left_segment.is_mutable() || !right_segment.is_mutable() {
@@ -555,7 +554,8 @@ pub struct RushmoreComboOp {
 }
 
 impl RushmoreComboOp {
-    pub fn new(
+    #[must_use] 
+    pub const fn new(
         modes: Vec<RushmoreComboMode>,
         delete: Option<DeleteRandomWordsOp>,
         duplicate: Option<ReduplicateWordsOp>,
@@ -801,7 +801,8 @@ pub struct OcrArtifactsOp {
 
 impl OcrArtifactsOp {
     /// Creates a new OCR artifacts operation with default parameters.
-    pub fn new(rate: f64) -> Self {
+    #[must_use] 
+    pub const fn new(rate: f64) -> Self {
         Self {
             rate,
             burst_enter: 0.0,
@@ -817,7 +818,8 @@ impl OcrArtifactsOp {
 
     /// Creates an OCR operation with all parameters specified.
     #[allow(clippy::too_many_arguments)]
-    pub fn with_params(
+    #[must_use] 
+    pub const fn with_params(
         rate: f64,
         burst_enter: f64,
         burst_exit: f64,
@@ -913,12 +915,10 @@ impl OcrArtifactsOp {
                     && char_idx + 1 < chars.len()
                     && !ch.is_whitespace()
                     && !chars[char_idx + 1].is_whitespace()
-                {
-                    if rng.random()? < self.space_insert_rate {
+                    && rng.random()? < self.space_insert_rate {
                         modified.push(' ');
                         changed = true;
                     }
-                }
             }
 
             if changed {
@@ -1147,33 +1147,6 @@ impl TextOperation for OcrArtifactsOp {
 // Operations for inserting invisible zero-width Unicode characters that can
 // disrupt tokenization and string matching while remaining visually invisible.
 
-/// Classification of zero-width Unicode characters by their rendering behavior.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ZeroWidthClass {
-    /// True invisible, no glyph, no width (ZWSP, BOM)
-    Glyphless,
-    /// Affects shaping/joining but invisible (ZWNJ, ZWJ)
-    JoinControl,
-    /// Affects line breaking but invisible (WJ, CGJ)
-    BreakControl,
-    /// Changes presentation (emoji vs text) (VS1-VS16)
-    VariationSelector,
-    /// Tiny but technically visible width (hair space, thin space, narrow NBSP)
-    SemiVisible,
-}
-
-/// Classify a character into its zero-width class, if applicable.
-pub fn classify_zero_width(c: char) -> Option<ZeroWidthClass> {
-    match c {
-        '\u{200B}' | '\u{FEFF}' => Some(ZeroWidthClass::Glyphless),
-        '\u{200C}' | '\u{200D}' => Some(ZeroWidthClass::JoinControl),
-        '\u{2060}' | '\u{034F}' => Some(ZeroWidthClass::BreakControl),
-        '\u{FE00}'..='\u{FE0F}' => Some(ZeroWidthClass::VariationSelector),
-        '\u{200A}' | '\u{2009}' | '\u{202F}' => Some(ZeroWidthClass::SemiVisible),
-        _ => None,
-    }
-}
-
 /// Visibility mode controlling which zero-width characters are included in the palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum VisibilityMode {
@@ -1312,6 +1285,7 @@ pub struct ZeroWidthOp {
 
 impl ZeroWidthOp {
     /// Create a new ZeroWidthOp with default settings.
+    #[must_use] 
     pub fn new(rate: f64, characters: Vec<String>) -> Self {
         Self {
             rate,
@@ -1323,7 +1297,8 @@ impl ZeroWidthOp {
     }
 
     /// Create with all settings.
-    pub fn with_options(
+    #[must_use] 
+    pub const fn with_options(
         rate: f64,
         characters: Vec<String>,
         visibility_mode: VisibilityMode,
@@ -1375,7 +1350,7 @@ impl ZeroWidthOp {
         let vs_indices: Vec<usize> = palette
             .iter()
             .enumerate()
-            .filter(|(_, s)| s.chars().next().map_or(false, is_variation_selector))
+            .filter(|(_, s)| s.chars().next().is_some_and(is_variation_selector))
             .map(|(i, _)| i)
             .collect();
 
@@ -1390,7 +1365,7 @@ impl ZeroWidthOp {
             .iter()
             .enumerate()
             .filter(|(_, s)| {
-                !s.chars().next().map_or(false, is_variation_selector)
+                !s.chars().next().is_some_and(is_variation_selector)
                     && !Self::is_joiner_char(s)
             })
             .map(|(i, _)| i)
@@ -1434,7 +1409,6 @@ impl ZeroWidthOp {
                         continue;
                     }
 
-                    let mut byte_offset = 0;
                     let mut char_offset = 0;
 
                     for (g_idx, grapheme) in graphemes.iter().enumerate() {
@@ -1444,8 +1418,8 @@ impl ZeroWidthOp {
                         if g_idx > 0 && g_idx < graphemes.len() {
                             // Check both adjacent graphemes for whitespace
                             let prev_grapheme = graphemes[g_idx - 1];
-                            let is_prev_ws = prev_grapheme.chars().all(|c| c.is_whitespace());
-                            let is_curr_ws = grapheme.chars().all(|c| c.is_whitespace());
+                            let is_prev_ws = prev_grapheme.chars().all(char::is_whitespace);
+                            let is_curr_ws = grapheme.chars().all(char::is_whitespace);
 
                             if !is_prev_ws && !is_curr_ws {
                                 let prev_char = prev_grapheme.chars().last().unwrap_or(' ');
@@ -1463,7 +1437,6 @@ impl ZeroWidthOp {
                             }
                         }
 
-                        byte_offset += grapheme.len();
                         char_offset += grapheme_char_len;
                     }
                 }
@@ -1555,7 +1528,7 @@ impl TextOperation for ZeroWidthOp {
         }
 
         // Collect insertion positions based on placement mode
-        let positions = self.collect_positions(&segments, &palette);
+        let positions = self.collect_positions(segments, &palette);
 
         if positions.is_empty() {
             return Ok(());
@@ -1681,7 +1654,8 @@ pub enum MotorWeighting {
 
 impl MotorWeighting {
     /// Parse a motor weighting mode from a string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    #[must_use] 
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_lowercase().replace('-', "_").as_str() {
             "uniform" => Some(Self::Uniform),
             "wet_ink" => Some(Self::WetInk),
@@ -1691,7 +1665,7 @@ impl MotorWeighting {
     }
 
     /// Get the weight multiplier for a transition type.
-    fn weight_for_transition(&self, transition: TransitionType) -> f64 {
+    const fn weight_for_transition(&self, transition: TransitionType) -> f64 {
         match self {
             Self::Uniform => 1.0,
             Self::WetInk => match transition {
@@ -1723,7 +1697,7 @@ enum TransitionType {
 /// Finger assignment: (hand, finger)
 /// hand: 0=left, 1=right, 2=thumb/space
 /// finger: 0=pinky, 1=ring, 2=middle, 3=index, 4=thumb
-fn finger_for_char(ch: char) -> Option<(u8, u8)> {
+const fn finger_for_char(ch: char) -> Option<(u8, u8)> {
     // Use lowercase for lookup
     let lower = ch.to_ascii_lowercase();
     match lower {
@@ -1751,14 +1725,12 @@ fn finger_for_char(ch: char) -> Option<(u8, u8)> {
 }
 
 /// Classify the motor coordination required for a key transition.
-fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
-    let prev = match finger_for_char(prev_char) {
-        Some(f) => f,
-        None => return TransitionType::Unknown,
+const fn classify_transition(prev_char: char, curr_char: char) -> TransitionType {
+    let Some(prev) = finger_for_char(prev_char) else {
+        return TransitionType::Unknown;
     };
-    let curr = match finger_for_char(curr_char) {
-        Some(f) => f,
-        None => return TransitionType::Unknown,
+    let Some(curr) = finger_for_char(curr_char) else {
+        return TransitionType::Unknown;
     };
 
     let (prev_hand, prev_finger) = prev;
@@ -1808,7 +1780,7 @@ enum TypoAction {
 impl TypoAction {
     const COUNT: usize = 8;
 
-    fn from_index(idx: usize) -> Self {
+    const fn from_index(idx: usize) -> Self {
         match idx {
             0 => Self::SwapAdjacent,
             1 => Self::Delete,
@@ -1822,7 +1794,7 @@ impl TypoAction {
         }
     }
 
-    fn is_char_level(self) -> bool {
+    const fn is_char_level(self) -> bool {
         matches!(
             self,
             Self::SwapAdjacent | Self::Delete | Self::InsertNeighbor | Self::ReplaceNeighbor
@@ -1847,7 +1819,8 @@ pub struct ShiftSlipConfig {
 }
 
 impl ShiftSlipConfig {
-    pub fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
+    #[must_use] 
+    pub const fn new(enter_rate: f64, exit_rate: f64, shift_map: HashMap<String, String>) -> Self {
         Self {
             enter_rate: enter_rate.max(0.0),
             exit_rate: exit_rate.max(0.0),
@@ -1956,7 +1929,7 @@ impl TypoOp {
         // Try single-char key first (common case for ASCII)
         let mut buf = [0u8; 4];
         let key = lower.encode_utf8(&mut buf);
-        self.layout.get(key).map(|values| values.as_slice())
+        self.layout.get(key).map(Vec::as_slice)
     }
 
     /// Select a neighbor using motor coordination weights.
@@ -2354,7 +2327,7 @@ enum QuoteKind {
 }
 
 impl QuoteKind {
-    fn from_char(ch: char) -> Option<Self> {
+    const fn from_char(ch: char) -> Option<Self> {
         match ch {
             '"' => Some(Self::Double),
             '\'' => Some(Self::Single),
@@ -2363,7 +2336,7 @@ impl QuoteKind {
         }
     }
 
-    fn as_char(self) -> char {
+    const fn as_char(self) -> char {
         match self {
             Self::Double => '"',
             Self::Single => '\'',
@@ -2371,7 +2344,7 @@ impl QuoteKind {
         }
     }
 
-    fn index(self) -> usize {
+    const fn index(self) -> usize {
         match self {
             Self::Double => 0,
             Self::Single => 1,
@@ -2576,20 +2549,20 @@ pub enum Operation {
 impl TextOperation for Operation {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         match self {
-            Operation::Reduplicate(op) => op.apply(buffer, rng),
-            Operation::Delete(op) => op.apply(buffer, rng),
-            Operation::SwapAdjacent(op) => op.apply(buffer, rng),
-            Operation::RushmoreCombo(op) => op.apply(buffer, rng),
-            Operation::Redact(op) => op.apply(buffer, rng),
-            Operation::Ocr(op) => op.apply(buffer, rng),
-            Operation::Typo(op) => op.apply(buffer, rng),
-            Operation::Mimic(op) => op.apply(buffer, rng),
-            Operation::ZeroWidth(op) => op.apply(buffer, rng),
-            Operation::Jargoyle(op) => op.apply(buffer, rng),
-            Operation::QuotePairs(op) => op.apply(buffer, rng),
-            Operation::Hokey(op) => op.apply(buffer, rng),
-            Operation::Wherewolf(op) => op.apply(buffer, rng),
-            Operation::Pedant(op) => op.apply(buffer, rng),
+            Self::Reduplicate(op) => op.apply(buffer, rng),
+            Self::Delete(op) => op.apply(buffer, rng),
+            Self::SwapAdjacent(op) => op.apply(buffer, rng),
+            Self::RushmoreCombo(op) => op.apply(buffer, rng),
+            Self::Redact(op) => op.apply(buffer, rng),
+            Self::Ocr(op) => op.apply(buffer, rng),
+            Self::Typo(op) => op.apply(buffer, rng),
+            Self::Mimic(op) => op.apply(buffer, rng),
+            Self::ZeroWidth(op) => op.apply(buffer, rng),
+            Self::Jargoyle(op) => op.apply(buffer, rng),
+            Self::QuotePairs(op) => op.apply(buffer, rng),
+            Self::Hokey(op) => op.apply(buffer, rng),
+            Self::Wherewolf(op) => op.apply(buffer, rng),
+            Self::Pedant(op) => op.apply(buffer, rng),
         }
     }
 }
@@ -2692,7 +2665,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Update seed/expectations after deferred reindexing optimization
+    #[ignore = "TODO: Update seed/expectations after deferred reindexing optimization"]
     fn ocr_artifacts_replaces_expected_regions() {
         let mut buffer = TextBuffer::from_owned("Hello rn world".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);

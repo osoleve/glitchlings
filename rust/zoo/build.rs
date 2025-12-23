@@ -11,16 +11,13 @@ use std::process::Command;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 enum AssetKind {
+    #[default]
     Copy,
     Compressed,
 }
 
-impl Default for AssetKind {
-    fn default() -> Self {
-        AssetKind::Copy
-    }
-}
 
 #[derive(Debug, Deserialize)]
 struct AssetSpec {
@@ -318,7 +315,7 @@ fn build_lexeme_bundle(manifest_dir: &Path, out_dir: &Path) -> io::Result<()> {
 
     let mut entries: Vec<PathBuf> = fs::read_dir(&lexeme_dir)?
         .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .filter(|path| path.extension().map_or(false, |ext| ext == "json"))
+        .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
         .collect();
     entries.sort();
 
@@ -326,7 +323,7 @@ fn build_lexeme_bundle(manifest_dir: &Path, out_dir: &Path) -> io::Result<()> {
         let file_stem = path
             .file_stem()
             .and_then(|stem| stem.to_str())
-            .map(|stem| stem.to_ascii_lowercase())
+            .map(str::to_ascii_lowercase)
             .ok_or_else(|| {
                 io::Error::new(
                     ErrorKind::InvalidData,

@@ -10,7 +10,7 @@ use rayon::prelude::*;
 /// Extract strings from Python string objects without deep copying.
 /// Returns Cow<str> which borrows when possible and owns when necessary.
 fn extract_str_refs<'py>(tokens: &'py [Bound<'py, PyString>]) -> PyResult<Vec<Cow<'py, str>>> {
-    tokens.iter().map(|s| s.to_cow()).collect()
+    tokens.iter().map(Bound::to_cow).collect()
 }
 
 /// Extract batch of string references from Python.
@@ -160,7 +160,7 @@ fn compute_jsd<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     let norm2 = if sum2 > 0.0 { sum2 } else { 1.0 };
 
     let mut kl_pm = 0.0;
-    for (token, count_p) in counts1.iter() {
+    for (token, count_p) in &counts1 {
         let p = count_p / norm1;
         let q = counts2.get(token).copied().unwrap_or(0.0) / norm2;
         let m = 0.5 * (p + q);
@@ -171,7 +171,7 @@ fn compute_jsd<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64 {
     }
 
     let mut kl_qm = 0.0;
-    for (token, count_q) in counts2.iter() {
+    for (token, count_q) in &counts2 {
         let q = count_q / norm2;
         if q == 0.0 {
             continue;
@@ -436,11 +436,7 @@ fn compute_merge_split_index<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64
     // - If orig_changed > corr_changed: merges occurred (k→1)
     // - If corr_changed > orig_changed: splits occurred (1→k)
     // - If orig_changed == corr_changed: substitutions only (no restructuring)
-    let merge_split_events = if orig_changed > corr_changed {
-        orig_changed - corr_changed
-    } else {
-        corr_changed - orig_changed
-    };
+    let merge_split_events = orig_changed.abs_diff(corr_changed);
 
     let max_len = max(m, n);
     merge_split_events as f64 / max_len as f64
@@ -616,7 +612,7 @@ pub fn vocabulary_utilization(
 
     // Count unique tokens
     let token_refs = extract_str_refs(&tokens)?;
-    let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+    let unique_set: HashSet<&str> = token_refs.iter().map(Cow::as_ref).collect();
     let unique_count = unique_set.len();
     let unique_ratio = unique_count as f64 / tokens.len() as f64;
 
@@ -665,7 +661,7 @@ pub fn batch_vocabulary_utilization(
 
         // Count unique tokens
         let token_refs = extract_str_refs(tokens)?;
-        let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+        let unique_set: HashSet<&str> = token_refs.iter().map(Cow::as_ref).collect();
         let unique_count = unique_set.len();
         let unique_ratio = unique_count as f64 / tokens.len() as f64;
 
@@ -714,7 +710,7 @@ pub fn unknown_token_rate(
 
     // Build marker set from provided markers or defaults
     let marker_set: HashSet<&str> = match &unknown_markers {
-        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        Some(markers) => markers.iter().map(String::as_str).collect(),
         None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
     };
 
@@ -739,7 +735,7 @@ pub fn batch_unknown_token_rate(
 ) -> PyResult<Vec<f64>> {
     // Build marker set from provided markers or defaults
     let marker_set: HashSet<&str> = match &unknown_markers {
-        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        Some(markers) => markers.iter().map(String::as_str).collect(),
         None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
     };
 

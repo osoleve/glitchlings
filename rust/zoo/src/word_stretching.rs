@@ -263,9 +263,9 @@ impl WordStretchOp {
         if text
             .chars()
             .next()
-            .map(|c| c.is_uppercase())
+            .map(char::is_uppercase)
             .unwrap_or(false)
-            && text.chars().skip(1).all(|c| c.is_lowercase())
+            && text.chars().skip(1).all(char::is_lowercase)
         {
             // Use pre-computed clause start flag instead of backward scan
             if !token.at_clause_start {
@@ -307,7 +307,7 @@ impl WordStretchOp {
             0.70
         } else if normalised.ends_with("ly") {
             0.55
-        } else if original.chars().all(|c| c.is_uppercase()) && original.chars().count() > 1 {
+        } else if original.chars().all(char::is_uppercase) && original.chars().count() > 1 {
             0.65
         } else {
             0.30
@@ -469,7 +469,7 @@ impl WordStretchOp {
         if after.contains("!!") || after.contains("??") {
             score += 0.15;
         }
-        if token_text.chars().all(|c| c.is_uppercase()) && token_text.chars().count() > 1 {
+        if token_text.chars().all(char::is_uppercase) && token_text.chars().count() > 1 {
             score += 0.25;
         }
         if contains_emoji(before) || contains_emoji(after) {
@@ -625,7 +625,7 @@ impl WordStretchOp {
             }
 
             if provisional.len() < clause_quota {
-                for &cand_idx in clause_candidate_indices.iter() {
+                for &cand_idx in &clause_candidate_indices {
                     // O(1) membership check via HashSet
                     if provisional.contains(&cand_idx) {
                         continue;
@@ -790,9 +790,8 @@ impl TextOperation for WordStretchOp {
             let token = &tokens[token_idx];
 
             // Use pre-computed stretch site from candidate
-            let site = match candidate.stretch_site {
-                Some(site) => site,
-                None => continue, // Skip if no stretch site was found during analysis
+            let Some(site) = candidate.stretch_site else {
+                continue; // Skip if no stretch site was found during analysis
             };
 
             let mut intensity = (candidate.features.intensity() + 0.35 * candidate.score).min(1.5);
@@ -974,7 +973,7 @@ fn vowel_site(clusters: &[(usize, usize)]) -> Option<StretchSite> {
         .map(|&(start, end)| StretchSite { start, end })
 }
 
-fn is_vowel(ch: char) -> bool {
+const fn is_vowel(ch: char) -> bool {
     matches!(ch, 'a' | 'e' | 'i' | 'o' | 'u' | 'y')
 }
 

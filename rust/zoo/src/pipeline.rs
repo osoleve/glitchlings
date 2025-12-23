@@ -25,10 +25,11 @@ pub enum PipelineError {
 }
 
 impl PipelineError {
+    #[must_use] 
     pub fn into_pyerr(self) -> PyErr {
         match self {
-            PipelineError::OperationFailure { source, .. } => source.into_pyerr(),
-            PipelineError::InvalidPattern { pattern, message } => {
+            Self::OperationFailure { source, .. } => source.into_pyerr(),
+            Self::InvalidPattern { pattern, message } => {
                 PyValueError::new_err(format!("invalid regex '{pattern}': {message}"))
             }
         }
@@ -49,6 +50,7 @@ pub struct Pipeline {
 }
 
 impl Pipeline {
+    #[must_use] 
     pub fn new(
         master_seed: i128,
         descriptors: Vec<OperationDescriptor>,
@@ -74,6 +76,7 @@ impl Pipeline {
         Ok(Self::new(master_seed, descriptors, include, exclude))
     }
 
+    #[must_use] 
     pub fn descriptors(&self) -> &[OperationDescriptor] {
         &self.descriptors
     }
@@ -178,13 +181,13 @@ pub fn plan_gaggle(inputs: Vec<GagglePlanInput>, master_seed: i128) -> Vec<Gaggl
 }
 
 /// FNV-1a constants for 64-bit hashing
-const FNV_OFFSET_BASIS: u64 = 0xCBF29CE484222325;
-const FNV_PRIME: u64 = 0x100000001B3;
+const FNV_OFFSET_BASIS: u64 = 0xCBF2_9CE4_8422_2325;
+const FNV_PRIME: u64 = 0x0100_0000_01B3;
 
 /// SplitMix64 constants
-const SPLITMIX_GAMMA: u64 = 0x9E3779B97F4A7C15;
-const SPLITMIX_MIX1: u64 = 0xBF58476D1CE4E5B9;
-const SPLITMIX_MIX2: u64 = 0x94D049BB133111EB;
+const SPLITMIX_GAMMA: u64 = 0x9E37_79B9_7F4A_7C15;
+const SPLITMIX_MIX1: u64 = 0xBF58_476D_1CE4_E5B9;
+const SPLITMIX_MIX2: u64 = 0x94D0_49BB_1331_11EB;
 
 /// FNV-1a 64-bit hash of bytes.
 #[inline]
@@ -199,7 +202,7 @@ fn fnv1a_hash(data: &[u8]) -> u64 {
 
 /// SplitMix64 mixing function.
 #[inline]
-fn splitmix64(state: u64) -> u64 {
+const fn splitmix64(state: u64) -> u64 {
     let mut z = state.wrapping_add(SPLITMIX_GAMMA);
     z = (z ^ (z >> 30)).wrapping_mul(SPLITMIX_MIX1);
     z = (z ^ (z >> 27)).wrapping_mul(SPLITMIX_MIX2);
@@ -209,6 +212,7 @@ fn splitmix64(state: u64) -> u64 {
 /// Derive a deterministic seed for a glitchling.
 ///
 /// Uses FNV-1a for string hashing and SplitMix64 for mixing.
+#[must_use] 
 pub fn derive_seed(master_seed: i128, glitchling_name: &str, index: i128) -> u64 {
     let mut state = master_seed as u64;
 
@@ -237,9 +241,9 @@ mod tests {
     fn derive_seed_matches_python_reference() {
         assert_eq!(
             derive_seed(151, "Rushmore-Duplicate", 0),
-            7389502113326060275
+            7_389_502_113_326_060_275
         );
-        assert_eq!(derive_seed(151, "Rushmore", 1), 6396582009440301753);
+        assert_eq!(derive_seed(151, "Rushmore", 1), 6_396_582_009_440_301_753);
     }
 
     #[test]
@@ -290,7 +294,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Update reference after deferred reindexing optimization
+    #[ignore = "TODO: Update reference after deferred reindexing optimization"]
     fn pipeline_matches_python_reference_sequence() {
         let master_seed = 404i128;
         let descriptors = vec![

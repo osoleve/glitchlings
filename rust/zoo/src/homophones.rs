@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::{HashMap, HashSet};
 
 use crate::operations::{TextOperation, OperationError, OperationRng};
@@ -13,14 +13,14 @@ pub enum HomophoneWeighting {
 impl HomophoneWeighting {
     pub fn try_from_str(value: &str) -> Option<Self> {
         match value {
-            "flat" => Some(HomophoneWeighting::Flat),
+            "flat" => Some(Self::Flat),
             _ => None,
         }
     }
 
     pub const fn as_str(self) -> &'static str {
         match self {
-            HomophoneWeighting::Flat => "flat",
+            Self::Flat => "flat",
         }
     }
 }
@@ -31,7 +31,7 @@ pub struct HomophoneOp {
     pub weighting: HomophoneWeighting,
 }
 
-static HOMOPHONE_LOOKUP: Lazy<HashMap<String, Vec<String>>> = Lazy::new(|| {
+static HOMOPHONE_LOOKUP: LazyLock<HashMap<String, Vec<String>>> = LazyLock::new(|| {
     let mut mapping: HashMap<String, Vec<String>> = HashMap::new();
 
     for group in wherewolf_homophone_sets() {
@@ -91,7 +91,7 @@ fn apply_casing(template: &str, candidate: &str) -> String {
 
         let mut chars = value.chars();
         if let Some(first) = chars.next() {
-            if first.is_uppercase() && chars.all(|ch| ch.is_lowercase()) {
+            if first.is_uppercase() && chars.all(char::is_lowercase) {
                 return CasingPattern::Capitalised;
             }
         }
@@ -162,9 +162,8 @@ impl TextOperation for HomophoneOp {
         let mut replacements: Vec<(usize, String)> = Vec::new();
 
         for idx in 0..buffer.word_count() {
-            let segment = match buffer.word_segment(idx) {
-                Some(seg) => seg,
-                None => continue,
+            let Some(segment) = buffer.word_segment(idx) else {
+                continue;
             };
 
             let token = segment.text();
@@ -178,9 +177,8 @@ impl TextOperation for HomophoneOp {
             }
 
             let lowered = core.to_lowercase();
-            let group = match HOMOPHONE_LOOKUP.get(&lowered) {
-                Some(group) => group,
-                None => continue,
+            let Some(group) = HOMOPHONE_LOOKUP.get(&lowered) else {
+                continue;
             };
 
             if rng.random()? >= clamped_rate {

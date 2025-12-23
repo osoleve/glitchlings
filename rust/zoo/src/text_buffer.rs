@@ -97,27 +97,30 @@ impl TextSegment {
     }
 
     /// Returns the segment's text content.
+    #[must_use] 
     pub fn text(&self) -> &str {
         &self.text
     }
 
     /// Returns the classification of the segment.
-    pub fn kind(&self) -> SegmentKind {
+    #[must_use] 
+    pub const fn kind(&self) -> SegmentKind {
         self.kind
     }
 
     /// Returns true when the segment is allowed to be mutated.
-    pub fn is_mutable(&self) -> bool {
+    #[must_use] 
+    pub const fn is_mutable(&self) -> bool {
         !matches!(self.kind, SegmentKind::Immutable)
     }
 
     /// Returns the cached character count (Unicode scalar values).
-    fn char_len(&self) -> usize {
+    const fn char_len(&self) -> usize {
         self.char_len
     }
 
     /// Returns the cached byte length.
-    fn byte_len(&self) -> usize {
+    const fn byte_len(&self) -> usize {
         self.byte_len
     }
 
@@ -179,10 +182,10 @@ pub enum TextBufferError {
 impl std::fmt::Display for TextBufferError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TextBufferError::InvalidWordIndex { index } => {
+            Self::InvalidWordIndex { index } => {
                 write!(f, "invalid word index {index}")
             }
-            TextBufferError::InvalidCharRange { start, end, max } => {
+            Self::InvalidCharRange { start, end, max } => {
                 write!(
                     f,
                     "invalid character range {start}..{end}; buffer length is {max} characters",
@@ -233,6 +236,7 @@ impl std::str::FromStr for TextBuffer {
 
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
+    #[must_use]
     pub fn from_owned(
         text: String,
         include_only_patterns: &[Regex],
@@ -262,31 +266,37 @@ impl TextBuffer {
     }
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
+    #[must_use]
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
-        TextBuffer::from_owned_with_rules(text, self.masking.clone())
+        Self::from_owned_with_rules(text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
+    #[must_use] 
     pub fn segments(&self) -> &[TextSegment] {
         &self.segments
     }
 
     /// Returns metadata spans describing segment positions.
+    #[must_use] 
     pub fn spans(&self) -> &[TextSpan] {
         &self.spans
     }
 
     /// Returns the number of characters across the entire buffer.
-    pub fn char_len(&self) -> usize {
+    #[must_use] 
+    pub const fn char_len(&self) -> usize {
         self.total_chars
     }
 
     /// Returns the number of word segments tracked by the buffer.
-    pub fn word_count(&self) -> usize {
+    #[must_use] 
+    pub const fn word_count(&self) -> usize {
         self.word_segment_indices.len()
     }
 
     /// Returns the `TextSegment` corresponding to the requested word index.
+    #[must_use] 
     pub fn word_segment(&self, word_index: usize) -> Option<&TextSegment> {
         self.word_segment_indices
             .get(word_index)
@@ -515,7 +525,7 @@ impl TextBuffer {
                 .copied()
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
 
-            let should_remove = replacement.as_ref().is_none_or(|s| s.is_empty());
+            let should_remove = replacement.as_ref().is_none_or(String::is_empty);
 
             if should_remove {
                 // Mark segment for removal (processed in single pass below)
@@ -666,13 +676,13 @@ impl TextBuffer {
     ///
     /// This is useful for char-level operations that modify segment content
     /// without changing whether it's a word or separator.
-    pub fn replace_segment(&mut self, segment_index: usize, new_text: String) {
+    pub fn replace_segment(&mut self, segment_index: usize, new_text: &str) {
         if segment_index >= self.segments.len() {
             return;
         }
 
         let kind = self.segments[segment_index].kind();
-        self.segments[segment_index] = TextSegment::from_str(&new_text, kind);
+        self.segments[segment_index] = TextSegment::from_str(new_text, kind);
         self.mark_dirty();
     }
 
@@ -836,7 +846,7 @@ impl TextBuffer {
     }
 
     /// Marks the buffer as needing reindexing after a mutation.
-    fn mark_dirty(&mut self) {
+    const fn mark_dirty(&mut self) {
         self.needs_reindex = true;
     }
 }
@@ -877,6 +887,7 @@ fn merge_spans(mut spans: Vec<Range<usize>>) -> Vec<Range<usize>> {
     merged
 }
 
+#[allow(clippy::single_range_in_vec_init)]
 fn invert_spans(spans: &[Range<usize>], total: usize) -> Vec<Range<usize>> {
     if spans.is_empty() {
         return vec![0..total];

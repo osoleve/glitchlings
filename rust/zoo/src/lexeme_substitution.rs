@@ -8,8 +8,9 @@
 //! - "academic": Scholarly word substitutions
 //! - "cyberpunk": Neon cyberpunk slang and gadgetry
 //! - "lovecraftian": Cosmic horror terminology
+//!
 //! Additional dictionaries can be dropped into the assets/lexemes directory
-//! (or another directory pointed to by the GLITCHLINGS_LEXEME_DIR environment
+//! (or another directory pointed to by the `GLITCHLINGS_LEXEME_DIR` environment
 //! variable) without changing the code.
 //!
 //! Two modes are supported:
@@ -20,7 +21,7 @@ use aho_corasick::{AhoCorasick, MatchKind};
 use crate::operations::{TextOperation, OperationError, OperationRng};
 use crate::rng::DeterministicRng;
 use crate::text_buffer::TextBuffer;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use std::collections::HashMap;
@@ -37,7 +38,7 @@ const LEXEME_ENV_VAR: &str = "GLITCHLINGS_LEXEME_DIR";
 type LexemeDict = HashMap<String, Vec<String>>;
 
 /// Names of lexemes that are embedded at compile time.
-static BUNDLED_LEXEME_NAMES: Lazy<Vec<String>> = Lazy::new(|| {
+static BUNDLED_LEXEME_NAMES: LazyLock<Vec<String>> = LazyLock::new(|| {
     let raw: HashMap<String, serde_json::Value> =
         serde_json::from_str(RAW_LEXEMES).expect("lexemes.json should be valid JSON");
     raw.keys()
@@ -48,7 +49,7 @@ static BUNDLED_LEXEME_NAMES: Lazy<Vec<String>> = Lazy::new(|| {
 
 /// All loaded lexeme dictionaries, keyed by dictionary name.
 /// Always includes bundled lexemes; merges with custom lexemes from env dir if present.
-static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
+static LEXEME_DICTIONARIES: LazyLock<HashMap<String, LexemeDict>> = LazyLock::new(|| {
     // Always start with bundled lexemes
     let mut dicts = load_bundled_lexemes();
 
@@ -66,7 +67,7 @@ static LEXEME_DICTIONARIES: Lazy<HashMap<String, LexemeDict>> = Lazy::new(|| {
 });
 
 /// Sorted lexeme names available for use.
-static VALID_LEXEMES: Lazy<Vec<String>> = Lazy::new(|| {
+static VALID_LEXEMES: LazyLock<Vec<String>> = LazyLock::new(|| {
     let mut names: Vec<String> = LEXEME_DICTIONARIES.keys().cloned().collect();
     names.sort();
     names
@@ -88,7 +89,7 @@ fn load_lexemes_from_directory(dir: &Path) -> Result<HashMap<String, LexemeDict>
     let mut files: Vec<PathBuf> = fs::read_dir(dir)
         .map_err(|err| format!("failed to read lexeme directory: {err}"))?
         .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .filter(|path| path.extension().map_or(false, |ext| ext == "json"))
+        .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
         .collect();
 
     files.sort();
@@ -98,7 +99,7 @@ fn load_lexemes_from_directory(dir: &Path) -> Result<HashMap<String, LexemeDict>
         let name = path
             .file_stem()
             .and_then(|stem| stem.to_str())
-            .map(|stem| stem.to_ascii_lowercase())
+            .map(str::to_ascii_lowercase)
             .ok_or_else(|| format!("invalid lexeme file name {}", path.display()))?;
 
         let contents = fs::read_to_string(&path)
@@ -159,11 +160,11 @@ struct LexemeMatcher {
 }
 
 /// Pre-compiled Aho-Corasick matchers for each dictionary.
-static LEXEME_MATCHERS: Lazy<HashMap<String, LexemeMatcher>> = Lazy::new(|| {
+static LEXEME_MATCHERS: LazyLock<HashMap<String, LexemeMatcher>> = LazyLock::new(|| {
     let mut matchers: HashMap<String, LexemeMatcher> = HashMap::new();
 
     for (dict_name, dict) in LEXEME_DICTIONARIES.iter() {
-        let mut words: Vec<&str> = dict.keys().map(|s| s.as_str()).collect();
+        let mut words: Vec<&str> = dict.keys().map(String::as_str).collect();
         // Sort by length descending so longer matches are preferred
         words.sort_by_key(|w| std::cmp::Reverse(w.len()));
 
@@ -178,7 +179,7 @@ static LEXEME_MATCHERS: Lazy<HashMap<String, LexemeMatcher>> = Lazy::new(|| {
             .build(&words)
             .expect("valid patterns for Aho-Corasick");
 
-        let pattern_keys: Vec<String> = words.iter().map(|s| s.to_string()).collect();
+        let pattern_keys: Vec<String> = words.iter().copied().map(String::from).collect();
 
         matchers.insert(dict_name.clone(), LexemeMatcher { automaton, pattern_keys });
     }
@@ -199,8 +200,8 @@ impl JargoyleMode {
     pub fn parse(mode: &str) -> Result<Self, String> {
         let normalized = mode.to_ascii_lowercase();
         match normalized.as_str() {
-            "" | "literal" => Ok(JargoyleMode::Literal),
-            "drift" => Ok(JargoyleMode::Drift),
+            "" | "literal" => Ok(Self::Literal),
+            "drift" => Ok(Self::Drift),
             _ => Err(format!(
                 "Unsupported Jargoyle mode '{mode}'. Expected one of: {VALID_MODE_MESSAGE}"
             )),
@@ -227,7 +228,6 @@ fn detect_case_pattern(s: &str) -> CasePattern {
     let mut chars = s.chars();
     let first = chars.next().unwrap();
     let first_upper = first.is_ascii_uppercase();
-    let first_lower = first.is_ascii_lowercase();
     let first_alpha = first.is_ascii_alphabetic();
 
     // Track what we've seen after the first character
@@ -336,12 +336,12 @@ fn harmonize_suffix(original: &str, replacement: &str, suffix: &str) -> String {
         return String::new();
     }
 
-    let original_last = original.chars().rev().find(|ch| ch.is_ascii_alphabetic());
+    let original_last = original.chars().rev().find(char::is_ascii_alphabetic);
     let suffix_first = suffix.chars().next();
     let replacement_last = replacement
         .chars()
         .rev()
-        .find(|ch| ch.is_ascii_alphabetic());
+        .find(char::is_ascii_alphabetic);
 
     if let (Some(orig), Some(suff), Some(repl)) = (original_last, suffix_first, replacement_last) {
         if orig.eq_ignore_ascii_case(&suff) && !repl.eq_ignore_ascii_case(&suff) {
@@ -372,7 +372,6 @@ fn is_word_boundary_char(c: char) -> bool {
 
 /// Find valid matches with word boundary checks and suffix detection.
 fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch> {
-    let text_bytes = text.as_bytes();
     let text_len = text.len();
     let mut matches = Vec::new();
     let mut last_end = 0usize;
@@ -401,7 +400,6 @@ fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch
         // Check for word boundary or suffix after match
         // We need to find where the word actually ends (including any suffix)
         let mut full_end = end;
-        let mut has_suffix = false;
 
         if end < text_len {
             // Check if there are more alphabetic characters (suffix)
@@ -409,7 +407,6 @@ fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch
             for c in rest.chars() {
                 if c.is_ascii_alphabetic() {
                     full_end += c.len_utf8();
-                    has_suffix = true;
                 } else {
                     break;
                 }
@@ -453,14 +450,12 @@ fn transform_text(
         return Ok(String::new());
     }
 
-    let dict = match LEXEME_DICTIONARIES.get(dict_name) {
-        Some(d) => d,
-        None => return Ok(text.to_string()), // Unknown dictionary, return unchanged
+    let Some(dict) = LEXEME_DICTIONARIES.get(dict_name) else {
+        return Ok(text.to_string()); // Unknown dictionary, return unchanged
     };
 
-    let matcher = match LEXEME_MATCHERS.get(dict_name) {
-        Some(m) => m,
-        None => return Ok(text.to_string()),
+    let Some(matcher) = LEXEME_MATCHERS.get(dict_name) else {
+        return Ok(text.to_string());
     };
 
     // Find all valid matches with word boundary checks
@@ -473,7 +468,7 @@ fn transform_text(
     let indices_to_transform: Vec<usize> = if rate >= 1.0 {
         (0..matches.len()).collect()
     } else if let Some(ref mut r) = rng {
-        let clamped_rate = rate.max(0.0).min(1.0);
+        let clamped_rate = rate.clamp(0.0, 1.0);
         let expected = (matches.len() as f64) * clamped_rate;
         let mut max_count = expected.floor() as usize;
         let remainder = expected - (max_count as f64);
@@ -529,7 +524,7 @@ fn transform_text(
                 JargoyleMode::Literal => {
                     dict.get(&validated.dict_key)
                         .and_then(|alts| alts.first())
-                        .map(|s| s.as_str())
+                        .map(String::as_str)
                 }
                 JargoyleMode::Drift => {
                     if let Some(ref mut r) = rng {
@@ -546,7 +541,7 @@ fn transform_text(
                     } else {
                         dict.get(&validated.dict_key)
                             .and_then(|alts| alts.first())
-                            .map(|s| s.as_str())
+                            .map(String::as_str)
                     }
                 }
             };
@@ -618,19 +613,18 @@ pub(crate) fn substitute_lexeme(
     if !LEXEME_DICTIONARIES.contains_key(&normalized_lexemes) {
         let available = VALID_LEXEMES.join(", ");
         return Err(PyValueError::new_err(format!(
-            "Unknown lexemes dictionary '{}'. Available: {available}",
-            lexemes
+            "Unknown lexemes dictionary '{lexemes}'. Available: {available}"
         )));
     }
 
     match parsed_mode {
         JargoyleMode::Literal => transform_text(text, &normalized_lexemes, parsed_mode, rate, None)
-            .map_err(|e| e.into_pyerr()),
+            .map_err(OperationError::into_pyerr),
         JargoyleMode::Drift => {
             let seed_value = seed.unwrap_or(0);
             let mut rng = DeterministicRng::new(seed_value);
             transform_text(text, &normalized_lexemes, parsed_mode, rate, Some(&mut rng))
-                .map_err(|e| e.into_pyerr())
+                .map_err(OperationError::into_pyerr)
         }
     }
 }

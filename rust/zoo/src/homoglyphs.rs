@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PySequence, PyString};
@@ -41,10 +41,10 @@ impl HomoglyphMode {
     /// Parse a mode string into HomoglyphMode.
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().replace('-', "_").as_str() {
-            "single_script" | "singlescript" | "single" => Some(HomoglyphMode::SingleScript),
-            "mixed_script" | "mixedscript" | "mixed" => Some(HomoglyphMode::MixedScript),
-            "compatibility" | "compat" => Some(HomoglyphMode::Compatibility),
-            "aggressive" | "all" => Some(HomoglyphMode::Aggressive),
+            "single_script" | "singlescript" | "single" => Some(Self::SingleScript),
+            "mixed_script" | "mixedscript" | "mixed" => Some(Self::MixedScript),
+            "compatibility" | "compat" => Some(Self::Compatibility),
+            "aggressive" | "all" => Some(Self::Aggressive),
             _ => None,
         }
     }
@@ -52,16 +52,16 @@ impl HomoglyphMode {
     /// Check if this mode allows a given confusable type.
     fn allows(&self, confusable_type: ConfusableType) -> bool {
         match self {
-            HomoglyphMode::SingleScript => confusable_type == ConfusableType::SingleScript,
-            HomoglyphMode::MixedScript => matches!(
+            Self::SingleScript => confusable_type == ConfusableType::SingleScript,
+            Self::MixedScript => matches!(
                 confusable_type,
                 ConfusableType::SingleScript | ConfusableType::MixedScript
             ),
-            HomoglyphMode::Compatibility => matches!(
+            Self::Compatibility => matches!(
                 confusable_type,
                 ConfusableType::SingleScript | ConfusableType::Compatibility
             ),
-            HomoglyphMode::Aggressive => true,
+            Self::Aggressive => true,
         }
     }
 }
@@ -184,7 +184,7 @@ struct HomoglyphEntry {
     alias: String,
 }
 
-static HOMOGLYPH_TABLE: Lazy<BTreeMap<char, Vec<HomoglyphEntry>>> = Lazy::new(|| {
+static HOMOGLYPH_TABLE: LazyLock<BTreeMap<char, Vec<HomoglyphEntry>>> = LazyLock::new(|| {
     // Parse JSON into a BTreeMap by explicitly specifying the target type.
     // We use BTreeMap here to ensure deterministic key ordering during iteration.
     let raw: BTreeMap<String, Vec<RawHomoglyphEntry>> =
@@ -239,9 +239,9 @@ pub enum ClassSelection {
 impl ClassSelection {
     fn allows(&self, alias: &str) -> bool {
         match self {
-            ClassSelection::All => true,
-            ClassSelection::Default => DEFAULT_CLASSES.iter().any(|value| value == &alias),
-            ClassSelection::Specific(values) => values.iter().any(|value| value == alias),
+            Self::All => true,
+            Self::Default => DEFAULT_CLASSES.iter().any(|value| value == &alias),
+            Self::Specific(values) => values.iter().any(|value| value == alias),
         }
     }
 }
@@ -269,7 +269,7 @@ impl HomoglyphOp {
         }
     }
 
-    pub fn with_mode(
+    pub const fn with_mode(
         rate: f64,
         classes: ClassSelection,
         banned: Vec<String>,
@@ -298,12 +298,10 @@ impl TextOperation for HomoglyphOp {
         let mut targets: Vec<(usize, usize, char, usize)> = Vec::new();
 
         for (seg_idx, segment) in segments.iter().enumerate() {
-            let mut char_pos = 0usize;
-            for (byte_offset, ch) in segment.text().char_indices() {
+            for (char_pos, (byte_offset, ch)) in segment.text().char_indices().enumerate() {
                 if ch.is_alphanumeric() && HOMOGLYPH_TABLE.contains_key(&ch) {
                     targets.push((seg_idx, byte_offset, ch, char_pos));
                 }
-                char_pos += 1;
             }
         }
 
@@ -609,15 +607,6 @@ mod tests {
             Self {
                 picks,
                 randoms: Vec::new(),
-                pick_position: 0,
-                random_position: 0,
-            }
-        }
-
-        fn with_randoms(picks: Vec<usize>, randoms: Vec<f64>) -> Self {
-            Self {
-                picks,
-                randoms,
                 pick_position: 0,
                 random_position: 0,
             }

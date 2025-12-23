@@ -32,6 +32,7 @@ pub struct DeterministicRng {
 }
 
 impl DeterministicRng {
+    #[must_use] 
     pub fn new(seed: u64) -> Self {
         Self {
             inner: SmallRng::seed_from_u64(seed),
@@ -79,6 +80,7 @@ mod tests {
     use super::DeterministicRng;
 
     #[test]
+    #[allow(clippy::unreadable_literal)] // Reference values from Python - separators would harm readability
     fn random_is_deterministic_for_known_seed() {
         let mut rng = DeterministicRng::new(151);
         let expected = [

@@ -64,17 +64,17 @@ fn create_typical_pipeline() -> Vec<Operation> {
 fn bench_tokenization(c: &mut Criterion) {
     let mut group = c.benchmark_group("tokenization");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     black_box(buffer);
                 });
             },
@@ -88,18 +88,18 @@ fn bench_tokenization(c: &mut Criterion) {
 fn bench_pipeline_typical(c: &mut Criterion) {
     let mut group = c.benchmark_group("pipeline_typical");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
         let ops = create_typical_pipeline();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let mut buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let mut buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     let mut rng = DeterministicRng::new(42);
 
                     for op in &ops {
@@ -119,17 +119,17 @@ fn bench_pipeline_typical(c: &mut Criterion) {
 fn bench_reindex(c: &mut Criterion) {
     let mut group = c.benchmark_group("reindex");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 // Pre-create buffer outside measurement
-                let buffer = TextBuffer::from_owned(text.to_string(), &[], &[]);
+                let buffer = TextBuffer::from_owned(text.clone(), &[], &[]);
 
                 b.iter(|| {
                     let mut buffer = buffer.clone();
@@ -157,17 +157,17 @@ fn bench_reindex(c: &mut Criterion) {
 fn bench_heavy_replace(c: &mut Criterion) {
     let mut group = c.benchmark_group("heavy_replace");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let mut buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let mut buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     let mut rng = DeterministicRng::new(42);
 
                     // Heavy reduplicate - with deferred reindexing, reindex() is now called only once at the end via reindex_if_needed()
@@ -190,17 +190,17 @@ fn bench_heavy_replace(c: &mut Criterion) {
 fn bench_heavy_delete(c: &mut Criterion) {
     let mut group = c.benchmark_group("heavy_delete");
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let mut buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let mut buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     let mut rng = DeterministicRng::new(42);
 
                     // Heavy delete - with deferred reindexing, reindex() is now called only once at the end via reindex_if_needed()
@@ -229,7 +229,7 @@ fn bench_mixed_ops_large(c: &mut Criterion) {
     group.throughput(Throughput::Elements(actual_len as u64));
     group.bench_function("typical_mix", |b| {
         b.iter(|| {
-            let mut buffer = TextBuffer::from_owned(black_box(&text).to_string(), &[], &[]);
+            let mut buffer = TextBuffer::from_owned(black_box(&text).clone(), &[], &[]);
             let mut rng = DeterministicRng::new(42);
 
             let ops = create_typical_pipeline();
@@ -256,17 +256,17 @@ fn bench_typo(c: &mut Criterion) {
         ("i".to_string(), vec!["u".to_string(), "o".to_string()]),
     ]);
 
-    for size in [10_000, 50_000, 100_000, 500_000].iter() {
+    for size in &[10_000, 50_000, 100_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let mut buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let mut buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     let mut rng = DeterministicRng::new(42);
 
                     let op = TypoOp {
@@ -291,17 +291,17 @@ fn bench_scaling(c: &mut Criterion) {
     let mut group = c.benchmark_group("scaling");
 
     // Test 2x scaling: 250k vs 500k should be close to 2x time (ideally ≤2.4x)
-    for size in [250_000, 500_000].iter() {
+    for size in &[250_000, 500_000] {
         let text = generate_test_text(*size);
         let actual_len = text.chars().count();
 
         group.throughput(Throughput::Elements(actual_len as u64));
         group.bench_with_input(
-            BenchmarkId::from_parameter(format!("{}chars", actual_len)),
+            BenchmarkId::from_parameter(format!("{actual_len}chars")),
             &text,
             |b, text| {
                 b.iter(|| {
-                    let mut buffer = TextBuffer::from_owned(black_box(text).to_string(), &[], &[]);
+                    let mut buffer = TextBuffer::from_owned(black_box(text).clone(), &[], &[]);
                     let mut rng = DeterministicRng::new(42);
 
                     let ops = create_typical_pipeline();

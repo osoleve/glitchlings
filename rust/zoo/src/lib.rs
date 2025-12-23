@@ -153,7 +153,7 @@ fn build_pipeline_from_py(
     let include_patterns = include_only_patterns.unwrap_or_default();
     let exclude_patterns = exclude_patterns.unwrap_or_default();
     Pipeline::compile(master_seed, operations, include_patterns, exclude_patterns)
-        .map_err(|err| err.into_pyerr())
+        .map_err(PipelineError::into_pyerr)
 }
 
 /// Threshold below which we don't release the GIL (overhead not worth it).
@@ -182,13 +182,13 @@ impl Pipeline {
     fn run_py(&self, py: Python<'_>, text: &str) -> PyResult<String> {
         // For small texts, don't bother releasing GIL - overhead exceeds benefit
         if text.len() < GIL_RELEASE_THRESHOLD {
-            return self.run(text).map_err(|error| error.into_pyerr());
+            return self.run(text).map_err(PipelineError::into_pyerr);
         }
 
         let pipeline = self.clone();
         let text_owned = text.to_string();
         py.allow_threads(move || {
-            pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+            pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
         })
     }
 
@@ -205,7 +205,7 @@ impl Pipeline {
                 .par_iter()
                 .map(|text| pipeline.run(text))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|error| error.into_pyerr())
+                .map_err(PipelineError::into_pyerr)
         })
     }
 }
@@ -308,16 +308,16 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
             "reduplicate" => {
                 let rate = extract_required_field(dict, "reduplicate operation", "rate")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperationConfig::Reduplicate { rate, unweighted })
+                Ok(Self::Reduplicate { rate, unweighted })
             }
             "delete" => {
                 let rate = extract_required_field(dict, "delete operation", "rate")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperationConfig::Delete { rate, unweighted })
+                Ok(Self::Delete { rate, unweighted })
             }
             "swap_adjacent" => {
                 let rate = extract_required_field(dict, "swap_adjacent operation", "rate")?;
-                Ok(PyOperationConfig::SwapAdjacent { rate })
+                Ok(Self::SwapAdjacent { rate })
             }
             "rushmore_combo" => {
                 let modes: Vec<String> =
@@ -356,7 +356,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     })
                     .transpose()?;
 
-                Ok(PyOperationConfig::RushmoreCombo {
+                Ok(Self::RushmoreCombo {
                     modes,
                     delete,
                     duplicate,
@@ -370,7 +370,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let merge_adjacent =
                     extract_required_field(dict, "redact operation", "merge_adjacent")?;
                 let unweighted = extract_optional_field(dict, "unweighted")?.unwrap_or(false);
-                Ok(PyOperationConfig::Redact {
+                Ok(Self::Redact {
                     replacement_char,
                     rate,
                     merge_adjacent,
@@ -389,7 +389,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 // Whitespace error parameters (Smith, 2007)
                 let space_drop_rate = extract_optional_field(dict, "space_drop_rate")?.unwrap_or(0.0);
                 let space_insert_rate = extract_optional_field(dict, "space_insert_rate")?.unwrap_or(0.0);
-                Ok(PyOperationConfig::Ocr {
+                Ok(Self::Ocr {
                     rate,
                     burst_enter,
                     burst_exit,
@@ -426,10 +426,10 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     extract_optional_field(dict, "motor_weighting")?;
                 let motor_weighting = motor_weighting_str
                     .as_deref()
-                    .and_then(MotorWeighting::from_str)
+                    .and_then(MotorWeighting::parse)
                     .unwrap_or_default();
 
-                Ok(PyOperationConfig::Typo {
+                Ok(Self::Typo {
                     rate,
                     layout,
                     shift_slip,
@@ -444,7 +444,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let mode_str: Option<String> = extract_optional_field(dict, "mode")?;
                 let mode = homoglyphs::parse_homoglyph_mode(mode_str.as_deref());
                 let max_consecutive: usize = extract_optional_field(dict, "max_consecutive")?.unwrap_or(3);
-                Ok(PyOperationConfig::Mimic {
+                Ok(Self::Mimic {
                     rate,
                     classes,
                     banned,
@@ -461,7 +461,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     .unwrap_or_else(|| "random".to_string());
                 let max_consecutive: usize = extract_optional_field(dict, "max_consecutive")?
                     .unwrap_or(4);
-                Ok(PyOperationConfig::ZeroWidth {
+                Ok(Self::ZeroWidth {
                     rate,
                     characters,
                     visibility,
@@ -476,7 +476,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     extract_optional_field(dict, "mode")?.unwrap_or_else(|| "drift".to_string());
                 let parsed_mode = JargoyleMode::parse(&mode).map_err(PyValueError::new_err)?;
                 let rate = extract_required_field(dict, "jargoyle operation", "rate")?;
-                Ok(PyOperationConfig::Jargoyle {
+                Ok(Self::Jargoyle {
                     lexemes,
                     mode: parsed_mode,
                     rate,
@@ -486,13 +486,13 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let rate = extract_required_field(dict, "wherewolf operation", "rate")?;
                 let weighting = extract_optional_field(dict, "weighting")?
                     .unwrap_or_else(|| HomophoneWeighting::Flat.as_str().to_string());
-                Ok(PyOperationConfig::Wherewolf { rate, weighting })
+                Ok(Self::Wherewolf { rate, weighting })
             }
             "pedant" => {
                 let stone = extract_required_field(dict, "pedant operation", "stone")?;
-                Ok(PyOperationConfig::Pedant { stone })
+                Ok(Self::Pedant { stone })
             }
-            "apostrofae" | "quote_pairs" => Ok(PyOperationConfig::QuotePairs),
+            "apostrofae" | "quote_pairs" => Ok(Self::QuotePairs),
             "hokey" => {
                 let rate = extract_required_field(dict, "hokey operation", "rate")?;
                 let extension_min =
@@ -502,7 +502,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let word_length_threshold =
                     extract_required_field(dict, "hokey operation", "word_length_threshold")?;
                 let base_p = extract_optional_field(dict, "base_p")?.unwrap_or(0.45);
-                Ok(PyOperationConfig::Hokey {
+                Ok(Self::Hokey {
                     rate,
                     extension_min,
                     extension_max,
@@ -520,16 +520,16 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
 impl PyOperationConfig {
     fn into_operation(self, seed: u64) -> PyResult<Operation> {
         let operation = match self {
-            PyOperationConfig::Reduplicate { rate, unweighted } => {
+            Self::Reduplicate { rate, unweighted } => {
                 Operation::Reduplicate(operations::ReduplicateWordsOp { rate, unweighted })
             }
-            PyOperationConfig::Delete { rate, unweighted } => {
+            Self::Delete { rate, unweighted } => {
                 Operation::Delete(operations::DeleteRandomWordsOp { rate, unweighted })
             }
-            PyOperationConfig::SwapAdjacent { rate } => {
+            Self::SwapAdjacent { rate } => {
                 Operation::SwapAdjacent(operations::SwapAdjacentWordsOp { rate })
             }
-            PyOperationConfig::RushmoreCombo {
+            Self::RushmoreCombo {
                 modes,
                 delete,
                 duplicate,
@@ -553,7 +553,7 @@ impl PyOperationConfig {
                     swap,
                 ))
             }
-            PyOperationConfig::Redact {
+            Self::Redact {
                 replacement_char,
                 rate,
                 merge_adjacent,
@@ -564,7 +564,7 @@ impl PyOperationConfig {
                 merge_adjacent,
                 unweighted,
             }),
-            PyOperationConfig::Ocr {
+            Self::Ocr {
                 rate,
                 burst_enter,
                 burst_exit,
@@ -585,7 +585,7 @@ impl PyOperationConfig {
                     space_insert_rate,
                 ))
             }
-            PyOperationConfig::Typo {
+            Self::Typo {
                 rate,
                 layout,
                 shift_slip,
@@ -603,14 +603,14 @@ impl PyOperationConfig {
                     motor_weighting,
                 })
             }
-            PyOperationConfig::Mimic {
+            Self::Mimic {
                 rate,
                 classes,
                 banned,
                 mode,
                 max_consecutive,
             } => Operation::Mimic(HomoglyphOp::with_mode(rate, classes, banned, mode, max_consecutive)),
-            PyOperationConfig::ZeroWidth {
+            Self::ZeroWidth {
                 rate,
                 characters,
                 visibility,
@@ -629,23 +629,23 @@ impl PyOperationConfig {
                     max_consecutive,
                 ))
             }
-            PyOperationConfig::Jargoyle {
+            Self::Jargoyle {
                 lexemes,
                 mode,
                 rate,
             } => Operation::Jargoyle(LexemeSubstitutionOp::new(&lexemes, mode, rate)),
-            PyOperationConfig::Wherewolf { rate, weighting } => {
+            Self::Wherewolf { rate, weighting } => {
                 let weighting = HomophoneWeighting::try_from_str(&weighting).ok_or_else(|| {
                     PyValueError::new_err(format!("unsupported weighting: {weighting}"))
                 })?;
                 Operation::Wherewolf(HomophoneOp { rate, weighting })
             }
-            PyOperationConfig::Pedant { stone } => {
+            Self::Pedant { stone } => {
                 let op = GrammarRuleOp::new(seed as i128, &stone)?;
                 Operation::Pedant(op)
             }
-            PyOperationConfig::QuotePairs => Operation::QuotePairs(operations::QuotePairsOp),
-            PyOperationConfig::Hokey {
+            Self::QuotePairs => Operation::QuotePairs(operations::QuotePairsOp),
+            Self::Hokey {
                 rate,
                 extension_min,
                 extension_max,
@@ -743,6 +743,7 @@ fn normalize_quote_pairs(text: &str, seed: Option<u64>) -> PyResult<String> {
     space_drop_rate=None,
     space_insert_rate=None
 ))]
+#[allow(clippy::too_many_arguments)]
 fn ocr_artifacts(
     text: &str,
     rate: f64,
@@ -830,7 +831,7 @@ fn compose_operations(
 
     // Release GIL for the actual computation
     py.allow_threads(move || {
-        pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+        pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
     })
 }
 

@@ -1,5 +1,5 @@
 use aho_corasick::AhoCorasick;
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
 use std::collections::HashMap;
 
 const RAW_APOSTROFAE_PAIRS: &str = include_str!(concat!(env!("OUT_DIR"), "/apostrofae_pairs.json"));
@@ -9,7 +9,7 @@ const RAW_EKKOKIN_HOMOPHONES: &str =
     include_str!(concat!(env!("OUT_DIR"), "/ekkokin_homophones.json"));
 
 /// Replacement pairs used by the Apostrofae glitchling.
-pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = Lazy::new(|| {
+pub static APOSTROFAE_PAIR_TABLE: LazyLock<HashMap<char, Vec<(String, String)>>> = LazyLock::new(|| {
     let raw: HashMap<String, Vec<[String; 2]>> = serde_json::from_str(RAW_APOSTROFAE_PAIRS)
         .expect("apostrofae pair table should be valid JSON");
     let mut table: HashMap<char, Vec<(String, String)>> = HashMap::new();
@@ -17,7 +17,7 @@ pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = L
         if let Some(ch) = key.chars().next() {
             let entries: Vec<(String, String)> = pairs
                 .into_iter()
-                .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+                .map(|pair| (pair[0].clone(), pair[1].clone()))
                 .collect();
             table.insert(ch, entries);
         }
@@ -40,8 +40,8 @@ pub static APOSTROFAE_PAIR_TABLE: Lazy<HashMap<char, Vec<(String, String)>>> = L
 /// The leaked memory is ~10KB and is effectively "compiled in" to the running
 /// process. This is a common pattern for static tables that need to be built
 /// from embedded assets at runtime.
-pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])>> =
-    Lazy::new(|| {
+pub static OCR_CONFUSION_TABLE: LazyLock<Vec<(&'static str, &'static [&'static str])>> =
+    LazyLock::new(|| {
         let mut entries: Vec<(usize, (&'static str, &'static [&'static str]))> = Vec::new();
 
         for (line_number, line) in RAW_OCR_CONFUSIONS.lines().enumerate() {
@@ -76,7 +76,7 @@ pub static OCR_CONFUSION_TABLE: Lazy<Vec<(&'static str, &'static [&'static str])
 
 /// Pre-built Aho-Corasick automaton for OCR pattern matching.
 /// This allows O(n + m) multi-pattern matching instead of O(n × patterns).
-pub static OCR_AUTOMATON: Lazy<AhoCorasick> = Lazy::new(|| {
+pub static OCR_AUTOMATON: LazyLock<AhoCorasick> = LazyLock::new(|| {
     let patterns: Vec<&str> = OCR_CONFUSION_TABLE.iter().map(|(src, _)| *src).collect();
     AhoCorasick::new(&patterns).expect("OCR patterns should build a valid automaton")
 });
@@ -88,7 +88,7 @@ pub fn ocr_automaton() -> &'static AhoCorasick {
 }
 
 /// Parsed homophone sets for the Wherewolf glitchling.
-pub static WHEREWOLF_HOMOPHONE_SETS: Lazy<Vec<Vec<String>>> = Lazy::new(|| {
+pub static WHEREWOLF_HOMOPHONE_SETS: LazyLock<Vec<Vec<String>>> = LazyLock::new(|| {
     serde_json::from_str(RAW_EKKOKIN_HOMOPHONES)
         .expect("Wherewolf homophone table should be valid JSON")
 });
