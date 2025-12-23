@@ -200,8 +200,8 @@ impl JargoyleMode {
     pub fn parse(mode: &str) -> Result<Self, String> {
         let normalized = mode.to_ascii_lowercase();
         match normalized.as_str() {
-            "" | "literal" => Ok(JargoyleMode::Literal),
-            "drift" => Ok(JargoyleMode::Drift),
+            "" | "literal" => Ok(Self::Literal),
+            "drift" => Ok(Self::Drift),
             _ => Err(format!(
                 "Unsupported Jargoyle mode '{mode}'. Expected one of: {VALID_MODE_MESSAGE}"
             )),

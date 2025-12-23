@@ -13,14 +13,14 @@ pub enum HomophoneWeighting {
 impl HomophoneWeighting {
     pub fn try_from_str(value: &str) -> Option<Self> {
         match value {
-            "flat" => Some(HomophoneWeighting::Flat),
+            "flat" => Some(Self::Flat),
             _ => None,
         }
     }
 
     pub const fn as_str(self) -> &'static str {
         match self {
-            HomophoneWeighting::Flat => "flat",
+            Self::Flat => "flat",
         }
     }
 }

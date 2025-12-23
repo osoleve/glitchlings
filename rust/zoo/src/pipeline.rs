@@ -27,8 +27,8 @@ pub enum PipelineError {
 impl PipelineError {
     pub fn into_pyerr(self) -> PyErr {
         match self {
-            PipelineError::OperationFailure { source, .. } => source.into_pyerr(),
-            PipelineError::InvalidPattern { pattern, message } => {
+            Self::OperationFailure { source, .. } => source.into_pyerr(),
+            Self::InvalidPattern { pattern, message } => {
                 PyValueError::new_err(format!("invalid regex '{pattern}': {message}"))
             }
         }

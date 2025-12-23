@@ -41,10 +41,10 @@ impl HomoglyphMode {
     /// Parse a mode string into HomoglyphMode.
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().replace('-', "_").as_str() {
-            "single_script" | "singlescript" | "single" => Some(HomoglyphMode::SingleScript),
-            "mixed_script" | "mixedscript" | "mixed" => Some(HomoglyphMode::MixedScript),
-            "compatibility" | "compat" => Some(HomoglyphMode::Compatibility),
-            "aggressive" | "all" => Some(HomoglyphMode::Aggressive),
+            "single_script" | "singlescript" | "single" => Some(Self::SingleScript),
+            "mixed_script" | "mixedscript" | "mixed" => Some(Self::MixedScript),
+            "compatibility" | "compat" => Some(Self::Compatibility),
+            "aggressive" | "all" => Some(Self::Aggressive),
             _ => None,
         }
     }
@@ -52,16 +52,16 @@ impl HomoglyphMode {
     /// Check if this mode allows a given confusable type.
     fn allows(&self, confusable_type: ConfusableType) -> bool {
         match self {
-            HomoglyphMode::SingleScript => confusable_type == ConfusableType::SingleScript,
-            HomoglyphMode::MixedScript => matches!(
+            Self::SingleScript => confusable_type == ConfusableType::SingleScript,
+            Self::MixedScript => matches!(
                 confusable_type,
                 ConfusableType::SingleScript | ConfusableType::MixedScript
             ),
-            HomoglyphMode::Compatibility => matches!(
+            Self::Compatibility => matches!(
                 confusable_type,
                 ConfusableType::SingleScript | ConfusableType::Compatibility
             ),
-            HomoglyphMode::Aggressive => true,
+            Self::Aggressive => true,
         }
     }
 }
@@ -239,9 +239,9 @@ pub enum ClassSelection {
 impl ClassSelection {
     fn allows(&self, alias: &str) -> bool {
         match self {
-            ClassSelection::All => true,
-            ClassSelection::Default => DEFAULT_CLASSES.iter().any(|value| value == &alias),
-            ClassSelection::Specific(values) => values.iter().any(|value| value == alias),
+            Self::All => true,
+            Self::Default => DEFAULT_CLASSES.iter().any(|value| value == &alias),
+            Self::Specific(values) => values.iter().any(|value| value == alias),
         }
     }
 }

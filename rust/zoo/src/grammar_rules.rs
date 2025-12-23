@@ -23,32 +23,32 @@ enum PedantStone {
 impl PedantStone {
     fn try_from_name(name: &str) -> Option<Self> {
         match name {
-            "Hypercorrectite" => Some(PedantStone::Andi),
-            "Unsplittium" => Some(PedantStone::Infinitoad),
-            "Coeurite" => Some(PedantStone::Aetheria),
-            "Curlite" => Some(PedantStone::Apostrofae),
-            "Oxfordium" => Some(PedantStone::Commama),
+            "Hypercorrectite" => Some(Self::Andi),
+            "Unsplittium" => Some(Self::Infinitoad),
+            "Coeurite" => Some(Self::Aetheria),
+            "Curlite" => Some(Self::Apostrofae),
+            "Oxfordium" => Some(Self::Commama),
             _ => None,
         }
     }
 
     fn stone_name(self) -> &'static str {
         match self {
-            PedantStone::Andi => "Hypercorrectite",
-            PedantStone::Infinitoad => "Unsplittium",
-            PedantStone::Aetheria => "Coeurite",
-            PedantStone::Apostrofae => "Curlite",
-            PedantStone::Commama => "Oxfordium",
+            Self::Andi => "Hypercorrectite",
+            Self::Infinitoad => "Unsplittium",
+            Self::Aetheria => "Coeurite",
+            Self::Apostrofae => "Curlite",
+            Self::Commama => "Oxfordium",
         }
     }
 
     fn form_name(self) -> &'static str {
         match self {
-            PedantStone::Andi => "Andi",
-            PedantStone::Infinitoad => "Infinitoad",
-            PedantStone::Aetheria => "Aetheria",
-            PedantStone::Apostrofae => "Apostrofae",
-            PedantStone::Commama => "Commama",
+            Self::Andi => "Andi",
+            Self::Infinitoad => "Infinitoad",
+            Self::Aetheria => "Aetheria",
+            Self::Apostrofae => "Apostrofae",
+            Self::Commama => "Commama",
         }
     }
 }

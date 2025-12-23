@@ -44,28 +44,28 @@ pub enum OperationError {
 impl OperationError {
     pub fn into_pyerr(self) -> PyErr {
         match self {
-            OperationError::Buffer(err) => PyValueError::new_err(err.to_string()),
-            OperationError::NoRedactableWords => PyValueError::new_err(
+            Self::Buffer(err) => PyValueError::new_err(err.to_string()),
+            Self::NoRedactableWords => PyValueError::new_err(
                 "Cannot redact words because the input text contains no redactable words.",
             ),
-            OperationError::ExcessiveRedaction { .. } => {
+            Self::ExcessiveRedaction { .. } => {
                 PyValueError::new_err("Cannot redact more words than available in text")
             }
-            OperationError::Rng(err) => PyValueError::new_err(err.to_string()),
-            OperationError::Regex(message) => PyRuntimeError::new_err(message),
+            Self::Rng(err) => PyValueError::new_err(err.to_string()),
+            Self::Regex(message) => PyRuntimeError::new_err(message),
         }
     }
 }
 
 impl From<TextBufferError> for OperationError {
     fn from(value: TextBufferError) -> Self {
-        OperationError::Buffer(value)
+        Self::Buffer(value)
     }
 }
 
 impl From<RngError> for OperationError {
     fn from(value: RngError) -> Self {
-        OperationError::Rng(value)
+        Self::Rng(value)
     }
 }
 
@@ -79,16 +79,16 @@ pub trait OperationRng {
 
 impl OperationRng for DeterministicRng {
     fn random(&mut self) -> Result<f64, OperationError> {
-        Ok(DeterministicRng::random(self))
+        Ok(Self::random(self))
     }
 
     fn rand_index(&mut self, upper: usize) -> Result<usize, OperationError> {
-        DeterministicRng::rand_index(self, upper).map_err(OperationError::from)
+        Self::rand_index(self, upper).map_err(OperationError::from)
     }
 
     #[allow(dead_code)]
     fn sample_indices(&mut self, population: usize, k: usize) -> Result<Vec<usize>, OperationError> {
-        DeterministicRng::sample_indices(self, population, k).map_err(OperationError::from)
+        Self::sample_indices(self, population, k).map_err(OperationError::from)
     }
 }
 
@@ -2545,20 +2545,20 @@ pub enum Operation {
 impl TextOperation for Operation {
     fn apply(&self, buffer: &mut TextBuffer, rng: &mut dyn OperationRng) -> Result<(), OperationError> {
         match self {
-            Operation::Reduplicate(op) => op.apply(buffer, rng),
-            Operation::Delete(op) => op.apply(buffer, rng),
-            Operation::SwapAdjacent(op) => op.apply(buffer, rng),
-            Operation::RushmoreCombo(op) => op.apply(buffer, rng),
-            Operation::Redact(op) => op.apply(buffer, rng),
-            Operation::Ocr(op) => op.apply(buffer, rng),
-            Operation::Typo(op) => op.apply(buffer, rng),
-            Operation::Mimic(op) => op.apply(buffer, rng),
-            Operation::ZeroWidth(op) => op.apply(buffer, rng),
-            Operation::Jargoyle(op) => op.apply(buffer, rng),
-            Operation::QuotePairs(op) => op.apply(buffer, rng),
-            Operation::Hokey(op) => op.apply(buffer, rng),
-            Operation::Wherewolf(op) => op.apply(buffer, rng),
-            Operation::Pedant(op) => op.apply(buffer, rng),
+            Self::Reduplicate(op) => op.apply(buffer, rng),
+            Self::Delete(op) => op.apply(buffer, rng),
+            Self::SwapAdjacent(op) => op.apply(buffer, rng),
+            Self::RushmoreCombo(op) => op.apply(buffer, rng),
+            Self::Redact(op) => op.apply(buffer, rng),
+            Self::Ocr(op) => op.apply(buffer, rng),
+            Self::Typo(op) => op.apply(buffer, rng),
+            Self::Mimic(op) => op.apply(buffer, rng),
+            Self::ZeroWidth(op) => op.apply(buffer, rng),
+            Self::Jargoyle(op) => op.apply(buffer, rng),
+            Self::QuotePairs(op) => op.apply(buffer, rng),
+            Self::Hokey(op) => op.apply(buffer, rng),
+            Self::Wherewolf(op) => op.apply(buffer, rng),
+            Self::Pedant(op) => op.apply(buffer, rng),
         }
     }
 }

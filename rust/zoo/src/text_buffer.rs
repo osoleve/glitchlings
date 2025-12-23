@@ -179,10 +179,10 @@ pub enum TextBufferError {
 impl std::fmt::Display for TextBufferError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            TextBufferError::InvalidWordIndex { index } => {
+            Self::InvalidWordIndex { index } => {
                 write!(f, "invalid word index {index}")
             }
-            TextBufferError::InvalidCharRange { start, end, max } => {
+            Self::InvalidCharRange { start, end, max } => {
                 write!(
                     f,
                     "invalid character range {start}..{end}; buffer length is {max} characters",
@@ -263,7 +263,7 @@ impl TextBuffer {
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
-        TextBuffer::from_owned_with_rules(text, self.masking.clone())
+        Self::from_owned_with_rules(text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
