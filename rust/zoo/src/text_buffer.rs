@@ -236,18 +236,18 @@ impl std::str::FromStr for TextBuffer {
 
 impl TextBuffer {
     /// Constructs a buffer from an owned `String`.
-    #[must_use] 
+    #[must_use]
     pub fn from_owned(
         text: String,
         include_only_patterns: &[Regex],
         exclude_patterns: &[Regex],
     ) -> Self {
         let masking = MaskingRules::new(include_only_patterns, exclude_patterns);
-        Self::from_owned_with_rules(&text, masking)
+        Self::from_owned_with_rules(text, masking)
     }
 
-    fn from_owned_with_rules(text: &str, masking: MaskingRules) -> Self {
-        let segments = tokenise(text, &masking);
+    fn from_owned_with_rules(text: String, masking: MaskingRules) -> Self {
+        let segments = tokenise(&text, &masking);
         let segment_count = segments.len();
 
         // Pre-allocate vectors to avoid reallocations during reindex
@@ -266,9 +266,9 @@ impl TextBuffer {
     }
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
-    #[must_use] 
+    #[must_use]
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
-        Self::from_owned_with_rules(&text, self.masking.clone())
+        Self::from_owned_with_rules(text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
