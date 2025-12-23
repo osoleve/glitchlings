@@ -17,7 +17,7 @@ pub static APOSTROFAE_PAIR_TABLE: LazyLock<HashMap<char, Vec<(String, String)>>>
         if let Some(ch) = key.chars().next() {
             let entries: Vec<(String, String)> = pairs
                 .into_iter()
-                .map(|pair| (pair[0].to_string(), pair[1].to_string()))
+                .map(|pair| (pair[0].clone(), pair[1].clone()))
                 .collect();
             table.insert(ch, entries);
         }
