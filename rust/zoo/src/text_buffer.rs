@@ -515,7 +515,7 @@ impl TextBuffer {
                 .copied()
                 .ok_or(TextBufferError::InvalidWordIndex { index: word_index })?;
 
-            let should_remove = replacement.as_ref().is_none_or(|s| s.is_empty());
+            let should_remove = replacement.as_ref().is_none_or(String::is_empty);
 
             if should_remove {
                 // Mark segment for removal (processed in single pass below)

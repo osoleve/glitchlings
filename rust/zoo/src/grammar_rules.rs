@@ -310,11 +310,11 @@ fn apply_ligatures(text: &str, root_seed: i128, lineage: &[&str]) -> Result<Stri
     while i < text.len() {
         if chosen.contains(&i) {
             let digraph = &text[i..i + 2];
-            let replacement = if digraph.chars().all(|c| c.is_uppercase())
+            let replacement = if digraph.chars().all(char::is_uppercase)
                 || digraph
                     .chars()
                     .next()
-                    .map(|c| c.is_uppercase())
+                    .map(char::is_uppercase)
                     .unwrap_or(false)
             {
                 "Æ"

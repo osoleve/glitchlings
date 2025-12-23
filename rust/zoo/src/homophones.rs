@@ -91,7 +91,7 @@ fn apply_casing(template: &str, candidate: &str) -> String {
 
         let mut chars = value.chars();
         if let Some(first) = chars.next() {
-            if first.is_uppercase() && chars.all(|ch| ch.is_lowercase()) {
+            if first.is_uppercase() && chars.all(char::is_lowercase) {
                 return CasingPattern::Capitalised;
             }
         }

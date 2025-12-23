@@ -326,7 +326,7 @@ fn build_lexeme_bundle(manifest_dir: &Path, out_dir: &Path) -> io::Result<()> {
         let file_stem = path
             .file_stem()
             .and_then(|stem| stem.to_str())
-            .map(|stem| stem.to_ascii_lowercase())
+            .map(str::to_ascii_lowercase)
             .ok_or_else(|| {
                 io::Error::new(
                     ErrorKind::InvalidData,

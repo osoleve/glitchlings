@@ -10,7 +10,7 @@ use rayon::prelude::*;
 /// Extract strings from Python string objects without deep copying.
 /// Returns Cow<str> which borrows when possible and owns when necessary.
 fn extract_str_refs<'py>(tokens: &'py [Bound<'py, PyString>]) -> PyResult<Vec<Cow<'py, str>>> {
-    tokens.iter().map(|s| s.to_cow()).collect()
+    tokens.iter().map(Bound::to_cow).collect()
 }
 
 /// Extract batch of string references from Python.
@@ -616,7 +616,7 @@ pub fn vocabulary_utilization(
 
     // Count unique tokens
     let token_refs = extract_str_refs(&tokens)?;
-    let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+    let unique_set: HashSet<&str> = token_refs.iter().map(Cow::as_ref).collect();
     let unique_count = unique_set.len();
     let unique_ratio = unique_count as f64 / tokens.len() as f64;
 
@@ -665,7 +665,7 @@ pub fn batch_vocabulary_utilization(
 
         // Count unique tokens
         let token_refs = extract_str_refs(tokens)?;
-        let unique_set: HashSet<&str> = token_refs.iter().map(|s| s.as_ref()).collect();
+        let unique_set: HashSet<&str> = token_refs.iter().map(Cow::as_ref).collect();
         let unique_count = unique_set.len();
         let unique_ratio = unique_count as f64 / tokens.len() as f64;
 
@@ -714,7 +714,7 @@ pub fn unknown_token_rate(
 
     // Build marker set from provided markers or defaults
     let marker_set: HashSet<&str> = match &unknown_markers {
-        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        Some(markers) => markers.iter().map(String::as_str).collect(),
         None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
     };
 
@@ -739,7 +739,7 @@ pub fn batch_unknown_token_rate(
 ) -> PyResult<Vec<f64>> {
     // Build marker set from provided markers or defaults
     let marker_set: HashSet<&str> = match &unknown_markers {
-        Some(markers) => markers.iter().map(|s| s.as_str()).collect(),
+        Some(markers) => markers.iter().map(String::as_str).collect(),
         None => DEFAULT_UNKNOWN_MARKERS.iter().copied().collect(),
     };
 

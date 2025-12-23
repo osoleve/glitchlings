@@ -98,7 +98,7 @@ fn load_lexemes_from_directory(dir: &Path) -> Result<HashMap<String, LexemeDict>
         let name = path
             .file_stem()
             .and_then(|stem| stem.to_str())
-            .map(|stem| stem.to_ascii_lowercase())
+            .map(str::to_ascii_lowercase)
             .ok_or_else(|| format!("invalid lexeme file name {}", path.display()))?;
 
         let contents = fs::read_to_string(&path)
@@ -163,7 +163,7 @@ static LEXEME_MATCHERS: LazyLock<HashMap<String, LexemeMatcher>> = LazyLock::new
     let mut matchers: HashMap<String, LexemeMatcher> = HashMap::new();
 
     for (dict_name, dict) in LEXEME_DICTIONARIES.iter() {
-        let mut words: Vec<&str> = dict.keys().map(|s| s.as_str()).collect();
+        let mut words: Vec<&str> = dict.keys().map(String::as_str).collect();
         // Sort by length descending so longer matches are preferred
         words.sort_by_key(|w| std::cmp::Reverse(w.len()));
 
@@ -178,7 +178,7 @@ static LEXEME_MATCHERS: LazyLock<HashMap<String, LexemeMatcher>> = LazyLock::new
             .build(&words)
             .expect("valid patterns for Aho-Corasick");
 
-        let pattern_keys: Vec<String> = words.iter().map(|s| s.to_string()).collect();
+        let pattern_keys: Vec<String> = words.iter().copied().map(String::from).collect();
 
         matchers.insert(dict_name.clone(), LexemeMatcher { automaton, pattern_keys });
     }
@@ -335,12 +335,12 @@ fn harmonize_suffix(original: &str, replacement: &str, suffix: &str) -> String {
         return String::new();
     }
 
-    let original_last = original.chars().rev().find(|ch| ch.is_ascii_alphabetic());
+    let original_last = original.chars().rev().find(char::is_ascii_alphabetic);
     let suffix_first = suffix.chars().next();
     let replacement_last = replacement
         .chars()
         .rev()
-        .find(|ch| ch.is_ascii_alphabetic());
+        .find(char::is_ascii_alphabetic);
 
     if let (Some(orig), Some(suff), Some(repl)) = (original_last, suffix_first, replacement_last) {
         if orig.eq_ignore_ascii_case(&suff) && !repl.eq_ignore_ascii_case(&suff) {
@@ -525,7 +525,7 @@ fn transform_text(
                 JargoyleMode::Literal => {
                     dict.get(&validated.dict_key)
                         .and_then(|alts| alts.first())
-                        .map(|s| s.as_str())
+                        .map(String::as_str)
                 }
                 JargoyleMode::Drift => {
                     if let Some(ref mut r) = rng {
@@ -542,7 +542,7 @@ fn transform_text(
                     } else {
                         dict.get(&validated.dict_key)
                             .and_then(|alts| alts.first())
-                            .map(|s| s.as_str())
+                            .map(String::as_str)
                     }
                 }
             };
@@ -621,12 +621,12 @@ pub(crate) fn substitute_lexeme(
 
     match parsed_mode {
         JargoyleMode::Literal => transform_text(text, &normalized_lexemes, parsed_mode, rate, None)
-            .map_err(|e| e.into_pyerr()),
+            .map_err(OperationError::into_pyerr),
         JargoyleMode::Drift => {
             let seed_value = seed.unwrap_or(0);
             let mut rng = DeterministicRng::new(seed_value);
             transform_text(text, &normalized_lexemes, parsed_mode, rate, Some(&mut rng))
-                .map_err(|e| e.into_pyerr())
+                .map_err(OperationError::into_pyerr)
         }
     }
 }

@@ -1416,8 +1416,8 @@ impl ZeroWidthOp {
                         if g_idx > 0 && g_idx < graphemes.len() {
                             // Check both adjacent graphemes for whitespace
                             let prev_grapheme = graphemes[g_idx - 1];
-                            let is_prev_ws = prev_grapheme.chars().all(|c| c.is_whitespace());
-                            let is_curr_ws = grapheme.chars().all(|c| c.is_whitespace());
+                            let is_prev_ws = prev_grapheme.chars().all(char::is_whitespace);
+                            let is_curr_ws = grapheme.chars().all(char::is_whitespace);
 
                             if !is_prev_ws && !is_curr_ws {
                                 let prev_char = prev_grapheme.chars().last().unwrap_or(' ');
@@ -1927,7 +1927,7 @@ impl TypoOp {
         // Try single-char key first (common case for ASCII)
         let mut buf = [0u8; 4];
         let key = lower.encode_utf8(&mut buf);
-        self.layout.get(key).map(|values| values.as_slice())
+        self.layout.get(key).map(Vec::as_slice)
     }
 
     /// Select a neighbor using motor coordination weights.

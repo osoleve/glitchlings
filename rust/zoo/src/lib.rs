@@ -153,7 +153,7 @@ fn build_pipeline_from_py(
     let include_patterns = include_only_patterns.unwrap_or_default();
     let exclude_patterns = exclude_patterns.unwrap_or_default();
     Pipeline::compile(master_seed, operations, include_patterns, exclude_patterns)
-        .map_err(|err| err.into_pyerr())
+        .map_err(PipelineError::into_pyerr)
 }
 
 /// Threshold below which we don't release the GIL (overhead not worth it).
@@ -182,13 +182,13 @@ impl Pipeline {
     fn run_py(&self, py: Python<'_>, text: &str) -> PyResult<String> {
         // For small texts, don't bother releasing GIL - overhead exceeds benefit
         if text.len() < GIL_RELEASE_THRESHOLD {
-            return self.run(text).map_err(|error| error.into_pyerr());
+            return self.run(text).map_err(PipelineError::into_pyerr);
         }
 
         let pipeline = self.clone();
         let text_owned = text.to_string();
         py.allow_threads(move || {
-            pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+            pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
         })
     }
 
@@ -205,7 +205,7 @@ impl Pipeline {
                 .par_iter()
                 .map(|text| pipeline.run(text))
                 .collect::<Result<Vec<_>, _>>()
-                .map_err(|error| error.into_pyerr())
+                .map_err(PipelineError::into_pyerr)
         })
     }
 }
@@ -830,7 +830,7 @@ fn compose_operations(
 
     // Release GIL for the actual computation
     py.allow_threads(move || {
-        pipeline.run(&text_owned).map_err(|error| error.into_pyerr())
+        pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
     })
 }
 
