@@ -239,11 +239,11 @@ impl TextBuffer {
         exclude_patterns: &[Regex],
     ) -> Self {
         let masking = MaskingRules::new(include_only_patterns, exclude_patterns);
-        Self::from_owned_with_rules(text, masking)
+        Self::from_owned_with_rules(&text, masking)
     }
 
-    fn from_owned_with_rules(text: String, masking: MaskingRules) -> Self {
-        let segments = tokenise(&text, &masking);
+    fn from_owned_with_rules(text: &str, masking: MaskingRules) -> Self {
+        let segments = tokenise(text, &masking);
         let segment_count = segments.len();
 
         // Pre-allocate vectors to avoid reallocations during reindex
@@ -263,7 +263,7 @@ impl TextBuffer {
 
     /// Rebuilds a buffer with the existing masking patterns preserved.
     pub fn rebuild_with_patterns(&self, text: String) -> Self {
-        Self::from_owned_with_rules(text, self.masking.clone())
+        Self::from_owned_with_rules(&text, self.masking.clone())
     }
 
     /// Returns all tracked segments.
@@ -666,13 +666,13 @@ impl TextBuffer {
     ///
     /// This is useful for char-level operations that modify segment content
     /// without changing whether it's a word or separator.
-    pub fn replace_segment(&mut self, segment_index: usize, new_text: String) {
+    pub fn replace_segment(&mut self, segment_index: usize, new_text: &str) {
         if segment_index >= self.segments.len() {
             return;
         }
 
         let kind = self.segments[segment_index].kind();
-        self.segments[segment_index] = TextSegment::from_str(&new_text, kind);
+        self.segments[segment_index] = TextSegment::from_str(new_text, kind);
         self.mark_dirty();
     }
 
