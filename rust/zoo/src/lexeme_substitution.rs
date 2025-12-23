@@ -227,7 +227,6 @@ fn detect_case_pattern(s: &str) -> CasePattern {
     let mut chars = s.chars();
     let first = chars.next().unwrap();
     let first_upper = first.is_ascii_uppercase();
-    let first_lower = first.is_ascii_lowercase();
     let first_alpha = first.is_ascii_alphabetic();
 
     // Track what we've seen after the first character
@@ -372,7 +371,6 @@ fn is_word_boundary_char(c: char) -> bool {
 
 /// Find valid matches with word boundary checks and suffix detection.
 fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch> {
-    let text_bytes = text.as_bytes();
     let text_len = text.len();
     let mut matches = Vec::new();
     let mut last_end = 0usize;
@@ -401,7 +399,6 @@ fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch
         // Check for word boundary or suffix after match
         // We need to find where the word actually ends (including any suffix)
         let mut full_end = end;
-        let mut has_suffix = false;
 
         if end < text_len {
             // Check if there are more alphabetic characters (suffix)
@@ -409,7 +406,6 @@ fn find_valid_matches(text: &str, matcher: &LexemeMatcher) -> Vec<ValidatedMatch
             for c in rest.chars() {
                 if c.is_ascii_alphabetic() {
                     full_end += c.len_utf8();
-                    has_suffix = true;
                 } else {
                     break;
                 }

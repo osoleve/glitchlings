@@ -1147,33 +1147,6 @@ impl TextOperation for OcrArtifactsOp {
 // Operations for inserting invisible zero-width Unicode characters that can
 // disrupt tokenization and string matching while remaining visually invisible.
 
-/// Classification of zero-width Unicode characters by their rendering behavior.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ZeroWidthClass {
-    /// True invisible, no glyph, no width (ZWSP, BOM)
-    Glyphless,
-    /// Affects shaping/joining but invisible (ZWNJ, ZWJ)
-    JoinControl,
-    /// Affects line breaking but invisible (WJ, CGJ)
-    BreakControl,
-    /// Changes presentation (emoji vs text) (VS1-VS16)
-    VariationSelector,
-    /// Tiny but technically visible width (hair space, thin space, narrow NBSP)
-    SemiVisible,
-}
-
-/// Classify a character into its zero-width class, if applicable.
-pub fn classify_zero_width(c: char) -> Option<ZeroWidthClass> {
-    match c {
-        '\u{200B}' | '\u{FEFF}' => Some(ZeroWidthClass::Glyphless),
-        '\u{200C}' | '\u{200D}' => Some(ZeroWidthClass::JoinControl),
-        '\u{2060}' | '\u{034F}' => Some(ZeroWidthClass::BreakControl),
-        '\u{FE00}'..='\u{FE0F}' => Some(ZeroWidthClass::VariationSelector),
-        '\u{200A}' | '\u{2009}' | '\u{202F}' => Some(ZeroWidthClass::SemiVisible),
-        _ => None,
-    }
-}
-
 /// Visibility mode controlling which zero-width characters are included in the palette.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum VisibilityMode {
@@ -1434,7 +1407,6 @@ impl ZeroWidthOp {
                         continue;
                     }
 
-                    let mut byte_offset = 0;
                     let mut char_offset = 0;
 
                     for (g_idx, grapheme) in graphemes.iter().enumerate() {
@@ -1463,7 +1435,6 @@ impl ZeroWidthOp {
                             }
                         }
 
-                        byte_offset += grapheme.len();
                         char_offset += grapheme_char_len;
                     }
                 }

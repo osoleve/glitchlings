@@ -613,15 +613,6 @@ mod tests {
                 random_position: 0,
             }
         }
-
-        fn with_randoms(picks: Vec<usize>, randoms: Vec<f64>) -> Self {
-            Self {
-                picks,
-                randoms,
-                pick_position: 0,
-                random_position: 0,
-            }
-        }
     }
 
     impl OperationRng for ScriptedRng {
