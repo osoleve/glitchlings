@@ -290,7 +290,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Update reference after deferred reindexing optimization
+    #[ignore = "TODO: Update reference after deferred reindexing optimization"]
     fn pipeline_matches_python_reference_sequence() {
         let master_seed = 404i128;
         let descriptors = vec![

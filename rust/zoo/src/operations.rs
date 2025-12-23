@@ -2657,7 +2657,7 @@ mod tests {
     }
 
     #[test]
-    #[ignore] // TODO: Update seed/expectations after deferred reindexing optimization
+    #[ignore = "TODO: Update seed/expectations after deferred reindexing optimization"]
     fn ocr_artifacts_replaces_expected_regions() {
         let mut buffer = TextBuffer::from_owned("Hello rn world".to_string(), &[], &[]);
         let mut rng = DeterministicRng::new(151);
