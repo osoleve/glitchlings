@@ -436,11 +436,7 @@ fn compute_merge_split_index<S: AsRef<str>>(tokens1: &[S], tokens2: &[S]) -> f64
     // - If orig_changed > corr_changed: merges occurred (k→1)
     // - If corr_changed > orig_changed: splits occurred (1→k)
     // - If orig_changed == corr_changed: substitutions only (no restructuring)
-    let merge_split_events = if orig_changed > corr_changed {
-        orig_changed - corr_changed
-    } else {
-        corr_changed - orig_changed
-    };
+    let merge_split_events = orig_changed.abs_diff(corr_changed);
 
     let max_len = max(m, n);
     merge_split_events as f64 / max_len as f64

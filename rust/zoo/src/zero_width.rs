@@ -28,8 +28,7 @@ pub(crate) fn inject_zero_widths(
         .map(|s| {
             VisibilityMode::from_str(s).ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid visibility mode: '{}'. Expected 'glyphless', 'with_joiners', or 'semi_visible'",
-                    s
+                    "Invalid visibility mode: '{s}'. Expected 'glyphless', 'with_joiners', or 'semi_visible'"
                 ))
             })
         })
@@ -40,8 +39,7 @@ pub(crate) fn inject_zero_widths(
         .map(|s| {
             PlacementMode::from_str(s).ok_or_else(|| {
                 pyo3::exceptions::PyValueError::new_err(format!(
-                    "Invalid placement mode: '{}'. Expected 'random', 'grapheme_boundary', or 'script_aware'",
-                    s
+                    "Invalid placement mode: '{s}'. Expected 'random', 'grapheme_boundary', or 'script_aware'"
                 ))
             })
         })

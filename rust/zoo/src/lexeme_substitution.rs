@@ -88,7 +88,7 @@ fn load_lexemes_from_directory(dir: &Path) -> Result<HashMap<String, LexemeDict>
     let mut files: Vec<PathBuf> = fs::read_dir(dir)
         .map_err(|err| format!("failed to read lexeme directory: {err}"))?
         .filter_map(|entry| entry.ok().map(|e| e.path()))
-        .filter(|path| path.extension().map_or(false, |ext| ext == "json"))
+        .filter(|path| path.extension().is_some_and(|ext| ext == "json"))
         .collect();
 
     files.sort();
@@ -614,8 +614,7 @@ pub(crate) fn substitute_lexeme(
     if !LEXEME_DICTIONARIES.contains_key(&normalized_lexemes) {
         let available = VALID_LEXEMES.join(", ");
         return Err(PyValueError::new_err(format!(
-            "Unknown lexemes dictionary '{}'. Available: {available}",
-            lexemes
+            "Unknown lexemes dictionary '{lexemes}'. Available: {available}"
         )));
     }
 

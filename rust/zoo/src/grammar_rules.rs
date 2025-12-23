@@ -122,14 +122,14 @@ fn apply_andi(text: &str) -> String {
     let result = COORD_AND_ME.replace_all(text, |caps: &Captures<'_>| {
         let prep = caps.get(1).unwrap().as_str();
         let other = caps.get(2).unwrap().as_str();
-        format!("{} {} and I", prep, other)
+        format!("{prep} {other} and I")
     });
 
     ME_AND_COORD
         .replace_all(&result, |caps: &Captures<'_>| {
             let prep = caps.get(1).unwrap().as_str();
             let other = caps.get(3).unwrap().as_str();
-            format!("{} I and {}", prep, other)
+            format!("{prep} I and {other}")
         })
         .into_owned()
 }
@@ -167,9 +167,9 @@ fn apply_infinitoad(
 
             // Randomly choose placement: before "to" or after verb
             if rng.random() < 0.5 {
-                format!("{} to {}", adverb, verb)
+                format!("{adverb} to {verb}")
             } else {
-                format!("to {} {}", verb, adverb)
+                format!("to {verb} {adverb}")
             }
         })
         .into_owned();

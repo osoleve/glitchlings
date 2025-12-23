@@ -913,12 +913,10 @@ impl OcrArtifactsOp {
                     && char_idx + 1 < chars.len()
                     && !ch.is_whitespace()
                     && !chars[char_idx + 1].is_whitespace()
-                {
-                    if rng.random()? < self.space_insert_rate {
+                    && rng.random()? < self.space_insert_rate {
                         modified.push(' ');
                         changed = true;
                     }
-                }
             }
 
             if changed {
@@ -1348,7 +1346,7 @@ impl ZeroWidthOp {
         let vs_indices: Vec<usize> = palette
             .iter()
             .enumerate()
-            .filter(|(_, s)| s.chars().next().map_or(false, is_variation_selector))
+            .filter(|(_, s)| s.chars().next().is_some_and(is_variation_selector))
             .map(|(i, _)| i)
             .collect();
 
@@ -1363,7 +1361,7 @@ impl ZeroWidthOp {
             .iter()
             .enumerate()
             .filter(|(_, s)| {
-                !s.chars().next().map_or(false, is_variation_selector)
+                !s.chars().next().is_some_and(is_variation_selector)
                     && !Self::is_joiner_char(s)
             })
             .map(|(i, _)| i)
@@ -1526,7 +1524,7 @@ impl TextOperation for ZeroWidthOp {
         }
 
         // Collect insertion positions based on placement mode
-        let positions = self.collect_positions(&segments, &palette);
+        let positions = self.collect_positions(segments, &palette);
 
         if positions.is_empty() {
             return Ok(());
