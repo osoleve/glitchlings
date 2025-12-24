@@ -64,16 +64,24 @@ src/glitchlings/
 │   └── pedant/          # Grammar pedantry
 ├── attack/              # Tokenization & metrics
 │   ├── core.py          # Attack orchestrator (impure)
+│   ├── core_planning.py # Pure planning functions
+│   ├── core_execution.py# Impure execution dispatch
+│   ├── analysis.py      # SeedSweep, GridSearch, TokenizerComparison
 │   ├── compose.py       # Result assembly (pure)
 │   ├── encode.py        # Encoding utilities (pure)
-│   └── metrics_dispatch.py # Metric dispatch (pure)
+│   ├── metrics.py       # Corruption metrics (impure)
+│   ├── metrics_dispatch.py # Metric dispatch (pure)
+│   ├── tokenization.py  # Tokenizer resolution (impure)
+│   └── tokenizer_metrics.py # Tokenizer analysis metrics
 ├── conf/                # Configuration system
 │   ├── types.py         # Dataclasses (pure)
 │   ├── loaders.py       # YAML loading (impure)
 │   └── schema.py        # Schema definitions
 ├── util/                # Shared utilities
 │   ├── keyboards.py     # Keyboard layouts
-│   └── transcripts.py   # Transcript handling
+│   ├── transcripts.py   # Transcript handling
+│   └── adapters.py      # Gaggle coercion helpers
+├── protocols.py         # Protocol definitions for DIP
 ├── compat/              # Optional dependency loading
 │   ├── types.py         # Type definitions (pure)
 │   └── loaders.py       # Lazy imports (impure)
@@ -81,10 +89,14 @@ src/glitchlings/
 │   ├── rust.py          # FFI loader (impure)
 │   └── rust_ffi.py      # Rust wrappers (impure)
 ├── dlc/                 # Optional integrations
+│   ├── _shared.py       # Shared DLC utilities
 │   ├── prime.py         # Prime Intellect/verifiers
 │   ├── pytorch.py       # PyTorch datasets
+│   ├── pytorch_lightning.py # Lightning DataModules
 │   ├── huggingface.py   # HF datasets
-│   └── gutenberg.py     # Gutenberg corpus
+│   ├── gutenberg.py     # Gutenberg corpus
+│   ├── langchain.py     # LangChain integration
+│   └── nemo.py          # NVIDIA NeMo DataDesigner
 ├── dev/                 # Development tools
 │   └── docs.py          # Doc generation
 └── assets/              # Bundled data files
@@ -142,9 +154,11 @@ from glitchlings import SAMPLE_TEXT, TranscriptTarget, summon
 | `compat/types.py` | Type definitions |
 | `conf/types.py` | Configuration dataclasses |
 | `constants.py` | Default values |
+| `protocols.py` | Protocol definitions for dependency inversion |
 | `attack/compose.py` | Result assembly |
 | `attack/encode.py` | Encoding utilities |
 | `attack/metrics_dispatch.py` | Metric dispatch |
+| `attack/core_planning.py` | Attack plan construction |
 
 ### Impure Modules (side effects allowed)
 
@@ -152,7 +166,11 @@ from glitchlings import SAMPLE_TEXT, TranscriptTarget, summon
 - `compat/loaders.py` - Optional dependency loading
 - `conf/loaders.py` - File I/O, caching
 - `zoo/core.py`, `zoo/core_execution.py` - Orchestration
-- `attack/core.py`, `attack/tokenization.py`, `attack/metrics.py`
+- `attack/core.py`, `attack/core_execution.py` - Attack orchestration and execution
+- `attack/tokenization.py`, `attack/metrics.py` - Tokenizer/metric loading
+- `attack/analysis.py` - Analysis tools (SeedSweep, GridSearch)
+- `util/adapters.py` - Gaggle coercion helpers
+- `dlc/*` - All DLC integrations
 
 ### Key Rules
 
@@ -269,18 +287,96 @@ pytest -k "test_typogre"                          # Pattern matching
 
 ## Rust Extension
 
-The Rust extension (`rust/zoo/`) accelerates core operations:
+The Rust extension (`rust/zoo/`) accelerates core operations via PyO3.
 
-- Rebuild after changes: `uv build -Uq`
-- The Rust backend must import cleanly - no Python-only fallback mode
-- Keep signatures synchronized with Python shims
-- Test parity via `tests/core/test_hybrid_pipeline.py`
+### Structure
+
+```
+rust/zoo/
+├── Cargo.toml           # Package: corruption_engine
+├── build.rs             # Asset embedding at compile time
+├── src/
+│   ├── lib.rs           # PyO3 module exports, FFI boundary
+│   ├── pipeline.rs      # Operation pipeline orchestration
+│   ├── operations.rs    # TextOperation trait, common ops
+│   ├── text_buffer.rs   # Segment-aware text representation
+│   ├── rng.rs           # Deterministic RNG wrappers
+│   ├── cache.rs         # Content-addressed caching
+│   ├── resources.rs     # Embedded asset loading
+│   ├── keyboard_typos.rs# Typogre acceleration
+│   ├── homoglyphs.rs    # Mim1c acceleration
+│   ├── homophones.rs    # Wherewolf acceleration
+│   ├── word_stretching.rs # Hokey acceleration
+│   ├── lexeme_substitution.rs # Jargoyle acceleration
+│   ├── grammar_rules.rs # Pedant acceleration
+│   ├── zero_width.rs    # Zeedub acceleration
+│   └── metrics.rs       # Token delta, edit distance
+├── benches/
+│   └── baseline_performance.rs
+└── tests/
+    └── buffer_roundtrip.rs
+```
+
+### Key Principles
+
+1. **Rebuild after changes**: `uv build -Uq`
+2. **No Python fallback**: The Rust backend must import cleanly
+3. **Signature parity**: Keep Rust exports synchronized with Python shims in `internal/rust_ffi.py`
+4. **Determinism**: Use `DeterministicRng` - never `thread_rng()` in operation logic
+5. **Test parity**: `tests/core/test_hybrid_pipeline.py` verifies Rust/Python produce identical results
+
+### Adding a New Rust Operation
+
+1. Create `src/my_operation.rs` implementing `TextOperation` trait
+2. Add `mod my_operation;` to `lib.rs`
+3. Create `PyOperationConfig` variant and `build_operation` match arm
+4. Export via `#[pyfunction]` if direct access needed
+5. Add Python shim in `internal/rust_ffi.py`
+6. Add parity tests in `tests/core/test_hybrid_pipeline.py`
+
+### Benchmarking
+
+```bash
+cd rust/zoo
+cargo bench --bench baseline_performance
+```
 
 ## Documentation
 
 - Update `README.md`, `docs/index.md`, per-glitchling pages when behaviors change
 - Regenerate generated docs: `python -m glitchlings.dev.docs`
 - Generated files: `docs/cli.md`, `docs/monster-manual.md`, `docs/glitchling-gallery.md`
+
+## Analysis Tools
+
+The `attack/analysis.py` module provides tools for exploring parameter spaces and comparing tokenizers:
+
+```python
+from glitchlings import Attack, Gaggle, Typogre
+from glitchlings.attack.analysis import SeedSweep, GridSearch, TokenizerComparison
+
+# Aggregate metrics across many seeds
+sweep = SeedSweep(attack, seed_count=100)
+result = sweep.run()
+print(result.summary())
+
+# Search parameter combinations
+grid = GridSearch(
+    attack,
+    param_grid={"Typogre.rate": [0.01, 0.02, 0.05]},
+    metric="token_delta",
+    seeds_per_point=10,
+)
+result = grid.run()
+print(result.best_point)
+
+# Compare tokenizers
+comparison = TokenizerComparison(
+    attack,
+    tokenizers=["o200k_base", "cl100k_base"],
+)
+result = comparison.run()
+```
 
 ## Common Patterns
 
