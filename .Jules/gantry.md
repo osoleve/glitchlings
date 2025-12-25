@@ -1,0 +1,1 @@
+## 2025-12-25 - [Removed Redundant Isort Tooling] **Bottleneck:** Duplicate configuration and dependencies for `isort` and `ruff` (which handles sorting) caused confusion and potential conflicts. **Optimization:** Removed `isort` from dependencies and `pyproject.toml`; consolidated all linting and formatting into `ruff` with explicit `select = ["I"]`.
