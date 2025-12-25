@@ -8,6 +8,7 @@ import json
 import os
 import re
 import sys
+import time
 from collections.abc import Sequence
 from importlib.metadata import version as get_version
 from pathlib import Path
@@ -109,7 +110,9 @@ Examples:
   glitchlings -i input.txt -o output.txt         File I/O
   echo "text" | glitchlings                      Pipe input
   glitchlings -l                                 List available glitchlings
-  glitchlings -arS                               Attack report on sample
+  glitchlings --trace -S                         Step-through debug mode
+  glitchlings --stats "text"                     Show change statistics
+  glitchlings -i *.txt --suffix .corrupted       Batch process files
 """
 
 
@@ -140,8 +143,8 @@ def build_parser(
         exit_on_error=exit_on_error,
     )
 
+    # --version without short flag (freeing -v for verbose)
     parser.add_argument(
-        "-v",
         "--version",
         action="version",
         version=f"glitchlings {pkg_version}",
@@ -165,7 +168,7 @@ def build_parser(
         dest="input_file",
         type=Path,
         metavar="FILE",
-        help="Read input text from FILE.",
+        help="Read input text from FILE (supports globs in batch mode).",
     )
     io_group.add_argument(
         "-o",
@@ -180,6 +183,12 @@ def build_parser(
         "--sample",
         action="store_true",
         help="Use built-in sample text (Kafka's Metamorphosis excerpt).",
+    )
+    io_group.add_argument(
+        "--suffix",
+        dest="batch_suffix",
+        metavar="EXT",
+        help="Batch mode: process multiple files, output with suffix (e.g. .corrupted).",
     )
 
     # -------------------------------------------------------------------------
@@ -232,6 +241,22 @@ def build_parser(
         help="Show unified diff between original and corrupted text.",
     )
     out_group.add_argument(
+        "--stats",
+        action="store_true",
+        help="Show inline statistics about changes made.",
+    )
+    out_group.add_argument(
+        "--trace",
+        action="store_true",
+        help="Step-through mode: show each glitchling's effect.",
+    )
+    out_group.add_argument(
+        "--time",
+        dest="show_time",
+        action="store_true",
+        help="Show timing information.",
+    )
+    out_group.add_argument(
         "--no-color",
         dest="no_color",
         action="store_true",
@@ -278,7 +303,7 @@ def build_parser(
     verb_group = parser.add_argument_group("Verbosity")
 
     verb_group.add_argument(
-        "-V",
+        "-v",
         "--verbose",
         action="store_true",
         help="Show detailed processing information.",
@@ -462,6 +487,50 @@ def summon_glitchlings(
         raise AssertionError("parser.error should exit")
 
 
+def _get_glitchling_list(
+    names: list[str] | None,
+    parser: argparse.ArgumentParser,
+    *,
+    config_path: Path | None = None,
+) -> list[Glitchling]:
+    """Get a list of individual glitchling instances (for trace mode)."""
+    if config_path is not None:
+        if names:
+            parser.error("Cannot combine --config with --glitchling.")
+            raise AssertionError("parser.error should exit")
+
+        try:
+            config = load_attack_config(config_path)
+        except (TypeError, ValueError) as exc:
+            parser.error(str(exc))
+            raise AssertionError("parser.error should exit")
+
+        # Build gaggle to get the configured glitchlings
+        gaggle = build_gaggle(config)
+        return list(getattr(gaggle, "_clones_by_index", []))
+
+    if names:
+        result: list[Glitchling] = []
+        for specification in names:
+            try:
+                result.append(parse_glitchling_spec(specification))
+            except ValueError as exc:
+                error_msg = str(exc)
+                if "not found" in error_msg.lower():
+                    match = re.search(r"'([^']+)'", error_msg)
+                    if match:
+                        bad_name = match.group(1)
+                        suggestion = _suggest_glitchling(bad_name)
+                        if suggestion:
+                            error_msg = f"{error_msg} Did you mean '{suggestion}'?"
+                parser.error(error_msg)
+                raise AssertionError("parser.error should exit")
+        return result
+
+    # Default glitchlings
+    return [parse_glitchling_spec(name) for name in DEFAULT_GLITCHLING_NAMES]
+
+
 # -----------------------------------------------------------------------------
 # Diff Output
 # -----------------------------------------------------------------------------
@@ -499,6 +568,172 @@ def show_diff(
                 print(line)
     else:
         print(c.dim("No changes detected."))
+
+
+# -----------------------------------------------------------------------------
+# Statistics
+# -----------------------------------------------------------------------------
+
+
+def _count_char_changes(original: str, corrupted: str) -> int:
+    """Count the number of character-level changes between two strings."""
+    # Use SequenceMatcher to find matching blocks
+    matcher = difflib.SequenceMatcher(None, original, corrupted)
+    matching_chars = sum(block.size for block in matcher.get_matching_blocks())
+    # Changes = characters that don't match in either string
+    return max(len(original), len(corrupted)) - matching_chars
+
+
+def _format_time(seconds: float) -> str:
+    """Format time in human-readable units."""
+    if seconds < 0.001:
+        return f"{seconds * 1_000_000:.1f}µs"
+    if seconds < 1:
+        return f"{seconds * 1000:.1f}ms"
+    return f"{seconds:.2f}s"
+
+
+def show_stats(
+    original: str,
+    corrupted: str,
+    glitchling_names: list[str],
+    elapsed: float,
+    *,
+    color: _ColorFormatter | None = None,
+) -> None:
+    """Display inline statistics about the corruption."""
+    c = color or _color
+
+    changes = _count_char_changes(original, corrupted)
+    orig_len = len(original)
+    pct = (changes / orig_len * 100) if orig_len > 0 else 0.0
+
+    parts = [
+        c.dim("Changed:"),
+        c.bold(f"{changes}"),
+        c.dim(f"chars ({pct:.1f}%)"),
+        c.dim("|"),
+        c.cyan(", ".join(glitchling_names)),
+        c.dim("|"),
+        c.yellow(_format_time(elapsed)),
+    ]
+    print(" ".join(parts), file=sys.stderr)
+
+
+# -----------------------------------------------------------------------------
+# Trace Mode
+# -----------------------------------------------------------------------------
+
+
+def run_trace(
+    text: str,
+    glitchlings: list[Glitchling],
+    seed: int,
+    *,
+    color: _ColorFormatter | None = None,
+) -> str:
+    """Run each glitchling step-by-step, showing transformations."""
+    c = color or _color
+
+    current = text
+    total_start = time.perf_counter()
+
+    for i, glitchling in enumerate(glitchlings):
+        # Create a single-glitchling gaggle with derived seed
+        single_gaggle = Gaggle([glitchling], seed=seed + i)
+        step_start = time.perf_counter()
+        result = single_gaggle.corrupt(current)
+        step_elapsed = time.perf_counter() - step_start
+
+        if not isinstance(result, str):
+            result = str(result)
+
+        changes = _count_char_changes(current, result)
+        name_str = c.cyan(f"[{glitchling.name}]")
+        time_str = c.dim(_format_time(step_elapsed))
+
+        if changes > 0:
+            # Show abbreviated before/after
+            before = _abbreviate(current, 30)
+            after = _abbreviate(result, 30)
+            change_str = c.yellow(f"{changes} char{'s' if changes != 1 else ''}")
+            print(f"{name_str}  {before} → {after}  ({change_str}, {time_str})")
+        else:
+            print(f"{name_str}  {c.dim('(no changes)')}  {time_str}")
+
+        current = result
+
+    total_elapsed = time.perf_counter() - total_start
+    print(c.dim(f"Total: {_format_time(total_elapsed)}"))
+
+    return current
+
+
+def _abbreviate(text: str, max_len: int) -> str:
+    """Abbreviate text for display, showing beginning and end if too long."""
+    text = text.replace("\n", "\\n")
+    if len(text) <= max_len:
+        return text
+    half = (max_len - 3) // 2
+    return text[:half] + "..." + text[-half:]
+
+
+# -----------------------------------------------------------------------------
+# Batch Mode
+# -----------------------------------------------------------------------------
+
+
+def run_batch(
+    input_files: list[Path],
+    suffix: str,
+    gaggle: Gaggle,
+    *,
+    verbose: bool = False,
+    quiet: bool = False,
+    show_time: bool = False,
+    color: _ColorFormatter | None = None,
+) -> int:
+    """Process multiple files in batch mode."""
+    c = color or _color
+    total_start = time.perf_counter()
+    processed = 0
+    errors = 0
+
+    for input_path in input_files:
+        try:
+            text = input_path.read_text(encoding="utf-8")
+            start = time.perf_counter()
+            corrupted = gaggle.corrupt(text)
+            elapsed = time.perf_counter() - start
+
+            if not isinstance(corrupted, str):
+                corrupted = str(corrupted)
+
+            # Build output path
+            output_path = input_path.with_suffix(input_path.suffix + suffix)
+            output_path.write_text(corrupted, encoding="utf-8")
+
+            processed += 1
+            if not quiet:
+                time_str = f" ({_format_time(elapsed)})" if show_time else ""
+                print(f"{c.green('✓')} {input_path} → {output_path}{time_str}")
+
+        except OSError as exc:
+            errors += 1
+            if not quiet:
+                print(f"{c.red('✗')} {input_path}: {exc}", file=sys.stderr)
+
+    total_elapsed = time.perf_counter() - total_start
+
+    if not quiet:
+        summary = f"Processed {processed} file{'s' if processed != 1 else ''}"
+        if errors > 0:
+            summary += f", {errors} error{'s' if errors != 1 else ''}"
+        if show_time:
+            summary += f" in {_format_time(total_elapsed)}"
+        print(c.dim(summary))
+
+    return 1 if errors > 0 else 0
 
 
 # -----------------------------------------------------------------------------
@@ -584,6 +819,10 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
     verbose = getattr(args, "verbose", False)
     quiet = getattr(args, "quiet", False)
+    show_time = getattr(args, "show_time", False)
+    show_stats_flag = getattr(args, "stats", False)
+    trace_mode = getattr(args, "trace", False)
+    batch_suffix = getattr(args, "batch_suffix", None)
 
     if verbose and quiet:
         parser.error("Cannot combine --verbose with --quiet.")
@@ -601,8 +840,18 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         raise AssertionError("parser.error should exit")
 
     wants_metrics = wants_attack or wants_report
+
+    # Validate incompatible options
     if wants_metrics and args.diff:
         parser.error("--diff cannot be combined with --report/--attack output.")
+        raise AssertionError("parser.error should exit")
+
+    if wants_metrics and trace_mode:
+        parser.error("--trace cannot be combined with --report/--attack output.")
+        raise AssertionError("parser.error should exit")
+
+    if trace_mode and args.diff:
+        parser.error("--trace cannot be combined with --diff.")
         raise AssertionError("parser.error should exit")
 
     # Get output file path
@@ -612,6 +861,21 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.diff and output_file:
         parser.error("--diff cannot be combined with --output-file.")
         raise AssertionError("parser.error should exit")
+
+    # Validate batch mode
+    if batch_suffix:
+        if output_file:
+            parser.error("--suffix cannot be combined with --output-file.")
+            raise AssertionError("parser.error should exit")
+        if args.diff:
+            parser.error("--suffix cannot be combined with --diff.")
+            raise AssertionError("parser.error should exit")
+        if trace_mode:
+            parser.error("--suffix cannot be combined with --trace.")
+            raise AssertionError("parser.error should exit")
+        if wants_metrics:
+            parser.error("--suffix cannot be combined with --attack/--report.")
+            raise AssertionError("parser.error should exit")
 
     # Normalize output format
     output_format = cast(str, args.output_format)
@@ -628,8 +892,58 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         parser.error("--tokenizer requires --attack or --report.")
         raise AssertionError("parser.error should exit")
 
+    # Handle batch mode
+    if batch_suffix:
+        input_path = cast(Path | None, getattr(args, "input_file", None))
+        if input_path is None:
+            parser.error("--suffix requires --input-file with glob pattern.")
+            raise AssertionError("parser.error should exit")
+
+        # Expand glob pattern
+        if "*" in str(input_path) or "?" in str(input_path):
+            parent = input_path.parent if input_path.parent != Path() else Path(".")
+            pattern = input_path.name
+            input_files = list(parent.glob(pattern))
+        else:
+            input_files = [input_path]
+
+        if not input_files:
+            parser.error(f"No files matched pattern: {input_path}")
+            raise AssertionError("parser.error should exit")
+
+        gaggle = summon_glitchlings(
+            args.glitchlings,
+            parser,
+            args.seed,
+            config_path=args.config,
+        )
+        return run_batch(
+            input_files,
+            batch_suffix,
+            gaggle,
+            verbose=verbose,
+            quiet=quiet,
+            show_time=show_time,
+            color=_color,
+        )
+
     text = read_text(args, parser)
     _log_verbose(f"Input text: {len(text)} characters", verbose=verbose, quiet=quiet)
+
+    # Trace mode: run each glitchling separately
+    if trace_mode:
+        glitchling_list = _get_glitchling_list(
+            args.glitchlings,
+            parser,
+            config_path=args.config,
+        )
+        effective_seed = args.seed if args.seed is not None else DEFAULT_ATTACK_SEED
+        corrupted = run_trace(text, glitchling_list, effective_seed, color=_color)
+        if not quiet:
+            print()
+            print(_color.bold("Final output:"))
+            print(corrupted)
+        return 0
 
     gaggle = summon_glitchlings(
         args.glitchlings,
@@ -682,12 +996,26 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         _write_output(output_content, output_file)
         return 0
 
+    # Normal corruption mode
+    start_time = time.perf_counter()
     corrupted = gaggle.corrupt(text)
+    elapsed = time.perf_counter() - start_time
+
     if not isinstance(corrupted, str):
         message = "Gaggle returned non-string output for string input"
         raise TypeError(message)
 
     _log_verbose(f"Output text: {len(corrupted)} characters", verbose=verbose, quiet=quiet)
+
+    # Show timing if requested
+    if show_time and not quiet and not args.diff and not show_stats_flag:
+        print(_color.dim(f"[{_format_time(elapsed)}]"), file=sys.stderr)
+
+    # Show stats if requested
+    if show_stats_flag and not quiet:
+        clones = getattr(gaggle, "_clones_by_index", [])
+        glitchling_names = [g.name for g in clones]
+        show_stats(text, corrupted, glitchling_names, elapsed, color=_color)
 
     if args.diff:
         show_diff(text, corrupted, color=_color)
