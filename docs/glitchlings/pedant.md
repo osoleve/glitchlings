@@ -27,11 +27,9 @@ deterministic "cleanup" pass over the input text.
   - `seed` (optional): feeds deterministic RNG for evolutions that make
     probabilistic choices (Aetheria's diaeresis placement, Infinitoad's adverb
     placement). A gaggle-level seed also controls pedant behaviour.
-- **Usage tips**:
-  - Import `PedantStone` when you want static analysis or autocompletion of the
-    available forms; otherwise pass the stone name as a string.
-  - The Rust pipeline powers Pedant in production builds; keep the compiled
-    extension available so performance stays high even in long pipelines.
+!!! tip "Usage Tips"
+    - Import `PedantStone` when you want static analysis or autocompletion of the available forms; otherwise pass the stone name as a string.
+    - The Rust pipeline powers Pedant in production builds; keep the compiled extension available so performance stays high even in long pipelines.
 
 ## Linguistic References
 

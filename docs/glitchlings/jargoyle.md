@@ -94,12 +94,11 @@ eldritch("The ancient temple stood in the dark forest")
 
 **Data augmentation** — Generate training variants that preserve semantics while varying vocabulary.
 
-## Usage Tips
-
-- Start with `rate=0.01` for subtle drift. Even low rates accumulate—synonym chains can produce surprisingly different text.
-- Use `mode="literal"` when you need reproducibility without seed management.
-- The `corporate` and `academic` dictionaries are intentionally absurd. They're for testing, not for actual business communications.
-- Combine with [Wherewolf](wherewolf.md) to stack semantic drift (Jargoyle) on phonetic drift (Wherewolf).
+!!! tip "Usage Tips"
+    - Start with `rate=0.01` for subtle drift. Even low rates accumulate—synonym chains can produce surprisingly different text.
+    - Use `mode="literal"` when you need reproducibility without seed management.
+    - The `corporate` and `academic` dictionaries are intentionally absurd. They're for testing, not for actual business communications.
+    - Combine with [Wherewolf](wherewolf.md) to stack semantic drift (Jargoyle) on phonetic drift (Wherewolf).
 
 ## Complementary Glitchlings
 

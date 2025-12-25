@@ -110,12 +110,11 @@ wild = Rushmore(modes="all", rate=0.2, seed=42)
 
 **Sequence robustness** — Does your model understand word order? Swap mode finds out.
 
-## Usage Tips
-
-- Start with `rate=0.01` for subtle corruption. Word-level changes are highly visible even at low rates.
-- Use `modes="all"` when you want maximum chaos, but remember that delete + duplicate + swap can make text nearly unreadable.
-- Set `unweighted=True` when testing short-word comprehension—by default, longer words are more likely to be selected.
-- The first word is protected from deletion to keep sentence structure anchored.
+!!! tip "Usage Tips"
+    - Start with `rate=0.01` for subtle corruption. Word-level changes are highly visible even at low rates.
+    - Use `modes="all"` when you want maximum chaos, but remember that delete + duplicate + swap can make text nearly unreadable.
+    - Set `unweighted=True` when testing short-word comprehension—by default, longer words are more likely to be selected.
+    - The first word is protected from deletion to keep sentence structure anchored.
 
 ## Legacy Glitchlings
 
