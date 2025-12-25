@@ -66,12 +66,11 @@ stars("Sensitive information follows")
 
 **Document classification** — Does your model rely on specific words, or does it understand context? Redact the obvious keywords and find out.
 
-## Usage Tips
-
-- The default `rate=0.025` produces light redaction. For that "heavily classified" look, try 0.1–0.2.
-- Some terminals render `█` poorly. Switch to `replacement_char="_"` or `"*"` for ASCII-safe output.
-- The `unweighted=True` option is useful when you want to test short-word comprehension, not just long-word comprehension.
-- Combine with [Scannequin](scannequin.md) to simulate poorly scanned, heavily redacted archives.
+!!! tip "Usage Tips"
+    - The default `rate=0.025` produces light redaction. For that "heavily classified" look, try 0.1–0.2.
+    - Some terminals render `█` poorly. Switch to `replacement_char="_"` or `"*"` for ASCII-safe output.
+    - The `unweighted=True` option is useful when you want to test short-word comprehension, not just long-word comprehension.
+    - Combine with [Scannequin](scannequin.md) to simulate poorly scanned, heavily redacted archives.
 
 !!! warning "Empty Input Edge Case"
     If the text contains no redactable words (e.g., a single character), Redactyl raises a `ValueError`. Wrap calls in try/except for automated pipelines.

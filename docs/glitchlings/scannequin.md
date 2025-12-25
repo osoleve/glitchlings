@@ -91,13 +91,12 @@ degraded = Scannequin(
 result = degraded("Some regions will have clustered errors like smudges.")
 ```
 
-## Usage Tips
-
-- Use presets for quick configuration based on real-world scenarios.
-- Enable `burst_enter > 0` for spatially correlated errors (simulates physical defects).
-- Set `bias_k > 0` for consistent error patterns within a document.
-- Use `space_drop_rate` and `space_insert_rate` to simulate segmentation failures.
-- Combine with Redactyl to mimic heavily redacted, poorly scanned archives.
+!!! tip "Usage Tips"
+    - Use presets for quick configuration based on real-world scenarios.
+    - Enable `burst_enter > 0` for spatially correlated errors (simulates physical defects).
+    - Set `bias_k > 0` for consistent error patterns within a document.
+    - Use `space_drop_rate` and `space_insert_rate` to simulate segmentation failures.
+    - Combine with Redactyl to mimic heavily redacted, poorly scanned archives.
 
 ## Confusion Table
 
