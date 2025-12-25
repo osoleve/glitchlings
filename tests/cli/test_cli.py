@@ -13,6 +13,7 @@ from glitchlings.main import (
     BUILTIN_GLITCHLINGS,
     DEFAULT_GLITCHLING_NAMES,
     MAX_NAME_WIDTH,
+    _get_glitchling_description,
     build_parser,
     read_text,
     run_cli,
@@ -32,11 +33,18 @@ def _effective_seed(args: argparse.Namespace) -> int:
 
 def render_expected_list_output() -> str:
     lines = []
-    for key in DEFAULT_GLITCHLING_NAMES:
+    # Now lists ALL glitchlings, sorted alphabetically
+    sorted_names = sorted(BUILTIN_GLITCHLINGS.keys())
+    for key in sorted_names:
         glitchling = BUILTIN_GLITCHLINGS[key]
         scope = glitchling.level.name.title()
         order = glitchling.order.name.lower()
-        lines.append(f"{glitchling.name:>{MAX_NAME_WIDTH}} — scope: {scope}, order: {order}")
+        desc = _get_glitchling_description(glitchling)
+        if desc:
+            lines.append(f"{glitchling.name:>{MAX_NAME_WIDTH}} — {desc}")
+            lines.append(f"{' ' * MAX_NAME_WIDTH}   scope: {scope}, order: {order}")
+        else:
+            lines.append(f"{glitchling.name:>{MAX_NAME_WIDTH}} — scope: {scope}, order: {order}")
     return "\n".join(lines) + "\n"
 
 

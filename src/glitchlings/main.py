@@ -5,9 +5,11 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import os
 import re
 import sys
 from collections.abc import Sequence
+from importlib.metadata import version as get_version
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,7 +27,90 @@ from .zoo import (
     summon,
 )
 
+# -----------------------------------------------------------------------------
+# Constants
+# -----------------------------------------------------------------------------
+
 MAX_NAME_WIDTH = max(len(glitchling.name) for glitchling in BUILTIN_GLITCHLINGS.values())
+
+# ANSI color codes
+_COLORS = {
+    "reset": "\033[0m",
+    "bold": "\033[1m",
+    "dim": "\033[2m",
+    "red": "\033[31m",
+    "green": "\033[32m",
+    "yellow": "\033[33m",
+    "blue": "\033[34m",
+    "magenta": "\033[35m",
+    "cyan": "\033[36m",
+}
+
+
+def _supports_color() -> bool:
+    """Check if the terminal supports color output."""
+    if os.environ.get("NO_COLOR"):
+        return False
+    if os.environ.get("FORCE_COLOR"):
+        return True
+    if not hasattr(sys.stdout, "isatty"):
+        return False
+    return sys.stdout.isatty()
+
+
+class _ColorFormatter:
+    """Simple color formatter that respects --no-color and NO_COLOR env."""
+
+    def __init__(self, *, enabled: bool = True):
+        self.enabled = enabled and _supports_color()
+
+    def _wrap(self, text: str, *codes: str) -> str:
+        if not self.enabled:
+            return text
+        prefix = "".join(_COLORS.get(c, "") for c in codes)
+        return f"{prefix}{text}{_COLORS['reset']}"
+
+    def bold(self, text: str) -> str:
+        return self._wrap(text, "bold")
+
+    def dim(self, text: str) -> str:
+        return self._wrap(text, "dim")
+
+    def red(self, text: str) -> str:
+        return self._wrap(text, "red")
+
+    def green(self, text: str) -> str:
+        return self._wrap(text, "green")
+
+    def yellow(self, text: str) -> str:
+        return self._wrap(text, "yellow")
+
+    def cyan(self, text: str) -> str:
+        return self._wrap(text, "cyan")
+
+    def magenta(self, text: str) -> str:
+        return self._wrap(text, "magenta")
+
+
+# Global color formatter, initialized based on args
+_color = _ColorFormatter(enabled=True)
+
+
+# -----------------------------------------------------------------------------
+# Argument Parser
+# -----------------------------------------------------------------------------
+
+_EXAMPLES = """\
+Examples:
+  glitchlings "Hello world"                      Corrupt text with defaults
+  glitchlings -g Typogre -g Mim1c "text"         Apply specific glitchlings
+  glitchlings -g "Typogre(rate=0.1)" "text"      Configure parameters
+  glitchlings -dS                                Diff the sample text
+  glitchlings -i input.txt -o output.txt         File I/O
+  echo "text" | glitchlings                      Pipe input
+  glitchlings -l                                 List available glitchlings
+  glitchlings -arS                               Attack report on sample
+"""
 
 
 def build_parser(
@@ -39,112 +124,238 @@ def build_parser(
         argparse.ArgumentParser: The configured argument parser instance.
 
     """
+    try:
+        pkg_version = get_version("glitchlings")
+    except Exception:
+        pkg_version = "unknown"
+
     parser = argparse.ArgumentParser(
+        prog="glitchlings",
         description=(
             "Summon glitchlings to corrupt text. Provide input text as an argument, "
             "via --input-file, or pipe it on stdin."
         ),
+        epilog=_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         exit_on_error=exit_on_error,
     )
+
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        version=f"glitchlings {pkg_version}",
+    )
+
+    # -------------------------------------------------------------------------
+    # Input/Output group
+    # -------------------------------------------------------------------------
+    io_group = parser.add_argument_group("Input/Output")
+
     if include_text:
-        parser.add_argument(
+        io_group.add_argument(
             "text",
             nargs="*",
-            help="Text to corrupt. If omitted, stdin is used or --sample provides fallback text.",
+            help="Text to corrupt. If omitted, reads from stdin or uses --sample.",
         )
-    parser.add_argument(
+
+    io_group.add_argument(
+        "-i",
+        "--input-file",
+        dest="input_file",
+        type=Path,
+        metavar="FILE",
+        help="Read input text from FILE.",
+    )
+    io_group.add_argument(
+        "-o",
+        "--output-file",
+        dest="output_file",
+        type=Path,
+        metavar="FILE",
+        help="Write output to FILE instead of stdout.",
+    )
+    io_group.add_argument(
+        "-S",
+        "--sample",
+        action="store_true",
+        help="Use built-in sample text (Kafka's Metamorphosis excerpt).",
+    )
+
+    # -------------------------------------------------------------------------
+    # Glitchling Selection group
+    # -------------------------------------------------------------------------
+    glit_group = parser.add_argument_group("Glitchling Selection")
+
+    glit_group.add_argument(
         "-g",
         "--glitchling",
         dest="glitchlings",
         action="append",
         metavar="SPEC",
         help=(
-            "Glitchling to apply, optionally with parameters like "
-            "Typogre(rate=0.05). Repeat for multiples; defaults to all built-ins."
+            "Glitchling to apply, e.g. Typogre or 'Typogre(rate=0.05)'. "
+            "Repeat -g for multiples. Defaults to Typogre+Scannequin."
         ),
     )
-    parser.add_argument(
+    glit_group.add_argument(
+        "-c",
+        "--config",
+        type=Path,
+        metavar="FILE",
+        help="Load glitchlings from a YAML config file.",
+    )
+    glit_group.add_argument(
         "-s",
         "--seed",
         type=int,
         default=None,
-        help="Seed controlling deterministic corruption order (default: 151).",
+        metavar="N",
+        help=f"Seed for deterministic corruption (default: {DEFAULT_ATTACK_SEED}).",
     )
-    parser.add_argument(
-        "-i",
-        "--input-file",
-        dest="input_file",
-        type=Path,
-        help="Read input text from a file instead of the command line argument.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output-file",
-        dest="output_file",
-        type=Path,
-        help="Write output to a file instead of stdout.",
-    )
-    parser.add_argument(
-        "--sample",
-        action="store_true",
-        help="Use the included SAMPLE_TEXT when no other input is provided.",
-    )
-    parser.add_argument(
-        "--diff",
-        action="store_true",
-        help="Show a unified diff between the original and corrupted text.",
-    )
-    parser.add_argument(
+    glit_group.add_argument(
+        "-l",
         "--list",
         action="store_true",
-        help="List available glitchlings and exit.",
+        help="List all available glitchlings and exit.",
     )
-    parser.add_argument(
-        "-c",
-        "--config",
-        type=Path,
-        help="Load glitchlings from a YAML configuration file.",
+
+    # -------------------------------------------------------------------------
+    # Output Format group
+    # -------------------------------------------------------------------------
+    out_group = parser.add_argument_group("Output Format")
+
+    out_group.add_argument(
+        "-d",
+        "--diff",
+        action="store_true",
+        help="Show unified diff between original and corrupted text.",
     )
-    parser.add_argument(
+    out_group.add_argument(
+        "--no-color",
+        dest="no_color",
+        action="store_true",
+        help="Disable colored output.",
+    )
+
+    # -------------------------------------------------------------------------
+    # Analysis group
+    # -------------------------------------------------------------------------
+    analysis_group = parser.add_argument_group("Analysis")
+
+    analysis_group.add_argument(
+        "-a",
         "--attack",
         action="store_true",
-        help=("Output an Attack summary. Includes metrics and counts without full token lists."),
+        help="Output attack summary with metrics (no token lists).",
     )
-    parser.add_argument(
+    analysis_group.add_argument(
+        "-r",
         "--report",
         action="store_true",
-        help=("Output a full Attack report. Includes tokens, token IDs, metrics, and counts."),
+        help="Output full attack report with tokens and metrics.",
     )
-    parser.add_argument(
+    analysis_group.add_argument(
         "-f",
         "--format",
         dest="output_format",
         choices=["json", "yaml", "yml"],
         default="json",
-        help="Output format for --attack or --report (default: json).",
+        metavar="FMT",
+        help="Output format for -a/-r: json, yaml (default: json).",
     )
-    parser.add_argument(
+    analysis_group.add_argument(
         "-t",
         "--tokenizer",
         dest="tokenizer",
-        help=(
-            "Tokenizer to use for --attack or --report. "
-            "Checks tiktoken first, then HuggingFace tokenizers library. "
-            "Examples: cl100k_base, gpt-4, bert-base-uncased."
-        ),
+        metavar="NAME",
+        help="Tokenizer for analysis (e.g. cl100k_base, gpt-4, bert-base-uncased).",
+    )
+
+    # -------------------------------------------------------------------------
+    # Verbosity group
+    # -------------------------------------------------------------------------
+    verb_group = parser.add_argument_group("Verbosity")
+
+    verb_group.add_argument(
+        "-V",
+        "--verbose",
+        action="store_true",
+        help="Show detailed processing information.",
+    )
+    verb_group.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress non-essential output.",
     )
 
     return parser
 
 
-def list_glitchlings() -> None:
-    """Print information about the available built-in glitchlings."""
-    for key in DEFAULT_GLITCHLING_NAMES:
+# -----------------------------------------------------------------------------
+# Listing Glitchlings
+# -----------------------------------------------------------------------------
+
+
+def _get_glitchling_description(glitchling: Glitchling) -> str:
+    """Extract a short description from a glitchling's docstring."""
+    cls = type(glitchling)
+    doc = cls.__doc__
+    if not doc:
+        return ""
+    # Get first sentence from first line
+    first_line = doc.strip().split("\n")[0].strip()
+    # Remove "Glitchling that" prefix if present for brevity
+    if first_line.lower().startswith("glitchling that "):
+        first_line = first_line[16:].capitalize()
+    # Truncate if too long
+    max_desc_len = 50
+    if len(first_line) > max_desc_len:
+        first_line = first_line[: max_desc_len - 3].rsplit(" ", 1)[0] + "..."
+    return first_line
+
+
+def list_glitchlings(*, color: _ColorFormatter | None = None) -> None:
+    """Print information about all available built-in glitchlings."""
+    c = color or _color
+
+    # Sort alphabetically for consistent display
+    sorted_names = sorted(BUILTIN_GLITCHLINGS.keys())
+
+    for key in sorted_names:
         glitchling = BUILTIN_GLITCHLINGS[key]
         display_name = glitchling.name
         scope = glitchling.level.name.title()
         order = glitchling.order.name.lower()
-        print(f"{display_name:>{MAX_NAME_WIDTH}} — scope: {scope}, order: {order}")
+        desc = _get_glitchling_description(glitchling)
+
+        name_str = c.bold(f"{display_name:>{MAX_NAME_WIDTH}}")
+        scope_str = c.cyan(scope)
+        order_str = c.dim(order)
+        desc_str = c.dim(desc) if desc else ""
+
+        if desc:
+            print(f"{name_str} — {desc_str}")
+            pad = " " * MAX_NAME_WIDTH
+            print(f"{pad}   {c.dim('scope:')} {scope_str}, {c.dim('order:')} {order_str}")
+        else:
+            print(f"{name_str} — {c.dim('scope:')} {scope_str}, {c.dim('order:')} {order_str}")
+
+
+# -----------------------------------------------------------------------------
+# Input Handling
+# -----------------------------------------------------------------------------
+
+
+def _suggest_glitchling(name: str) -> str | None:
+    """Suggest a similar glitchling name if one exists."""
+    available = list(BUILTIN_GLITCHLINGS.keys())
+    matches = difflib.get_close_matches(name.lower(), available, n=1, cutoff=0.6)
+    if matches:
+        # Return with proper casing
+        return BUILTIN_GLITCHLINGS[matches[0]].name
+    return None
 
 
 def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
@@ -184,10 +395,17 @@ def read_text(args: argparse.Namespace, parser: argparse.ArgumentParser) -> str:
     if bool(getattr(args, "sample", False)):
         return SAMPLE_TEXT
 
-    parser.error(
-        "No input text provided. Supply text as an argument, use --input-file, pipe input, or "
-        "pass --sample."
-    )
+    # Friendly error message with examples
+    error_lines = [
+        "No input text provided.",
+        "",
+        "Try one of:",
+        '  glitchlings "your text here"',
+        "  glitchlings -S                 (use sample text)",
+        "  glitchlings -i FILE            (read from file)",
+        "  cat file.txt | glitchlings     (pipe input)",
+    ]
+    parser.error("\n".join(error_lines))
     raise AssertionError("parser.error should exit")
 
 
@@ -219,7 +437,17 @@ def summon_glitchlings(
             try:
                 parsed.append(parse_glitchling_spec(specification))
             except ValueError as exc:
-                parser.error(str(exc))
+                # Try to suggest a correction
+                error_msg = str(exc)
+                if "not found" in error_msg.lower():
+                    # Extract the name from the error
+                    match = re.search(r"'([^']+)'", error_msg)
+                    if match:
+                        bad_name = match.group(1)
+                        suggestion = _suggest_glitchling(bad_name)
+                        if suggestion:
+                            error_msg = f"{error_msg} Did you mean '{suggestion}'?"
+                parser.error(error_msg)
                 raise AssertionError("parser.error should exit")
         normalized = parsed
     else:
@@ -234,8 +462,20 @@ def summon_glitchlings(
         raise AssertionError("parser.error should exit")
 
 
-def show_diff(original: str, corrupted: str) -> None:
+# -----------------------------------------------------------------------------
+# Diff Output
+# -----------------------------------------------------------------------------
+
+
+def show_diff(
+    original: str,
+    corrupted: str,
+    *,
+    color: _ColorFormatter | None = None,
+) -> None:
     """Display a unified diff between the original and corrupted text."""
+    c = color or _color
+
     diff_lines = list(
         difflib.unified_diff(
             original.splitlines(keepends=True),
@@ -247,9 +487,23 @@ def show_diff(original: str, corrupted: str) -> None:
     )
     if diff_lines:
         for line in diff_lines:
-            print(line)
+            if line.startswith("---") or line.startswith("+++"):
+                print(c.bold(line))
+            elif line.startswith("@@"):
+                print(c.cyan(line))
+            elif line.startswith("-"):
+                print(c.red(line))
+            elif line.startswith("+"):
+                print(c.green(line))
+            else:
+                print(line)
     else:
-        print("No changes detected.")
+        print(c.dim("No changes detected."))
+
+
+# -----------------------------------------------------------------------------
+# Report Formatting
+# -----------------------------------------------------------------------------
 
 
 def _format_report_json(payload: dict[str, Any]) -> str:
@@ -295,6 +549,22 @@ def _write_output(content: str, output_file: Path | None) -> None:
         print(content, end="" if content.endswith("\n") else "\n")
 
 
+# -----------------------------------------------------------------------------
+# Verbose Output
+# -----------------------------------------------------------------------------
+
+
+def _log_verbose(message: str, *, verbose: bool, quiet: bool) -> None:
+    """Print a message if verbose mode is enabled and not quiet."""
+    if verbose and not quiet:
+        print(f"{_color.dim('[verbose]')} {message}", file=sys.stderr)
+
+
+# -----------------------------------------------------------------------------
+# Main CLI Logic
+# -----------------------------------------------------------------------------
+
+
 def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     """Execute the CLI workflow using the provided arguments.
 
@@ -306,8 +576,21 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         int: Exit code for the process (``0`` on success).
 
     """
+    global _color
+
+    # Initialize color formatter based on args
+    no_color = getattr(args, "no_color", False)
+    _color = _ColorFormatter(enabled=not no_color)
+
+    verbose = getattr(args, "verbose", False)
+    quiet = getattr(args, "quiet", False)
+
+    if verbose and quiet:
+        parser.error("Cannot combine --verbose with --quiet.")
+        raise AssertionError("parser.error should exit")
+
     if args.list:
-        list_glitchlings()
+        list_glitchlings(color=_color)
         return 0
 
     wants_attack = bool(getattr(args, "attack", False))
@@ -346,12 +629,22 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         raise AssertionError("parser.error should exit")
 
     text = read_text(args, parser)
+    _log_verbose(f"Input text: {len(text)} characters", verbose=verbose, quiet=quiet)
+
     gaggle = summon_glitchlings(
         args.glitchlings,
         parser,
         args.seed,
         config_path=args.config,
     )
+
+    if verbose and not quiet:
+        # Use _clones_by_index to get the actual glitchling instances
+        clones = getattr(gaggle, "_clones_by_index", [])
+        glitchling_names = [g.name for g in clones]
+        seed_info = getattr(gaggle, "seed", "unknown")
+        _log_verbose(f"Glitchlings: {', '.join(glitchling_names)}", verbose=True, quiet=False)
+        _log_verbose(f"Seed: {seed_info}", verbose=True, quiet=False)
 
     if wants_metrics:
         attack_seed = args.seed if args.seed is not None else getattr(gaggle, "seed", None)
@@ -394,8 +687,10 @@ def run_cli(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         message = "Gaggle returned non-string output for string input"
         raise TypeError(message)
 
+    _log_verbose(f"Output text: {len(corrupted)} characters", verbose=verbose, quiet=quiet)
+
     if args.diff:
-        show_diff(text, corrupted)
+        show_diff(text, corrupted, color=_color)
     else:
         _write_output(corrupted, output_file)
 
