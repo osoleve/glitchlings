@@ -141,17 +141,17 @@ glitchlings:
 def demo_childproofing_haystacks() -> None:
     """Demonstrate childproofing haystacks for long context retrieval.
 
-    This example shows how to use heterogeneous masks to break surface patterns
-    of known "needles" in needle-in-a-haystack evaluations, forcing models to
-    rely on approximate retrieval and semantic understanding rather than exact
-    pattern matching.
+    This example shows how to use an answer column to construct inclusion masks
+    that target known "needles" in needle-in-a-haystack evaluations, breaking
+    their surface patterns to force models to rely on approximate retrieval and
+    semantic understanding rather than exact pattern matching.
 
     The key insight: the needle is there on purpose, so let's break it.
 
     Strategies:
-    1. Corrupt needles with high rate (break exact matching patterns)
-    2. Corrupt haystack with lower rate (add realistic noise floor)
-    3. Preserve structural markers (maintain retrievability by semantics)
+    1. Use the answer column to build inclusion patterns dynamically
+    2. Corrupt needles with high rate (break exact matching patterns)
+    3. Corrupt haystack with lower rate (add realistic noise floor)
 
     This is useful for testing whether models truly understand context or are
     just memorizing surface patterns of evaluation needle texts.
@@ -163,6 +163,8 @@ def demo_childproofing_haystacks() -> None:
         print("\nSkipping demo (pandas not installed)")
         return
 
+    import re
+
     import pandas as pd
 
     from glitchlings import Gaggle, Mim1c, Typogre, Wherewolf
@@ -172,140 +174,142 @@ def demo_childproofing_haystacks() -> None:
     print("=" * 60)
     print("\nGoal: Break surface patterns of needles to test semantic retrieval")
 
-    # Sample haystack with embedded needle using structural markers
+    # Sample haystack with embedded needles - no tags, just natural text
+    # The "answer" column contains the needle text for ground truth
     df = pd.DataFrame(
         {
             "text": [
-                "[CONTEXT]The quarterly report shows stable growth across all sectors. "
-                "Revenue increased by 12% compared to last year.[/CONTEXT] "
-                "[NEEDLE]The secret code for the vault is blue-elephant-42.[/NEEDLE] "
-                "[CONTEXT]Market conditions remain favorable for expansion.[/CONTEXT]",
-                "[CONTEXT]Weather patterns indicate a mild winter ahead. "
-                "Agricultural forecasts are optimistic.[/CONTEXT] "
-                "[NEEDLE]The password to access the system is cardinal-mountain-99.[/NEEDLE] "
-                "[CONTEXT]Supply chain logistics have improved significantly.[/CONTEXT]",
-                "[CONTEXT]The research team published their findings last week. "
-                "Initial peer review was positive.[/CONTEXT] "
-                "[NEEDLE]The answer to the security question is purple-tiger-17.[/NEEDLE] "
-                "[CONTEXT]Funding for the next phase has been approved.[/CONTEXT]",
-            ]
+                "The quarterly report shows stable growth across all sectors. "
+                "Revenue increased by 12% compared to last year. "
+                "The secret code for the vault is blue-elephant-42. "
+                "Market conditions remain favorable for expansion.",
+                "Weather patterns indicate a mild winter ahead. "
+                "Agricultural forecasts are optimistic. "
+                "The password to access the system is cardinal-mountain-99. "
+                "Supply chain logistics have improved significantly.",
+                "The research team published their findings last week. "
+                "Initial peer review was positive. "
+                "The answer to the security question is purple-tiger-17. "
+                "Funding for the next phase has been approved.",
+            ],
+            "answer": [
+                "The secret code for the vault is blue-elephant-42.",
+                "The password to access the system is cardinal-mountain-99.",
+                "The answer to the security question is purple-tiger-17.",
+            ],
         }
     )
 
-    print("\n--- Original Data (with needles) ---")
+    print("\n--- Original Data ---")
     for i, row in df.iterrows():
-        # Show just the needle portion for clarity
-        import re
+        print(f"  Needle {i}: {row['answer']}")
+        print(f"    (embedded in {len(row['text'])} chars of haystack)")
 
-        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", row["text"])
-        if needle:
-            print(f"  Needle {i}: {needle.group(1)}")
+    # Helper: build inclusion pattern from answer column
+    def needle_pattern(answer: str) -> str:
+        """Escape answer text to use as regex inclusion pattern."""
+        return re.escape(answer)
 
     # Strategy 1: Corrupt only needles (break exact pattern matching)
     print("\n--- Strategy 1: Corrupt Needles Only ---")
+    print("    Uses answer column to build inclusion mask")
     print("    Forces approximate retrieval; exact string match will fail")
-    needle_corruptor = Typogre(
-        rate=0.4,  # High rate on needles
-        seed=42,
-        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
-        exclude_patterns=[r"\[/?NEEDLE\]"],  # Preserve structural tags
-    )
-    gaggle_needles = Gaggle([needle_corruptor], seed=100)
 
     for i, row in df.iterrows():
-        result = gaggle_needles.corrupt(row["text"])
-        import re
+        pattern = needle_pattern(row["answer"])
+        needle_corruptor = Typogre(
+            rate=0.4,  # High rate on needles
+            seed=42 + i,
+            include_only_patterns=[pattern],
+        )
+        gaggle = Gaggle([needle_corruptor], seed=100)
+        result = gaggle.corrupt(row["text"])
 
-        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", result)
-        if needle:
-            print(f"  Corrupted needle {i}: {needle.group(1)}")
+        # Extract the corrupted needle region
+        original_pos = row["text"].find(row["answer"])
+        corrupted_needle = result[original_pos : original_pos + len(row["answer"])]
+        print(f"  Original:  {row['answer']}")
+        print(f"  Corrupted: {corrupted_needle}")
+        print()
 
     # Strategy 2: Corrupt haystack only, preserve needles (noise floor)
-    print("\n--- Strategy 2: Corrupt Haystack Only (Noise Floor) ---")
+    print("--- Strategy 2: Corrupt Haystack Only (Noise Floor) ---")
+    print("    Excludes needle using answer column pattern")
     print("    Adds realistic noise; needle remains exact for baseline")
-    haystack_corruptor = Typogre(
-        rate=0.15,  # Lower rate for realistic noise
-        seed=43,
-        exclude_patterns=[
-            r"\[NEEDLE\].*?\[/NEEDLE\]",  # Preserve needle completely
-        ],
-    )
-    gaggle_haystack = Gaggle([haystack_corruptor], seed=100)
 
     for i, row in df.iterrows():
-        result = gaggle_haystack.corrupt(row["text"])
-        # Show a snippet of corrupted context
-        import re
+        pattern = needle_pattern(row["answer"])
+        haystack_corruptor = Typogre(
+            rate=0.15,
+            seed=43 + i,
+            exclude_patterns=[pattern],  # Preserve needle completely
+        )
+        gaggle = Gaggle([haystack_corruptor], seed=100)
+        result = gaggle.corrupt(row["text"])
 
-        context = re.search(r"\[CONTEXT\](.*?)\[/CONTEXT\]", result)
-        if context:
-            snippet = context.group(1)[:50] + "..."
-            print(f"  Corrupted context {i}: {snippet}")
+        # Verify needle preserved
+        if row["answer"] in result:
+            snippet = result[:60].replace(row["answer"], f"<<{row['answer']}>>")
+            print(f"  Sample {i}: Needle preserved in noisy haystack")
+            print(f"    Preview: {snippet}...")
+        else:
+            print(f"  Sample {i}: WARNING - needle was modified")
+        print()
 
-    # Strategy 3: Heterogeneous masks - full childproofing
-    print("\n--- Strategy 3: Full Childproofing (Heterogeneous Masks) ---")
+    # Strategy 3: Full childproofing with heterogeneous masks
+    print("--- Strategy 3: Full Childproofing (Per-Row Processing) ---")
     print("    Needle: heavy corruption (typos + confusables + homophones)")
     print("    Haystack: light corruption (realistic noise)")
-    print("    Tags: preserved (structural markers for evaluation)")
 
-    # Heavy corruption on needles using multiple glitchlings
-    needle_typo = Typogre(
-        rate=0.3,
-        seed=42,
-        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
-        exclude_patterns=[r"\[/?NEEDLE\]"],
-    )
-    needle_confuse = Mim1c(
-        rate=0.2,
-        seed=43,
-        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
-        exclude_patterns=[r"\[/?NEEDLE\]"],
-    )
-    needle_homophone = Wherewolf(
-        rate=0.3,
-        seed=44,
-        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
-        exclude_patterns=[r"\[/?NEEDLE\]"],
-    )
-
-    # Light corruption on haystack
-    haystack_typo = Typogre(
-        rate=0.05,
-        seed=45,
-        exclude_patterns=[
-            r"\[NEEDLE\].*?\[/NEEDLE\]",
-            r"\[/?CONTEXT\]",
-            r"\[/?NEEDLE\]",
-        ],
-    )
-
-    # Combine into single gaggle with heterogeneous masks
-    gaggle_full = Gaggle(
-        [needle_typo, needle_confuse, needle_homophone, haystack_typo],
-        seed=100,
-    )
-
-    print(f"\n    Heterogeneous masks detected: {gaggle_full._has_heterogeneous_masks()}")
-    print(f"    Number of mask groups: {len(gaggle_full._group_by_masks())}")
-
+    results = []
     for i, row in df.iterrows():
-        result = gaggle_full.corrupt(row["text"])
-        import re
+        pattern = needle_pattern(row["answer"])
 
-        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", result)
-        if needle:
-            print(f"  Childproofed needle {i}: {needle.group(1)}")
+        # Heavy corruption on needle using multiple glitchlings
+        needle_typo = Typogre(
+            rate=0.3,
+            seed=42,
+            include_only_patterns=[pattern],
+        )
+        needle_confuse = Mim1c(
+            rate=0.2,
+            seed=43,
+            include_only_patterns=[pattern],
+        )
+        needle_homophone = Wherewolf(
+            rate=0.3,
+            seed=44,
+            include_only_patterns=[pattern],
+        )
 
-    # Verify structural markers are preserved
-    print("\n--- Verification: Structural Marker Preservation ---")
-    for i, row in df.iterrows():
-        result = gaggle_full.corrupt(row["text"])
-        has_needle_tags = "[NEEDLE]" in result and "[/NEEDLE]" in result
-        has_context_tags = "[CONTEXT]" in result and "[/CONTEXT]" in result
-        if has_needle_tags and has_context_tags:
-            print(f"  Sample {i}: All structural markers preserved")
-        else:
-            print(f"  Sample {i}: WARNING - markers corrupted: {result[:80]}...")
+        # Light corruption on haystack (excludes needle)
+        haystack_typo = Typogre(
+            rate=0.05,
+            seed=45,
+            exclude_patterns=[pattern],
+        )
+
+        gaggle = Gaggle(
+            [needle_typo, needle_confuse, needle_homophone, haystack_typo],
+            seed=100,
+        )
+
+        result = gaggle.corrupt(row["text"])
+        results.append(result)
+
+        # Show the corrupted needle
+        original_pos = row["text"].find(row["answer"])
+        corrupted_region = result[original_pos : original_pos + len(row["answer"]) + 10]
+        print(f"  Original needle:    {row['answer']}")
+        print(f"  Childproofed:       {corrupted_region.strip()}")
+        print()
+
+    # Verification: exact match should fail
+    print("--- Verification: Exact Match Failure ---")
+    for i, (row, result) in enumerate(zip(df.iterrows(), results)):
+        _, row = row
+        exact_match = row["answer"] in result
+        print(f"  Sample {i}: Exact needle match = {exact_match} (should be False)")
 
     print("\n--- Use Case: Needle Retrieval Testing ---")
     print("    1. Model must find needle despite surface pattern corruption")
