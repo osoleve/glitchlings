@@ -138,117 +138,99 @@ glitchlings:
         config_path.unlink()
 
 
-def demo_label_leakage_prevention() -> None:
-    """Demonstrate preventing label leakage in multilabel classification.
+def demo_childproofing_haystacks() -> None:
+    """Demonstrate childproofing haystacks for long context retrieval.
 
-    This example shows how to use heterogeneous masks to create a learning
-    curriculum where:
-    1. Labels are corrupted with high rate (to test robustness to label noise)
-    2. Content is corrupted with lower rate (for difficulty scaling)
-    3. System prompts are never corrupted (to maintain instruction clarity)
+    In needle-in-a-haystack evaluations, models may memorize surface patterns
+    of known needle texts rather than truly understanding context. This example
+    shows how to use the answer column to construct inclusion masks that target
+    and corrupt needles, forcing models to rely on semantic understanding.
 
-    This is useful for training models that must learn from noisy labels
-    while avoiding label leakage where the model memorizes label patterns.
+    The key insight: the needle is there on purpose, so let's break it.
     """
     if not HAS_PANDAS:
         print("\n" + "=" * 60)
-        print("Label Leakage Prevention (requires pandas)")
+        print("Childproofing Haystacks (requires pandas)")
         print("=" * 60)
         print("\nSkipping demo (pandas not installed)")
         return
 
+    import re
+
     import pandas as pd
 
-    from glitchlings import Gaggle, Typogre
+    from glitchlings import Gaggle, Mim1c, Typogre, Wherewolf
 
     print("\n" + "=" * 60)
-    print("Label Leakage Prevention for Multilabel Classification")
+    print("Childproofing Haystacks: Long Context Retrieval")
     print("=" * 60)
 
-    # Sample multilabel classification data with structured format
+    # Sample haystack with embedded needles - no tags, just natural text
+    # The "answer" column contains the needle text for ground truth
     df = pd.DataFrame(
         {
             "text": [
-                "[SYSTEM]Classify[/SYSTEM] The movie was [LABEL]positive[/LABEL] great.",
-                "[SYSTEM]Classify[/SYSTEM] A [LABEL]negative[/LABEL] experience overall.",
-                "[SYSTEM]Classify[/SYSTEM] It was [LABEL]neutral[/LABEL] but informative.",
-            ]
+                "The quarterly report shows stable growth across all sectors. "
+                "Revenue increased by 12% compared to last year. "
+                "The secret code for the vault is blue-elephant-42. "
+                "Market conditions remain favorable for expansion.",
+                "Weather patterns indicate a mild winter ahead. "
+                "Agricultural forecasts are optimistic. "
+                "The password to access the system is cardinal-mountain-99. "
+                "Supply chain logistics have improved significantly.",
+                "The research team published their findings last week. "
+                "Initial peer review was positive. "
+                "The answer to the security question is purple-tiger-17. "
+                "Funding for the next phase has been approved.",
+            ],
+            "answer": [
+                "The secret code for the vault is blue-elephant-42.",
+                "The password to access the system is cardinal-mountain-99.",
+                "The answer to the security question is purple-tiger-17.",
+            ],
         }
     )
 
-    print("\n--- Original Data ---")
-    for _, row in df.iterrows():
-        print(f"  {row['text']}")
+    print("\nOriginal needles:")
+    for i, row in df.iterrows():
+        print(f"  {i}: {row['answer']}")
 
-    # Strategy 1: Corrupt only labels (test label noise robustness)
-    print("\n--- Strategy 1: Corrupt Labels Only ---")
-    label_corruptor = Typogre(
-        rate=0.8,  # High rate on labels
-        seed=42,
-        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
-        exclude_patterns=[r"\[/?SYSTEM\]", r"\[/?LABEL\]"],  # Preserve tags
-    )
-    gaggle_labels = Gaggle([label_corruptor], seed=100)
+    # Childproof each row by building inclusion mask from answer column
+    print("\nChildproofing with multiple corruption types...")
+    print("  - Typogre: keyboard typos")
+    print("  - Mim1c: unicode confusables")
+    print("  - Wherewolf: homophones")
 
-    for _, row in df.iterrows():
-        result = gaggle_labels.corrupt(row["text"])
-        print(f"  {result}")
+    results = []
+    for i, row in df.iterrows():
+        # Build pattern from answer column
+        needle_pattern = re.escape(row["answer"])
 
-    # Strategy 2: Corrupt content only, preserve labels (curriculum learning)
-    print("\n--- Strategy 2: Corrupt Content Only (Lower Rate) ---")
-    content_corruptor = Typogre(
-        rate=0.3,  # Lower rate for curriculum
-        seed=43,
-        exclude_patterns=[
-            r"\[/?SYSTEM\].*?\[/SYSTEM\]",  # Exclude system block
-            r"\[/?LABEL\].*?\[/LABEL\]",  # Exclude label block
-        ],
-    )
-    gaggle_content = Gaggle([content_corruptor], seed=100)
+        # Stack multiple glitchlings targeting only the needle
+        gaggle = Gaggle(
+            [
+                Typogre(rate=0.3, seed=42, include_only_patterns=[needle_pattern]),
+                Mim1c(rate=0.2, seed=43, include_only_patterns=[needle_pattern]),
+                Wherewolf(rate=0.3, seed=44, include_only_patterns=[needle_pattern]),
+            ],
+            seed=100,
+        )
+        results.append(gaggle.corrupt(row["text"]))
 
-    for _, row in df.iterrows():
-        result = gaggle_content.corrupt(row["text"])
-        print(f"  {result}")
+    # Show results
+    print("\nChildproofed needles:")
+    for i, (original, corrupted) in enumerate(zip(df["answer"], results)):
+        # Extract corrupted needle region by position
+        pos = df.iloc[i]["text"].find(original)
+        corrupted_needle = corrupted[pos : pos + len(original)]
+        print(f"  {i}: {corrupted_needle}")
 
-    # Strategy 3: Heterogeneous masks - both corruptions with independent targeting
-    print("\n--- Strategy 3: Heterogeneous Masks (Both Corruptions) ---")
-    print("    Label corruptor: targets only label content (not tags)")
-    print("    Content corruptor: targets only surrounding text")
-
-    label_typo = Typogre(
-        rate=0.8,
-        seed=42,
-        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
-        exclude_patterns=[r"\[/?LABEL\]"],  # Preserve the tag syntax
-    )
-
-    content_typo = Typogre(
-        rate=0.2,
-        seed=43,
-        exclude_patterns=[
-            r"\[SYSTEM\].*?\[/SYSTEM\]",
-            r"\[LABEL\].*?\[/LABEL\]",
-        ],
-    )
-
-    # Both in same gaggle with different masks
-    gaggle_both = Gaggle([label_typo, content_typo], seed=100)
-
-    print(f"\n    Heterogeneous masks detected: {gaggle_both._has_heterogeneous_masks()}")
-    print(f"    Number of mask groups: {len(gaggle_both._group_by_masks())}")
-
-    for _, row in df.iterrows():
-        result = gaggle_both.corrupt(row["text"])
-        print(f"  {result}")
-
-    # Verify system prompt is always preserved
-    print("\n--- Verification: System Prompt Preservation ---")
-    for _, row in df.iterrows():
-        result = gaggle_both.corrupt(row["text"])
-        if "[SYSTEM]Classify[/SYSTEM]" in result:
-            print("  ✓ System prompt preserved")
-        else:
-            print(f"  ✗ System prompt corrupted: {result}")
+    # Verify exact match fails
+    print("\nVerification (exact match should fail):")
+    for i, (original, corrupted) in enumerate(zip(df["answer"], results)):
+        found = original in corrupted
+        status = "PASS - needle broken" if not found else "FAIL - needle intact"
+        print(f"  {i}: {status}")
 
 
 def demo_datadesigner_integration() -> None:
@@ -316,7 +298,7 @@ def main() -> None:
 
     demo_standalone_usage()
     demo_yaml_config()
-    demo_label_leakage_prevention()
+    demo_childproofing_haystacks()
     demo_datadesigner_integration()
 
     print("\n" + "=" * 60)
