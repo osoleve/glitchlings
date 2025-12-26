@@ -138,117 +138,180 @@ glitchlings:
         config_path.unlink()
 
 
-def demo_label_leakage_prevention() -> None:
-    """Demonstrate preventing label leakage in multilabel classification.
+def demo_childproofing_haystacks() -> None:
+    """Demonstrate childproofing haystacks for long context retrieval.
 
-    This example shows how to use heterogeneous masks to create a learning
-    curriculum where:
-    1. Labels are corrupted with high rate (to test robustness to label noise)
-    2. Content is corrupted with lower rate (for difficulty scaling)
-    3. System prompts are never corrupted (to maintain instruction clarity)
+    This example shows how to use heterogeneous masks to break surface patterns
+    of known "needles" in needle-in-a-haystack evaluations, forcing models to
+    rely on approximate retrieval and semantic understanding rather than exact
+    pattern matching.
 
-    This is useful for training models that must learn from noisy labels
-    while avoiding label leakage where the model memorizes label patterns.
+    The key insight: the needle is there on purpose, so let's break it.
+
+    Strategies:
+    1. Corrupt needles with high rate (break exact matching patterns)
+    2. Corrupt haystack with lower rate (add realistic noise floor)
+    3. Preserve structural markers (maintain retrievability by semantics)
+
+    This is useful for testing whether models truly understand context or are
+    just memorizing surface patterns of evaluation needle texts.
     """
     if not HAS_PANDAS:
         print("\n" + "=" * 60)
-        print("Label Leakage Prevention (requires pandas)")
+        print("Childproofing Haystacks (requires pandas)")
         print("=" * 60)
         print("\nSkipping demo (pandas not installed)")
         return
 
     import pandas as pd
 
-    from glitchlings import Gaggle, Typogre
+    from glitchlings import Gaggle, Mim1c, Typogre, Wherewolf
 
     print("\n" + "=" * 60)
-    print("Label Leakage Prevention for Multilabel Classification")
+    print("Childproofing Haystacks: Long Context Retrieval")
     print("=" * 60)
+    print("\nGoal: Break surface patterns of needles to test semantic retrieval")
 
-    # Sample multilabel classification data with structured format
+    # Sample haystack with embedded needle using structural markers
     df = pd.DataFrame(
         {
             "text": [
-                "[SYSTEM]Classify[/SYSTEM] The movie was [LABEL]positive[/LABEL] great.",
-                "[SYSTEM]Classify[/SYSTEM] A [LABEL]negative[/LABEL] experience overall.",
-                "[SYSTEM]Classify[/SYSTEM] It was [LABEL]neutral[/LABEL] but informative.",
+                "[CONTEXT]The quarterly report shows stable growth across all sectors. "
+                "Revenue increased by 12% compared to last year.[/CONTEXT] "
+                "[NEEDLE]The secret code for the vault is blue-elephant-42.[/NEEDLE] "
+                "[CONTEXT]Market conditions remain favorable for expansion.[/CONTEXT]",
+                "[CONTEXT]Weather patterns indicate a mild winter ahead. "
+                "Agricultural forecasts are optimistic.[/CONTEXT] "
+                "[NEEDLE]The password to access the system is cardinal-mountain-99.[/NEEDLE] "
+                "[CONTEXT]Supply chain logistics have improved significantly.[/CONTEXT]",
+                "[CONTEXT]The research team published their findings last week. "
+                "Initial peer review was positive.[/CONTEXT] "
+                "[NEEDLE]The answer to the security question is purple-tiger-17.[/NEEDLE] "
+                "[CONTEXT]Funding for the next phase has been approved.[/CONTEXT]",
             ]
         }
     )
 
-    print("\n--- Original Data ---")
-    for _, row in df.iterrows():
-        print(f"  {row['text']}")
+    print("\n--- Original Data (with needles) ---")
+    for i, row in df.iterrows():
+        # Show just the needle portion for clarity
+        import re
 
-    # Strategy 1: Corrupt only labels (test label noise robustness)
-    print("\n--- Strategy 1: Corrupt Labels Only ---")
-    label_corruptor = Typogre(
-        rate=0.8,  # High rate on labels
+        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", row["text"])
+        if needle:
+            print(f"  Needle {i}: {needle.group(1)}")
+
+    # Strategy 1: Corrupt only needles (break exact pattern matching)
+    print("\n--- Strategy 1: Corrupt Needles Only ---")
+    print("    Forces approximate retrieval; exact string match will fail")
+    needle_corruptor = Typogre(
+        rate=0.4,  # High rate on needles
         seed=42,
-        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
-        exclude_patterns=[r"\[/?SYSTEM\]", r"\[/?LABEL\]"],  # Preserve tags
+        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
+        exclude_patterns=[r"\[/?NEEDLE\]"],  # Preserve structural tags
     )
-    gaggle_labels = Gaggle([label_corruptor], seed=100)
+    gaggle_needles = Gaggle([needle_corruptor], seed=100)
 
-    for _, row in df.iterrows():
-        result = gaggle_labels.corrupt(row["text"])
-        print(f"  {result}")
+    for i, row in df.iterrows():
+        result = gaggle_needles.corrupt(row["text"])
+        import re
 
-    # Strategy 2: Corrupt content only, preserve labels (curriculum learning)
-    print("\n--- Strategy 2: Corrupt Content Only (Lower Rate) ---")
-    content_corruptor = Typogre(
-        rate=0.3,  # Lower rate for curriculum
+        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", result)
+        if needle:
+            print(f"  Corrupted needle {i}: {needle.group(1)}")
+
+    # Strategy 2: Corrupt haystack only, preserve needles (noise floor)
+    print("\n--- Strategy 2: Corrupt Haystack Only (Noise Floor) ---")
+    print("    Adds realistic noise; needle remains exact for baseline")
+    haystack_corruptor = Typogre(
+        rate=0.15,  # Lower rate for realistic noise
         seed=43,
         exclude_patterns=[
-            r"\[/?SYSTEM\].*?\[/SYSTEM\]",  # Exclude system block
-            r"\[/?LABEL\].*?\[/LABEL\]",  # Exclude label block
+            r"\[NEEDLE\].*?\[/NEEDLE\]",  # Preserve needle completely
         ],
     )
-    gaggle_content = Gaggle([content_corruptor], seed=100)
+    gaggle_haystack = Gaggle([haystack_corruptor], seed=100)
 
-    for _, row in df.iterrows():
-        result = gaggle_content.corrupt(row["text"])
-        print(f"  {result}")
+    for i, row in df.iterrows():
+        result = gaggle_haystack.corrupt(row["text"])
+        # Show a snippet of corrupted context
+        import re
 
-    # Strategy 3: Heterogeneous masks - both corruptions with independent targeting
-    print("\n--- Strategy 3: Heterogeneous Masks (Both Corruptions) ---")
-    print("    Label corruptor: targets only label content (not tags)")
-    print("    Content corruptor: targets only surrounding text")
+        context = re.search(r"\[CONTEXT\](.*?)\[/CONTEXT\]", result)
+        if context:
+            snippet = context.group(1)[:50] + "..."
+            print(f"  Corrupted context {i}: {snippet}")
 
-    label_typo = Typogre(
-        rate=0.8,
+    # Strategy 3: Heterogeneous masks - full childproofing
+    print("\n--- Strategy 3: Full Childproofing (Heterogeneous Masks) ---")
+    print("    Needle: heavy corruption (typos + confusables + homophones)")
+    print("    Haystack: light corruption (realistic noise)")
+    print("    Tags: preserved (structural markers for evaluation)")
+
+    # Heavy corruption on needles using multiple glitchlings
+    needle_typo = Typogre(
+        rate=0.3,
         seed=42,
-        include_only_patterns=[r"\[LABEL\].*?\[/LABEL\]"],
-        exclude_patterns=[r"\[/?LABEL\]"],  # Preserve the tag syntax
+        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
+        exclude_patterns=[r"\[/?NEEDLE\]"],
     )
-
-    content_typo = Typogre(
+    needle_confuse = Mim1c(
         rate=0.2,
         seed=43,
+        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
+        exclude_patterns=[r"\[/?NEEDLE\]"],
+    )
+    needle_homophone = Wherewolf(
+        rate=0.3,
+        seed=44,
+        include_only_patterns=[r"\[NEEDLE\].*?\[/NEEDLE\]"],
+        exclude_patterns=[r"\[/?NEEDLE\]"],
+    )
+
+    # Light corruption on haystack
+    haystack_typo = Typogre(
+        rate=0.05,
+        seed=45,
         exclude_patterns=[
-            r"\[SYSTEM\].*?\[/SYSTEM\]",
-            r"\[LABEL\].*?\[/LABEL\]",
+            r"\[NEEDLE\].*?\[/NEEDLE\]",
+            r"\[/?CONTEXT\]",
+            r"\[/?NEEDLE\]",
         ],
     )
 
-    # Both in same gaggle with different masks
-    gaggle_both = Gaggle([label_typo, content_typo], seed=100)
+    # Combine into single gaggle with heterogeneous masks
+    gaggle_full = Gaggle(
+        [needle_typo, needle_confuse, needle_homophone, haystack_typo],
+        seed=100,
+    )
 
-    print(f"\n    Heterogeneous masks detected: {gaggle_both._has_heterogeneous_masks()}")
-    print(f"    Number of mask groups: {len(gaggle_both._group_by_masks())}")
+    print(f"\n    Heterogeneous masks detected: {gaggle_full._has_heterogeneous_masks()}")
+    print(f"    Number of mask groups: {len(gaggle_full._group_by_masks())}")
 
-    for _, row in df.iterrows():
-        result = gaggle_both.corrupt(row["text"])
-        print(f"  {result}")
+    for i, row in df.iterrows():
+        result = gaggle_full.corrupt(row["text"])
+        import re
 
-    # Verify system prompt is always preserved
-    print("\n--- Verification: System Prompt Preservation ---")
-    for _, row in df.iterrows():
-        result = gaggle_both.corrupt(row["text"])
-        if "[SYSTEM]Classify[/SYSTEM]" in result:
-            print("  ✓ System prompt preserved")
+        needle = re.search(r"\[NEEDLE\](.*?)\[/NEEDLE\]", result)
+        if needle:
+            print(f"  Childproofed needle {i}: {needle.group(1)}")
+
+    # Verify structural markers are preserved
+    print("\n--- Verification: Structural Marker Preservation ---")
+    for i, row in df.iterrows():
+        result = gaggle_full.corrupt(row["text"])
+        has_needle_tags = "[NEEDLE]" in result and "[/NEEDLE]" in result
+        has_context_tags = "[CONTEXT]" in result and "[/CONTEXT]" in result
+        if has_needle_tags and has_context_tags:
+            print(f"  Sample {i}: All structural markers preserved")
         else:
-            print(f"  ✗ System prompt corrupted: {result}")
+            print(f"  Sample {i}: WARNING - markers corrupted: {result[:80]}...")
+
+    print("\n--- Use Case: Needle Retrieval Testing ---")
+    print("    1. Model must find needle despite surface pattern corruption")
+    print("    2. Exact string matching will fail (by design)")
+    print("    3. Success requires semantic understanding of needle content")
+    print("    4. Measures true retrieval capability vs pattern memorization")
 
 
 def demo_datadesigner_integration() -> None:
@@ -316,7 +379,7 @@ def main() -> None:
 
     demo_standalone_usage()
     demo_yaml_config()
-    demo_label_leakage_prevention()
+    demo_childproofing_haystacks()
     demo_datadesigner_integration()
 
     print("\n" + "=" * 60)
