@@ -141,20 +141,12 @@ glitchlings:
 def demo_childproofing_haystacks() -> None:
     """Demonstrate childproofing haystacks for long context retrieval.
 
-    This example shows how to use an answer column to construct inclusion masks
-    that target known "needles" in needle-in-a-haystack evaluations, breaking
-    their surface patterns to force models to rely on approximate retrieval and
-    semantic understanding rather than exact pattern matching.
+    In needle-in-a-haystack evaluations, models may memorize surface patterns
+    of known needle texts rather than truly understanding context. This example
+    shows how to use the answer column to construct inclusion masks that target
+    and corrupt needles, forcing models to rely on semantic understanding.
 
     The key insight: the needle is there on purpose, so let's break it.
-
-    Strategies:
-    1. Use the answer column to build inclusion patterns dynamically
-    2. Corrupt needles with high rate (break exact matching patterns)
-    3. Corrupt haystack with lower rate (add realistic noise floor)
-
-    This is useful for testing whether models truly understand context or are
-    just memorizing surface patterns of evaluation needle texts.
     """
     if not HAS_PANDAS:
         print("\n" + "=" * 60)
@@ -172,7 +164,6 @@ def demo_childproofing_haystacks() -> None:
     print("\n" + "=" * 60)
     print("Childproofing Haystacks: Long Context Retrieval")
     print("=" * 60)
-    print("\nGoal: Break surface patterns of needles to test semantic retrieval")
 
     # Sample haystack with embedded needles - no tags, just natural text
     # The "answer" column contains the needle text for ground truth
@@ -200,122 +191,46 @@ def demo_childproofing_haystacks() -> None:
         }
     )
 
-    print("\n--- Original Data ---")
+    print("\nOriginal needles:")
     for i, row in df.iterrows():
-        print(f"  Needle {i}: {row['answer']}")
-        print(f"    (embedded in {len(row['text'])} chars of haystack)")
+        print(f"  {i}: {row['answer']}")
 
-    # Helper: build inclusion pattern from answer column
-    def needle_pattern(answer: str) -> str:
-        """Escape answer text to use as regex inclusion pattern."""
-        return re.escape(answer)
-
-    # Strategy 1: Corrupt only needles (break exact pattern matching)
-    print("\n--- Strategy 1: Corrupt Needles Only ---")
-    print("    Uses answer column to build inclusion mask")
-    print("    Forces approximate retrieval; exact string match will fail")
-
-    for i, row in df.iterrows():
-        pattern = needle_pattern(row["answer"])
-        needle_corruptor = Typogre(
-            rate=0.4,  # High rate on needles
-            seed=42 + i,
-            include_only_patterns=[pattern],
-        )
-        gaggle = Gaggle([needle_corruptor], seed=100)
-        result = gaggle.corrupt(row["text"])
-
-        # Extract the corrupted needle region
-        original_pos = row["text"].find(row["answer"])
-        corrupted_needle = result[original_pos : original_pos + len(row["answer"])]
-        print(f"  Original:  {row['answer']}")
-        print(f"  Corrupted: {corrupted_needle}")
-        print()
-
-    # Strategy 2: Corrupt haystack only, preserve needles (noise floor)
-    print("--- Strategy 2: Corrupt Haystack Only (Noise Floor) ---")
-    print("    Excludes needle using answer column pattern")
-    print("    Adds realistic noise; needle remains exact for baseline")
-
-    for i, row in df.iterrows():
-        pattern = needle_pattern(row["answer"])
-        haystack_corruptor = Typogre(
-            rate=0.15,
-            seed=43 + i,
-            exclude_patterns=[pattern],  # Preserve needle completely
-        )
-        gaggle = Gaggle([haystack_corruptor], seed=100)
-        result = gaggle.corrupt(row["text"])
-
-        # Verify needle preserved
-        if row["answer"] in result:
-            snippet = result[:60].replace(row["answer"], f"<<{row['answer']}>>")
-            print(f"  Sample {i}: Needle preserved in noisy haystack")
-            print(f"    Preview: {snippet}...")
-        else:
-            print(f"  Sample {i}: WARNING - needle was modified")
-        print()
-
-    # Strategy 3: Full childproofing with heterogeneous masks
-    print("--- Strategy 3: Full Childproofing (Per-Row Processing) ---")
-    print("    Needle: heavy corruption (typos + confusables + homophones)")
-    print("    Haystack: light corruption (realistic noise)")
+    # Childproof each row by building inclusion mask from answer column
+    print("\nChildproofing with multiple corruption types...")
+    print("  - Typogre: keyboard typos")
+    print("  - Mim1c: unicode confusables")
+    print("  - Wherewolf: homophones")
 
     results = []
     for i, row in df.iterrows():
-        pattern = needle_pattern(row["answer"])
+        # Build pattern from answer column
+        needle_pattern = re.escape(row["answer"])
 
-        # Heavy corruption on needle using multiple glitchlings
-        needle_typo = Typogre(
-            rate=0.3,
-            seed=42,
-            include_only_patterns=[pattern],
-        )
-        needle_confuse = Mim1c(
-            rate=0.2,
-            seed=43,
-            include_only_patterns=[pattern],
-        )
-        needle_homophone = Wherewolf(
-            rate=0.3,
-            seed=44,
-            include_only_patterns=[pattern],
-        )
-
-        # Light corruption on haystack (excludes needle)
-        haystack_typo = Typogre(
-            rate=0.05,
-            seed=45,
-            exclude_patterns=[pattern],
-        )
-
+        # Stack multiple glitchlings targeting only the needle
         gaggle = Gaggle(
-            [needle_typo, needle_confuse, needle_homophone, haystack_typo],
+            [
+                Typogre(rate=0.3, seed=42, include_only_patterns=[needle_pattern]),
+                Mim1c(rate=0.2, seed=43, include_only_patterns=[needle_pattern]),
+                Wherewolf(rate=0.3, seed=44, include_only_patterns=[needle_pattern]),
+            ],
             seed=100,
         )
+        results.append(gaggle.corrupt(row["text"]))
 
-        result = gaggle.corrupt(row["text"])
-        results.append(result)
+    # Show results
+    print("\nChildproofed needles:")
+    for i, (original, corrupted) in enumerate(zip(df["answer"], results)):
+        # Extract corrupted needle region by position
+        pos = df.iloc[i]["text"].find(original)
+        corrupted_needle = corrupted[pos : pos + len(original)]
+        print(f"  {i}: {corrupted_needle}")
 
-        # Show the corrupted needle
-        original_pos = row["text"].find(row["answer"])
-        corrupted_region = result[original_pos : original_pos + len(row["answer"]) + 10]
-        print(f"  Original needle:    {row['answer']}")
-        print(f"  Childproofed:       {corrupted_region.strip()}")
-        print()
-
-    # Verification: exact match should fail
-    print("--- Verification: Exact Match Failure ---")
-    for i, (row, result) in enumerate(zip(df.iterrows(), results)):
-        _, row = row
-        exact_match = row["answer"] in result
-        print(f"  Sample {i}: Exact needle match = {exact_match} (should be False)")
-
-    print("\n--- Use Case: Needle Retrieval Testing ---")
-    print("    1. Model must find needle despite surface pattern corruption")
-    print("    2. Exact string matching will fail (by design)")
-    print("    3. Success requires semantic understanding of needle content")
-    print("    4. Measures true retrieval capability vs pattern memorization")
+    # Verify exact match fails
+    print("\nVerification (exact match should fail):")
+    for i, (original, corrupted) in enumerate(zip(df["answer"], results)):
+        found = original in corrupted
+        status = "PASS - needle broken" if not found else "FAIL - needle intact"
+        print(f"  {i}: {status}")
 
 
 def demo_datadesigner_integration() -> None:
