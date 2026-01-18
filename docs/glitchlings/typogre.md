@@ -29,12 +29,11 @@ Typogre uses keyboard adjacency maps to determine which keys are "nearby" on a p
 
 **Modifier slippage** adds another dimension: when `shift_slip_rate` is non-zero, Typogre simulates holding Shift too long, producing bursts like "HELlo" instead of "Hello". This happens *before* the standard fat-finger errors.
 
-## Usage Tips
-
-- Use `rate=0.005–0.01` for gentle, realistic noise. Higher rates produce obviously corrupted text.
-- Set `keyboard="DVORAK"` or `keyboard="AZERTY"` to match your target population's hardware.
-- Enable `shift_slip_rate` for bursty modifier errors.
-- Combine with [Rushmore](rushmore.md) deletions to simulate hurried note-taking.
+!!! tip "Usage Tips"
+    - Use `rate=0.005–0.01` for gentle, realistic noise. Higher rates produce obviously corrupted text.
+    - Set `keyboard="DVORAK"` or `keyboard="AZERTY"` to match your target population's hardware.
+    - Enable `shift_slip_rate` for bursty modifier errors.
+    - Combine with [Rushmore](rushmore.md) deletions to simulate hurried note-taking.
 
 ## Motor Coordination Weighting
 

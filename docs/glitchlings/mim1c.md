@@ -33,14 +33,13 @@ In `mixed_script` mode, substitutions are weighted by visual plausibility:
 
 This produces more natural-looking spoofed text.
 
-## Usage Tips
-
-- Restrict `classes` (e.g., `classes=["LATIN"]`) when evaluation pipelines reject non-Latin scripts.
-- Use `banned_characters` to exclude confusables that would break downstream filters (e.g., ban full-width ASCII when testing strict lexers).
-- Keep `rate` below 0.03 for legible perturbations; higher values can break tokenisers that expect ASCII.
-- Use `mode="single_script"` when you need substitutions that won't trigger mixed-script detection.
-- Use `mode="compatibility"` to test fullwidth/mathematical character handling.
-- Pairs well with Typogre for keyboard + homoglyph chaos.
+!!! tip "Usage Tips"
+    - Restrict `classes` (e.g., `classes=["LATIN"]`) when evaluation pipelines reject non-Latin scripts.
+    - Use `banned_characters` to exclude confusables that would break downstream filters (e.g., ban full-width ASCII when testing strict lexers).
+    - Keep `rate` below 0.03 for legible perturbations; higher values can break tokenisers that expect ASCII.
+    - Use `mode="single_script"` when you need substitutions that won't trigger mixed-script detection.
+    - Use `mode="compatibility"` to test fullwidth/mathematical character handling.
+    - Pairs well with Typogre for keyboard + homoglyph chaos.
 
 ## Examples
 
