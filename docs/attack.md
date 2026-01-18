@@ -43,7 +43,7 @@ The `transcript_target` parameter controls which transcript turns are corrupted:
 
 This setting is available on `Attack`, `Gaggle`, and `Glitchling`. The default (`"last"`) matches the previous implicit behaviour.
 
-```python
+```python linenums="1"
 from glitchlings import Typogre, Gaggle
 from glitchlings.attack import Attack
 
@@ -58,7 +58,7 @@ gaggle = Gaggle([Typogre()], transcript_target="all")
 
 `Attack.run` accepts simple `list[str]` batches in addition to transcripts. Each entry is corrupted independently, tokenised, and scored, with metrics returned per element:
 
-```python
+```python linenums="1"
 attack = Attack(["Typogre(rate=0.02)"])
 batched = attack.run(["left", "right"])
 print(batched.metrics["normalized_edit_distance"])  # -> [0.0, 0.21]
@@ -66,7 +66,7 @@ print(batched.metrics["normalized_edit_distance"])  # -> [0.0, 0.21]
 
 ## Example
 
-```python
+```python linenums="1"
 from glitchlings import Mim1c, Rushmore, Typogre
 from glitchlings.attack import Attack
 
@@ -85,7 +85,7 @@ print(result.output_tokens)
 
 `AttackResult.summary()` renders a compact, human-readable view of token drift and metrics without manual iteration:
 
-```python
+```python linenums="1"
 summary = result.summary(max_rows=6)
 print(summary)
 ```
@@ -96,7 +96,7 @@ It highlights token count deltas, metric values, and a small token-by-token comp
 
 Use `compare_tokenizers()` to benchmark multiple tokenizers against the same corruption:
 
-```python
+```python linenums="1"
 from glitchlings import Typogre, compare_tokenizers
 
 result = compare_tokenizers(
@@ -115,7 +115,7 @@ This applies the same corruption once, then tokenizes with each tokenizer to com
 
 Use `compare_glitchlings()` to find which corruption strategy has the most impact for a specific tokenizer:
 
-```python
+```python linenums="1"
 from glitchlings import Typogre, Mim1c, Wherewolf, compare_glitchlings
 
 result = compare_glitchlings(
@@ -139,7 +139,7 @@ print(f"Most disruptive: {best.name}")
 
 Use `MetricName` for type-safe metric references with IDE completion:
 
-```python
+```python linenums="1"
 from glitchlings import MetricName
 from glitchlings.attack import Attack
 
@@ -167,7 +167,7 @@ Available metrics:
 
 `AttackResult` provides methods for detailed token analysis:
 
-```python
+```python linenums="1"
 result = attack.run("Hello world")
 
 # Get tokens that changed
@@ -196,7 +196,7 @@ The attack module includes four analysis tools for systematic exploration. For d
 
 ### Quick examples
 
-```python
+```python linenums="1"
 from glitchlings import SeedSweep, GridSearch, Typogre
 
 # SeedSweep: understand variance across random seeds
@@ -211,7 +211,7 @@ result = grid.run("Hello world", rank_by="normalized_edit_distance")
 print(f"Best rate: {result.best_point.params['rate']}")
 ```
 
-```python
+```python linenums="1"
 from glitchlings import compare_tokenizers, compare_glitchlings, Typogre, Mim1c
 
 # Compare tokenizers: same corruption, different tokenization
@@ -236,7 +236,7 @@ print(f"Most disruptive: {best.name}")
 
 Result classes provide `to_dataframe()` for analysis in pandas (requires `pip install pandas`):
 
-```python
+```python linenums="1"
 # SeedSweep results
 df = sweep_result.to_dataframe()  # seeds as index, metrics as columns
 
@@ -251,7 +251,7 @@ df = comparison_result.to_dataframe()  # glitchling names as index
 
 Export results directly to CSV:
 
-```python
+```python linenums="1"
 sweep_result.export_csv("sweep_results.csv")
 grid_result.export_csv("grid_results.csv", include_params=True)
 ```
@@ -286,7 +286,7 @@ By default, Attack uses a lightweight `tiktoken` encoder:
 
 Resolved tokenizers are cached automatically for efficient reuse across multiple `Attack` instances. The cache holds up to 16 tokenizers with LRU eviction.
 
-```python
+```python linenums="1"
 from glitchlings.attack import (
     clear_tokenizer_cache,
     get_tokenizer_cache_info,
@@ -304,7 +304,7 @@ print(f"Cleared {cleared} cached tokenizers")
 
 To bypass the cache for a specific resolution:
 
-```python
+```python linenums="1"
 from glitchlings.attack.tokenization import resolve_tokenizer
 
 # Force fresh tokenizer instance
@@ -319,7 +319,7 @@ For processing many texts or very large token sequences, the attack module provi
 
 Use `run_stream()` to process an iterator of texts without holding all results in memory:
 
-```python
+```python linenums="1"
 from glitchlings import Typogre
 from glitchlings.attack import Attack
 
@@ -339,7 +339,7 @@ for result in attack.run_stream(load_texts()):
 
 For results with very large token sequences, use `run_streaming_result()` to get windowed access:
 
-```python
+```python linenums="1"
 result = attack.run_streaming_result(very_long_text, window_size=5000)
 
 # Iterate over token windows without loading all at once
@@ -358,13 +358,14 @@ for input_window, output_window in result.stream_token_pairs():
     pass
 ```
 
-**Note:** `StreamingAttackResult` provides windowed *access* to tokens, not lazy loading. The tokens are still stored in memory after the attack runs. For true memory savings with many texts, use `run_stream()` to process texts one at a time.
+!!! warning "Memory Usage"
+    `StreamingAttackResult` provides windowed *access* to tokens, not lazy loading. The tokens are still stored in memory after the attack runs. For true memory savings with many texts, use `run_stream()` to process texts one at a time.
 
 ### Lightweight results without tokens
 
 When you only need metrics and don't need the actual token lists, use `include_tokens=False` for reduced memory usage:
 
-```python
+```python linenums="1"
 # Lightweight result - metrics only, no tokens stored
 result = attack.run(text, include_tokens=False)
 print(result.metrics)  # Full metrics computed
@@ -377,13 +378,14 @@ for result in attack.run_stream(texts, include_tokens=False):
     print(result.metrics["normalized_edit_distance"])
 ```
 
-**Note:** Metrics are still computed from the tokens internally—only the storage of tokens in the result is skipped. This is useful when processing many texts where you only need aggregate statistics.
+!!! note "Metrics Calculation"
+    Metrics are still computed from the tokens internally—only the storage of tokens in the result is skipped. This is useful when processing many texts where you only need aggregate statistics.
 
 ## Tokenizer analysis metrics
 
 Beyond corruption metrics, the attack module provides metrics for analyzing tokenizer behavior:
 
-```python
+```python linenums="1"
 from glitchlings.attack import (
     compression_ratio,
     characters_per_token,
@@ -411,7 +413,7 @@ tokens, token_ids = tokenizer.encode(text)
 
 ### Individual metrics
 
-```python
+```python linenums="1"
 # Encoding efficiency
 print(f"Bytes/token: {compression_ratio(text, tokens):.2f}")
 print(f"Chars/token: {characters_per_token(text, tokens):.2f}")
@@ -435,7 +437,7 @@ if unk_rate > 0.05:
 
 Use `analyze_tokenizer()` for all metrics at once:
 
-```python
+```python linenums="1"
 stats = analyze_tokenizer(text, tokenizer)
 for key, value in stats.items():
     print(f"{key}: {value:.4f}")
@@ -447,7 +449,7 @@ Returns a dictionary with: `compression_ratio`, `characters_per_token`, `token_e
 
 All tokenizer metrics have batch variants for efficient bulk analysis:
 
-```python
+```python linenums="1"
 from glitchlings.attack import (
     batch_compression_ratio,
     batch_token_entropy,
