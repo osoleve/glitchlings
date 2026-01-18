@@ -29,15 +29,11 @@ phonotactic cues, and nearby punctuation before sampling a heavy-tailed stretch 
     sampler. Lower values yield heavier tails (longer stretches).
   - `seed` (int, optional): Seed for deterministic behaviour.
 
-- **Usage tips**:
-  - Hokey now relies exclusively on the compiled Rust pipeline; tracing data is no
-    longer available from the Python shim.
-  - Lower `base_p` to produce occasional dramatic stretches while keeping most
-    output moderate.
-  - When combining with other character glitchlings, run Hokey first so later agents
-    operate on the stretched text.
-  - Reduce `word_length_threshold` to focus on interjections ("so", "lol", "wow");
-    increase it when you want verbs and adjectives to join the fun.
+!!! tip "Usage Tips"
+    - Hokey now relies exclusively on the compiled Rust pipeline; tracing data is no longer available from the Python shim.
+    - Lower `base_p` to produce occasional dramatic stretches while keeping most output moderate.
+    - When combining with other character glitchlings, run Hokey first so later agents operate on the stretched text.
+    - Reduce `word_length_threshold` to focus on interjections ("so", "lol", "wow"); increase it when you want verbs and adjectives to join the fun.
 
 - **Examples**:
   ```python

@@ -53,12 +53,11 @@ wolf("They're going to their house over there")
 
 **Phonetic ambiguity research** — When you need text that's correct-when-spoken but wrong-when-written.
 
-## Usage Tips
-
-- Keep `rate` low (0.02–0.05) for realistic perturbations. Higher rates produce text that's obviously corrupted.
-- Pair with [Typogre](typogre.md) for blended lexical and visual noise.
-- Run alone when you want to focus on phonetic ambiguity without character-level corruption.
-- The homophone dictionary focuses on common English homophones. Rare or archaic forms aren't included.
+!!! tip "Usage Tips"
+    - Keep `rate` low (0.02–0.05) for realistic perturbations. Higher rates produce text that's obviously corrupted.
+    - Pair with [Typogre](typogre.md) for blended lexical and visual noise.
+    - Run alone when you want to focus on phonetic ambiguity without character-level corruption.
+    - The homophone dictionary focuses on common English homophones. Rare or archaic forms aren't included.
 
 ## Complementary Glitchlings
 

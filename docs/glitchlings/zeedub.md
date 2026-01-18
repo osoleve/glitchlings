@@ -82,13 +82,12 @@ z = Zeedub(rate=0.5, max_consecutive=0, seed=42)
 result = z("test")
 ```
 
-## Usage Tips
-
-- Keep `rate` low (0.005–0.02) for subtle tampering; higher values quickly saturate text with invisible joins.
-- Use `placement="grapheme_boundary"` when working with combining characters or emoji to avoid creating malformed sequences.
-- Use `placement="script_aware"` for multilingual corpora to ensure joiners are contextually appropriate.
-- Pass a custom `characters` sequence to restrict the insertion set to specific control codes.
-- When debugging, wrap outputs with `repr(...)` or replace `"\u200b"` etc. to make the hidden glyphs visible.
+!!! tip "Usage Tips"
+    - Keep `rate` low (0.005–0.02) for subtle tampering; higher values quickly saturate text with invisible joins.
+    - Use `placement="grapheme_boundary"` when working with combining characters or emoji to avoid creating malformed sequences.
+    - Use `placement="script_aware"` for multilingual corpora to ensure joiners are contextually appropriate.
+    - Pass a custom `characters` sequence to restrict the insertion set to specific control codes.
+    - When debugging, wrap outputs with `repr(...)` or replace `"\u200b"` etc. to make the hidden glyphs visible.
 
 ## References
 
