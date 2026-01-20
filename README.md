@@ -17,7 +17,7 @@
 ```
 
 ![Python Versions](https://img.shields.io/pypi/pyversions/glitchlings.svg)
-[![PyPI version](https://img.shields.io/pypi/v/glitchlings.svg)](https://pypi.org/project/glitchlings/)
+[![PyPI version](https://badge.fury.io/py/glitchlings.svg)](https://pypi.org/project/glitchlings/)
 ![Wheel](https://img.shields.io/pypi/wheel/glitchlings.svg)
 ![Linting and Typing](https://github.com/osoleve/glitchlings/actions/workflows/ci.yml/badge.svg)  
 ![Entropy Budget](https://img.shields.io/badge/entropy-lifegiving-magenta.svg)
