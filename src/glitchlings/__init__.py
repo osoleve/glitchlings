@@ -45,6 +45,8 @@ from .zoo import (
     zeedub,
 )
 
+__version__ = "1.0.0"
+
 __all__ = [
     # Attack analysis
     "Attack",
