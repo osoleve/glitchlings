@@ -512,7 +512,7 @@ pub fn parse_class_selection(value: Option<Bound<'_, PyAny>>) -> PyResult<ClassS
         return Ok(ClassSelection::Default);
     }
 
-    if let Ok(py_str) = obj.downcast::<PyString>() {
+    if let Ok(py_str) = obj.cast::<PyString>() {
         let value = py_str.to_str()?.to_string();
         if value.eq_ignore_ascii_case("all") {
             return Ok(ClassSelection::All);
@@ -520,7 +520,7 @@ pub fn parse_class_selection(value: Option<Bound<'_, PyAny>>) -> PyResult<ClassS
         return Ok(ClassSelection::Specific(vec![value]));
     }
 
-    if let Ok(seq) = obj.downcast::<PySequence>() {
+    if let Ok(seq) = obj.cast::<PySequence>() {
         let mut classes: Vec<String> = Vec::new();
         for item in seq.try_iter()? {
             let text: String = item?.extract()?;
@@ -546,11 +546,11 @@ pub fn parse_banned_characters(value: Option<Bound<'_, PyAny>>) -> PyResult<Vec<
         return Ok(Vec::new());
     }
 
-    if let Ok(py_str) = obj.downcast::<PyString>() {
+    if let Ok(py_str) = obj.cast::<PyString>() {
         return Ok(vec![py_str.to_str()?.to_string()]);
     }
 
-    if let Ok(seq) = obj.downcast::<PySequence>() {
+    if let Ok(seq) = obj.cast::<PySequence>() {
         let mut banned = Vec::new();
         for item in seq.try_iter()? {
             banned.push(item?.extract()?);

@@ -16,7 +16,7 @@ mod zero_width;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict, PyModule};
 use pyo3::Bound;
-use pyo3::{exceptions::PyValueError, FromPyObject};
+use pyo3::{conversion::FromPyObjectOwned, exceptions::PyValueError, FromPyObject};
 use rand::Rng;
 use rayon::prelude::*;
 use std::collections::HashMap;
@@ -70,7 +70,7 @@ fn extract_required_field_inner<'py, T>(
     suffix: MissingFieldSuffix,
 ) -> PyResult<T>
 where
-    T: FromPyObject<'py>,
+    T: FromPyObjectOwned<'py>,
 {
     let message = match suffix {
         MissingFieldSuffix::Absent => format!("{context} missing '{field}'"),
@@ -80,6 +80,7 @@ where
     dict.get_item(field)?
         .ok_or_else(|| PyValueError::new_err(message))?
         .extract()
+        .map_err(Into::into)
 }
 
 fn extract_required_field<'py, T>(
@@ -88,7 +89,7 @@ fn extract_required_field<'py, T>(
     field: &str,
 ) -> PyResult<T>
 where
-    T: FromPyObject<'py>,
+    T: FromPyObjectOwned<'py>,
 {
     extract_required_field_inner(dict, context, field, MissingFieldSuffix::Absent)
 }
@@ -99,17 +100,17 @@ fn extract_required_field_with_field_suffix<'py, T>(
     field: &str,
 ) -> PyResult<T>
 where
-    T: FromPyObject<'py>,
+    T: FromPyObjectOwned<'py>,
 {
     extract_required_field_inner(dict, context, field, MissingFieldSuffix::IncludeField)
 }
 
 fn extract_optional_field<'py, T>(dict: &Bound<'py, PyDict>, field: &str) -> PyResult<Option<T>>
 where
-    T: FromPyObject<'py>,
+    T: FromPyObjectOwned<'py>,
 {
     dict.get_item(field)?
-        .map(|value| value.extract())
+        .map(|value| value.extract().map_err(Into::into))
         .transpose()
 }
 
@@ -187,7 +188,7 @@ impl Pipeline {
 
         let pipeline = self.clone();
         let text_owned = text.to_string();
-        py.allow_threads(move || {
+        py.detach(move || {
             pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
         })
     }
@@ -199,7 +200,7 @@ impl Pipeline {
     #[pyo3(name = "run_batch")]
     fn run_batch_py(&self, py: Python<'_>, texts: Vec<String>) -> PyResult<Vec<String>> {
         let pipeline = self.clone();
-        py.allow_threads(move || {
+        py.detach(move || {
             // Process directly with owned strings to avoid intermediate allocation
             texts
                 .par_iter()
@@ -300,9 +301,11 @@ enum PyOperationConfig {
     },
 }
 
-impl<'py> FromPyObject<'py> for PyOperationConfig {
-    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let dict = obj.downcast::<PyDict>()?;
+impl<'a, 'py> FromPyObject<'a, 'py> for PyOperationConfig {
+    type Error = PyErr;
+
+    fn extract(obj: Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
+        let dict = &*obj.cast::<PyDict>()?;
         let op_type: String = extract_required_field_with_field_suffix(dict, "operation", "type")?;
         match op_type.as_str() {
             "reduplicate" => {
@@ -326,7 +329,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let delete = dict
                     .get_item("delete")?
                     .map(|value| -> PyResult<DeleteRandomWordsOp> {
-                        let mapping = value.downcast::<PyDict>()?;
+                        let mapping = value.cast::<PyDict>()?;
                         let rate =
                             extract_required_field(mapping, "rushmore_combo delete", "rate")?;
                         let unweighted =
@@ -338,7 +341,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let duplicate = dict
                     .get_item("duplicate")?
                     .map(|value| -> PyResult<ReduplicateWordsOp> {
-                        let mapping = value.downcast::<PyDict>()?;
+                        let mapping = value.cast::<PyDict>()?;
                         let rate =
                             extract_required_field(mapping, "rushmore_combo duplicate", "rate")?;
                         let unweighted =
@@ -350,7 +353,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let swap = dict
                     .get_item("swap")?
                     .map(|value| -> PyResult<SwapAdjacentWordsOp> {
-                        let mapping = value.downcast::<PyDict>()?;
+                        let mapping = value.cast::<PyDict>()?;
                         let rate = extract_required_field(mapping, "rushmore_combo swap", "rate")?;
                         Ok(SwapAdjacentWordsOp { rate })
                     })
@@ -405,7 +408,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                     extract_required_field_with_field_suffix(dict, "typo operation", "rate")?;
                 let layout_obj: Bound<'py, PyAny> =
                     extract_required_field_with_field_suffix(dict, "typo operation", "layout")?;
-                let layout_dict = layout_obj.downcast::<PyDict>()?;
+                let layout_dict = layout_obj.cast::<PyDict>()?;
                 let layout = extract_layout_vec(layout_dict)?;
                 let shift_slip_rate =
                     extract_optional_field(dict, "shift_slip_rate")?.unwrap_or(0.0);
@@ -413,7 +416,7 @@ impl<'py> FromPyObject<'py> for PyOperationConfig {
                 let shift_map = dict
                     .get_item("shift_map")?
                     .map(|value| -> PyResult<Arc<HashMap<String, String>>> {
-                        let mapping = value.downcast::<PyDict>()?;
+                        let mapping = value.cast::<PyDict>()?;
                         keyboard_typos::extract_shift_map(mapping)
                     })
                     .transpose()?;
@@ -830,7 +833,7 @@ fn compose_operations(
     let text_owned = text.to_string();
 
     // Release GIL for the actual computation
-    py.allow_threads(move || {
+    py.detach(move || {
         pipeline.run(&text_owned).map_err(PipelineError::into_pyerr)
     })
 }

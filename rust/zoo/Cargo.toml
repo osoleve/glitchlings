@@ -30,7 +30,7 @@ compact_str = "0.8"
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
-pprof = { version = "0.13", features = ["flamegraph", "criterion"] }
+pprof = { version = "0.15", features = ["flamegraph", "criterion"] }
 
 [package.metadata.maturin]
 module-name = "glitchlings._corruption_engine"
