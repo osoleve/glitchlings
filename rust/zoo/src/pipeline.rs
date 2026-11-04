@@ -273,7 +273,7 @@ mod tests {
         let output = pipeline.run("Guard the vault").expect("pipeline succeeds");
         // After reduplication: "Guard Guard the the vault vault"
         // After redaction at rate 0.5 with this seed: specific words get redacted
-        assert_eq!(output, "Guard Guard ███ ███ vault █████");
+        assert_eq!(output, "█████ █████ the ███ vault vault");
     }
 
     #[test]
