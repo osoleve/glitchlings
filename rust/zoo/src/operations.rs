@@ -530,7 +530,7 @@ impl TextOperation for SwapAdjacentWordsOp {
         }
 
         if !replacements.is_empty() {
-            buffer.replace_words_bulk(replacements.into_iter())?;
+            buffer.replace_words_bulk(replacements)?;
         }
 
         buffer.reindex_if_needed();
@@ -717,7 +717,7 @@ impl TextOperation for RedactWordsOp {
         }
 
         // Apply all redactions in a single bulk operation
-        buffer.replace_words_bulk(replacements.into_iter())?;
+        buffer.replace_words_bulk(replacements)?;
 
         // If merging is enabled, consolidate adjacent redacted words
         if self.merge_adjacent {
@@ -2196,8 +2196,8 @@ impl TextOperation for TypoOp {
                                 }
                             }
                         }
-                        TypoAction::ReplaceNeighbor => {
-                            if idx < chars.len() {
+                        TypoAction::ReplaceNeighbor
+                            if idx < chars.len() => {
                                 if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
                                     if !neighbors.is_empty() {
                                         // Use previous char for transition weighting
@@ -2215,7 +2215,6 @@ impl TextOperation for TypoOp {
                                     }
                                 }
                             }
-                        }
                         _ => {}
                     }
                 }

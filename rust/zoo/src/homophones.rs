@@ -196,7 +196,7 @@ impl TextOperation for HomophoneOp {
 
         // Apply all replacements using bulk update
         if !replacements.is_empty() {
-            buffer.replace_words_bulk(replacements.into_iter())?;
+            buffer.replace_words_bulk(replacements)?;
         }
 
         buffer.reindex_if_needed();
