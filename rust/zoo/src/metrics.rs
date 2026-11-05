@@ -85,7 +85,7 @@ pub fn batch_jensen_shannon_divergence(
     let output_owned = extract_batch_owned_strings(&outputs)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         input_owned
             .par_iter()
             .zip(output_owned.par_iter())
@@ -107,7 +107,7 @@ pub fn batch_normalized_edit_distance(
     let output_owned = extract_batch_owned_strings(&outputs)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         input_owned
             .par_iter()
             .zip(output_owned.par_iter())
@@ -129,7 +129,7 @@ pub fn batch_subsequence_retention(
     let output_owned = extract_batch_owned_strings(&outputs)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         input_owned
             .par_iter()
             .zip(output_owned.par_iter())
@@ -289,7 +289,7 @@ pub fn batch_entropy_delta(
     let output_owned = extract_batch_owned_strings(&outputs)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         input_owned
             .par_iter()
             .zip(output_owned.par_iter())
@@ -378,7 +378,7 @@ pub fn batch_merge_split_index(
     let output_owned = extract_batch_owned_strings(&outputs)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         input_owned
             .par_iter()
             .zip(output_owned.par_iter())
@@ -557,7 +557,7 @@ pub fn batch_token_entropy(
     let batch_owned = extract_batch_owned_strings(&token_batches)?;
 
     // Release GIL and process in parallel
-    Ok(py.allow_threads(|| {
+    Ok(py.detach(|| {
         batch_owned
             .par_iter()
             .map(|tokens| shannon_entropy(tokens))

@@ -39,6 +39,7 @@ pub enum OperationError {
     ExcessiveRedaction { requested: usize, available: usize },
     Rng(RngError),
     Regex(String),
+    InvalidRate(f64),
 }
 
 impl OperationError {
@@ -54,6 +55,9 @@ impl OperationError {
             }
             Self::Rng(err) => PyValueError::new_err(err.to_string()),
             Self::Regex(message) => PyRuntimeError::new_err(message),
+            Self::InvalidRate(rate) => {
+                PyValueError::new_err(format!("rate must be a finite number, got {rate}"))
+            }
         }
     }
 }
@@ -530,7 +534,7 @@ impl TextOperation for SwapAdjacentWordsOp {
         }
 
         if !replacements.is_empty() {
-            buffer.replace_words_bulk(replacements.into_iter())?;
+            buffer.replace_words_bulk(replacements)?;
         }
 
         buffer.reindex_if_needed();
@@ -717,7 +721,7 @@ impl TextOperation for RedactWordsOp {
         }
 
         // Apply all redactions in a single bulk operation
-        buffer.replace_words_bulk(replacements.into_iter())?;
+        buffer.replace_words_bulk(replacements)?;
 
         // If merging is enabled, consolidate adjacent redacted words
         if self.merge_adjacent {
@@ -2112,6 +2116,10 @@ impl TextOperation for TypoOp {
         if clamped_rate <= 0.0 {
             return Ok(());
         }
+        // An infinite rate would saturate max_changes to usize::MAX and never finish.
+        if !clamped_rate.is_finite() {
+            return Err(OperationError::InvalidRate(self.rate));
+        }
 
         let max_changes = (total_chars as f64 * clamped_rate).ceil() as usize;
         if max_changes == 0 {
@@ -2196,8 +2204,8 @@ impl TextOperation for TypoOp {
                                 }
                             }
                         }
-                        TypoAction::ReplaceNeighbor => {
-                            if idx < chars.len() {
+                        TypoAction::ReplaceNeighbor
+                            if idx < chars.len() => {
                                 if let Some(neighbors) = self.neighbors_for_char(chars[idx]) {
                                     if !neighbors.is_empty() {
                                         // Use previous char for transition weighting
@@ -2215,7 +2223,6 @@ impl TextOperation for TypoOp {
                                     }
                                 }
                             }
-                        }
                         _ => {}
                     }
                 }

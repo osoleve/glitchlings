@@ -1,6 +1,9 @@
 """Tests for Typogre modifier slippage behaviour."""
 
+import math
 import random
+
+import pytest
 
 from glitchlings.internal.rust_ffi import keyboard_typo_rust, resolve_seed
 from glitchlings.util import KEYNEIGHBORS
@@ -39,3 +42,14 @@ def test_shift_slip_zero_matches_fatfinger() -> None:
     )
 
     assert typogre.corrupt(text) == expected
+
+
+def test_infinite_rate_raises_instead_of_hanging() -> None:
+    """A non-finite rate must be rejected rather than looping forever."""
+
+    layout = getattr(KEYNEIGHBORS, "QWERTY")
+    with pytest.raises(ValueError, match="finite"):
+        keyboard_typo_rust("hello world", math.inf, layout, 1)
+
+    with pytest.raises(ValueError, match="finite"):
+        Typogre(rate=math.inf, seed=1).corrupt("hello world")

@@ -18,7 +18,7 @@ pub(crate) fn inject_zero_widths(
         return Ok(String::new());
     }
 
-    let list = characters.downcast::<PyList>()?;
+    let list = characters.cast::<PyList>()?;
     let palette: Vec<String> = list
         .iter()
         .map(|item| item.extract())

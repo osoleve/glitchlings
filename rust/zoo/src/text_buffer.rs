@@ -435,7 +435,7 @@ impl TextBuffer {
         if ops.is_empty() {
             return Ok(());
         }
-        ops.sort_by(|a, b| a.0.cmp(&b.0)); // Ascending order
+        ops.sort_by_key(|a| a.0); // Ascending order
 
         // Validate all indices first
         if let Some((max_idx, _, _, _)) = ops.last() {
