@@ -1,6 +1,6 @@
 [project]
 name = "glitchlings"
-version = "1.0.0"
+version = "1.0.1"
 description = "Deterministic, high performance, principled natural language augmentation."
 readme = "README.md"
 requires-python = ">=3.10"
