@@ -2,6 +2,7 @@ name: Publish to TestPyPI
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     branches:
       - main
   workflow_dispatch:
@@ -168,7 +169,14 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.10', '3.11', '3.12', '3.13']
-        runner: ['macos-latest', 'macos-14']  # macos-latest is Intel x86_64, macos-14 is ARM64
+        runner: [macos-15-intel, macos-15]
+        include:
+          - runner: macos-15-intel
+            python-arch: x64
+            wheel-arch: x86_64
+          - runner: macos-15
+            python-arch: arm64
+            wheel-arch: arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -177,6 +185,7 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
+          architecture: ${{ matrix.python-arch }}
           cache: 'pip'
 
       - name: Install Rust toolchain
@@ -199,9 +208,41 @@ jobs:
           python -m pip install --upgrade pip
           pip install build setuptools-rust
 
-      - name: Build distributions
+      - name: Build native wheel
         shell: bash
+        env:
+          ARCHFLAGS: -arch ${{ matrix.wheel-arch }}
+          MACOSX_DEPLOYMENT_TARGET: '11.0'
+          _PYTHON_HOST_PLATFORM: macosx-11.0-${{ matrix.wheel-arch }}
         run: python -m build --wheel
+
+      - name: Verify wheel tag and native architecture
+        shell: bash
+        env:
+          WHEEL_ARCH: ${{ matrix.wheel-arch }}
+        run: |
+          python - <<'PY'
+          import os
+          import pathlib
+          import subprocess
+          import tempfile
+          import zipfile
+
+          arch = os.environ["WHEEL_ARCH"]
+          wheel, = pathlib.Path("dist").glob("*.whl")
+          if not wheel.name.endswith(f"-macosx_11_0_{arch}.whl"):
+              raise SystemExit(f"Unexpected wheel platform: {wheel.name}")
+          with zipfile.ZipFile(wheel) as archive, tempfile.TemporaryDirectory() as tmp:
+              modules = [name for name in archive.namelist() if name.endswith(".so")]
+              if not modules:
+                  raise SystemExit("Wheel contains no native extension")
+              for name in modules:
+                  path = pathlib.Path(tmp) / pathlib.Path(name).name
+                  path.write_bytes(archive.read(name))
+                  actual = subprocess.check_output(["lipo", "-archs", str(path)], text=True).split()
+                  if actual != [arch]:
+                      raise SystemExit(f"{name}: expected {arch}, got {actual}")
+          PY
 
       - name: Upload distributions
         uses: actions/upload-artifact@v4
@@ -210,6 +251,8 @@ jobs:
           path: dist/
 
   publish:
+    # Draft PRs validate wheels without uploading to TestPyPI.
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     needs: [build-sdist, build-windows, build-linux, build-macos]
     environment:
